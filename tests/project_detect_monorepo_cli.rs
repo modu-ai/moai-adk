@@ -1185,3 +1185,376 @@ fn one_extension_for_two_languages_in_the_extension_file_is_refused() {
         );
     }
 }
+
+// ---- SPEC-20261125-detect-database-dependency-catalog: database dependencies as catalog data ----
+
+/// The dependency table the engine held before the catalog took it: dependency → kind.
+const EARLIER_DATABASE_DEPENDENCIES: [(&str, &str); 22] = [
+    ("postgres", "postgres"),
+    ("tokio-postgres", "postgres"),
+    ("pg", "postgres"),
+    ("psycopg", "postgres"),
+    ("psycopg2", "postgres"),
+    ("psycopg2-binary", "postgres"),
+    ("asyncpg", "postgres"),
+    ("github.com/jackc/pgx/v5", "postgres"),
+    ("github.com/lib/pq", "postgres"),
+    ("mysql", "mysql"),
+    ("mysql2", "mysql"),
+    ("pymysql", "mysql"),
+    ("mysqlclient", "mysql"),
+    ("github.com/go-sql-driver/mysql", "mysql"),
+    ("rusqlite", "sqlite"),
+    ("sqlite3", "sqlite"),
+    ("better-sqlite3", "sqlite"),
+    ("mongodb", "mongodb"),
+    ("pymongo", "mongodb"),
+    ("mongoose", "mongodb"),
+    ("redis", "redis"),
+    ("ioredis", "redis"),
+];
+
+/// Declares each of `names` as a dependency of the project: a name with a `/` as a Go module
+/// requirement, any other name in `package.json` (a Python requirement stops at a `/`).
+fn declare_dependencies(root: &Path, names: &[&str]) {
+    let (modules, packages): (Vec<&str>, Vec<&str>) = names.iter().partition(|n| n.contains('/'));
+    if !packages.is_empty() {
+        let list: Vec<String> = packages
+            .iter()
+            .map(|n| format!(r#""{n}": "1.0.0""#))
+            .collect();
+        write(
+            root,
+            "package.json",
+            &format!(r#"{{"dependencies": {{{}}}}}"#, list.join(", ")),
+        );
+    }
+    if !modules.is_empty() {
+        let list: Vec<String> = modules
+            .iter()
+            .map(|n| format!("require {n} v1.0.0\n"))
+            .collect();
+        write(root, "go.mod", &format!("module app\n\n{}", list.concat()));
+    }
+}
+
+/// A project that declares only `names`.
+fn project_declaring(names: &[&str]) -> TempDir {
+    let root = TempDir::new().unwrap();
+    declare_dependencies(root.path(), names);
+    root
+}
+
+fn databases(result: &Value) -> Vec<&str> {
+    strings(&result["detected"]["databases"])
+}
+
+/// An extension file that holds only the `database_dependencies` rows in `rows`.
+fn db_file(rows: &str) -> String {
+    format!(r#"{{"schema": 1, "database_dependencies": [{rows}]}}"#)
+}
+
+/// REQ-1: each earlier dependency still gives its kind, alone in a project so a wrong pair
+/// shows by name, and all of them together give the five earlier kinds.
+#[test]
+fn every_shipped_database_dependency_keeps_its_kind() {
+    for (dependency, kind) in EARLIER_DATABASE_DEPENDENCIES {
+        let root = project_declaring(&[dependency]);
+        let result = detect(&root);
+        assert_eq!(databases(&result), [kind], "{dependency}: {result}");
+    }
+
+    let all: Vec<&str> = EARLIER_DATABASE_DEPENDENCIES
+        .iter()
+        .map(|(d, _)| *d)
+        .collect();
+    let root = project_declaring(&all);
+    let result = detect(&root);
+    assert_eq!(
+        databases(&result),
+        ["mongodb", "mysql", "postgres", "redis", "sqlite"],
+        "{result}"
+    );
+}
+
+/// REQ-2, REQ-4: a row of the extension file adds a kind for a dependency the shipped catalog
+/// does not know, and the rows are counted with the manifest and code rows. Without the file
+/// the kind is gone and nothing was written.
+#[test]
+fn a_database_dependency_row_adds_a_kind_without_code() {
+    let root = project_declaring(&["sqlx"]);
+    let r = root.path();
+    let result = detect(&root);
+    assert_eq!(result["detected"]["databases"], json!([]), "{result}");
+
+    write(
+        r,
+        &extension(),
+        &db_file(r#"{"kind": "postgres", "dependencies": ["sqlx"]}"#),
+    );
+    let result = detect(&root);
+    assert_eq!(databases(&result), ["postgres"], "{result}");
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 1, "problem": null}),
+        "{result}"
+    );
+    let before = tree(r);
+    detect(&root);
+    assert_eq!(tree(r), before, "a read wrote something");
+
+    // Rows of the three kinds are counted together.
+    write(
+        r,
+        &extension(),
+        &format!(
+            r#"{{"schema": 1, "manifests": [{GOOD_MANIFEST_ROW}],
+                "code_extensions": [{{"language": "elixir", "extensions": ["ex"]}}],
+                "database_dependencies": [{{"kind": "postgres", "dependencies": ["sqlx"]}}]}}"#
+        ),
+    );
+    let result = detect(&root);
+    assert_eq!(databases(&result), ["postgres"], "{result}");
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 3, "problem": null}),
+        "{result}"
+    );
+
+    fs::remove_file(r.join(extension())).unwrap();
+    let result = detect(&root);
+    assert_eq!(result["detected"]["databases"], json!([]), "{result}");
+}
+
+/// REQ-2: a row never changes the kind of a dependency the shipped catalog has; only the
+/// dependencies it does not have are used, and a row left with none adds nothing.
+#[test]
+fn a_database_dependency_row_never_replaces_a_shipped_dependency() {
+    let root = project_declaring(&["pg", "sqlx"]);
+    write(
+        root.path(),
+        &extension(),
+        &db_file(r#"{"kind": "mysql", "dependencies": ["pg", "sqlx"]}"#),
+    );
+    let result = detect(&root);
+    assert_eq!(databases(&result), ["mysql", "postgres"], "{result}");
+    assert_eq!(
+        result["manifest_catalog"]["extension"],
+        json!("read"),
+        "{result}"
+    );
+
+    let only_shipped = project_declaring(&["pg"]);
+    write(
+        only_shipped.path(),
+        &extension(),
+        &db_file(r#"{"kind": "mysql", "dependencies": ["pg", "sqlx"]}"#),
+    );
+    let result = detect(&only_shipped);
+    assert_eq!(databases(&result), ["postgres"], "{result}");
+
+    // A row that holds only the shipped dependency adds nothing, and is still read.
+    let nothing_new = project_declaring(&["pg", "sqlx"]);
+    write(
+        nothing_new.path(),
+        &extension(),
+        &db_file(r#"{"kind": "mysql", "dependencies": ["pg"]}"#),
+    );
+    let result = detect(&nothing_new);
+    assert_eq!(databases(&result), ["postgres"], "{result}");
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 1, "problem": null}),
+        "{result}"
+    );
+}
+
+/// REQ-3: one row that cannot be read refuses the whole extension file: the problem is
+/// reported, the good rows beside it are not used either (the shipped rows alone are), and
+/// nothing is written. The same file with the bad row mended is read, so each refusal is
+/// the row's doing.
+#[test]
+fn a_database_dependency_row_that_cannot_be_read_refuses_the_whole_file() {
+    let root = project_declaring(&["pg", "tedious"]);
+    let r = root.path();
+    write(r, "apps/svc/mix.exs", "defmodule X do end\n");
+    write(r, "lib/a.ex", "x\n");
+    write(r, "src/a.rs", "x\n");
+
+    let file_with = |db_row: &str| {
+        format!(
+            r#"{{"schema": 1, "manifests": [{GOOD_MANIFEST_ROW}],
+                "code_extensions": [{{"language": "elixir", "extensions": ["ex"]}}],
+                "database_dependencies": [{db_row}]}}"#
+        )
+    };
+
+    // The control: the mended row is read, and all three kinds of row take effect.
+    write(
+        r,
+        &extension(),
+        &file_with(r#"{"kind": "sqlserver", "dependencies": ["tedious"]}"#),
+    );
+    let result = detect(&root);
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 3, "problem": null}),
+        "{result}"
+    );
+    assert_eq!(
+        manifests(&result),
+        ["apps/svc/mix.exs", "package.json"],
+        "{result}"
+    );
+    assert_eq!(
+        result["detected"]["languages"],
+        json!(["elixir", "javascript", "rust"]),
+        "{result}"
+    );
+    assert_eq!(databases(&result), ["postgres", "sqlserver"], "{result}");
+
+    let long = "a".repeat(121);
+    let bad_rows = [
+        r#"{"kind": "postgres", "dependencies": []}"#.to_string(),
+        r#"{"kind": "postgres"}"#.to_string(),
+        r#"{"dependencies": ["tedious"]}"#.to_string(),
+        r#"{"kind": "", "dependencies": ["tedious"]}"#.to_string(),
+        r#"{"kind": "sql server", "dependencies": ["tedious"]}"#.to_string(),
+        r#"{"kind": "sql/server", "dependencies": ["tedious"]}"#.to_string(),
+        r#"{"kind": 7, "dependencies": ["tedious"]}"#.to_string(),
+        r#"{"kind": "sqlserver", "dependencies": [""]}"#.to_string(),
+        r#"{"kind": "sqlserver", "dependencies": ["."]}"#.to_string(),
+        r#"{"kind": "sqlserver", "dependencies": ["te dious"]}"#.to_string(),
+        r#"{"kind": "sqlserver", "dependencies": ["c++"]}"#.to_string(),
+        r#"{"kind": "sqlserver", "dependencies": ["Tedious"]}"#.to_string(),
+        format!(r#"{{"kind": "sqlserver", "dependencies": ["{long}"]}}"#),
+        r#"{"kind": "sqlserver", "dependencies": ["tedious"], "surprise": 1}"#.to_string(),
+        r#"{"kind": "sqlserver", "dependencies": "tedious"}"#.to_string(),
+    ];
+    for bad in &bad_rows {
+        write(r, &extension(), &file_with(bad));
+        let before = tree(r);
+        let result = detect(&root);
+        assert_eq!(
+            result["manifest_catalog"]["extension"],
+            json!("refused"),
+            "{bad}: {result}"
+        );
+        assert_eq!(result["manifest_catalog"]["rows"], json!(0), "{bad}");
+        assert!(
+            result["manifest_catalog"]["problem"].is_string(),
+            "{bad}: {result}"
+        );
+        // Neither the manifest row, the code row nor the dependency row is used.
+        assert_eq!(manifests(&result), ["package.json"], "{bad}: {result}");
+        assert_eq!(
+            result["detected"]["languages"],
+            json!(["javascript", "rust"]),
+            "{bad}: {result}"
+        );
+        assert_eq!(databases(&result), ["postgres"], "{bad}: {result}");
+        assert_eq!(tree(r), before, "{bad}: a read wrote something");
+    }
+}
+
+/// The extension file with `n` rows, each a kind and one dependency of its own.
+fn db_rows_json(n: usize) -> String {
+    let rows: Vec<String> = (0..n)
+        .map(|i| format!(r#"{{"kind": "k", "dependencies": ["d{i}"]}}"#))
+        .collect();
+    db_file(&rows.join(","))
+}
+
+/// The extension file with one row of `n` dependencies.
+fn db_row_with_dependencies(n: usize) -> String {
+    let list: Vec<String> = (0..n).map(|i| format!("\"d{i}\"")).collect();
+    db_file(&format!(
+        r#"{{"kind": "k", "dependencies": [{}]}}"#,
+        list.join(",")
+    ))
+}
+
+/// The extension file with one row that names `dependency`.
+fn db_row_named(dependency: &str) -> String {
+    db_file(&format!(
+        r#"{{"kind": "k", "dependencies": ["{dependency}"]}}"#
+    ))
+}
+
+/// REQ-3: the limits of 64 rows, of 64 dependencies in one row and of 120 bytes in a name hold
+/// at both edges: the last value is read, the next is refused. Every name is distinct, so no
+/// refusal comes from one dependency claimed twice.
+#[test]
+fn the_database_dependency_row_limits_hold_at_both_edges() {
+    assert_eq!(extension_state(&db_rows_json(64)), ("read".to_string(), 64));
+    assert_eq!(
+        extension_state(&db_rows_json(65)),
+        ("refused".to_string(), 0)
+    );
+    assert_eq!(
+        extension_state(&db_row_with_dependencies(64)),
+        ("read".to_string(), 1)
+    );
+    assert_eq!(
+        extension_state(&db_row_with_dependencies(65)),
+        ("refused".to_string(), 0)
+    );
+    assert_eq!(
+        extension_state(&db_row_named(&"a".repeat(120))),
+        ("read".to_string(), 1)
+    );
+    assert_eq!(
+        extension_state(&db_row_named(&"a".repeat(121))),
+        ("refused".to_string(), 0)
+    );
+}
+
+/// REQ-5: two rows of the extension file that give one dependency two kinds refuse the whole
+/// file and the problem names the dependency, whichever row comes first; the same kind twice
+/// (in one row or in two rows) is read.
+#[test]
+fn one_dependency_for_two_kinds_in_the_extension_file_is_refused() {
+    let root = project_declaring(&["sqlx", "redis"]);
+    let r = root.path();
+    let conflicts = [
+        (
+            r#"{"kind": "postgres", "dependencies": ["sqlx"]},
+               {"kind": "mysql", "dependencies": ["sqlx"]}"#,
+            "the dependency sqlx is claimed by two kinds: postgres and mysql",
+        ),
+        (
+            r#"{"kind": "mysql", "dependencies": ["sqlx"]},
+               {"kind": "postgres", "dependencies": ["sqlx"]}"#,
+            "the dependency sqlx is claimed by two kinds: mysql and postgres",
+        ),
+    ];
+    for (rows, problem) in conflicts {
+        write(r, &extension(), &db_file(rows));
+        let before = tree(r);
+        let result = detect(&root);
+        assert_eq!(
+            result["manifest_catalog"],
+            json!({"extension": "refused", "rows": 0, "problem": problem}),
+            "{result}"
+        );
+        // The shipped rows alone are used: the refused file adds no kind.
+        assert_eq!(databases(&result), ["redis"], "{result}");
+        assert_eq!(tree(r), before, "a read wrote something");
+    }
+
+    // The same kind for one dependency is no conflict: twice in one row, or in two rows.
+    for rows in [
+        r#"{"kind": "postgres", "dependencies": ["sqlx", "sqlx"]}"#,
+        r#"{"kind": "postgres", "dependencies": ["sqlx"]},
+           {"kind": "postgres", "dependencies": ["sqlx", "diesel"]}"#,
+    ] {
+        write(r, &extension(), &db_file(rows));
+        let result = detect(&root);
+        assert_eq!(
+            result["manifest_catalog"]["extension"],
+            json!("read"),
+            "{result}"
+        );
+        assert_eq!(databases(&result), ["postgres", "redis"], "{result}");
+    }
+}
