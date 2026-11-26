@@ -78,3 +78,18 @@ created: 2026-11-26
 - AC-5: met — `cargo nextest run --test hook_bash_boundary_cli` 38/38 통과
 
 위험 경로 확인: `a_linked_session_folder_is_judged_by_where_it_leads`(임시 HOME 에서 실제 바이너리, 링크를 거친 세션 폴더, 판정한 명령은 실행 안 됨), c2a322d308 에서 `hooks_cd_guard_cli` 4/4 통과. 가드 뮤턴트 7/7 exit 100(반납 노트). 승인은 노트 9869(리더 위임 판단)이고 승인 블록은 착지 때 리더가 써요.
+
+### 수리: 첫 감사 FAIL(노트 10147)
+
+head 05ccfb5e13 은 옮기지 않는 `cd` 세 가지(`$( … )` 안 here-document 본문, `$( … )` 안 주석 뒤, `$((2*(1+1)))` 뒤의 서브셸)를 거절했어요(REQ-2, REQ-3 위반). 렉서가 치환이나 산술을 일찍 끝내면 `)` 가 남으므로, 괄호 짝이 안 맞는 줄은 나눌 수 없는 명령으로 봐요(REQ-4). `moai hook bash-boundary` 의 렉서와 판정은 바꾸지 않았어요.
+
+- 수리 head 8400181c950f2b16f67bf5185981914dfb6be101. 코드를 고치기 전에 AC-2 시험이 첫 번째 입력 거절로 실패했고(나머지 두 입력의 거절은 감사의 실행 확인), 고친 뒤 `hooks_cd_guard_cli`·`hook_bash_boundary_cli` 42/42 통과.
+- 같은 head 에서 AC-1·AC-2·AC-3 `verify` 1/1, AC-4 `rg` exit 1, AC-5 38/38 통과.
+- 가드 뮤턴트 추가 1개: 괄호 짝 확인을 지우면 `a_cd_that_does_not_move_the_session_is_allowed` exit 100.
+
+알려진 빈틈(R-2 에 적은 것보다 넓어요):
+
+- 줄 전체를 판정하지 않아 앞의 `cd` 도 통과해요: 배열 `a=()`, `(( … ))`, 붙여 쓴 `name()`, `;;`, `${…$(…)}`, `$( … )` 안의 짝 없는 따옴표, 괄호 짝이 안 맞는 줄(`(x)` 꼴이 아닌 `case` 포함; 이 마지막 것은 이번 수리로 생겼어요).
+- 띄어 쓴 함수 정의 `name () {`, `function`, `coproc`, 짝이 맞는 `case` 는 그 자리에서 읽기를 멈춰요(앞의 `cd` 는 거절).
+- `chdir`, `noglob cd`, `time -p cd` 는 허용하고 `cd x & wait` 는 거절해요(감사의 확인).
+- 코드로 읽은 것(실행 안 함): `$( … )` 안 here-document 의 `)` 뒤에 짝 없는 `(` 가 이어져 괄호 수가 다시 맞거나, here-document 끝 표시에 `$` 가 있으면, 본문의 `cd` 가 거절될 수 있어요.
