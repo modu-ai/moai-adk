@@ -247,6 +247,9 @@ const RULES: &[(&str, Kind)] = &[
     ("search refused: ", Kind::InvalidInput),
     ("home layout copy failed", Kind::Io),
     ("replace failed", Kind::Io),
+    // The profile screen names a field, and a decision id such as `temporary` or `exited` is one
+    // of the generic words below; behind the wrapper phrases above, ahead of those words.
+    ("invalid or nonportable profile", Kind::InvalidInput),
     ("temporary", Kind::Io),
     ("unavailable", Kind::Io),
     ("unreadable", Kind::Io),
@@ -471,6 +474,18 @@ mod tests {
             ("ls-remote exited 2", Io),
             ("invalid profile", InvalidInput),
             ("invalid or nonportable profile; no values were logged", InvalidInput),
+            (
+                "invalid or nonportable profile field decisions[temporary].value; no values were logged",
+                InvalidInput,
+            ),
+            (
+                "invalid or nonportable profile field decisions[exited].value; no values were logged",
+                InvalidInput,
+            ),
+            (
+                "invalid or nonportable profile field decisions[#0].id; no values were logged",
+                InvalidInput,
+            ),
             ("invalid agents request; no values were logged", InvalidInput),
             ("explicit null pin is invalid", InvalidInput),
             ("nonportable package path", InvalidInput),
