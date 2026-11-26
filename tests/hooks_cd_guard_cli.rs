@@ -219,7 +219,12 @@ fn a_worktree_session_cd_is_denied() {
                 .unwrap_or_else(|| panic!("allowed in {mode}: {command:?}"));
             assert!(reason.starts_with(PREFIX), "{command:?}: {reason}");
             assert_eq!(reason.lines().count(), 1, "one line: {reason}");
-            for way in ["absolute path", "--manifest-path", "plain single", "object id"] {
+            for way in [
+                "absolute path",
+                "--manifest-path",
+                "plain single",
+                "object id",
+            ] {
                 assert!(reason.contains(way), "{way} not named: {reason}");
             }
         }
