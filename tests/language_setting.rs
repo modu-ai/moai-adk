@@ -372,6 +372,17 @@ fn reply_sentence_follows_user_chat_in_both_instruction_languages() {
         "{text}"
     );
     assert_eq!(text.matches("답하고 질문하세요").count(), 1, "{text}");
+    // The block of this profile stays within BLOCK_MAX_LINES (15) lines between its markers; the
+    // versioning and flow lines it does not set add two more, so the longest block is 10 lines.
+    let begin = lines
+        .iter()
+        .position(|l| l.contains("moai:managed:begin"))
+        .unwrap();
+    let end = lines
+        .iter()
+        .position(|l| l.contains("moai:managed:end"))
+        .unwrap();
+    assert!(end - begin - 1 <= 15, "{text}");
 
     let en = project(Some(json!({"user_chat": "ko", "instruction_files": "en"})));
     plan_then_apply(&en, "agents", &agents_request("en"));

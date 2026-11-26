@@ -103,4 +103,16 @@ branch: spec/reply-language-rule-r2-20261120
 
 ## Result
 
-개정 2 를 쓴 단계예요. 구현은 아직 시작하지 않았어요.
+조각 1·2(지시 문장, language 설정 키)는 끝났고 조각 3(확인 화면, AC-8)은 남았어요. 브랜치 `spec/reply-language-rule-r2-20261120`, 기준 NeXT `e946ae8102`. 커밋: `6c8fc97386`(조각 1), `7f26becfe1`·`ca8c6321fe`(조각 2). 리더 결정(카드 노트 9654)으로 카드 기준 2 는 철회하고 기준 3(조각 1·2)·기준 4(확인 화면)로 나눴어요.
+
+- AC-1: met — `cargo test --locked --offline --test home_style_cli language_key_plan_sets_the_saved_conversation_language` 통과(`home_style_cli` 30/30)
+- AC-2: met — `language_key_user_value_is_kept_and_said_so` 통과(`japanese`·빈 문자열·숫자·`null` 은 알리고 그대로 두고, 같은 이름은 조용히 그대로 둠)
+- AC-3: met — `language_key_unknown_language_names_the_reason` 통과(저장 없음과 `fr`)
+- AC-4: met — `language_key_one_apply_one_receipt_revert_removes_only_those` 통과(한 번의 교체, 키 단위 되돌리기, 바뀐 키 보고, 키 목록 없는 옛 영수증)
+- AC-5: met — `language_key_config_dir_profile_gets_its_own_settings` 통과
+- AC-6: met — `cargo test --locked --offline --test language_setting reply_sentence_` 통과(`language_setting` 10/10, en·ko 블록, `user_chat` 없음·`en`, 언어 없음 블록 바이트 동일)
+- AC-7: met — `cargo test --locked --offline --lib reply_` 2 통과(모든 코드의 한국어 이름이 모음으로 끝남, 모르는 코드는 `None`); 블록 본문 줄 수는 `language_setting` 의 ko 블록 검사가 15줄 안임을 확인하고 가장 긴 블록은 10줄
+- AC-8: not_run — 확인 화면 조각(`src/update.rs`, `src/update_tux.rs`, `tests/update_tux_golden.rs`)은 그 파일을 쥔 다른 카드 둘이 착지한 뒤 새 tip 에서 해요(승인된 결정 9568, 카드 기준 4)
+- AC-9: met — `language_three_questions` 12/12, `home_style_cli` 30/30, `update_user_layer_cli` 23/23, `update_linked_config_files` 9/9 통과; `update_tux_golden` 17/17 은 조각 2 커밋 직후에 통과했고 이후 변경은 `home_style.rs` 의 한 줄과 테스트라서 READY 영수증이 다시 돌려요
+
+가드 뮤턴트(5개, 모두 `exit 101` 로 죽음): 기존 language 덮어쓰기 계획, `same_writes` 의 키 비교 제거, 바뀐 키 보고 제거, 키 목록 없는 옛 영수증 읽기, `user_chat` 없을 때 `en` 추정. 위험 경로: 임시 HOME 에서 실제 바이너리로 language 저장 → plan → apply → 다시 plan → revert, 사용자 값·사용자 편집 보존, 비객체 파일 거부, 비기본 폴더 차단. 첫 두 실행은 환경 지우기가 macOS `sed` 에서 동작하지 않아 실제 `CLAUDE_CONFIG_DIR` 을 물려받았지만 그 폴더가 심볼릭 링크라 막혀서(`written: []`) 실제 파일은 바뀌지 않았고, 이후 스크립트에 "환경이 임시 폴더가 아니면 중단" 안전장치를 넣었어요.
