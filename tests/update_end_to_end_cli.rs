@@ -173,11 +173,17 @@ fn steps_of(plan: &Value) -> Vec<&Value> {
         .collect()
 }
 
-/// The steps that are neither `unchanged` nor `skip`: `(step, state)`.
+/// The steps that still want something: neither `unchanged`, `skip` nor `optional` (the three
+/// states the plan's `all_unchanged` counts as nothing to do): `(step, state)`.
 fn open_steps(plan: &Value) -> Vec<(String, String)> {
     steps_of(plan)
         .into_iter()
-        .filter(|s| !matches!(s["state"].as_str().unwrap(), "unchanged" | "skip"))
+        .filter(|s| {
+            !matches!(
+                s["state"].as_str().unwrap(),
+                "unchanged" | "skip" | "optional"
+            )
+        })
         .map(|s| {
             (
                 s["step"].as_str().unwrap().to_string(),
