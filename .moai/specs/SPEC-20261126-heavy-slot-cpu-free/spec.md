@@ -95,3 +95,32 @@ created: 2026-11-26
 | D-6 | `slot_wait=<seconds>` is added to the `check affected` summary line only when the slot waited. | Every reader of the summary line reads it word by word, and tests that compare the whole line stay green when nothing waited. | Put the number in the answer JSON only. |
 | D-7 | The default of `min_cpu_free_pct` is 0: the rule is off until a person writes a value. | Leader decision note 10057 (replacing 10047): a new wait starts as observation, and no one writes the `limits.json` under HOME without the user. | Make the default a number above 0. |
 | D-8 | The slot line ends the taken or reuse text with `; cpu free N% (limit M%)` or `; cpu free N% (rule off)`, before any wait text. | Leader decision note 10057: the measured numbers must stay so the user can choose whether to switch the rule on. One line per taken slot; a line that waited still ends with the waited seconds. | Drop the text, or move it to the exit line. |
+
+## Result
+
+2026-11-26 기준이에요. REQ-1 부터 REQ-9 까지 구현했어요. NeXT 팁 `75b6920066` 를 브랜치에 합친(`bab95d2cc9`) 뒤에 REQ-7 을 넣었어요.
+
+바뀐 파일: `src/heavy_slot.rs`, `src/check_affected.rs`, `src/ops/check.rs`, `tests/heavy_slot_cli.rs`, `tests/check_affected_one_slot.rs`.
+
+코드 head `f5af3ae71c8bb8c0fca3a16d82b8a3c58900ee30` 에서 돌린 확인이에요(macOS, `--max 2` 슬롯, 로그 `target/zoe/green-ac5.log`, 종료 0). AC 의 이름 필터는 따로 돌리지 않고 그 필터가 들어 있는 대상 전체를 돌렸어요.
+
+| 확인 | 결과 | 덮는 AC |
+| --- | --- | --- |
+| `cargo clippy --locked --offline --lib --test heavy_slot_cli --test check_affected_one_slot -- -D warnings` | 통과 | — |
+| `cargo test --locked --offline --lib heavy_slot` | 32 통과 | AC-4 |
+| `--test heavy_slot_cli` | 54 통과 | AC-1, AC-2, AC-3, AC-6, AC-8 |
+| `--test check_affected_one_slot` | 9 통과 (`cpu_ac5_` 2개 포함) | AC-5 |
+| `--test heavy_slot_fifo_cli`, `--test heavy_slot_jobs_cleanup_cli` | 10, 6 통과 | AC-7 |
+| `--test test_switch_release_scan`, `--test cli_text_citations` | 4, 5 통과 | — |
+
+AC-5 의 실패 확인: `bab95d2cc9` 에 테스트만 더해(`6b79bebf2b`) `cargo test --locked --offline --test check_affected_one_slot cpu_ac5_` 를 돌리면 종료 101 이에요. 기다린 실행의 테스트가 `no slot_wait word` 단언에서 실패하고, 기다리지 않은 실행의 테스트는 통과해요.
+
+구현 중에 찾아 고친 것: macOS 는 짧은 간격의 두 CPU 틱 읽기에 같은 값을 돌려줘서, 처음 코드는 실제 기다림을 1초 만에 끝냈어요. 같은 값은 표본으로 치지 않고 앞의 비율을 유지해요(`88e69902c0`, D-2).
+
+관찰: 16코어 Mac 에서 부하 44~80 일 때 CPU 여유는 0~15% 였어요. 기본값은 0(끔)으로 두고 슬롯 줄의 수치를 모아요(사용자 결정, 카드 노트 10124).
+
+남은 한계:
+
+- Linux 와 Windows 에서는 돌리지 않았어요. 릴리스 빌드도 만들지 않았어요.
+- 설치된 이전 빌드는 새 키가 있는 `limits.json` 을 거절해요. 키는 새 빌드를 설치한 뒤에만 넣고, 되돌리기 전에 지워요.
+- 이 카드의 영수증은 설치된 빌드의 `check affected` 가 만들어요. 그 줄에는 `slot_wait` 가 나올 수 없어요.
