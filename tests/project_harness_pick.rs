@@ -18,8 +18,8 @@ use tempfile::TempDir;
 const EXE: &str = crate::common::MOAI_BIN;
 const PICK: &str = "harness-only";
 const ROLE: &str = ".claude/agents/moai/prj-reviewer.md";
-const CHECKS: &str = ".claude/skills/prj-checks/SKILL.md";
-const OTHER: &str = ".claude/skills/prj-other/SKILL.md";
+const CHECKS: &str = ".claude/skills/moai-prj-checks/SKILL.md";
+const OTHER: &str = ".claude/skills/moai-prj-other/SKILL.md";
 
 struct Fx {
     _tmp: TempDir,

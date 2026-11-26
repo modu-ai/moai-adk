@@ -16,7 +16,7 @@
 use crate::Result;
 use serde_json::{json, Map, Value};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// The folder of the Go-generation hook scripts, relative to the project.
 pub const GO_HOOK_DIR: &str = ".claude/hooks/moai";
@@ -175,6 +175,96 @@ pub fn scripts(project: &Path) -> Result<Vec<String>> {
     }
     out.sort();
     Ok(out)
+}
+
+/// The Go-generation hook scripts the `.claude/settings.json` of `settings_of` points at that
+/// the [`GO_HOOK_DIR`] of `folder` does not hold, sorted, each name once (SPEC-20261125-card-
+/// worktree-hook-config). `Ok(vec![])` when there is no settings file, no `hooks` object or
+/// nothing is missing; an error when the settings or the folder cannot be read (the caller
+/// decides whether that matters). A hook that is not a Go-generation script is not a file this
+/// looks for. Reads only.
+pub fn missing_scripts(settings_of: &Path, folder: &Path) -> Result<Vec<String>> {
+    let Some(settings) = settings(settings_of)? else {
+        return Ok(Vec::new());
+    };
+    let Some(hooks) = settings.get("hooks").and_then(Value::as_object) else {
+        return Ok(Vec::new());
+    };
+    let (pointed, _) = split(hooks);
+    if pointed.is_empty() {
+        return Ok(Vec::new());
+    }
+    let present = scripts(folder)?;
+    let mut missing: Vec<String> = pointed
+        .into_iter()
+        .map(|e| e.script)
+        .filter(|s| !present.contains(s))
+        .collect();
+    missing.sort();
+    missing.dedup();
+    Ok(missing)
+}
+
+/// The primary checkout of the linked worktree `worktree`, read from its `.git` file and the git
+/// folder's `commondir` without running a process; `None` when `worktree` is no linked worktree
+/// or the common git folder is not a `.git` folder.
+fn primary_checkout(worktree: &Path) -> Option<PathBuf> {
+    let read = |path: PathBuf| {
+        fs::symlink_metadata(&path)
+            .is_ok_and(|m| m.is_file())
+            .then(|| fs::read_to_string(&path).ok())
+            .flatten()
+    };
+    let link = read(worktree.join(".git"))?;
+    let gitdir = worktree.join(link.lines().next()?.strip_prefix("gitdir:")?.trim());
+    let common = read(gitdir.join("commondir"))?;
+    let common = fs::canonicalize(gitdir.join(common.trim())).ok()?;
+    if common.file_name()? != ".git" {
+        return None;
+    }
+    common.parent().map(Path::to_path_buf)
+}
+
+/// The one-line warning of a card take or reclaim into `worktree` (`card` is the card's name):
+/// the hook scripts the worktree's settings point at that the start folder of the lane session
+/// does not have, and a step after which they are found. The start folder is the primary
+/// checkout, where `$CLAUDE_PROJECT_DIR` stays after `EnterWorktree`; the worktree itself when
+/// there is none to read. `None` when the start folder has every script or something cannot be
+/// read, so a take is never refused over it.
+pub fn missing_scripts_warning(card: &str, worktree: &Path) -> Option<String> {
+    let primary = primary_checkout(worktree);
+    let start = primary.as_deref().unwrap_or(worktree);
+    let missing = missing_scripts(worktree, start)
+        .ok()
+        .filter(|m| !m.is_empty())?;
+    let step = if missing_scripts(worktree, worktree).ok()?.is_empty() {
+        format!(
+            "start the lane session in the worktree folder {} itself, which has them",
+            worktree.display()
+        )
+    } else {
+        format!(
+            "no start folder has them all and the user decides about the hook settings (`moai \
+             go-hooks-plan {}` shows their replacement)",
+            worktree.display()
+        )
+    };
+    let shown: Vec<&str> = missing.iter().take(3).map(String::as_str).collect();
+    let more = if missing.len() > shown.len() {
+        ", …"
+    } else {
+        ""
+    };
+    Some(format!(
+        "{card}: the hook settings in {}/{SETTINGS} point at {} file(s) under {GO_HOOK_DIR}/ that \
+         {} does not have ({}{more}); a session started there keeps `$CLAUDE_PROJECT_DIR` on that \
+         folder, also after `EnterWorktree`, so those hooks fail with `No such file or \
+         directory`; {step} (the settings file is not changed)",
+        worktree.display(),
+        missing.len(),
+        start.display(),
+        shown.join(", "),
+    ))
 }
 
 /// The project's `.claude/settings.json` as an object; `None` when the file is absent. A link,
@@ -771,6 +861,135 @@ mod tests {
                      format!("${{CLAUDE_PROJECT_DIR}}/.claude/hooks/moai/{script}")],
             "timeout": 10
         })
+    }
+
+    /// A project folder whose `.claude/settings.json` points at `pointed` (as `go_handler`
+    /// writes them, under two events) and whose `.claude/hooks/moai/` holds `present`.
+    fn project_with(pointed: &[&str], present: &[&str]) -> tempfile::TempDir {
+        let t = tempfile::tempdir().unwrap();
+        let claude = t.path().join(".claude");
+        fs::create_dir_all(claude.join("hooks/moai")).unwrap();
+        let handlers: Vec<Value> = pointed.iter().map(|s| go_handler(s)).collect();
+        let half = handlers.len() / 2;
+        let settings = json!({
+            "hooks": {
+                "Stop": [{"hooks": handlers[..half].to_vec()}],
+                "PreToolUse": [{"matcher": "Bash", "hooks": handlers[half..].to_vec()}],
+            },
+            "permissions": {"allow": ["Bash(ls)"]},
+        });
+        fs::write(claude.join("settings.json"), settings.to_string()).unwrap();
+        for name in present {
+            fs::write(claude.join("hooks/moai").join(name), "#!/bin/sh\n").unwrap();
+        }
+        t
+    }
+
+    #[test]
+    fn missing_scripts_names_only_what_the_settings_point_at_and_the_folder_lacks() {
+        let t = project_with(
+            &[
+                "handle-stop.sh",
+                "handle-pre-tool.sh",
+                "handle-stop.sh",
+                "ok.sh",
+            ],
+            &["ok.sh", "extra-not-pointed-at.sh"],
+        );
+        // sorted, each name once; a script that is there or that nothing points at is not named
+        assert_eq!(
+            missing_scripts(t.path(), t.path()).unwrap(),
+            vec![
+                "handle-pre-tool.sh".to_string(),
+                "handle-stop.sh".to_string()
+            ]
+        );
+        // the files are looked for in the folder given, not beside the settings
+        let folder = project_with(&[], &["handle-stop.sh", "ok.sh"]);
+        assert_eq!(
+            missing_scripts(t.path(), folder.path()).unwrap(),
+            vec!["handle-pre-tool.sh".to_string()]
+        );
+        // a hook that is not a Go-generation script is not a file this check looks for
+        let other = json!({"hooks": {"Stop": [{"hooks": [
+            {"type": "command", "command": "moai hook stop"},
+            {"type": "command", "command": "/usr/local/bin/other.sh"},
+        ]}]}});
+        fs::write(t.path().join(".claude/settings.json"), other.to_string()).unwrap();
+        assert!(missing_scripts(t.path(), t.path()).unwrap().is_empty());
+    }
+
+    #[test]
+    fn missing_scripts_is_empty_without_settings_or_when_every_file_is_there() {
+        let t = tempfile::tempdir().unwrap();
+        assert!(missing_scripts(t.path(), t.path()).unwrap().is_empty());
+        let t = project_with(&["a.sh", "b.sh"], &["a.sh", "b.sh"]);
+        assert!(missing_scripts(t.path(), t.path()).unwrap().is_empty());
+        // the hook folder itself may be absent: then every pointed-at script is missing
+        let t = project_with(&["a.sh", "b.sh"], &[]);
+        fs::remove_dir_all(t.path().join(".claude/hooks")).unwrap();
+        assert_eq!(
+            missing_scripts(t.path(), t.path()).unwrap(),
+            vec!["a.sh", "b.sh"]
+        );
+    }
+
+    #[test]
+    fn missing_scripts_reads_only_and_refuses_what_it_cannot_read() {
+        let t = project_with(&["a.sh", "b.sh"], &["a.sh"]);
+        let before: Vec<_> = walk_names(t.path());
+        missing_scripts(t.path(), t.path()).unwrap();
+        assert_eq!(walk_names(t.path()), before, "the check wrote something");
+        // a hook folder that is a file, then settings that are not JSON
+        let folder = tempfile::tempdir().unwrap();
+        fs::create_dir_all(folder.path().join(".claude/hooks")).unwrap();
+        fs::write(folder.path().join(".claude/hooks/moai"), "x").unwrap();
+        assert!(missing_scripts(t.path(), folder.path()).is_err());
+        fs::write(t.path().join(".claude/settings.json"), "not json").unwrap();
+        assert!(missing_scripts(t.path(), t.path()).is_err());
+    }
+
+    #[test]
+    fn missing_scripts_start_folder_is_read_from_the_link_of_a_linked_worktree() {
+        let t = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(t.path()).unwrap();
+        let primary = root.join("primary");
+        let lane = root.join("lane");
+        fs::create_dir_all(&lane).unwrap();
+        // The link of `lane` points at a git folder under `common`, as `git worktree add` does.
+        let link = |common: &Path| {
+            let gitdir = common.join("worktrees/lane");
+            fs::create_dir_all(&gitdir).unwrap();
+            fs::write(gitdir.join("commondir"), "../..\n").unwrap();
+            let text = format!("gitdir: {}\n", gitdir.display());
+            fs::write(lane.join(".git"), text).unwrap();
+        };
+        link(&primary.join(".git"));
+        assert_eq!(primary_checkout(&lane), Some(primary.clone()));
+        // the primary checkout (a `.git` folder) and a folder without one give none
+        assert_eq!(primary_checkout(&primary), None);
+        assert_eq!(primary_checkout(&root), None);
+        // so does a common git folder that is not named `.git` (a separate or a bare one)
+        link(&root.join("store.git"));
+        assert_eq!(primary_checkout(&lane), None);
+    }
+
+    /// Every path below `root`, sorted: what a read-only check must leave unchanged.
+    fn walk_names(root: &Path) -> Vec<String> {
+        let mut out = Vec::new();
+        let mut stack = vec![root.to_path_buf()];
+        while let Some(dir) = stack.pop() {
+            for e in fs::read_dir(&dir).unwrap().flatten() {
+                let p = e.path();
+                let len = fs::metadata(&p).map(|m| m.len()).unwrap_or(0);
+                out.push(format!("{} {len}", p.strip_prefix(root).unwrap().display()));
+                if p.is_dir() {
+                    stack.push(p);
+                }
+            }
+        }
+        out.sort();
+        out
     }
 
     #[test]

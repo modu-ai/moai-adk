@@ -560,3 +560,117 @@ fn no_slot_count_or_no_slot_folder_is_code_2_for_every_cargo_step() {
         );
     }
 }
+
+// SPEC-20261126-heavy-slot-cpu-free AC-5 (REQ-7): the receipt of a run whose slot waited for CPU
+// headroom. The CPU reading is the injected one (`cpu_free_pct`, `cpu_cores` of the debug-only
+// machine seam) and the limit lives in the temporary slot folder's `limits.json`.
+
+/// A slot folder with the CPU rule on at 20 percent.
+fn cpu_slot_dir() -> tempfile::TempDir {
+    let d = tempfile::tempdir().unwrap();
+    fs::write(
+        d.path().join("limits.json"),
+        r#"{"max":4,"min_free_gb":0,"max_swap_pct":100,"min_mem_free_pct":0,"min_cpu_free_pct":20}"#,
+    )
+    .unwrap();
+    d
+}
+
+/// The injected machine with `pct` percent of the CPU free.
+fn cpu_machine(pct: u32) -> String {
+    format!("{ROOMY},cpu_free_pct={pct},cpu_cores=8")
+}
+
+/// Replaces the machine file in one step, so a reader never sees it half written.
+fn set_machine(file: &Path, text: &str) {
+    let next = file.with_extension("next");
+    fs::write(&next, text).unwrap();
+    fs::rename(&next, file).unwrap();
+}
+
+/// A run held back by a low CPU reading starts no cargo step until the reading rises, and its
+/// summary line, in the answer and in `summary.txt`, names the seconds it waited right before the
+/// result word.
+#[test]
+fn cpu_ac5_a_run_that_waited_for_cpu_headroom_says_slot_wait() {
+    let fx = Fixture::rust_target();
+    let mut r = Run::new(true, 4);
+    r.slots = cpu_slot_dir();
+    let w = tempfile::tempdir().unwrap();
+    let machine = w.path().join("machine");
+    set_machine(&machine, &cpu_machine(5));
+    let (stdout, stderr) = (w.path().join("stdout"), w.path().join("stderr"));
+    let mut cmd = r.command(&fx, &[]);
+    cmd.env("MOAI_TEST_MACHINE", format!("@{}", machine.display()))
+        .stdout(fs::File::create(&stdout).unwrap())
+        .stderr(fs::File::create(&stderr).unwrap())
+        .process_group(0);
+    let mut child = cmd.spawn().unwrap();
+    let group = child.id() as i32;
+    let start = Instant::now();
+    // The clippy calls seen at the moment the run said it was waiting; `None` when it never did.
+    let mut clippy_while_low: Option<usize> = None;
+    let status = loop {
+        if let Some(s) = child.try_wait().unwrap() {
+            break s;
+        }
+        if clippy_while_low.is_none() && r.slot_log().contains("waiting for CPU headroom") {
+            clippy_while_low = Some(r.tools.starting("cargo clippy ").len());
+            set_machine(&machine, &cpu_machine(90));
+        }
+        if start.elapsed() > Duration::from_secs(60) {
+            // SAFETY: kill(2) on the process group this test created.
+            unsafe { libc::kill(-group, libc::SIGKILL) };
+            let _ = child.wait();
+            panic!(
+                "hang guard: the run did not end; slot log: {}",
+                r.slot_log()
+            );
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    assert_eq!(
+        clippy_while_low,
+        Some(0),
+        "the run did not wait with no cargo step started: {}",
+        r.slot_log()
+    );
+    assert!(status.success(), "{status:?}: {}", r.slot_log());
+    let v = answer(&fs::read(&stdout).unwrap(), &fs::read(&stderr).unwrap());
+    let line = v["summary"].as_str().unwrap();
+    let (before, after) = line
+        .split_once(" slot_wait=")
+        .unwrap_or_else(|| panic!("no slot_wait word: {line}"));
+    assert!(before.ends_with(" clippy=0 test=0"), "{line}");
+    let secs = after
+        .strip_suffix(" result=PASS")
+        .unwrap_or_else(|| panic!("slot_wait is not right before the result: {line}"));
+    let secs: u64 = secs.parse().unwrap_or_else(|_| panic!("{line}"));
+    assert!(secs >= 1, "{line}");
+    // The receipt file carries the same line.
+    let receipt = fs::read_to_string(r.out.path().join("summary.txt")).unwrap();
+    assert_eq!(receipt.trim_end(), line);
+    // The number is the one the slot itself reports.
+    let log = r.slot_log();
+    assert!(
+        log.contains(&format!("; waited {secs}s for CPU headroom")),
+        "{line}: {log}"
+    );
+}
+
+/// With the rule on and the CPU free enough the run does not wait and the summary line has no
+/// `slot_wait` word.
+#[test]
+fn cpu_ac5_a_run_that_did_not_wait_adds_no_word() {
+    let fx = Fixture::rust_target();
+    let mut r = Run::new(true, 4);
+    r.slots = cpu_slot_dir();
+    let mut cmd = r.command(&fx, &[]);
+    cmd.env("MOAI_TEST_MACHINE", cpu_machine(90));
+    let v = run(cmd);
+    let line = v["summary"].as_str().unwrap();
+    assert!(line.ends_with(" clippy=0 test=0 result=PASS"), "{line}");
+    assert!(!line.contains("slot_wait"), "{line}");
+    let log = r.slot_log();
+    assert!(log.contains("; cpu free 90% (limit 20%)"), "{log}");
+}

@@ -1,5 +1,5 @@
 #!/bin/sh
-# MoAI-ADK installer (Rust edition) — served at https://adk.mo.ai.kr/install.sh (#2935).
+# MoAI-ADK installer (Rust edition) — served at https://adk.mo.ai.kr/install.sh.
 #
 #   curl -fsSL https://adk.mo.ai.kr/install.sh | sh
 #
@@ -11,11 +11,11 @@
 #   <link dir>/moai-cli, <link dir>/moai          (symbolic links; default <state home>/path)
 #
 # <state home> is the `home_state_root` that `moai-cli install-inspect` reports, so the one
-# rule for it lives in the binary (#2871 I2), not here. The shell configuration and PATH are
+# rule for it lives in the binary, not here. The shell configuration and PATH are
 # never edited, and an existing Go-edition `moai` is never touched: the script prints what to
 # run next instead. POSIX sh, so it runs under `sh` and `bash` alike.
 #
-# The language of the conversation with the model (#2935 L1) comes from --language, else
+# The language of the conversation with the model comes from --language, else
 # MOAI_LANGUAGE, else (at a terminal) a numbered menu, else the locale, else English. After the
 # commands are linked the script runs `moai-cli language-set --home --if-absent <code>` once;
 # that records only when nothing is recorded yet, so a reinstall never overwrites an earlier
@@ -90,7 +90,7 @@ Examples:
 EOF
 }
 
-# The conversation language is one of the four codes the language module holds (#2935 L1, G6):
+# The conversation language is one of the four codes the language module holds:
 # en, ko, ja and zh, the same list the install menu offers and moai-cli accepts. Anything else —
 # a well-shaped code like fr or pt-BR included — is refused here, so nothing outside the list
 # reaches the binary or the recorded file, and no multi-line value can slip through.
@@ -221,7 +221,7 @@ valid_version() {
     return 1
 }
 
-# The supported platforms (user decision 2026-11-17, SPEC-20261117-supported-platforms): macOS on
+# The supported platforms (SPEC-20261117-supported-platforms): macOS on
 # Apple silicon, Linux x86_64 and Windows x86_64 (install.ps1). Anything else stops here, before a
 # download or a write.
 detect_target() {
@@ -253,7 +253,7 @@ detect_target() {
 # fetch URL FILE — curl first, wget second; file:// works with curl (tests use it).
 fetch() {
     if command -v curl >/dev/null 2>&1; then
-        # No redirect may leave https (audit #2943 note 2); file:// is for the tests.
+        # No redirect may leave https; file:// is for the tests.
         curl -fsSL --proto '=https,file' --proto-redir '=https' --connect-timeout 10 --max-time 300 "$1" -o "$2"
     elif command -v wget >/dev/null 2>&1; then
         wget -q --timeout=30 --tries=2 "$1" -O "$2"
@@ -287,7 +287,7 @@ pick_version() {
 # keeps its latest (docs/release-checklist.md). First the REST list (100 newest, with the
 # draft and prerelease fields); when it cannot be read (no network to the API, or the
 # unauthenticated limit of 60 requests an hour is spent), the releases feed, which is not
-# rate limited but holds only the 10 newest entries (audit #2943 B1).
+# rate limited but holds only the 10 newest entries.
 latest_version() {
     VERSION=""
     api_file="$TMP_DIR/releases.json"

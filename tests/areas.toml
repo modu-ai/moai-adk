@@ -15,10 +15,10 @@
 card = ["card", "claim", "ledger", "queue", "dispatch", "startable", "board", "journal", "handoff", "recurring", "close", "goal", "decision", "trailer", "verified", "commit", "forge", "labels", "github", "gitlab", "import", "release", "followup", "orchestrate"]
 update = ["update", "integration", "install", "migrate", "migration", "generation", "versioning", "switch", "models", "model", "retired", "removed", "self", "freshness", "baseline", "go"]
 home = ["home", "build", "hygiene", "worktree", "heavy", "process", "path", "exe", "fake", "binary", "bin", "archive", "recovery", "revert", "state", "apply", "star", "desktop"]
-project = ["project", "profile", "language", "placeholder", "gitignore", "skeleton", "agents", "agent", "claude", "codex", "omp", "orca", "host", "hook", "hooks", "script", "secret", "key", "scope", "herdr", "optional"]
+project = ["project", "profile", "language", "placeholder", "gitignore", "skeleton", "agents", "agent", "claude", "codex", "omp", "orca", "host", "hook", "hooks", "script", "secret", "key", "scope", "herdr", "optional", "settings"]
 lane = ["lane", "leader", "session", "launcher", "headless", "run", "work", "flow", "next", "message", "context", "usage", "pty", "stdin", "mode", "question", "bg"]
 screen = ["statusline", "status", "ui", "style", "banner", "output", "help", "cli", "error", "html", "report", "reports", "troubleshooting", "struct"]
-spec = ["spec", "sdd", "audit", "review", "gate", "check", "ac", "test", "flaky", "green", "parity", "boundary", "protected", "rule", "core", "bundle", "flake", "skills", "skill", "workflow", "product", "ontology", "public", "code", "doc", "docs", "source", "spawn", "destructive"]
+spec = ["spec", "sdd", "audit", "review", "gate", "check", "ac", "test", "flaky", "green", "parity", "boundary", "protected", "rule", "core", "bundle", "flake", "skills", "skill", "workflow", "product", "ontology", "public", "code", "doc", "docs", "source", "spawn", "destructive", "manifest"]
 repo = ["atlas", "search", "index", "prop", "plan", "optimize", "diff", "edit", "e2e", "windows", "cargo", "ops", "hot", "no", "empty", "generic", "git", "branch", "repo", "layout", "base", "sync", "never"]
 
 # Files that change process-global state (`set_var`, `remove_var`, `set_current_dir`) stay test

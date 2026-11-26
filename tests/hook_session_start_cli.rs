@@ -321,8 +321,17 @@ fn ac1_a_start_names_the_branch_and_the_reserved_card_in_one_json_line() {
             "{source}"
         );
     }
+    // The two PreToolUse names get a PreToolUse call (a SessionStart call is a refused event of
+    // theirs, SPEC-20261126-hook-write-boundary REQ-8) and stay silent.
+    let pre_tool_use = serde_json::json!({
+        "hook_event_name": "PreToolUse",
+        "session_id": "s1",
+        "cwd": fx.checkout.to_str().unwrap(),
+    })
+    .to_string()
+    .into_bytes();
     for name in ["bash-boundary", "write-boundary"] {
-        let r = fx.hook(name, &fx.input("startup"));
+        let r = fx.hook(name, &pre_tool_use);
         assert_eq!(
             (r.code, r.stdout.as_str(), r.stderr.as_str()),
             (Some(0), "", ""),

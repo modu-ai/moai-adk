@@ -11,6 +11,8 @@
 use crate::{digest, read_profile};
 use serde_json::{json, Value};
 use std::{
+    cell::RefCell,
+    collections::HashMap,
     fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -199,6 +201,35 @@ fn empty(status: &str, reason: &str, home: Value) -> Value {
     })
 }
 
+/// The `ok` answers kept inside one [`with_memo`] scope, by the path asked and the HOME given.
+type Memo = HashMap<(PathBuf, Option<PathBuf>), Value>;
+
+thread_local! {
+    static MEMO: RefCell<Option<Memo>> = const { RefCell::new(None) };
+}
+
+/// Runs `f` with one memory of identity answers (SPEC-20261126-card-next-speed REQ-10, REQ-11):
+/// inside it, a later [`identity_in`] for the same path and HOME takes the first `ok` answer
+/// instead of asking git again. The checks of the given path and of the home state root still run
+/// on every call, nothing that is refused or not `ok` is kept, and the memory ends with `f`. Only
+/// for a command that reads: a change `f` makes to the repository or its profile is not seen by a
+/// later call. A scope inside a scope uses the outer memory. This thread only.
+pub fn with_memo<T>(f: impl FnOnce() -> T) -> T {
+    /// Forgets the answers when the outer scope ends, by return or by unwinding.
+    struct End;
+    impl Drop for End {
+        fn drop(&mut self) {
+            MEMO.with(|m| *m.borrow_mut() = None);
+        }
+    }
+    if MEMO.with(|m| m.borrow().is_some()) {
+        return f();
+    }
+    MEMO.with(|m| *m.borrow_mut() = Some(Memo::new()));
+    let _end = End;
+    f()
+}
+
 /// The process-edge reader of the environment HOME (SPEC-20261124-identity-home-arg): the one
 /// place in this module that reads it. A command's edge uses this; code that is not about the
 /// HOME calls [`identity_in`] with `None`, and code that is hands it the HOME it was given.
@@ -236,6 +267,24 @@ pub fn identity_in(path: &Path, home: Option<&Path>) -> Result<Value> {
         }
         None => Value::Null,
     };
+    let key = (path.to_path_buf(), given.map(Path::to_path_buf));
+    if let Some(known) = MEMO.with(|m| m.borrow().as_ref().and_then(|m| m.get(&key).cloned())) {
+        return Ok(known);
+    }
+    let answer = ask_git(path, given, home)?;
+    if answer["identity_status"] == "ok" {
+        MEMO.with(|m| {
+            if let Some(m) = m.borrow_mut().as_mut() {
+                m.insert(key, answer.clone());
+            }
+        });
+    }
+    Ok(answer)
+}
+
+/// The part of [`identity_in`] that asks git, after the checks of the given path and HOME. `given`
+/// is the HOME of the caller and `home` the `home_state_root` field made from it.
+fn ask_git(path: &Path, given: Option<&Path>, home: Value) -> Result<Value> {
     let lines = match rev_parse(
         path,
         &[
@@ -317,6 +366,112 @@ pub fn identity_in(path: &Path, home: Option<&Path>) -> Result<Value> {
         "id_derivation": ID_DERIVATION,
         "writes": false,
     }))
+}
+
+/// SPEC-20261126-card-next-speed AC-6: what one [`with_memo`] scope reuses and what it asks again.
+/// Whether git was asked again shows in the answer: the repository is broken (or made) between the
+/// two calls. No call here is given the environment HOME.
+#[cfg(all(test, unix))]
+mod tests {
+    use super::{identity_in, linked_home_test::symlinked_home, scrub_git_env, with_memo};
+    use std::{fs, path::Path, process::Command};
+
+    fn init(dir: &Path) {
+        let mut cmd = Command::new("git");
+        cmd.arg("-C").arg(dir).args(["init", "-q"]);
+        scrub_git_env(&mut cmd);
+        assert!(cmd.status().unwrap().success());
+    }
+
+    /// Replaces `.git` with a file that names no git folder: git then fails for `dir`, wherever
+    /// the temporary folder lies.
+    fn break_repository(dir: &Path) {
+        fs::rename(dir.join(".git"), dir.join("was-git")).unwrap();
+        fs::write(dir.join(".git"), "gitdir: nowhere\n").unwrap();
+    }
+
+    fn is_ok(dir: &Path, home: Option<&Path>) -> bool {
+        identity_in(dir, home).is_ok_and(|a| a["identity_status"] == "ok")
+    }
+
+    #[test]
+    fn reuse_of_an_ok_answer_lasts_until_the_scope_ends() {
+        let t = tempfile::tempdir().unwrap();
+        init(t.path());
+        with_memo(|| {
+            let first = identity_in(t.path(), None).unwrap();
+            assert_eq!(first["identity_status"], "ok");
+            break_repository(t.path());
+            assert_eq!(identity_in(t.path(), None).unwrap(), first);
+            // A scope inside the scope uses the same memory and does not end it.
+            with_memo(|| assert!(is_ok(t.path(), None)));
+            assert!(is_ok(t.path(), None));
+        });
+        assert!(!is_ok(t.path(), None), "asked again after the scope");
+    }
+
+    #[test]
+    fn reuse_needs_a_scope() {
+        let t = tempfile::tempdir().unwrap();
+        init(t.path());
+        assert!(is_ok(t.path(), None));
+        break_repository(t.path());
+        assert!(!is_ok(t.path(), None));
+    }
+
+    #[test]
+    fn reuse_is_only_for_the_same_path_and_home() {
+        let t = tempfile::tempdir().unwrap();
+        let home = tempfile::tempdir().unwrap();
+        let (one, other) = (t.path().join("one"), t.path().join("other"));
+        for dir in [&one, &other] {
+            fs::create_dir(dir).unwrap();
+            init(dir);
+        }
+        with_memo(|| {
+            assert!(is_ok(&one, None));
+            break_repository(&one);
+            break_repository(&other);
+            assert!(!is_ok(&other, None), "another path is asked");
+            assert!(!is_ok(&one, Some(home.path())), "another HOME is asked");
+            assert!(is_ok(&one, None));
+        });
+    }
+
+    #[test]
+    fn reuse_keeps_nothing_that_is_not_ok() {
+        let t = tempfile::tempdir().unwrap();
+        fs::write(t.path().join(".git"), "gitdir: nowhere\n").unwrap();
+        with_memo(|| {
+            assert!(!is_ok(t.path(), None));
+            fs::remove_file(t.path().join(".git")).unwrap();
+            init(t.path());
+            assert!(is_ok(t.path(), None), "asked again");
+        });
+    }
+
+    #[test]
+    fn reuse_does_not_skip_the_checks_of_the_path_and_the_home() {
+        let t = tempfile::tempdir().unwrap();
+        let home = symlinked_home(t.path());
+        let link = crate::home_root::path(&home);
+        let repo = t.path().join("repo");
+        fs::create_dir(&repo).unwrap();
+        init(&repo);
+        with_memo(|| {
+            fs::remove_file(&link).unwrap();
+            assert!(is_ok(&repo, Some(&home)));
+            // The home state root turns into a link: refused, whatever was answered before.
+            std::os::unix::fs::symlink(home.join("elsewhere"), &link).unwrap();
+            assert!(identity_in(&repo, Some(&home)).is_err());
+            // The path turns into a link.
+            assert!(is_ok(&repo, None));
+            let moved = t.path().join("moved");
+            fs::rename(&repo, &moved).unwrap();
+            std::os::unix::fs::symlink(&moved, &repo).unwrap();
+            assert!(identity_in(&repo, None).is_err());
+        });
+    }
 }
 
 #[cfg(test)]

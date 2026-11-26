@@ -60,7 +60,7 @@
       }
     },
     "references/adapters/aside.md": {
-      "sha256": "c344fe7eacbf4fbe0d4d76c64d7c051dfc1e2c4f09a7a2f98121fecf799806bf",
+      "sha256": "821ba6c058e265aa2d65dc64dd69bdc8212f487b095ab8fdc5822d99ce99ec46",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-aside",
@@ -516,7 +516,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "ab4c59839341179fdff9db94ec0bd2f36d88605f626429830fe349d55d3830c1",
+      "sha256": "d33a71ca02d26b9adf817995ee9c85b95b2d03fc97d5efb6c902ffa4d6932433",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -552,7 +552,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "10533f6464f430eb6d110cfcd4fc3b6c6efbbe2b4167d7d9bdccdd027751f2fd",
+      "sha256": "e8982246a282712d71cf3476919e7e9415b433a50f64192315bc64b1bcc678f9",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
@@ -567,7 +567,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai agent` takes one card at a time, hands its plan, implementation and documents to the base agents in turn, submits it with `moai card submit` and waits for the leader (user decision 2026-11-25); a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "d0c0bf12b102d64cdc1966229023136560e3aff7af35d496a1cfd0a43896f67e"
+      "sha256": "b8f94eadebd75bd6fd19be9aaf4d652469ef46395a9a0b1a357bba7da08704b0"
     }
   }
 }

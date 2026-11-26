@@ -55,7 +55,7 @@ fn the_update_route_is_the_project_layer() {
         // The user layer is the shell command; since C-51 (user decision 2026-11-16) this
         // session runs it after the preview and the user's pick.
         "The user layer — the installed skill, the binary and the global instructions under HOME — is the shell command `moai update`",
-        "this session runs it for the user (user decision 2026-11-16, card C-51): never tell the user to run it in a terminal",
+        "this session runs it for the user: never tell the user to run it in a terminal",
         // #2702 audit B1: a Go-generation project usually has no profile yet; the move comes
         // first, and "nothing to update" holds only without Go state. C-51: the session goes
         // on to PROJECT itself.
