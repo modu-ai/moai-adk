@@ -29,6 +29,7 @@ use super::config::{self, Node};
 use super::icons;
 use super::input::{self, Input};
 use super::segments::{self, ContextReading, GitStatus};
+use crate::ledger::partial::partial_landing_where;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::Read;
@@ -248,9 +249,9 @@ pub struct MyCard {
 }
 
 /// The cards of the project's local ledger by the stage of their progress, for the flow line
-/// (SPEC-20261122-statusline-flow). The nine stage counts add up to the cards that are not
-/// `done` and not withdrawn (a hold card with a withdraw or fold event is in no stage,
-/// SPEC-20261124-statusline-counts-truth REQ-8).
+/// (SPEC-20261122-statusline-flow). The nine stage counts and the `partial` count add up to the
+/// cards that are not `done` and not withdrawn (a hold card with a withdraw or fold event is in
+/// no stage, SPEC-20261124-statusline-counts-truth REQ-8).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Flow {
     pub draft: i64,
@@ -262,6 +263,11 @@ pub struct Flow {
     pub submitted: i64,
     pub audited: i64,
     pub landed: i64,
+    /// Landed cards with open criteria that would count as `ready` or `landed` (a partial
+    /// landing); they are in neither of those two counts.
+    pub partial: i64,
+    /// The open criteria of the `partial` cards together.
+    pub partial_open: i64,
     pub blocked: i64,
     /// The hold cards that were not withdrawn: the cards that wait for the user's pick.
     pub hold: i64,
@@ -1707,9 +1713,18 @@ const FLOW_STATEMENTS: [&str; 4] = [
                                    WHERE r.card_id = n.card_id), \
                                   CASE c.state WHEN 'ready' THEN 9223372036854775807 ELSE 0 END) \
      ORDER BY n.card_id, n.note_id DESC",
-    "SELECT DISTINCT e.card_id FROM event e WHERE e.kind = 'card.landed' AND e.card_id IS NOT NULL \
-     AND e.at >= coalesce((SELECT max(r.acquired_at) FROM reservation r \
-                           WHERE r.card_id = e.card_id), 0)",
+    // The cards landed since their last reservation (open count 0), then the partial landings
+    // (SQL condition written once in `ledger::partial`) with their number of open criteria.
+    concat!(
+        "SELECT DISTINCT e.card_id, 0 FROM event e \
+         WHERE e.kind = 'card.landed' AND e.card_id IS NOT NULL \
+         AND e.at >= coalesce((SELECT max(r.acquired_at) FROM reservation r \
+                               WHERE r.card_id = e.card_id), 0) \
+         UNION ALL SELECT card.card_id, \
+           (SELECT count(*) FROM card_ac a WHERE a.card_id = card.card_id AND a.status = 'open') \
+         FROM card WHERE ",
+        partial_landing_where!()
+    ),
     "SELECT card_id, holder, status, lease_until, worktree, acquired_at, reservation_id \
      FROM reservation WHERE status IN ('held', 'held_for_review', 'expired_candidate')",
 ];
@@ -1931,13 +1946,22 @@ fn split_flow(
         return None;
     }
     let mut stmt = conn.prepare(FLOW_STATEMENTS[2]).ok()?;
-    let rows = stmt.query_map([], |r| r.get::<_, i64>(0)).ok()?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?)))
+        .ok()?;
     let mut landed: HashSet<i64> = HashSet::new();
+    // The partial landings with their number of open criteria.
+    let mut partial: HashMap<i64, i64> = HashMap::new();
     for row in rows {
         if spent() {
             return None;
         }
-        landed.insert(row.ok()?);
+        let (card, open_criteria) = row.ok()?;
+        if open_criteria > 0 {
+            partial.insert(card, open_criteria);
+        } else {
+            landed.insert(card);
+        }
     }
     drop(stmt);
     // Statement 4: the reservations that can hold a card.
@@ -1993,6 +2017,17 @@ fn split_flow(
         ) else {
             continue;
         };
+        // A landed card that keeps open criteria is counted apart where it would be counted as
+        // ready or as landed; a card a lane works on again, hands in or is blocked on keeps its
+        // stage, which says what is happening now.
+        if matches!(stage, Stage::Ready | Stage::Landed) {
+            if let Some(open_criteria) = partial.get(card) {
+                flow.partial += 1;
+                flow.partial_open += open_criteria;
+                stages.insert(*card, stage);
+                continue;
+            }
+        }
         match stage {
             // Counted by their ledger state already.
             Stage::Draft | Stage::Hold => {}
@@ -3683,6 +3718,22 @@ mod flow_support {
                 .unwrap();
         }
 
+        /// Criterion `seq` of `card` in `status`.
+        pub(super) fn criterion(&self, card: i64, seq: i64, status: &str) {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            ledger
+                .with_write_tx(|tx, now| {
+                    tx.execute(
+                        "INSERT INTO card_ac (card_id, seq, text, status, evidence_ref, \
+                         withdrawn_reason, updated_at) VALUES (?1, ?2, 'c', ?3, \
+                         iif(?3 = 'met', 'e', NULL), iif(?3 = 'withdrawn', 'r', NULL), ?4)",
+                        rusqlite::params![card, seq, status, now],
+                    )?;
+                    Ok(())
+                })
+                .unwrap();
+        }
+
         /// A reservation of `card` with its generation, for a card taken more than once.
         pub(super) fn reserve_gen(
             &self,
@@ -3936,6 +3987,52 @@ mod stage_tests_edges {
                 "{status} lease_until={lease}"
             );
         }
+    }
+
+    /// A landed card with open criteria is counted apart with its number of open criteria, in
+    /// place of the `ready` or `landed` count; a landed card with every criterion met, a card
+    /// that never landed and a card a lane works on again keep their stage.
+    #[test]
+    fn partial_landing_cards_are_counted_apart_with_their_open_criteria() {
+        let f = fx();
+        // Ready, landed once, two open and one met: partial.
+        let given_back = f.card("ready", &[]);
+        f.landed(given_back);
+        f.criterion(given_back, 1, "open");
+        f.criterion(given_back, 2, "open");
+        f.criterion(given_back, 3, "met");
+        // Active and landed since its reservation, one open and one withdrawn: partial.
+        let held = f.card("active", &[]);
+        f.reserve(held, "s-1", "held", 10, NOW + 60, None);
+        f.landed(held);
+        f.criterion(held, 1, "open");
+        f.criterion(held, 2, "withdrawn");
+        // Landed with nothing open: still the landed stage.
+        let full = f.card("active", &[]);
+        f.reserve(full, "s-2", "held", 10, NOW + 60, None);
+        f.landed(full);
+        f.criterion(full, 1, "met");
+        // Never landed, with an open criterion: ready.
+        let plain = f.card("ready", &[]);
+        f.criterion(plain, 1, "open");
+        // Landed before the reservation that works on the rest: working.
+        let again = f.card("active", &[]);
+        f.landed(again);
+        f.reserve(again, "s-3", "held", i64::MAX / 2, NOW + 60, None);
+        f.criterion(again, 1, "open");
+
+        let flow = f.flow(NOW, &Whose::default());
+        assert!(flow.split);
+        assert_eq!(
+            (flow.partial, flow.partial_open),
+            (2, 3),
+            "two partial landings with three open criteria: {flow:?}"
+        );
+        assert_eq!(
+            (flow.ready, flow.landed, flow.working),
+            (1, 1, 1),
+            "{flow:?}"
+        );
     }
 
     #[test]

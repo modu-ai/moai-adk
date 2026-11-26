@@ -19,12 +19,29 @@ pub struct PartialLanding {
     pub head: Option<String>,
 }
 
+/// The SQL condition of a partial landing on the table `card`, written once for this module and
+/// for the status line: the card is `ready`, `active` or `review`, it was landed (a
+/// `card.landed` event or an active merged pull request link, the same two proofs `card list`
+/// reports as `landed`) and at least one criterion is `open`.
+macro_rules! partial_landing_where {
+    () => {
+        "card.state IN ('ready', 'active', 'review') \
+         AND (EXISTS (SELECT 1 FROM event e \
+                       WHERE e.card_id = card.card_id AND e.kind = 'card.landed') \
+              OR EXISTS (SELECT 1 FROM card_link l \
+                          WHERE l.from_card = card.card_id AND l.kind = 'pr' \
+                            AND l.state = 'active' AND l.pr_state = 'merged')) \
+         AND EXISTS (SELECT 1 FROM card_ac a \
+                      WHERE a.card_id = card.card_id AND a.status = 'open')"
+    };
+}
+pub(crate) use partial_landing_where;
+
 /// The cards that are not `done`, were landed and keep at least one open criterion, in card
-/// order. A card counts as landed by a `card.landed` event or an active merged pull request
-/// link, the same two proofs `card list` reports as `landed`. A `draft` and a `hold` card is
-/// never listed: the first is not worked on and the second waits for a person's pick.
+/// order (see [`partial_landing_where`]). A `draft` and a `hold` card is never listed: the first
+/// is not worked on and the second waits for a person's pick.
 pub fn partial_landings(conn: &Connection) -> Result<Vec<PartialLanding>, LedgerError> {
-    let mut stmt = conn.prepare(
+    let mut stmt = conn.prepare(concat!(
         "SELECT card.card_id, card.title, \
                 (SELECT count(*) FROM card_ac a \
                   WHERE a.card_id = card.card_id AND a.status = 'open'), \
@@ -32,17 +49,10 @@ pub fn partial_landings(conn: &Connection) -> Result<Vec<PartialLanding>, Ledger
                   WHERE e.card_id = card.card_id AND e.kind = 'card.landed' \
                     AND json_type(e.payload, '$.head') = 'text' \
                   ORDER BY e.event_id DESC LIMIT 1) \
-           FROM card \
-          WHERE card.state IN ('ready', 'active', 'review') \
-            AND (EXISTS (SELECT 1 FROM event e \
-                          WHERE e.card_id = card.card_id AND e.kind = 'card.landed') \
-                 OR EXISTS (SELECT 1 FROM card_link l \
-                             WHERE l.from_card = card.card_id AND l.kind = 'pr' \
-                               AND l.state = 'active' AND l.pr_state = 'merged')) \
-            AND EXISTS (SELECT 1 FROM card_ac a \
-                         WHERE a.card_id = card.card_id AND a.status = 'open') \
-          ORDER BY card.card_id",
-    )?;
+           FROM card WHERE ",
+        partial_landing_where!(),
+        " ORDER BY card.card_id"
+    ))?;
     let rows = stmt.query_map([], |r| {
         Ok(PartialLanding {
             card_id: r.get(0)?,
