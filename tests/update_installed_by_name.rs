@@ -400,35 +400,66 @@ fn an_unreadable_receipt_under_the_moai_name_blocks_the_host() {
     assert!(h.get("adopt").is_none(), "{p}");
 }
 
-// SPEC-20261125-update-installed-from-link AC-4 (REQ-4, REQ-6, REQ-7): an apply that writes no file
-// for a host leaves this build's version in the host's receipt, with the owned list, the entries
-// and the skill bytes as they were. A `recovered` receipt counts like a `committed` one.
+/// REQ-6: a no-write apply changes this installation's own receipt in its version, its finish
+/// time and its owned list only. In the cases that use this the baseline is that same receipt, so
+/// the owned list is equal too; every other field is as it was just before the apply.
+fn assert_own_receipt_updated(before: &Value, after: &Value) {
+    assert_eq!(
+        after["package_version"],
+        json!(moai_cli::BUILD_VERSION),
+        "{after}"
+    );
+    let changed: Vec<&str> = [
+        "entries",
+        "operation",
+        "version_before",
+        "status",
+        "backup",
+        "started_at",
+        "plan_digest",
+        "package_digest",
+        "schema_version",
+        "install_id",
+        "host",
+        "top_skills_existed_before",
+        "owned",
+    ]
+    .into_iter()
+    .filter(|field| after[*field] != before[*field])
+    .collect();
+    assert!(
+        changed.is_empty(),
+        "changed fields {changed:?}\nbefore: {before}\nafter: {after}"
+    );
+    assert!(
+        after["finished_at"].as_str() > before["finished_at"].as_str(),
+        "finished_at is not newer\nbefore: {before}\nafter: {after}"
+    );
+}
+
+// SPEC-20261125-update-installed-from-link AC-4 (REQ-4, REQ-6, REQ-7, REQ-12): an apply that
+// writes no file for a host leaves this build's version in the host's receipt and a newer finish
+// time; the rest of the receipt and the skill bytes stay. A `recovered` receipt counts like a
+// `committed` one and stays `recovered`, and the outcome reports the saved status.
 #[test]
 fn a_no_write_apply_leaves_this_builds_version_in_the_receipt() {
     let f = fixture();
     let exe = put(&f.home, "a", "moai");
     install(&exe, &f);
     let id = id_of(&exe);
-    let first = receipt(&f.home, &id);
-    let build = first["package_version"].as_str().unwrap().to_string();
-    assert_ne!(build, EARLIER);
     let skill = fs::read(skill_file(&f.home)).unwrap();
+    assert_ne!(moai_cli::BUILD_VERSION, EARLIER);
 
     for status in ["committed", "recovered"] {
         set_version(&f.home, &id, EARLIER);
         set_status(&f.home, &id, status);
+        let before = receipt(&f.home, &id);
+        // Receipts carry second-resolution timestamps.
+        sleep(Duration::from_millis(1100));
         let r = apply_unchanged(&exe, &f, "unchanged");
         assert_eq!(r["status"], json!("unchanged"), "{status}: {r}");
-        assert_eq!(host(&r)["receipt_status"], json!("committed"), "{r}");
-        let after = receipt(&f.home, &id);
-        assert_eq!(after["package_version"], json!(build), "{status}: {after}");
-        assert_eq!(after["version_before"], json!(EARLIER), "{status}: {after}");
-        assert_eq!(after["status"], json!("committed"), "{status}: {after}");
-        assert_eq!(after["operation"], json!("update.apply"), "{after}");
-        assert!(after["finished_at"].is_string(), "{after}");
-        assert_eq!(after["owned"], first["owned"], "{status}: {after}");
-        assert_eq!(after["entries"], json!([]), "{status}: {after}");
-        assert!(after.get("backup").is_none_or(Value::is_null), "{after}");
+        assert_own_receipt_updated(&before, &receipt(&f.home, &id));
+        assert_eq!(host(&r)["receipt_status"], json!(status), "{r}");
         assert_eq!(fs::read(skill_file(&f.home)).unwrap(), skill, "{status}");
     }
 }
@@ -441,8 +472,6 @@ fn a_conflict_only_no_write_apply_also_refreshes_the_receipt_version() {
     let exe = put(&f.home, "a", "moai");
     install(&exe, &f);
     let id = id_of(&exe);
-    let first = receipt(&f.home, &id);
-    let build = first["package_version"].as_str().unwrap().to_string();
     // The user edits an owned file and the package moves that same file on: a conflict.
     let edited = b"---\nname: moai\ndescription: edited by the user\n---\n";
     fs::write(skill_file(&f.home), edited).unwrap();
@@ -452,15 +481,13 @@ fn a_conflict_only_no_write_apply_also_refreshes_the_receipt_version() {
     )
     .unwrap();
     set_version(&f.home, &id, EARLIER);
+    let before = receipt(&f.home, &id);
 
     let r = apply_unchanged(&exe, &f, "conflict");
     assert_eq!(r["status"], json!("conflict"), "{r}");
     assert_eq!(fs::read(skill_file(&f.home)).unwrap(), edited);
-    let after = receipt(&f.home, &id);
-    assert_eq!(after["package_version"], json!(build), "{after}");
-    assert_eq!(after["version_before"], json!(EARLIER), "{after}");
-    assert_eq!(after["status"], json!("committed"), "{after}");
-    assert_eq!(after["owned"], first["owned"], "{after}");
+    assert_own_receipt_updated(&before, &receipt(&f.home, &id));
+    assert_eq!(host(&r)["receipt_status"], json!("committed"), "{r}");
 }
 
 // AC-4 (REQ-5): once the receipt names this build, the next no-write apply writes no receipt.
@@ -511,6 +538,9 @@ fn a_no_write_apply_over_an_earlier_folders_receipt_writes_this_installations_re
     assert_eq!(after["version_before"], json!(EARLIER), "{after}");
     assert_eq!(after["status"], json!("committed"), "{after}");
     assert_eq!(after["owned"], earlier["owned"], "{after}");
+    // REQ-11: a new receipt holds nothing of the earlier apply.
+    assert_eq!(after["entries"], json!([]), "{after}");
+    assert!(after.get("backup").is_none_or(Value::is_null), "{after}");
     assert_eq!(
         fs::read(receipt_file(&f.home, &earlier_id)).unwrap(),
         earlier_bytes

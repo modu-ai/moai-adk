@@ -884,12 +884,20 @@ fn known_good_copies(
 
 /// SPEC-20261125-update-installed-from-link REQ-4 to REQ-8: an apply that writes no file for a
 /// host leaves this build's version in the host's receipt, so the receipt no longer names a build
-/// that is gone. Only a previous receipt that is committed or recovered and names another version
-/// is rewritten; an absent or pending one, or one that already names this build, writes nothing.
-/// The new receipt copies the owned list unchanged, has no entries and no backup, and goes
-/// through [`save_host_receipt`] (under this installation's id, like every apply); a failing save
-/// is an error. A blocked or pending host never gets here: the apply skips it before. Returns
-/// whether a receipt was written.
+/// that is gone. Whether anything is recorded is decided on the baseline receipt the plan used:
+/// only one that is committed or recovered and names another version counts; an absent or pending
+/// one, or one that already names this build, writes nothing.
+///
+/// When this installation has its own receipt, it is updated in place and only its version, finish
+/// time and owned list (the baseline's) change: `recovery-plan` reads this installation's receipt,
+/// its `backup` and `entries` included, and a receipt built anew would drop the way back to the
+/// folder a backup-then-replace moved aside. An own receipt that is neither committed nor
+/// recovered is left as it is. Without an own receipt a new one is written, with the baseline's
+/// owned list, no entries and no backup.
+///
+/// Every write goes through [`save_host_receipt`] (under this installation's id, like every
+/// apply); a failing save is an error. A blocked or pending host never gets here: the apply skips
+/// it before. Returns the saved receipt's status, or `None` when nothing was written.
 fn record_version_only(
     home: &Path,
     canonical_home: &Path,
@@ -898,35 +906,46 @@ fn record_version_only(
     target_version: &str,
     plan_digest: &str,
     package_digest: &str,
-) -> Result<bool> {
+) -> Result<Option<String>> {
     let Some(previous) = resolve_host_receipt(canonical_home, install_id, host)?.receipt else {
-        return Ok(false);
+        return Ok(None);
     };
     if !matches!(previous.status.as_str(), "committed" | "recovered")
         || previous.package_version == target_version
     {
-        return Ok(false);
+        return Ok(None);
     }
     let now = now_rfc3339();
-    let receipt = HostReceipt {
-        schema_version: crate::install::RECEIPT_SCHEMA_VERSION,
-        install_id: install_id.to_string(),
-        host: host.to_string(),
-        operation: "update.apply".into(),
-        plan_digest: plan_digest.to_string(),
-        package_digest: package_digest.to_string(),
-        package_version: target_version.to_string(),
-        version_before: Some(previous.package_version.clone()),
-        top_skills_existed_before: fs::symlink_metadata(skills_parent(home, host)?).is_ok(),
-        status: "committed".into(),
-        started_at: now.clone(),
-        finished_at: Some(now),
-        entries: Vec::new(),
-        owned: owned_vec(host, &owned_map(Some(&previous))),
-        backup: None,
+    let owned = owned_vec(host, &owned_map(Some(&previous)));
+    let own = load_host_receipt(&host_receipt_path(canonical_home, install_id, host, false)?)?;
+    let receipt = match own {
+        Some(own) if !matches!(own.status.as_str(), "committed" | "recovered") => return Ok(None),
+        Some(mut own) => {
+            own.package_version = target_version.to_string();
+            own.finished_at = Some(now);
+            own.owned = owned;
+            own
+        }
+        None => HostReceipt {
+            schema_version: crate::install::RECEIPT_SCHEMA_VERSION,
+            install_id: install_id.to_string(),
+            host: host.to_string(),
+            operation: "update.apply".into(),
+            plan_digest: plan_digest.to_string(),
+            package_digest: package_digest.to_string(),
+            package_version: target_version.to_string(),
+            version_before: Some(previous.package_version.clone()),
+            top_skills_existed_before: fs::symlink_metadata(skills_parent(home, host)?).is_ok(),
+            status: "committed".into(),
+            started_at: now.clone(),
+            finished_at: Some(now),
+            entries: Vec::new(),
+            owned,
+            backup: None,
+        },
     };
     save_host_receipt(canonical_home, install_id, &receipt)?;
-    Ok(true)
+    Ok(Some(receipt.status))
 }
 
 pub(crate) fn owned_map(receipt: Option<&HostReceipt>) -> BTreeMap<String, String> {
@@ -3277,7 +3296,7 @@ fn apply_update_in(
                 host: host.to_string(),
                 status: status.into(),
                 files,
-                receipt_status: recorded.then(|| "committed".to_string()),
+                receipt_status: recorded,
                 reload_required: "no".into(),
                 reload_basis: "no files written".into(),
                 blocked_reason: None,
