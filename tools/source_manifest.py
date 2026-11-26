@@ -21,7 +21,8 @@ form, `json.dumps(indent=2, ensure_ascii=False)` plus a newline, with `files` in
 order (card C-92: one order for every tree, so a text merge never keeps an entry twice), and
 only when it changes. A key that appears twice in the manifest is refused and named.
 
-`tools/merge_driver_manifest.py` (card C-74) resolves most manifest conflicts during the merge
+The git merge driver `moai manifest-merge-driver` (card C-74, ported to `moai` by
+SPEC-20261126-manifest-merge-driver-rust) resolves most manifest conflicts during the merge
 itself once a clone registers it; `write` is for the conflicts it leaves.
 """
 import argparse
@@ -316,9 +317,10 @@ def rebuild(root, stages=None):
 
 def render(data):
     """The manifest text: `files` in sorted key order (card C-92), every other key in place.
-    `write`, `check` and the merge driver all render through here, so one tree gives one text
-    whatever the merge history, and two branches holding the same entry hold it on the same
-    lines (a text merge then never keeps it twice)."""
+    `write` and `check` render through here and the merge driver (`src/manifest_merge.rs`)
+    writes the same bytes, so one tree gives one text whatever the merge history, and two
+    branches holding the same entry hold it on the same lines (a text merge then never keeps it
+    twice)."""
     out = {key: dict(sorted(value.items())) if key == "files" else value
            for key, value in data.items()}
     return json.dumps(out, indent=2, ensure_ascii=False) + "\n"

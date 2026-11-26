@@ -9,7 +9,7 @@ mod common;
 use common::pty::{output_within, Terminal, END_OF_INPUT};
 use common::CleanEnv;
 
-use moai_cli::model_effort_settings::default_choice;
+use moai_cli::model_effort_settings::{default_choice, launcher_default};
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -401,8 +401,14 @@ fn in_a_terminal_an_applied_update_asks_the_model_stage_and_saves_after_a_yes() 
     assert_eq!(files.len(), 1, "{files:?}\n{text}");
     let saved = fs::read_to_string(moai_cli::update_models::settings_path(&f.home)).unwrap();
     let saved: Value = serde_json::from_str(&saved).unwrap();
-    // The answers were Enter, so the saved choice is the default of the source, not a copied literal.
-    let want = default_choice("claude", "leader").expect("claude has a leader default");
+    // The answers were Enter, so the saved choice is the launch default of the source, not a copied
+    // literal (SPEC-20261121-model-defaults-one-table D-6): the table id that the launch alias
+    // names, and the effort a plain launch runs with.
+    let table = default_choice("claude", "leader").expect("claude has a leader default");
+    let want = moai_cli::model_effort_settings::Choice {
+        model: table.model,
+        effort: launcher_default("claude").effort,
+    };
     assert_eq!(
         saved["launcher"]["models"]["claude"],
         json!({"model": want.model, "effort": want.effort}),

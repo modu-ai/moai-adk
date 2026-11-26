@@ -128,18 +128,33 @@ impl World {
     }
 
     fn apply(&self, plan: &Value) -> Output {
+        self.apply_text(
+            plan["plan_digest"].as_str().unwrap(),
+            plan.to_string().as_bytes(),
+        )
+    }
+
+    /// The apply of the plan the digest names, with `stdin` as the input text as it is.
+    fn apply_text(&self, digest: &str, stdin: &[u8]) -> Output {
         self.run(
             &[
                 "project-apply",
                 self.project.to_str().unwrap(),
                 "--plan-digest",
-                plan["plan_digest"].as_str().unwrap(),
+                digest,
                 "--permission-reference",
                 "fixture-approved",
             ],
-            plan.to_string().as_bytes(),
+            stdin,
         )
     }
+}
+
+/// The text of `plan` with `key` stated a second time, as `second`, at the end of the object.
+fn with_duplicate_key(plan: &Value, key: &str, second: &Value) -> Vec<u8> {
+    let text = plan.to_string();
+    let body = text.strip_suffix('}').expect("a plan is a JSON object");
+    format!("{body},{}:{second}}}", json!(key)).into_bytes()
 }
 
 fn said(out: &Output) -> String {
@@ -206,4 +221,49 @@ fn apply_takes_a_plan_result_without_work_flow_remote() {
     plan.as_object_mut().unwrap().remove("work_flow_remote");
     let out = world.apply(&plan);
     assert!(out.status.success(), "{}", said(&out));
+}
+
+/// AC-14 (REQ-12), characterization of today's behaviour: an input object that states one key
+/// twice with different values is read with the last value, so the plan no longer matches its
+/// digest and the apply refuses it as a stale or altered plan; nothing is written.
+#[test]
+fn duplicate_key_altered_is_refused() {
+    let world = World::new();
+    let plan = world.plan();
+    assert_eq!(plan["action"], "create", "the fixture plans a new profile");
+    let input = with_duplicate_key(&plan, "action", &json!("update"));
+    let out = world.apply_text(plan["plan_digest"].as_str().unwrap(), &input);
+    assert!(
+        !out.status.success(),
+        "an altered duplicate key must be refused: {}",
+        said(&out)
+    );
+    assert!(
+        said(&out).contains("stale or altered plan; re-preview required"),
+        "{}",
+        said(&out)
+    );
+    assert!(
+        !moai_cli::state_root::path(&world.project, "project.yaml").exists(),
+        "a refused apply must write nothing"
+    );
+}
+
+/// AC-14 (REQ-12), characterization: a duplicate key whose two values are the same leaves the plan
+/// as it was, so the apply takes it and writes the profile.
+#[test]
+fn duplicate_key_identical_applies() {
+    let world = World::new();
+    let plan = world.plan();
+    let input = with_duplicate_key(&plan, "action", &plan["action"]);
+    let out = world.apply_text(plan["plan_digest"].as_str().unwrap(), &input);
+    assert!(
+        out.status.success(),
+        "an identical duplicate key must apply: {}",
+        said(&out)
+    );
+    assert!(
+        moai_cli::state_root::path(&world.project, "project.yaml").exists(),
+        "the apply must write the profile"
+    );
 }

@@ -6,6 +6,8 @@
 //! `references/flows/team-messages.md`. The tests read the package files of this checkout and pin
 //! sentences whole; whitespace is collapsed so a re-wrapped line does not break a pin. Nothing is
 //! run and no HOME is touched.
+mod common;
+
 use std::{fs, path::Path};
 
 fn raw(rel: &str) -> String {
@@ -309,4 +311,198 @@ fn the_leader_dispatch_is_the_dispatch_line_of_the_table() {
         &package(TABLE),
         "`DISPATCH <card> ready head=<integration tip>` and the scope",
     );
+}
+
+/// SPEC-20261125-session-registry-session-key REQ-7: the agent workflow orders the registration,
+/// its renewal inside the lease and its release at the end, in one paragraph right after the
+/// registration paragraph, and adds no step to the procedure.
+#[test]
+fn the_agent_workflow_orders_registration_renewal_and_release() {
+    let register = "`moai session-register . --name <its name> --mode agent`";
+    let renew = "`moai session-register . --name <its name> --mode agent --instance <instance>`";
+    let release = "`moai session-register . --name <its name> --release --instance <instance>`";
+    let work = package(WORK);
+    let at = |needle: &str| {
+        work.find(needle)
+            .unwrap_or_else(|| panic!("{WORK} lacks {needle}"))
+    };
+    let (a, b, c) = (at(register), at(renew), at(release));
+    assert!(
+        a < b && b < c,
+        "the order is register {a}, renew {b}, release {c}"
+    );
+    assert!(renew.contains("--mode agent"));
+    assert_has(
+        WORK,
+        &work,
+        "Keep the `instance` the registration answered. Renew it with `moai session-register . --name <its name> --mode agent --instance <instance>` at every take step and every wake from a wait, always inside its lease of four hours, and release it with `moai session-register . --name <its name> --release --instance <instance>` when the lane ends.",
+    );
+    // The paragraph follows the registration paragraph directly.
+    let text = raw(WORK);
+    let paragraphs: Vec<&str> = text.split("\n\n").collect();
+    let registration = paragraphs
+        .iter()
+        .position(|p| p.contains("answers `free`, register the session with"))
+        .expect("the registration paragraph");
+    assert!(
+        paragraphs[registration + 1].starts_with("Keep the `instance` the registration answered."),
+        "the renewal paragraph does not follow the registration paragraph"
+    );
+    // The procedure keeps its eight steps.
+    let keys: Vec<&str> = text
+        .lines()
+        .filter_map(|l| {
+            let (n, rest) = l.split_once(". **")?;
+            n.parse::<u32>().ok()?;
+            rest.split_once("**").map(|(key, _)| key)
+        })
+        .collect();
+    assert_eq!(
+        keys,
+        ["take", "worktree", "plan", "impl", "docs", "submit", "message", "wait"]
+    );
+}
+
+/// A temporary clone whose folder is named `demo`, so the project name is `demo` and the lane names
+/// are `demo-agent-<name>`, and the folder of its session registry.
+struct Demo {
+    _dir: tempfile::TempDir,
+    repo: std::path::PathBuf,
+    sessions: std::path::PathBuf,
+}
+
+const NOW: i64 = 1_000_000;
+
+fn demo() -> Demo {
+    let dir = tempfile::tempdir().unwrap();
+    let repo = fs::canonicalize(dir.path()).unwrap().join("demo");
+    fs::create_dir_all(&repo).unwrap();
+    common::git::git_ok(&repo, &["init", "-q", "-b", "main"]);
+    common::git::git_ok(
+        &repo,
+        &[
+            "-c",
+            "user.name=fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "base",
+        ],
+    );
+    let sessions = moai_cli::clone_root::path(&repo.join(".git")).join("sessions");
+    fs::create_dir_all(&sessions).unwrap();
+    Demo {
+        _dir: dir,
+        repo,
+        sessions,
+    }
+}
+
+impl Demo {
+    /// A hand-written registry entry keyed by the session name, as `session-register` writes it.
+    fn entry(&self, name: &str, lease_until: i64) {
+        let entry = serde_json::json!({
+            "schema_version": 1,
+            "name": name,
+            "instance": "0123456789abcdef0123456789abcdef",
+            "lease_until": lease_until,
+        });
+        fs::write(
+            self.sessions.join(format!("{name}.json")),
+            serde_json::to_vec(&entry).unwrap(),
+        )
+        .unwrap();
+    }
+
+    /// The `<name>.live` lock, held by the returned file until it is dropped.
+    fn lock(&self, name: &str) -> fs::File {
+        moai_cli::session::lock_named_live(&self.sessions, name).unwrap()
+    }
+
+    /// The pick with seed 0: the first free name of the list, so each test names the exact name.
+    /// The unseeded pick is random among the free names (SPEC-20261125-agent-names-bible).
+    fn pick(&self) -> Result<String, String> {
+        moai_cli::session::pick_agent_name_seeded(&self.repo, NOW, 0)
+    }
+}
+
+fn short(i: usize) -> String {
+    format!("agent-{}", moai_cli::session::AGENT_NAMES[i])
+}
+
+fn long(i: usize) -> String {
+    format!("demo-agent-{}", moai_cli::session::AGENT_NAMES[i])
+}
+
+/// SPEC-20261125-session-registry-session-key AC-3 (REQ-8): a held live lock on the short form
+/// `agent-<name>` takes that english name for the pick, and the answer keeps the project prefix.
+#[test]
+fn ac3_the_pick_skips_a_name_whose_short_form_is_locked() {
+    let d = demo();
+    assert_eq!(
+        d.pick().unwrap(),
+        long(0),
+        "an empty registry gives the first name"
+    );
+    let _held = d.lock(&short(0));
+    assert_eq!(d.pick().unwrap(), long(1));
+}
+
+/// AC-3 (REQ-8): a live lease of the short form takes the name as well.
+#[test]
+fn ac3_the_pick_skips_a_name_whose_short_form_has_a_live_lease() {
+    let d = demo();
+    d.entry(&short(0), NOW + 1);
+    assert_eq!(d.pick().unwrap(), long(1));
+}
+
+/// AC-3 (REQ-8): the first name that is free in both forms is the answer: the first is locked in
+/// its short form, the second holds a live lease in its long form, the third is free.
+#[test]
+fn ac3_the_pick_returns_the_first_name_free_in_both_forms() {
+    let d = demo();
+    let _held = d.lock(&short(0));
+    d.entry(&long(1), NOW + 1);
+    assert_eq!(d.pick().unwrap(), long(2));
+}
+
+/// AC-3 (REQ-8), the edge: a lease that ends exactly at `now` is over, and a lock file nobody
+/// holds takes no name, in either form.
+#[test]
+fn ac3_an_ended_lease_or_an_unheld_lock_does_not_take_a_name() {
+    let d = demo();
+    d.entry(&short(0), NOW);
+    d.entry(&long(0), NOW - 1);
+    assert_eq!(d.pick().unwrap(), long(0), "ended leases take nothing");
+    drop(d.lock(&short(0)));
+    drop(d.lock(&long(0)));
+    assert!(d.sessions.join(format!("{}.live", short(0))).exists());
+    assert_eq!(d.pick().unwrap(), long(0), "an unheld lock takes nothing");
+    // A live lease in the short form alone takes the name again.
+    d.entry(&short(0), NOW + 1);
+    assert_eq!(d.pick().unwrap(), long(1));
+}
+
+/// AC-3 (REQ-8): with every english name taken, in either form, the pick refuses and names
+/// `--name`.
+#[test]
+fn ac3_with_every_name_taken_the_pick_refuses_naming_name() {
+    let d = demo();
+    let count = moai_cli::session::AGENT_NAMES.len();
+    for i in 0..count {
+        if i % 2 == 0 {
+            d.entry(&short(i), NOW + 1);
+        } else {
+            d.entry(&long(i), NOW + 1);
+        }
+    }
+    let err = d.pick().unwrap_err();
+    assert!(err.contains("--name"), "{err}");
+    assert!(err.contains(&format!("{count} names")), "{err}");
+    // One name freed in both forms is the answer again.
+    fs::remove_file(d.sessions.join(format!("{}.json", short(0)))).unwrap();
+    assert_eq!(d.pick().unwrap(), long(0));
 }

@@ -1185,3 +1185,1175 @@ fn one_extension_for_two_languages_in_the_extension_file_is_refused() {
         );
     }
 }
+
+// ---- SPEC-20261125-detect-database-dependency-catalog: database dependencies as catalog data ----
+
+/// The dependency table the engine held before the catalog took it: dependency → kind.
+const EARLIER_DATABASE_DEPENDENCIES: [(&str, &str); 22] = [
+    ("postgres", "postgres"),
+    ("tokio-postgres", "postgres"),
+    ("pg", "postgres"),
+    ("psycopg", "postgres"),
+    ("psycopg2", "postgres"),
+    ("psycopg2-binary", "postgres"),
+    ("asyncpg", "postgres"),
+    ("github.com/jackc/pgx/v5", "postgres"),
+    ("github.com/lib/pq", "postgres"),
+    ("mysql", "mysql"),
+    ("mysql2", "mysql"),
+    ("pymysql", "mysql"),
+    ("mysqlclient", "mysql"),
+    ("github.com/go-sql-driver/mysql", "mysql"),
+    ("rusqlite", "sqlite"),
+    ("sqlite3", "sqlite"),
+    ("better-sqlite3", "sqlite"),
+    ("mongodb", "mongodb"),
+    ("pymongo", "mongodb"),
+    ("mongoose", "mongodb"),
+    ("redis", "redis"),
+    ("ioredis", "redis"),
+];
+
+/// Declares each of `names` as a dependency of the project: a name with a `/` as a Go module
+/// requirement, any other name in `package.json` (a Python requirement stops at a `/`).
+fn declare_dependencies(root: &Path, names: &[&str]) {
+    let (modules, packages): (Vec<&str>, Vec<&str>) = names.iter().partition(|n| n.contains('/'));
+    if !packages.is_empty() {
+        let list: Vec<String> = packages
+            .iter()
+            .map(|n| format!(r#""{n}": "1.0.0""#))
+            .collect();
+        write(
+            root,
+            "package.json",
+            &format!(r#"{{"dependencies": {{{}}}}}"#, list.join(", ")),
+        );
+    }
+    if !modules.is_empty() {
+        let list: Vec<String> = modules
+            .iter()
+            .map(|n| format!("require {n} v1.0.0\n"))
+            .collect();
+        write(root, "go.mod", &format!("module app\n\n{}", list.concat()));
+    }
+}
+
+/// A project that declares only `names`.
+fn project_declaring(names: &[&str]) -> TempDir {
+    let root = TempDir::new().unwrap();
+    declare_dependencies(root.path(), names);
+    root
+}
+
+fn databases(result: &Value) -> Vec<&str> {
+    strings(&result["detected"]["databases"])
+}
+
+/// An extension file that holds only the `database_dependencies` rows in `rows`.
+fn db_file(rows: &str) -> String {
+    format!(r#"{{"schema": 1, "database_dependencies": [{rows}]}}"#)
+}
+
+/// REQ-1: each earlier dependency still gives its kind, alone in a project so a wrong pair
+/// shows by name, and all of them together give the five earlier kinds.
+#[test]
+fn every_shipped_database_dependency_keeps_its_kind() {
+    for (dependency, kind) in EARLIER_DATABASE_DEPENDENCIES {
+        let root = project_declaring(&[dependency]);
+        let result = detect(&root);
+        assert_eq!(databases(&result), [kind], "{dependency}: {result}");
+    }
+
+    let all: Vec<&str> = EARLIER_DATABASE_DEPENDENCIES
+        .iter()
+        .map(|(d, _)| *d)
+        .collect();
+    let root = project_declaring(&all);
+    let result = detect(&root);
+    assert_eq!(
+        databases(&result),
+        ["mongodb", "mysql", "postgres", "redis", "sqlite"],
+        "{result}"
+    );
+}
+
+/// REQ-2, REQ-4: a row of the extension file adds a kind for a dependency the shipped catalog
+/// does not know, and the rows are counted with the manifest and code rows. Without the file
+/// the kind is gone and nothing was written.
+#[test]
+fn a_database_dependency_row_adds_a_kind_without_code() {
+    let root = project_declaring(&["sqlx"]);
+    let r = root.path();
+    let result = detect(&root);
+    assert_eq!(result["detected"]["databases"], json!([]), "{result}");
+
+    write(
+        r,
+        &extension(),
+        &db_file(r#"{"kind": "postgres", "dependencies": ["sqlx"]}"#),
+    );
+    let result = detect(&root);
+    assert_eq!(databases(&result), ["postgres"], "{result}");
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 1, "problem": null}),
+        "{result}"
+    );
+    let before = tree(r);
+    detect(&root);
+    assert_eq!(tree(r), before, "a read wrote something");
+
+    // Rows of the three kinds are counted together.
+    write(
+        r,
+        &extension(),
+        &format!(
+            r#"{{"schema": 1, "manifests": [{GOOD_MANIFEST_ROW}],
+                "code_extensions": [{{"language": "elixir", "extensions": ["ex"]}}],
+                "database_dependencies": [{{"kind": "postgres", "dependencies": ["sqlx"]}}]}}"#
+        ),
+    );
+    let result = detect(&root);
+    assert_eq!(databases(&result), ["postgres"], "{result}");
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 3, "problem": null}),
+        "{result}"
+    );
+
+    fs::remove_file(r.join(extension())).unwrap();
+    let result = detect(&root);
+    assert_eq!(result["detected"]["databases"], json!([]), "{result}");
+}
+
+/// REQ-2: a row never changes the kind of a dependency the shipped catalog has; only the
+/// dependencies it does not have are used, and a row left with none adds nothing.
+#[test]
+fn a_database_dependency_row_never_replaces_a_shipped_dependency() {
+    let root = project_declaring(&["pg", "sqlx"]);
+    write(
+        root.path(),
+        &extension(),
+        &db_file(r#"{"kind": "mysql", "dependencies": ["pg", "sqlx"]}"#),
+    );
+    let result = detect(&root);
+    assert_eq!(databases(&result), ["mysql", "postgres"], "{result}");
+    assert_eq!(
+        result["manifest_catalog"]["extension"],
+        json!("read"),
+        "{result}"
+    );
+
+    let only_shipped = project_declaring(&["pg"]);
+    write(
+        only_shipped.path(),
+        &extension(),
+        &db_file(r#"{"kind": "mysql", "dependencies": ["pg", "sqlx"]}"#),
+    );
+    let result = detect(&only_shipped);
+    assert_eq!(databases(&result), ["postgres"], "{result}");
+
+    // A row that holds only the shipped dependency adds nothing, and is still read.
+    let nothing_new = project_declaring(&["pg", "sqlx"]);
+    write(
+        nothing_new.path(),
+        &extension(),
+        &db_file(r#"{"kind": "mysql", "dependencies": ["pg"]}"#),
+    );
+    let result = detect(&nothing_new);
+    assert_eq!(databases(&result), ["postgres"], "{result}");
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 1, "problem": null}),
+        "{result}"
+    );
+}
+
+/// REQ-3: one row that cannot be read refuses the whole extension file: the problem is
+/// reported, the good rows beside it are not used either (the shipped rows alone are), and
+/// nothing is written. The same file with the bad row mended is read, so each refusal is
+/// the row's doing.
+#[test]
+fn a_database_dependency_row_that_cannot_be_read_refuses_the_whole_file() {
+    let root = project_declaring(&["pg", "tedious"]);
+    let r = root.path();
+    write(r, "apps/svc/mix.exs", "defmodule X do end\n");
+    write(r, "lib/a.ex", "x\n");
+    write(r, "src/a.rs", "x\n");
+
+    let file_with = |db_row: &str| {
+        format!(
+            r#"{{"schema": 1, "manifests": [{GOOD_MANIFEST_ROW}],
+                "code_extensions": [{{"language": "elixir", "extensions": ["ex"]}}],
+                "database_dependencies": [{db_row}]}}"#
+        )
+    };
+
+    // The control: the mended row is read, and all three kinds of row take effect.
+    write(
+        r,
+        &extension(),
+        &file_with(r#"{"kind": "sqlserver", "dependencies": ["tedious"]}"#),
+    );
+    let result = detect(&root);
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 3, "problem": null}),
+        "{result}"
+    );
+    assert_eq!(
+        manifests(&result),
+        ["apps/svc/mix.exs", "package.json"],
+        "{result}"
+    );
+    assert_eq!(
+        result["detected"]["languages"],
+        json!(["elixir", "javascript", "rust"]),
+        "{result}"
+    );
+    assert_eq!(databases(&result), ["postgres", "sqlserver"], "{result}");
+
+    let long = "a".repeat(121);
+    let bad_rows = [
+        r#"{"kind": "postgres", "dependencies": []}"#.to_string(),
+        r#"{"kind": "postgres"}"#.to_string(),
+        r#"{"dependencies": ["tedious"]}"#.to_string(),
+        r#"{"kind": "", "dependencies": ["tedious"]}"#.to_string(),
+        r#"{"kind": "sql server", "dependencies": ["tedious"]}"#.to_string(),
+        r#"{"kind": "sql/server", "dependencies": ["tedious"]}"#.to_string(),
+        r#"{"kind": 7, "dependencies": ["tedious"]}"#.to_string(),
+        r#"{"kind": "sqlserver", "dependencies": [""]}"#.to_string(),
+        r#"{"kind": "sqlserver", "dependencies": ["."]}"#.to_string(),
+        r#"{"kind": "sqlserver", "dependencies": ["te dious"]}"#.to_string(),
+        r#"{"kind": "sqlserver", "dependencies": ["c++"]}"#.to_string(),
+        r#"{"kind": "sqlserver", "dependencies": ["Tedious"]}"#.to_string(),
+        format!(r#"{{"kind": "sqlserver", "dependencies": ["{long}"]}}"#),
+        r#"{"kind": "sqlserver", "dependencies": ["tedious"], "surprise": 1}"#.to_string(),
+        r#"{"kind": "sqlserver", "dependencies": "tedious"}"#.to_string(),
+    ];
+    for bad in &bad_rows {
+        write(r, &extension(), &file_with(bad));
+        let before = tree(r);
+        let result = detect(&root);
+        assert_eq!(
+            result["manifest_catalog"]["extension"],
+            json!("refused"),
+            "{bad}: {result}"
+        );
+        assert_eq!(result["manifest_catalog"]["rows"], json!(0), "{bad}");
+        assert!(
+            result["manifest_catalog"]["problem"].is_string(),
+            "{bad}: {result}"
+        );
+        // Neither the manifest row, the code row nor the dependency row is used.
+        assert_eq!(manifests(&result), ["package.json"], "{bad}: {result}");
+        assert_eq!(
+            result["detected"]["languages"],
+            json!(["javascript", "rust"]),
+            "{bad}: {result}"
+        );
+        assert_eq!(databases(&result), ["postgres"], "{bad}: {result}");
+        assert_eq!(tree(r), before, "{bad}: a read wrote something");
+    }
+}
+
+/// The extension file with `n` rows, each a kind and one dependency of its own.
+fn db_rows_json(n: usize) -> String {
+    let rows: Vec<String> = (0..n)
+        .map(|i| format!(r#"{{"kind": "k", "dependencies": ["d{i}"]}}"#))
+        .collect();
+    db_file(&rows.join(","))
+}
+
+/// The extension file with one row of `n` dependencies.
+fn db_row_with_dependencies(n: usize) -> String {
+    let list: Vec<String> = (0..n).map(|i| format!("\"d{i}\"")).collect();
+    db_file(&format!(
+        r#"{{"kind": "k", "dependencies": [{}]}}"#,
+        list.join(",")
+    ))
+}
+
+/// The extension file with one row that names `dependency`.
+fn db_row_named(dependency: &str) -> String {
+    db_file(&format!(
+        r#"{{"kind": "k", "dependencies": ["{dependency}"]}}"#
+    ))
+}
+
+/// REQ-3: the limits of 64 rows, of 64 dependencies in one row and of 120 bytes in a name hold
+/// at both edges: the last value is read, the next is refused. Every name is distinct, so no
+/// refusal comes from one dependency claimed twice.
+#[test]
+fn the_database_dependency_row_limits_hold_at_both_edges() {
+    assert_eq!(extension_state(&db_rows_json(64)), ("read".to_string(), 64));
+    assert_eq!(
+        extension_state(&db_rows_json(65)),
+        ("refused".to_string(), 0)
+    );
+    assert_eq!(
+        extension_state(&db_row_with_dependencies(64)),
+        ("read".to_string(), 1)
+    );
+    assert_eq!(
+        extension_state(&db_row_with_dependencies(65)),
+        ("refused".to_string(), 0)
+    );
+    assert_eq!(
+        extension_state(&db_row_named(&"a".repeat(120))),
+        ("read".to_string(), 1)
+    );
+    assert_eq!(
+        extension_state(&db_row_named(&"a".repeat(121))),
+        ("refused".to_string(), 0)
+    );
+}
+
+/// REQ-5: two rows of the extension file that give one dependency two kinds refuse the whole
+/// file and the problem names the dependency, whichever row comes first; the same kind twice
+/// (in one row or in two rows) is read.
+#[test]
+fn one_dependency_for_two_kinds_in_the_extension_file_is_refused() {
+    let root = project_declaring(&["sqlx", "redis"]);
+    let r = root.path();
+    let conflicts = [
+        (
+            r#"{"kind": "postgres", "dependencies": ["sqlx"]},
+               {"kind": "mysql", "dependencies": ["sqlx"]}"#,
+            "the dependency sqlx is claimed by two kinds: postgres and mysql",
+        ),
+        (
+            r#"{"kind": "mysql", "dependencies": ["sqlx"]},
+               {"kind": "postgres", "dependencies": ["sqlx"]}"#,
+            "the dependency sqlx is claimed by two kinds: mysql and postgres",
+        ),
+    ];
+    for (rows, problem) in conflicts {
+        write(r, &extension(), &db_file(rows));
+        let before = tree(r);
+        let result = detect(&root);
+        assert_eq!(
+            result["manifest_catalog"],
+            json!({"extension": "refused", "rows": 0, "problem": problem}),
+            "{result}"
+        );
+        // The shipped rows alone are used: the refused file adds no kind.
+        assert_eq!(databases(&result), ["redis"], "{result}");
+        assert_eq!(tree(r), before, "a read wrote something");
+    }
+
+    // The same kind for one dependency is no conflict: twice in one row, or in two rows.
+    for rows in [
+        r#"{"kind": "postgres", "dependencies": ["sqlx", "sqlx"]}"#,
+        r#"{"kind": "postgres", "dependencies": ["sqlx"]},
+           {"kind": "postgres", "dependencies": ["sqlx", "diesel"]}"#,
+    ] {
+        write(r, &extension(), &db_file(rows));
+        let result = detect(&root);
+        assert_eq!(
+            result["manifest_catalog"]["extension"],
+            json!("read"),
+            "{result}"
+        );
+        assert_eq!(databases(&result), ["postgres", "redis"], "{result}");
+    }
+}
+
+// ---- SPEC-20261125-detect-language-server-catalog: language servers as catalog data ----
+
+/// The table the engine held before the catalog took it, one code file extension per language:
+/// (extension, language, server, plugin, executable).
+const EARLIER_LANGUAGE_SERVERS: [(&str, &str, &str, &str, &str); 14] = [
+    (
+        "rs",
+        "rust",
+        "rust-analyzer",
+        "rust-analyzer-lsp",
+        "rust-analyzer",
+    ),
+    (
+        "py",
+        "python",
+        "pyright",
+        "pyright-lsp",
+        "pyright-langserver",
+    ),
+    (
+        "js",
+        "javascript",
+        "typescript-language-server",
+        "typescript-lsp",
+        "typescript-language-server",
+    ),
+    (
+        "ts",
+        "typescript",
+        "typescript-language-server",
+        "typescript-lsp",
+        "typescript-language-server",
+    ),
+    ("go", "go", "gopls", "gopls-lsp", "gopls"),
+    ("java", "java", "jdtls", "jdtls-lsp", "jdtls"),
+    ("kt", "kotlin", "kotlin-lsp", "kotlin-lsp", "kotlin-lsp"),
+    ("rb", "ruby", "ruby-lsp", "ruby-lsp", "ruby-lsp"),
+    ("php", "php", "intelephense", "php-lsp", "intelephense"),
+    ("c", "c", "clangd", "clangd-lsp", "clangd"),
+    ("cpp", "cpp", "clangd", "clangd-lsp", "clangd"),
+    ("cs", "csharp", "csharp-ls", "csharp-lsp", "csharp-ls"),
+    (
+        "swift",
+        "swift",
+        "sourcekit-lsp",
+        "swift-lsp",
+        "sourcekit-lsp",
+    ),
+    (
+        "lua",
+        "lua",
+        "lua-language-server",
+        "lua-lsp",
+        "lua-language-server",
+    ),
+];
+
+/// The marketplace every `lsp_plugins` row names: one fact of the engine, not a row.
+const OFFICIAL_MARKETPLACE: &str = "claude-plugins-official";
+
+/// The server names of `detected.lsp`.
+fn lsp_names(result: &Value) -> Vec<&str> {
+    strings(&result["detected"]["lsp"])
+}
+
+/// The plugin names of the `lsp_plugins` fact, in the order it lists them.
+fn lsp_plugin_names(result: &Value) -> Vec<&str> {
+    result["lsp_plugins"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| row["plugin"].as_str().unwrap())
+        .collect()
+}
+
+/// One `lsp_plugins` row as the command prints it; the test environment has no PATH, so no
+/// executable is found.
+fn plugin_row(plugin: &str, languages: &[&str], executable: &str) -> Value {
+    json!({
+        "plugin": plugin,
+        "marketplace": OFFICIAL_MARKETPLACE,
+        "languages": languages,
+        "executable": executable,
+        "installed": false,
+    })
+}
+
+/// One `language_servers` row.
+fn server_row(language: &str, server: &str, plugin: &str, executable: &str) -> String {
+    format!(
+        r#"{{"language": "{language}", "server": "{server}", "plugin": "{plugin}", "executable": "{executable}"}}"#
+    )
+}
+
+/// An extension file that holds only the `language_servers` rows in `rows`.
+fn server_file(rows: &str) -> String {
+    format!(r#"{{"schema": 1, "language_servers": [{rows}]}}"#)
+}
+
+/// A `language_servers` row of `elixir` with the value of one field replaced by the raw JSON
+/// `value`, or without that field when `value` is `None`.
+fn server_row_with(field: &str, value: Option<&str>) -> String {
+    let base = [
+        ("language", "elixir"),
+        ("server", "elixir-ls"),
+        ("plugin", "elixir-lsp"),
+        ("executable", "elixir-ls"),
+    ];
+    let parts: Vec<String> = base
+        .iter()
+        .filter_map(|(key, good)| {
+            if *key == field {
+                value.map(|raw| format!("\"{key}\": {raw}"))
+            } else {
+                Some(format!("\"{key}\": \"{good}\""))
+            }
+        })
+        .collect();
+    format!("{{{}}}", parts.join(", "))
+}
+
+/// The `elixir` code row that makes `lib/a.ex` a code file of a language the shipped catalog
+/// does not know.
+const ELIXIR_CODE_ROW: &str = r#"{"language": "elixir", "extensions": ["ex"]}"#;
+
+/// REQ-1: each earlier language still gives its server and its official plugin, alone in a
+/// project so a wrong row shows by name, and all fourteen together give twelve servers and
+/// twelve plugin rows (a server and a plugin can serve two languages).
+#[test]
+fn every_shipped_language_server_keeps_its_plugin() {
+    for (ext, language, server, plugin, executable) in EARLIER_LANGUAGE_SERVERS {
+        let root = TempDir::new().unwrap();
+        write(root.path(), &format!("src/a.{ext}"), "x\n");
+        let result = detect(&root);
+        assert_eq!(
+            result["detected"]["languages"],
+            json!([language]),
+            ".{ext}: {result}"
+        );
+        assert_eq!(lsp_names(&result), [server], "{language}: {result}");
+        assert_eq!(
+            result["lsp_plugins"],
+            json!([plugin_row(plugin, &[language], executable)]),
+            "{language}: {result}"
+        );
+    }
+
+    let root = TempDir::new().unwrap();
+    for (ext, ..) in EARLIER_LANGUAGE_SERVERS {
+        write(root.path(), &format!("src/a.{ext}"), "x\n");
+    }
+    let result = detect(&root);
+    assert_eq!(
+        lsp_names(&result),
+        [
+            "clangd",
+            "csharp-ls",
+            "gopls",
+            "intelephense",
+            "jdtls",
+            "kotlin-lsp",
+            "lua-language-server",
+            "pyright",
+            "ruby-lsp",
+            "rust-analyzer",
+            "sourcekit-lsp",
+            "typescript-language-server"
+        ],
+        "{result}"
+    );
+    assert_eq!(
+        result["lsp_plugins"],
+        json!([
+            plugin_row("clangd-lsp", &["c", "cpp"], "clangd"),
+            plugin_row("csharp-lsp", &["csharp"], "csharp-ls"),
+            plugin_row("gopls-lsp", &["go"], "gopls"),
+            plugin_row("jdtls-lsp", &["java"], "jdtls"),
+            plugin_row("kotlin-lsp", &["kotlin"], "kotlin-lsp"),
+            plugin_row("lua-lsp", &["lua"], "lua-language-server"),
+            plugin_row("php-lsp", &["php"], "intelephense"),
+            plugin_row("pyright-lsp", &["python"], "pyright-langserver"),
+            plugin_row("ruby-lsp", &["ruby"], "ruby-lsp"),
+            plugin_row("rust-analyzer-lsp", &["rust"], "rust-analyzer"),
+            plugin_row("swift-lsp", &["swift"], "sourcekit-lsp"),
+            plugin_row(
+                "typescript-lsp",
+                &["javascript", "typescript"],
+                "typescript-language-server"
+            ),
+        ]),
+        "{result}"
+    );
+}
+
+/// REQ-2, REQ-4: a row of the extension file adds the server of a language the shipped catalog
+/// has none for, and the four kinds of row are counted together. A server row of a language
+/// that is not detected adds nothing; a language found only through a manifest row still gets
+/// its server. Without the file the server is gone and nothing was written.
+#[test]
+fn a_language_server_row_adds_a_server_without_code() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, "lib/a.ex", "x\n");
+    let elixir_server = server_row("elixir", "elixir-ls", "elixir-lsp", "elixir-ls");
+    let result = detect(&root);
+    assert_eq!(result["detected"]["lsp"], json!([]), "{result}");
+    assert_eq!(result["lsp_plugins"], json!([]), "{result}");
+
+    write(
+        r,
+        &extension(),
+        &format!(
+            r#"{{"schema": 1, "code_extensions": [{ELIXIR_CODE_ROW}],
+                "language_servers": [{elixir_server}]}}"#
+        ),
+    );
+    let result = detect(&root);
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 2, "problem": null}),
+        "{result}"
+    );
+    assert_eq!(
+        result["detected"]["languages"],
+        json!(["elixir"]),
+        "{result}"
+    );
+    assert!(lsp_names(&result).contains(&"elixir-ls"), "{result}");
+    assert_eq!(lsp_names(&result), ["elixir-ls"], "{result}");
+    assert_eq!(
+        result["lsp_plugins"],
+        json!([plugin_row("elixir-lsp", &["elixir"], "elixir-ls")]),
+        "{result}"
+    );
+    let before = tree(r);
+    detect(&root);
+    assert_eq!(tree(r), before, "a read wrote something");
+
+    // One row of each of the four kinds is counted together.
+    write(
+        r,
+        &extension(),
+        &format!(
+            r#"{{"schema": 1, "manifests": [{GOOD_MANIFEST_ROW}],
+                "code_extensions": [{ELIXIR_CODE_ROW}],
+                "database_dependencies": [{{"kind": "postgres", "dependencies": ["sqlx"]}}],
+                "language_servers": [{elixir_server}]}}"#
+        ),
+    );
+    let result = detect(&root);
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 4, "problem": null}),
+        "{result}"
+    );
+    assert_eq!(lsp_names(&result), ["elixir-ls"], "{result}");
+
+    fs::remove_file(r.join(extension())).unwrap();
+    let result = detect(&root);
+    assert_eq!(result["detected"]["lsp"], json!([]), "{result}");
+    assert_eq!(result["lsp_plugins"], json!([]), "{result}");
+
+    // Negative control: the server row of a language that is not detected changes nothing.
+    let other = TempDir::new().unwrap();
+    write(other.path(), "src/a.rs", "x\n");
+    let without = detect(&other);
+    write(other.path(), &extension(), &server_file(&elixir_server));
+    let result = detect(&other);
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 1, "problem": null}),
+        "{result}"
+    );
+    assert_eq!(result["detected"]["lsp"], without["detected"]["lsp"]);
+    assert_eq!(lsp_names(&result), ["rust-analyzer"], "{result}");
+    assert_eq!(result["lsp_plugins"], without["lsp_plugins"], "{result}");
+    assert_eq!(lsp_plugin_names(&result), ["rust-analyzer-lsp"], "{result}");
+
+    // A language found only through a manifest row, with no code file, gets its server.
+    let manifest_only = TempDir::new().unwrap();
+    write(
+        manifest_only.path(),
+        "apps/svc/mix.exs",
+        "defmodule X do end\n",
+    );
+    write(
+        manifest_only.path(),
+        &extension(),
+        &format!(
+            r#"{{"schema": 1, "manifests": [{GOOD_MANIFEST_ROW}],
+                "language_servers": [{elixir_server}]}}"#
+        ),
+    );
+    let result = detect(&manifest_only);
+    assert_eq!(
+        result["detected"]["languages"],
+        json!(["elixir"]),
+        "{result}"
+    );
+    assert_eq!(lsp_names(&result), ["elixir-ls"], "{result}");
+    assert_eq!(
+        result["lsp_plugins"],
+        json!([plugin_row("elixir-lsp", &["elixir"], "elixir-ls")]),
+        "{result}"
+    );
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 2, "problem": null}),
+        "{result}"
+    );
+}
+
+/// REQ-2: a row never changes the server of a language the shipped catalog has one for; the
+/// row of a new language in the same file is used, and a file with only the shipped language's
+/// row is read.
+#[test]
+fn a_language_server_row_never_replaces_a_shipped_server() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, "src/a.rs", "x\n");
+    write(r, "lib/a.ex", "x\n");
+    write(
+        r,
+        &extension(),
+        &format!(
+            r#"{{"schema": 1, "code_extensions": [{ELIXIR_CODE_ROW}],
+                "language_servers": [{}, {}]}}"#,
+            server_row("rust", "other-server", "other-lsp", "other-exe"),
+            server_row("elixir", "elixir-ls", "elixir-lsp", "elixir-ls"),
+        ),
+    );
+    let result = detect(&root);
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 3, "problem": null}),
+        "{result}"
+    );
+    assert_eq!(
+        lsp_names(&result),
+        ["elixir-ls", "rust-analyzer"],
+        "{result}"
+    );
+    assert!(!lsp_names(&result).contains(&"other-server"), "{result}");
+    assert_eq!(
+        lsp_plugin_names(&result),
+        ["elixir-lsp", "rust-analyzer-lsp"],
+        "{result}"
+    );
+    assert!(
+        !lsp_plugin_names(&result).contains(&"other-lsp"),
+        "{result}"
+    );
+    assert_eq!(
+        result["lsp_plugins"],
+        json!([
+            plugin_row("elixir-lsp", &["elixir"], "elixir-ls"),
+            plugin_row("rust-analyzer-lsp", &["rust"], "rust-analyzer"),
+        ]),
+        "{result}"
+    );
+
+    // A file that holds only the shipped language's row is read and adds nothing.
+    let only_shipped = TempDir::new().unwrap();
+    write(only_shipped.path(), "src/a.rs", "x\n");
+    write(
+        only_shipped.path(),
+        &extension(),
+        &server_file(&server_row(
+            "rust",
+            "other-server",
+            "other-lsp",
+            "other-exe",
+        )),
+    );
+    let result = detect(&only_shipped);
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 1, "problem": null}),
+        "{result}"
+    );
+    assert_eq!(lsp_names(&result), ["rust-analyzer"], "{result}");
+    assert_eq!(
+        result["lsp_plugins"],
+        json!([plugin_row("rust-analyzer-lsp", &["rust"], "rust-analyzer")]),
+        "{result}"
+    );
+}
+
+/// REQ-3: one `language_servers` row that cannot be read refuses the whole extension file: the
+/// problem is reported, the good rows of the other three kinds beside it are not used either
+/// (the shipped rows alone are) and nothing is written. The same file with the bad row mended is
+/// read, so each refusal is the row's doing.
+#[test]
+fn a_language_server_row_that_cannot_be_read_refuses_the_whole_file() {
+    let root = project_declaring(&["pg", "sqlx"]);
+    let r = root.path();
+    write(r, "apps/svc/mix.exs", "defmodule X do end\n");
+    write(r, "lib/a.ex", "x\n");
+    write(r, "src/a.rs", "x\n");
+
+    // `servers` is the whole value of the `language_servers` key.
+    let file_with = |servers: &str| {
+        format!(
+            r#"{{"schema": 1, "manifests": [{GOOD_MANIFEST_ROW}],
+                "code_extensions": [{ELIXIR_CODE_ROW}],
+                "database_dependencies": [{{"kind": "sqlserver", "dependencies": ["sqlx"]}}],
+                "language_servers": {servers}}}"#
+        )
+    };
+
+    // The control: the mended row is read, and all four kinds of row take effect.
+    write(
+        r,
+        &extension(),
+        &file_with(&format!(
+            "[{}]",
+            server_row("elixir", "elixir-ls", "elixir-lsp", "elixir-ls")
+        )),
+    );
+    let result = detect(&root);
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 4, "problem": null}),
+        "{result}"
+    );
+    assert_eq!(
+        manifests(&result),
+        ["apps/svc/mix.exs", "package.json"],
+        "{result}"
+    );
+    assert_eq!(
+        result["detected"]["languages"],
+        json!(["elixir", "javascript", "rust"]),
+        "{result}"
+    );
+    assert_eq!(databases(&result), ["postgres", "sqlserver"], "{result}");
+    assert_eq!(
+        lsp_names(&result),
+        ["elixir-ls", "rust-analyzer", "typescript-language-server"],
+        "{result}"
+    );
+    assert_eq!(
+        lsp_plugin_names(&result),
+        ["elixir-lsp", "rust-analyzer-lsp", "typescript-lsp"],
+        "{result}"
+    );
+
+    let long = "a".repeat(81);
+    let mut bad: Vec<(String, String)> = Vec::new();
+    for field in ["language", "server", "plugin", "executable"] {
+        let values: [(&str, Option<String>); 7] = [
+            ("missing", None),
+            ("empty", Some("\"\"".to_string())),
+            ("space", Some("\"a b\"".to_string())),
+            ("slash", Some("\"a/b\"".to_string())),
+            ("dots only", Some("\"..\"".to_string())),
+            ("81 bytes", Some(format!("\"{long}\""))),
+            ("number", Some("7".to_string())),
+        ];
+        for (what, raw) in values {
+            bad.push((
+                format!("{field} {what}"),
+                format!("[{}]", server_row_with(field, raw.as_deref())),
+            ));
+        }
+    }
+    bad.push((
+        "@ in plugin".to_string(),
+        format!("[{}]", server_row_with("plugin", Some("\"elixir@lsp\""))),
+    ));
+    bad.push((
+        "unknown key".to_string(),
+        r#"[{"language": "elixir", "server": "elixir-ls", "plugin": "elixir-lsp", "executable": "elixir-ls", "surprise": 1}]"#
+            .to_string(),
+    ));
+    bad.push((
+        "a string, not a list".to_string(),
+        "\"elixir-ls\"".to_string(),
+    ));
+    bad.push(("an object, not a list".to_string(), "{}".to_string()));
+
+    for (what, servers) in &bad {
+        write(r, &extension(), &file_with(servers));
+        let before = tree(r);
+        let result = detect(&root);
+        assert_eq!(
+            result["manifest_catalog"]["extension"],
+            json!("refused"),
+            "{what}: {result}"
+        );
+        assert_eq!(result["manifest_catalog"]["rows"], json!(0), "{what}");
+        assert!(
+            result["manifest_catalog"]["problem"].is_string(),
+            "{what}: {result}"
+        );
+        // None of the four kinds of row is used: only the shipped results show.
+        assert_eq!(manifests(&result), ["package.json"], "{what}: {result}");
+        assert_eq!(
+            result["detected"]["languages"],
+            json!(["javascript", "rust"]),
+            "{what}: {result}"
+        );
+        assert_eq!(databases(&result), ["postgres"], "{what}: {result}");
+        assert_eq!(
+            lsp_names(&result),
+            ["rust-analyzer", "typescript-language-server"],
+            "{what}: {result}"
+        );
+        assert_eq!(
+            lsp_plugin_names(&result),
+            ["rust-analyzer-lsp", "typescript-lsp"],
+            "{what}: {result}"
+        );
+        assert_eq!(tree(r), before, "{what}: a read wrote something");
+    }
+}
+
+/// The extension file with `n` rows, each a language, server, plugin and executable of its
+/// own, so no refusal comes from one name claimed twice.
+fn server_rows_json(n: usize) -> String {
+    let rows: Vec<String> = (0..n)
+        .map(|i| {
+            server_row(
+                &format!("l{i}"),
+                &format!("s{i}"),
+                &format!("p{i}"),
+                &format!("e{i}"),
+            )
+        })
+        .collect();
+    server_file(&rows.join(","))
+}
+
+/// The extension file with one `elixir` row whose `field` holds `len` bytes.
+fn server_row_of_len(field: &str, len: usize) -> String {
+    let value = format!("\"{}\"", "a".repeat(len));
+    server_file(&server_row_with(field, Some(&value)))
+}
+
+/// REQ-3: the limits of 64 rows and of 80 bytes in each of the four values hold at both edges:
+/// the last value is read, the next is refused.
+#[test]
+fn the_language_server_row_limits_hold_at_both_edges() {
+    assert_eq!(
+        extension_state(&server_rows_json(64)),
+        ("read".to_string(), 64)
+    );
+    assert_eq!(
+        extension_state(&server_rows_json(65)),
+        ("refused".to_string(), 0)
+    );
+    for field in ["language", "server", "plugin", "executable"] {
+        assert_eq!(
+            extension_state(&server_row_of_len(field, 80)),
+            ("read".to_string(), 1),
+            "{field} 80"
+        );
+        assert_eq!(
+            extension_state(&server_row_of_len(field, 81)),
+            ("refused".to_string(), 0),
+            "{field} 81"
+        );
+    }
+}
+
+/// REQ-5: two rows of the extension file that give one language two different servers, plugins
+/// or executables refuse the whole file and the problem names the language, whichever row comes
+/// first, also for a shipped language; the identical row twice is read, and `Elixir` and
+/// `elixir` are two different names.
+#[test]
+fn one_language_for_two_servers_in_the_extension_file_is_refused() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, "lib/a.ex", "x\n");
+    write(r, "src/a.rs", "x\n");
+    let elixir = server_row("elixir", "elixir-ls", "elixir-lsp", "elixir-ls");
+
+    // The reads come first: the identical row twice, in a file that holds only server rows and
+    // in a file that also makes the language detected, where the server shows once.
+    write(
+        r,
+        &extension(),
+        &server_file(&format!("{elixir}, {elixir}")),
+    );
+    let result = detect(&root);
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 2, "problem": null}),
+        "{result}"
+    );
+    write(
+        r,
+        &extension(),
+        &format!(
+            r#"{{"schema": 1, "code_extensions": [{ELIXIR_CODE_ROW}],
+                "language_servers": [{elixir}, {elixir}]}}"#
+        ),
+    );
+    let result = detect(&root);
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 3, "problem": null}),
+        "{result}"
+    );
+    assert_eq!(
+        lsp_names(&result),
+        ["elixir-ls", "rust-analyzer"],
+        "{result}"
+    );
+    assert_eq!(
+        result["lsp_plugins"],
+        json!([
+            plugin_row("elixir-lsp", &["elixir"], "elixir-ls"),
+            plugin_row("rust-analyzer-lsp", &["rust"], "rust-analyzer"),
+        ]),
+        "{result}"
+    );
+
+    // `Elixir` and `elixir` are two names: no conflict, even with different servers.
+    write(
+        r,
+        &extension(),
+        &server_file(&format!(
+            "{}, {elixir}",
+            server_row("Elixir", "other-ls", "other-lsp", "other-ls")
+        )),
+    );
+    let result = detect(&root);
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 2, "problem": null}),
+        "{result}"
+    );
+
+    let conflicts = [
+        (
+            "elixir",
+            server_row("elixir", "elixir-ls", "elixir-lsp", "elixir-ls"),
+            server_row("elixir", "other-ls", "elixir-lsp", "elixir-ls"),
+        ),
+        (
+            "elixir",
+            server_row("elixir", "elixir-ls", "elixir-lsp", "elixir-ls"),
+            server_row("elixir", "elixir-ls", "other-lsp", "elixir-ls"),
+        ),
+        (
+            "elixir",
+            server_row("elixir", "elixir-ls", "elixir-lsp", "elixir-ls"),
+            server_row("elixir", "elixir-ls", "elixir-lsp", "other-exe"),
+        ),
+        (
+            "rust",
+            server_row("rust", "a-ls", "a-lsp", "a-ls"),
+            server_row("rust", "b-ls", "b-lsp", "b-ls"),
+        ),
+    ];
+    for (language, first, second) in &conflicts {
+        for (a, b) in [(first, second), (second, first)] {
+            write(
+                r,
+                &extension(),
+                &format!(
+                    r#"{{"schema": 1, "code_extensions": [{ELIXIR_CODE_ROW}],
+                        "language_servers": [{a}, {b}]}}"#
+                ),
+            );
+            let before = tree(r);
+            let result = detect(&root);
+            assert_eq!(
+                result["manifest_catalog"],
+                json!({
+                    "extension": "refused",
+                    "rows": 0,
+                    "problem": format!(
+                        "the language {language} is claimed by two different language server rows"
+                    )
+                }),
+                "{a} / {b}: {result}"
+            );
+            // The shipped rows alone are used: the refused file adds no language and no server.
+            assert_eq!(result["detected"]["languages"], json!(["rust"]), "{result}");
+            assert_eq!(lsp_names(&result), ["rust-analyzer"], "{result}");
+            assert_eq!(
+                result["lsp_plugins"],
+                json!([plugin_row("rust-analyzer-lsp", &["rust"], "rust-analyzer")]),
+                "{result}"
+            );
+            assert_eq!(tree(r), before, "a read wrote something");
+        }
+    }
+}
+
+/// REQ-6: one plugin name with two different executables refuses the whole file and the problem
+/// names the plugin: between two new languages of the file, in either order, and against a
+/// shipped plugin. Two languages that share a plugin and its executable are read.
+#[test]
+fn one_plugin_with_two_executables_is_refused() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, "lib/a.ex", "x\n");
+    write(r, "tools/b.zig", "x\n");
+    write(r, "src/a.rs", "x\n");
+    let code_rows = r#""code_extensions": [{"language": "elixir", "extensions": ["ex"]}, {"language": "zig", "extensions": ["zig"]}]"#;
+
+    let conflicts = [
+        (
+            [
+                server_row("elixir", "elixir-ls", "x-lsp", "x1"),
+                server_row("zig", "zls", "x-lsp", "x2"),
+            ],
+            "x-lsp",
+        ),
+        (
+            [
+                server_row("zig", "zls", "x-lsp", "x2"),
+                server_row("elixir", "elixir-ls", "x-lsp", "x1"),
+            ],
+            "x-lsp",
+        ),
+        (
+            [
+                server_row(
+                    "elixir",
+                    "elixir-ls",
+                    "rust-analyzer-lsp",
+                    "not-rust-analyzer",
+                ),
+                server_row("zig", "zls", "zig-lsp", "zls"),
+            ],
+            "rust-analyzer-lsp",
+        ),
+    ];
+    for ([a, b], plugin) in &conflicts {
+        write(
+            r,
+            &extension(),
+            &format!(r#"{{"schema": 1, {code_rows}, "language_servers": [{a}, {b}]}}"#),
+        );
+        let before = tree(r);
+        let result = detect(&root);
+        assert_eq!(
+            result["manifest_catalog"],
+            json!({
+                "extension": "refused",
+                "rows": 0,
+                "problem": format!("the plugin {plugin} is claimed with two different executables")
+            }),
+            "{a} / {b}: {result}"
+        );
+        // The shipped rows alone are used.
+        assert_eq!(result["detected"]["languages"], json!(["rust"]), "{result}");
+        assert_eq!(lsp_names(&result), ["rust-analyzer"], "{result}");
+        assert_eq!(
+            result["lsp_plugins"],
+            json!([plugin_row("rust-analyzer-lsp", &["rust"], "rust-analyzer")]),
+            "{result}"
+        );
+        assert_eq!(tree(r), before, "a read wrote something");
+    }
+
+    // Two languages that share a plugin and its executable are no conflict.
+    let shared = format!(
+        "{}, {}",
+        server_row("elixir", "elixir-ls", "x-lsp", "x1"),
+        server_row("zig", "zls", "x-lsp", "x1")
+    );
+    write(r, &extension(), &server_file(&shared));
+    let result = detect(&root);
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 2, "problem": null}),
+        "{result}"
+    );
+    write(
+        r,
+        &extension(),
+        &format!(r#"{{"schema": 1, {code_rows}, "language_servers": [{shared}]}}"#),
+    );
+    let result = detect(&root);
+    assert_eq!(
+        result["manifest_catalog"],
+        json!({"extension": "read", "rows": 4, "problem": null}),
+        "{result}"
+    );
+    assert_eq!(
+        lsp_names(&result),
+        ["elixir-ls", "rust-analyzer", "zls"],
+        "{result}"
+    );
+    assert_eq!(
+        result["lsp_plugins"],
+        json!([
+            plugin_row("rust-analyzer-lsp", &["rust"], "rust-analyzer"),
+            plugin_row("x-lsp", &["elixir", "zig"], "x1"),
+        ]),
+        "{result}"
+    );
+}

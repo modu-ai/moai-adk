@@ -8,6 +8,8 @@ Before any other action run `pwd` and `moai session-register --names`: its `proj
 
 A session whose name does not already start with `<project name>-agent-` (it was not started with `moai cc -a`; `<project name>` is the `project` that `--names` printed) gives the user the one line `/rename <project name>-agent-<english name>` once, in the user's conversation language, and reads its own name from the first line of `ListAgents` before it goes on. If that name is not the wanted one after the user's reply, or the user gives none, go on under the name the session has and write one ledger note that says so and names the short id of its `ListAgents` row. When `moai session-register --show --name <its name>` answers `free`, register the session with `moai session-register . --name <its name> --mode agent`, so that the leader's lane check reads it as a lane; an entry that is already `held` is left alone.
 
+Keep the `instance` the registration answered. Renew it with `moai session-register . --name <its name> --mode agent --instance <instance>` at every take step and every wake from a wait, always inside its lease of four hours, and release it with `moai session-register . --name <its name> --release --instance <instance>` when the lane ends.
+
 ## Input
 
 The project's card ledger, read with `moai card next`, the SPEC each card names and the worktree each card is worked in. Read the flow reference `flows/next-flow` before the first take: how a lane works, what it submits and how a card lands.
@@ -35,6 +37,8 @@ Before you write the READY, REPAIRED or blocked note, read `git status --short` 
 
 Make a card's worktree from outside every card worktree, with an absolute path, in this order. If you entered a worktree with `EnterWorktree`, leave it with `ExitWorktree(keep)` first, because the host refuses a `git worktree add` into the shared checkout from inside it. Read the primary checkout's path from the first entry of `git worktree list --porcelain`, then run `git worktree add -b <branch> <primary checkout>/.claude/worktrees/<name> <integration branch>`; never give it a relative path, which git resolves against the folder you stand in and so nests the new worktree inside another one. Read `git worktree list --porcelain` again and call `EnterWorktree` with that same absolute `path` only when the path is listed and its folder exists; the host asks the person about a path that does not exist, so an unlisted path is fixed at its creation and never entered. Never make a card worktree with `EnterWorktree` and a `name`: it branches from the remote default branch, not from the integration branch.
 
+When `moai card take` (or a reclaim) answers with a warning that the hook settings of the worktree point at files the session's start folder does not have, the host fails those hooks with `No such file or directory`: after `EnterWorktree` the session reads the worktree's settings, while `$CLAUDE_PROJECT_DIR` stays on the folder the session was started in. Take the step the warning names. Where it says the worktree has the files, start the lane session in the card's worktree folder itself. Where it says no start folder has them all, starting elsewhere does not help: write it on the card, because the user decides about the hook settings (`moai go-hooks-plan <worktree>` shows their replacement and writes nothing). Never edit the project's or the user's `.claude/settings.json` to quiet the warning.
+
 Where the project offers lane commands that run a card in a lane of its own, a step may run there; if the lane commands are missing, say so and run the step in the current session.
 
 ## When a step stops
@@ -48,6 +52,8 @@ Where the project offers lane commands that run a card in a lane of its own, a s
 | the leader sends `REPAIR <card> fail head=<head>` after a first FAIL | Run `moai card reopen <card> --generation <g>`, repair on the same branch, and submit again from step 6; the second FAIL goes to the leader. |
 | the leader sends `AUDIT-REQUEST <card> ready head=<head>` for a card you did not write | Run the AUDIT route on that exact head and record the verdict with `moai card verdict` from your own session; the author of a change never audits it. |
 | a card is held by a session that is gone, or a reclaim answers `reclaim_limit` | Never free or take another session's reservation yourself. Write the `LANE-BLOCKED` note; the leader ends the reservation with `--by leader` (it refuses a live session without proof), the card returns to `ready`, and you take it again with `moai card take`. |
+
+A REPAIRED note lists each finding it answers with the probe or test that reproduced it and that probe's result on the audited head and on the repair head; a finding without that pair is not claimed as fixed. A change the lane could not make because the file lies outside its scope goes under `Not done` with the file and its holder and is handed over as a note, never in a commit message.
 
 ## Base agents
 

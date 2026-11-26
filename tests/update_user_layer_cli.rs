@@ -593,6 +593,36 @@ fn refused(out: &Output) -> String {
     v["error"]["message"].as_str().unwrap().to_string()
 }
 
+/// SPEC-20261125-update-installed-from-link AC-2: the preview names the version of the folder
+/// that the execution link under HOME points to, and carries no `installed_version` key without a
+/// link. The state folder comes from the product's own resolver, never from a literal name.
+#[test]
+fn the_preview_names_the_version_the_execution_link_points_to() {
+    let (_t, home, exe, _) = setup();
+    let without = result(&run(&exe, &home, &["update"]));
+    assert!(without.get("installed_version").is_none(), "{without}");
+    assert_eq!(keys(&without), PREVIEW_KEYS, "{without}");
+
+    let state_dir = moai_cli::home_root::path(&home);
+    let target = state_dir.join("versions/4.2648.26/bin/moai");
+    fs::create_dir_all(target.parent().unwrap()).unwrap();
+    fs::write(&target, b"fixture build\n").unwrap();
+    let link = state_dir.join("path/moai");
+    fs::create_dir_all(link.parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink(&target, &link).unwrap();
+
+    let with = result(&run(&exe, &home, &["update"]));
+    assert_eq!(with["installed_version"], json!("4.2648.26"), "{with}");
+    assert_eq!(
+        with["plan_digest"], without["plan_digest"],
+        "the value is outside the digest"
+    );
+
+    fs::remove_file(&link).unwrap();
+    let gone = result(&run(&exe, &home, &["update"]));
+    assert!(gone.get("installed_version").is_none(), "{gone}");
+}
+
 /// #2872 stage 2: with nothing to archive the preview is exactly what it was — no `cleanup`
 /// key — and a cleanup token is refused before anything is written.
 #[test]

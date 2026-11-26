@@ -712,6 +712,70 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Offer a taken card to one named session
+    ///
+    /// Writes the ledger. The holder offers the card to the session `--to`: one `card.offer` event
+    /// names the holder, the generation, the target, the end of the offer's validity
+    /// (`--valid-secs`, 60 to 86400, default 1800) and the optional `--handover` line. The
+    /// reservation, the generation and the card's state stay as they are, so the holder owns the
+    /// card until the target accepts. A new offer replaces the older one, and `--cancel` voids the
+    /// newest offer (`no_offer` when there is none). Fenced like `handoff`: only the holder at the
+    /// current generation with a live lease offers, and a refused holder call is recorded as one
+    /// `fence_reject`. The reclaim count of the card is untouched.
+    Offer {
+        /// `C-12`.
+        card: String,
+        /// The generation this session holds.
+        #[arg(long)]
+        generation: i64,
+        /// The session id of the session offered the card (hex digits and `-`, 8 to 64
+        /// characters).
+        #[arg(long, required_unless_present = "cancel", conflicts_with = "cancel")]
+        to: Option<String>,
+        /// Void the newest offer instead of making one.
+        #[arg(long)]
+        cancel: bool,
+        /// Seconds the offer stays valid, 60 to 86400 (default 1800).
+        #[arg(long, conflicts_with = "cancel")]
+        valid_secs: Option<i64>,
+        /// One line for the receiver: the work that is kept, the next step, open approvals and
+        /// remote requests (1 to 500 characters, kept in the ledger for good).
+        #[arg(long, conflicts_with = "cancel")]
+        handover: Option<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Accept a card another session offered you
+    ///
+    /// Writes the ledger. Run by the session the newest offer of the card names, at the offered
+    /// `--generation`: one transaction ends the old reservation as `released` and gives this
+    /// session the next generation with the same scope, worktree and branch and a new lease, and
+    /// writes one `card.accept` event. Refusals write nothing and each names its code in the
+    /// answer: the state of the card in the words `card reclaim` uses, `no_offer` (no offer at
+    /// that generation), `offer_cancelled`, `not_target` (another session was named),
+    /// `offer_expired` and `lease_expired` (the holder's lease ended: the card goes the reclaim
+    /// way). A session that is not named can never take a card this way. The new holder is this
+    /// session's own id, never typed.
+    Accept {
+        /// `C-12`.
+        card: String,
+        /// The generation the offer was made at (the card's current one).
+        #[arg(long)]
+        generation: i64,
+        /// Lease length of the new reservation in seconds, 60 to 86400 (default 14400).
+        #[arg(long)]
+        lease_secs: Option<i64>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Reads the ledger only. Show the card to work on next
     ///
     /// Reads the ledger only. Prints the cards this session holds (`mine`: generation, lease
@@ -1220,6 +1284,37 @@ enum Action {
         #[arg(required = true)]
         pairs: Vec<String>,
         /// Who lands: only `leader` is accepted, from the registered leader session.
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id and the integration branch).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the integration branch and the ledger. Merge another branch into the integration branch
+    ///
+    /// `card land-sync <from> --spec <SPEC-ID> --by leader` merges the tip of the local branch
+    /// `<from>` onto the integration tip as one merge commit (the tip is the first parent), runs
+    /// the wide `check affected` of this program on that commit in a private worktree and, only
+    /// after a full-selection PASS, moves the integration branch to it by one compare-and-swap
+    /// through the same intent record `card land` writes, so the protection hook is not weakened.
+    /// The branch must be listed in `work_flow.sync_sources` of the profile (an empty list refuses
+    /// every branch) and `--spec` must name an approved SPEC present at the tip. Only the session of
+    /// the live `leader` entry of the lane registry may call it. A tip that is not the one the merge
+    /// was built on is refused as `stale_base`; a branch the tip already holds answers
+    /// `moved: false`. Two card-less ledger rows (`card.sync_started`, `card.synced`) record the
+    /// move so the next landing is not refused as drift. The answer has `moved`, `merge`,
+    /// `to_tip`, `rev_list_count` (`git rev-list --count <branch>..<from>` after the move),
+    /// `worktree_follow`, `runs` and `remote_copy`.
+    LandSync {
+        /// The local branch to merge in (listed in `work_flow.sync_sources`).
+        from: String,
+        /// The approved SPEC that decided this sync (written as the `Moai-Spec` trailer).
+        #[arg(long)]
+        spec: String,
+        /// Who syncs: only `leader` is accepted, from the registered leader session.
         #[arg(long)]
         by: String,
         /// The project folder (its profile holds the project id and the integration branch).
@@ -1744,6 +1839,44 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 },
             )
         }
+        Action::Offer {
+            card,
+            generation,
+            to,
+            cancel,
+            valid_secs,
+            handover,
+            project,
+            home,
+        } => moai_cli::card::offer::offer(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &moai_cli::card::offer::OfferRequest {
+                holder: &d::session_holder("offer", env)?,
+                generation,
+                to: to.as_deref(),
+                cancel,
+                valid_secs,
+                handover: handover.as_deref(),
+            },
+        ),
+        Action::Accept {
+            card,
+            generation,
+            lease_secs,
+            project,
+            home,
+        } => moai_cli::card::offer::accept(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &moai_cli::card::offer::AcceptRequest {
+                accepter: &d::session_holder("accept", env)?,
+                generation,
+                lease_secs,
+            },
+        ),
         Action::Next { project, home } => w::next(
             &project,
             &resolve_home(home)?,
@@ -2074,6 +2207,38 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             )?;
             // One copy for the whole batch, after the last landing.
             if answer["landed"].as_array().is_some_and(|l| !l.is_empty()) {
+                let copy = moai_cli::card::remote_copy::copy(&project, "land");
+                answer["remote_copy"] = copy.json();
+            }
+            Ok(answer)
+        }
+        Action::LandSync {
+            from,
+            spec,
+            by,
+            project,
+            home,
+        } => {
+            let session = d::session_holder("land", env).ok();
+            // The tests' seam for the check program; the command line has no flag for it and a
+            // release build does not read the variable at all.
+            #[cfg(debug_assertions)]
+            let check_cmd = env("MOAI_TEST_LAND_SYNC_CHECK").map(PathBuf::from);
+            #[cfg(not(debug_assertions))]
+            let check_cmd: Option<PathBuf> = None;
+            let mut answer = moai_cli::card::land::sync::land_sync(
+                &project,
+                &resolve_home(home)?,
+                &moai_cli::card::land::sync::SyncRequest {
+                    session: session.as_deref(),
+                    by: &by,
+                    from: &from,
+                    spec: &spec,
+                    check_cmd: check_cmd.as_deref(),
+                },
+            )?;
+            // The remote copy never fails the sync; its state rides in the answer.
+            if answer["moved"].as_bool() == Some(true) {
                 let copy = moai_cli::card::remote_copy::copy(&project, "land");
                 answer["remote_copy"] = copy.json();
             }

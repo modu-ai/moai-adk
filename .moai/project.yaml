@@ -36,6 +36,7 @@
     "flow": "m-flow",
     "integration_branch": "NeXT"
   },
+  "remote_copy": true,
   "decisions": [
     {
       "id": "protected",

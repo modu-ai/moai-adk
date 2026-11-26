@@ -107,13 +107,13 @@ struct LaunchOpts {
     /// `/moai leader`.
     #[arg(short = 'l', long)]
     leader: bool,
-    /// Start a lane: session `<project name>-agent-<english name>` (the first free name of the
-    /// launcher's list),
+    /// Start a lane: session `<project name>-agent-<english name>` (a name chosen at random among
+    /// the free names of the launcher's list),
     /// the permission bypass unless `--permissions` is given, and the first input `/moai agent`.
     #[arg(short = 'a', long)]
     agent: bool,
-    /// Session name (none by default; `-l` names it `<project name>-leader`, `-a` takes the first
-    /// free `<project name>-agent-<english name>`; with a role flag this name replaces those).
+    /// Session name (none by default; `-l` names it `<project name>-leader`, `-a` takes a name chosen
+    /// at random among the free `<project name>-agent-<english name>`; with a role flag this name replaces those).
     #[arg(long)]
     name: Option<String>,
     /// Main model (default `opus`).
@@ -973,6 +973,40 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Move the chosen Go-generation leftovers to a backup
+    ///
+    /// Moves the files of the chosen bundles of a previewed go-residue step into
+    /// `.moai/backups/<UTC>/go-residue/<same path>` and deletes nothing: the proven bundle
+    /// (`--bundle proven`, files byte-identical to the manifest) and each `--pick <path>` of a
+    /// changed file. Applies only when a fresh preview has the given digest; refuses a path
+    /// that is absolute, holds `..` or passes through a link, and saves a receipt before it
+    /// moves the first file.
+    GoResidueApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+        /// Move the byte-proven files; the only value is `proven`.
+        #[arg(long, value_name = "NAME", value_parser = ["proven"])]
+        bundle: Option<String>,
+        /// A changed Go file to move too (repeat for more).
+        #[arg(long = "pick", value_name = "PATH")]
+        pick: Vec<String>,
+    },
+    /// Put a go-residue move back
+    ///
+    /// Restores the files of one go-residue apply from its receipt: a file goes back only
+    /// when its original place is empty and the backup copy still has the recorded sha256;
+    /// any other item is reported as a conflict and both sides stay as they are.
+    GoResidueRevert {
+        project: PathBuf,
+        /// The apply's receipt stamp (`YYYYMMDDTHHMMSSZ`).
+        #[arg(long)]
+        receipt: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Preview an update of every host copy
     ///
     /// Read-only UPDATE preview over every host projection (04-B #1999; the command name
@@ -1288,6 +1322,8 @@ fn operation(command: &Command) -> Option<&'static str> {
         GoStateApply { .. } => "go_state.apply",
         GoStateRevertPlan { .. } => "go_state.revert_plan",
         GoStateRevert { .. } => "go_state.revert",
+        GoResidueApply { .. } => "go_residue.apply",
+        GoResidueRevert { .. } => "go_residue.revert",
         UpdatePlan { .. } => "update.plan",
         WorktreeApply { .. } => "worktree.apply",
         WorktreePlan { .. } => "worktree.plan",
@@ -2111,6 +2147,24 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             &permission_reference,
         )?)
         .map_err(|_| "encode failed".into()),
+        Command::GoResidueApply {
+            project,
+            plan_digest,
+            permission_reference,
+            bundle,
+            pick,
+        } => moai_cli::go_residue_apply::apply(
+            &project,
+            &plan_digest,
+            &permission_reference,
+            bundle.as_deref() == Some("proven"),
+            &pick,
+        ),
+        Command::GoResidueRevert {
+            project,
+            receipt,
+            permission_reference,
+        } => moai_cli::go_residue_apply::revert(&project, &receipt, &permission_reference),
         Command::UpdatePlan { home, stage } => {
             let staged = moai_cli::update::stage_package(&stage)?;
             serde_json::to_value(moai_cli::update::plan_update(&home, &staged)?)

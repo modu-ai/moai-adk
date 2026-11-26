@@ -47,10 +47,45 @@ pub struct Prepared {
     pub git_pending: bool,
 }
 
+/// Start of the one line [`state_write_stop`] answers.
+pub const STATE_STOP: &str = "moai: no MoAI state is created here";
+
+/// SPEC-20261126-no-state-folder-writes D-1: the one line a state writer answers for a project
+/// it must not write into: no earlier state folder in any form, and the resolver does not answer
+/// `.moai` (a `go`, `mixed`, `interrupted` or `refuse` verdict). Writing there would create the
+/// earlier folder anew. `None` when writing is as before. Reads only.
+pub fn state_write_stop(root: &Path) -> Option<String> {
+    let earlier = crate::state_root::EARLIER_PROJECT_DIR;
+    if fs::symlink_metadata(root.join(earlier)).is_ok()
+        || crate::state_root::dir(root) == crate::state_root::MOAI_DIR
+    {
+        return None;
+    }
+    let state = crate::state_root::classify(root);
+    let shown = root.display();
+    let next = match state.generation {
+        "go" => format!(
+            "run the read-only preview `moai go-state-plan {shown}` and decide from what it shows"
+        ),
+        "interrupted" => format!(
+            "run the read-only preview `moai go-state-revert-plan {shown} --backup <UTC>` \
+             (a folder name under .moai/backups/); with no such folder, you decide what happens \
+             to {}",
+            state.interrupted.join(", ")
+        ),
+        _ => "you decide what happens to .moai; MoAI moves nothing here".to_string(),
+    };
+    Some(format!(
+        "{STATE_STOP}: this project has no {earlier} and its .moai state is `{}` ({}). Next: {next}",
+        state.generation, state.reason
+    ))
+}
+
 /// Initializes `cwd` for a launch on `host` (`claude` or `glm`). Refuses — before any
 /// write — when git is missing from PATH, or when `cwd` is not a repository and is HOME itself
-/// or the file-system root. Under `dry_run` it writes nothing and reports the plan. A missing
-/// skill copy for the host ([`missing_skill`]) adds its warning as a second line of the note.
+/// or the file-system root. Under `dry_run` it writes nothing and reports the plan. A project
+/// [`state_write_stop`] names is not initialized at all; its line is the note. A missing skill
+/// copy for the host ([`missing_skill`]) adds its warning as a second line of the note.
 pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String> {
     let mut prepared = prepare_project(cwd, host, dry_run)?;
     if let Some(warning) = missing_skill(host) {
@@ -95,6 +130,14 @@ fn skill_warning(name: &str, root: Result<PathBuf, String>) -> Option<String> {
     ))
 }
 
+/// The answer for a project that gets nothing written: `line` as the note.
+fn stopped(line: String) -> Prepared {
+    Prepared {
+        note: Some(line),
+        git_pending: false,
+    }
+}
+
 fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String> {
     // An identity error (a git failure, a refused path) initializes nothing and leaves the
     // launch as it was before #2481: numbering reports its own error, other launches go on.
@@ -116,6 +159,10 @@ fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, St
                     "moai: {} is {what}; it is not turned into a git repository. Run the launcher in a project folder, or run `git init` here yourself first.",
                     dir.display()
                 ));
+            }
+            // Before `git init`: such a project gets nothing at all (REQ-2).
+            if let Some(line) = state_write_stop(&dir) {
+                return Ok(stopped(line));
             }
             if dry_run {
                 return Ok(Prepared {
@@ -182,6 +229,10 @@ fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, St
                     )),
                     git_pending: false,
                 });
+            }
+            // Before `settings()`: no `.init-pending` marker, profile or CLAUDE.md (REQ-2).
+            if let Some(line) = state_write_stop(&top) {
+                return Ok(stopped(line));
             }
             if dry_run {
                 let agents = if instruction_file(&top).is_some() {

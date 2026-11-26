@@ -15,6 +15,9 @@
 //!
 //! This file spells neither name: both are built at run time, so it needs no row of its own.
 
+mod common;
+
+use common::home::TempHome;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -185,10 +188,12 @@ fn judge(found: &Counts, allow: &Counts) -> Vec<String> {
 }
 
 const HOW_TO_FIX: &str = "\
-A fresh project or HOME finds its state folder through the resolvers: moai_cli::state_root::{dir, path, rel}
-or moai_cli::home_root::{dir, path} in Rust, a helper that mirrors them in Python. Only a test that builds
-an earlier layout on purpose (an old-layout fixture, a Go-generation folder, a migration) spells the name;
-for such a fixture raise its count in tests/fixtures/state_folder_literals/allow.tsv in the same change.";
+A test that needs a HOME's state folder asks TempHome::state_dir, and one that builds an earlier layout
+asks TempHome::make_earlier_state_dir (both in tests/common/home.rs); neither spells a folder name.
+Otherwise a fresh project or HOME finds its state folder through the resolvers: moai_cli::state_root::{dir, path, rel}
+or moai_cli::home_root::{dir, path} in Rust, a helper that mirrors them in Python. Only a fixture that
+builds an earlier layout on purpose (an old-layout fixture, a Go-generation folder, a migration) spells the
+name; for such a fixture raise its count in tests/fixtures/state_folder_literals/allow.tsv in the same change.";
 
 #[test]
 fn the_repository_tests_stay_within_the_state_folder_baseline() {
@@ -506,4 +511,64 @@ fn the_write_switch_form_is_sorted_and_judges_clean() {
     let rows: Vec<&str> = rendered.lines().filter(|l| !l.starts_with('#')).collect();
     assert_eq!(rows, ["tests/a_test.py\t0\t1", "tests/b_cli.rs\t2\t0"]);
     assert!(judge(&found, &parse_allow(&rendered)).is_empty());
+}
+
+/// SPEC-20261125-state-folder-test-helpers REQ-1, REQ-2: the two `TempHome` helpers give the
+/// folder the resolvers name, so a test never spells the folder itself.
+#[test]
+fn the_state_folder_helpers_agree_with_the_resolver() {
+    let fresh = TempHome::new();
+    let dir = fresh.state_dir();
+    assert_eq!(dir, fresh.path().join(moai_cli::home_root::MOAI_DIR));
+    assert_eq!(dir, moai_cli::home_root::path(fresh.path()));
+    assert!(dir.is_dir(), "{dir:?} is created");
+
+    let old = TempHome::new();
+    let earlier_dir = old.make_earlier_state_dir();
+    assert_eq!(earlier_dir, old.path().join(moai_cli::HOME_STATE_DIR));
+    assert!(earlier_dir.is_dir(), "{earlier_dir:?} is created");
+    assert_eq!(
+        moai_cli::home_root::dir(old.path()),
+        moai_cli::HOME_STATE_DIR,
+        "the resolver names the earlier folder for a HOME built that way"
+    );
+}
+
+/// SPEC-20261125-state-folder-test-helpers REQ-1, REQ-2: a test that uses the helpers spells no
+/// name, so it needs no `allow.tsv` row; the same text with a literal is flagged.
+#[test]
+fn a_test_that_uses_the_helpers_spells_no_state_folder_name() {
+    let path = "tests/helper_user_cli.rs";
+    let text = "#[test]\nfn finds_the_state() {\n    let home = TempHome::new();\n    \
+                let state = home.state_dir();\n    let old = TempHome::new();\n    \
+                let earlier = old.make_earlier_state_dir();\n    assert!(state.is_dir() && earlier.is_dir());\n}\n";
+    assert_eq!(count_text(text), (0, 0), "{text}");
+    assert!(judge(&one(path, text), &Counts::new()).is_empty());
+
+    let spelled = format!(
+        "{text}fn literal(home: &TempHome) {{ let _ = home.path().join(\"{}\"); }}\n",
+        earlier()
+    );
+    assert_eq!(count_text(&spelled), (1, 0), "{spelled}");
+    let violations = judge(&one(path, &spelled), &Counts::new());
+    assert_eq!(violations.len(), 1, "{violations:?}");
+    assert!(violations[0].contains(path), "{violations:?}");
+}
+
+/// SPEC-20261125-state-folder-test-helpers REQ-3: the rejection tells a test author the helpers
+/// by name, before the resolvers and the `allow.tsv` row rule.
+#[test]
+fn the_scan_rejection_names_the_helpers() {
+    for helper in ["TempHome::state_dir", "TempHome::make_earlier_state_dir"] {
+        assert!(
+            HOW_TO_FIX.contains(helper),
+            "{helper} is missing:\n{HOW_TO_FIX}"
+        );
+    }
+    let helper_at = HOW_TO_FIX.find("TempHome::state_dir").unwrap();
+    let resolver_at = HOW_TO_FIX.find("moai_cli::state_root").unwrap();
+    assert!(
+        helper_at < resolver_at,
+        "the helpers come before the resolvers"
+    );
 }

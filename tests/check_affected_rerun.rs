@@ -450,10 +450,12 @@ fn ac5_the_flaky_ledger_counts_names_and_marks_a_repeat() {
 fn ac5_an_unwritable_ledger_does_not_change_the_result() {
     let fx = Fixture::new();
     let r = Run::new();
-    // A folder where the ledger file belongs: the append fails.
+    // A folder where the ledger file belongs (the `local` folder of the project's state folder):
+    // the append fails.
     fs::create_dir_all(
         fx.root()
-            .join(moai_cli::PROJECT_STATE_DIR)
+            .join(moai_cli::state_root::MOAI_DIR)
+            .join(moai_cli::state_root::LOCAL_DIR)
             .join("check-flaky.jsonl"),
     )
     .unwrap();

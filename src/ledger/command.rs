@@ -28,8 +28,18 @@ pub fn resolve_home(home: Option<PathBuf>) -> Result<PathBuf> {
 pub fn project_id_of(project: &Path) -> Result<String> {
     let real = std::fs::canonicalize(project)
         .map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE.to_string())?;
-    crate::project_id::read(&real)?
-        .ok_or_else(|| "project profile missing: run the project setup first".to_string())
+    crate::project_id::read(&real)?.ok_or_else(|| profile_missing_message(&real))
+}
+
+/// The error for a project with no profile, ending in the next step. A linked worktree reads its
+/// primary checkout's profile, so the step names where the profile is expected.
+fn profile_missing_message(real: &Path) -> String {
+    format!(
+        "project profile missing in {}: run `/moai project` in the project's main checkout to \
+         create it (a linked worktree reads that profile), or pass `--project <folder>` for a \
+         project that has one",
+        real.display()
+    )
 }
 
 /// `ledger-register-plan`: what registering would do. Writes nothing.
@@ -224,4 +234,68 @@ pub fn state_counts(
         counts.push(row?);
     }
     Ok(counts)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    /// A primary checkout holding a profile and a linked worktree of it with none (the profile
+    /// is not tracked in the project), laid out the way git does it. No git process runs.
+    fn primary_and_linked(root: &Path, with_profile: bool) -> (PathBuf, PathBuf) {
+        let primary = root.join("primary");
+        let linked = root.join("linked");
+        fs::create_dir_all(primary.join(".git/worktrees/lane")).unwrap();
+        fs::create_dir_all(&linked).unwrap();
+        fs::write(
+            linked.join(".git"),
+            format!(
+                "gitdir: {}\n",
+                primary.join(".git/worktrees/lane").display()
+            ),
+        )
+        .unwrap();
+        fs::write(
+            primary.join(".git/worktrees/lane/gitdir"),
+            format!("{}\n", linked.join(".git").display()),
+        )
+        .unwrap();
+        if with_profile {
+            let dir = primary.join(crate::PROJECT_STATE_DIR);
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(
+                dir.join("project.yaml"),
+                "{\n  \"schema_version\": 2,\n  \"project_id\": \"canonical\"\n}\n",
+            )
+            .unwrap();
+        }
+        (primary, linked)
+    }
+
+    #[test]
+    fn a_linked_worktree_and_its_primary_have_one_project_id() {
+        let t = tempfile::tempdir().unwrap();
+        let (primary, linked) = primary_and_linked(t.path(), true);
+        assert_eq!(project_id_of(&primary).unwrap(), "canonical");
+        assert_eq!(project_id_of(&linked).unwrap(), "canonical");
+    }
+
+    #[test]
+    fn a_missing_profile_names_the_folder_and_the_next_step() {
+        let t = tempfile::tempdir().unwrap();
+        let (_primary, linked) = primary_and_linked(t.path(), false);
+        let e = project_id_of(&linked).unwrap_err();
+        let real = fs::canonicalize(&linked).unwrap();
+        assert!(e.starts_with("project profile missing in "), "{e}");
+        assert!(e.contains(&real.display().to_string()), "{e}");
+        assert!(e.contains("run `/moai project`"), "{e}");
+        assert!(e.contains("`--project <folder>`"), "{e}");
+        // the contract still reads it as a missing thing
+        assert_eq!(
+            crate::contract::classify(&e),
+            crate::contract::Kind::NotFound,
+            "{e}"
+        );
+    }
 }

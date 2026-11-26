@@ -2782,7 +2782,7 @@ mod skill_package {
             // #2639: read before asking, the five common axes, a file preview before approval,
             // and hand edits never overwritten on a re-run. C-51/C-52 (user decision
             // 2026-11-16): at most three per call (the Codex CLI limit), four calls.
-            "Read before you ask (Issue #2639)",
+            "Read before you ask: what `project-detect`",
             // #2706: the writing language is asked once, stored in project.yaml only, and read.
             "ask the four items, every run, with `moai language-setup <project>`",
             "so it is stored in the project profile through `project-plan`/`project-apply` and nowhere else",
@@ -2797,7 +2797,7 @@ mod skill_package {
             "The same plan carries a `REVIEW.md` section when the interview recorded `review_blocks` or `protected`",
             "an unanswered axis is never written as a rule",
             // #2639 project agents: from the answers, never a base name, host files only.
-            "**Propose a project harness (Issue #2639).**",
+            "**Propose a project harness.**",
             "its `role_id` is `prj-<name>` for the project's own job",
             "a project agent never shadows a user-layer `moai-*` agent",
             "Offer project skills the same way: each is one `project_skills` entry",
