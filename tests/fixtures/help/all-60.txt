@@ -101,6 +101,9 @@ Update and move
   go-state-revert-plan    Preview undoing a Go-era folder
                           move
   go-state-revert         Undo a Go-era folder move
+  go-residue-apply        Move the chosen Go-generation
+                          leftovers to a backup
+  go-residue-revert       Put a go-residue move back
   home-state-plan         Preview moving the Go-era ~/.moai
                           folder
   home-state-apply        Move a previewed Go-era ~/.moai
@@ -368,6 +371,8 @@ Internal
   statusline              Render the Claude Code status line
   hook-receipt            Record one hook receipt line
   hook-dispatch           Run one MoAI hook duty for a host
+  manifest-merge-driver   Git merge driver of the skill
+                          source manifest
   forge-read              Read GitHub Issues and comments as
                           tasks
   forge-links-probe       Probe the GitHub sub-issue and

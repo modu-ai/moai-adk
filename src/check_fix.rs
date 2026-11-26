@@ -1,8 +1,9 @@
 //! `check fix` (SPEC-20261125-check-fast-and-fix): writes the table lines and hashes a range needs
 //! when no human has to choose them, and prints the line of every other violation as it is. The
 //! writes are three: the sha256 values of the skill package manifest, the first word of a new test
-//! file in the area the caller names, and a `--test` option on an existing check line of an
-//! `always` scan. Every write goes through a temporary file and a rename and is refused when the
+//! file in the area the caller names, and a test target of an `always` scan (a name in its
+//! `test_targets` list, or a `--test` option on an existing check line of a scan without the
+//! list). Every write goes through a temporary file and a rename and is refused when the
 //! file or a folder above it is a link. After writing, the same in-process judges that
 //! `check affected` uses are asked again, so the answer is `PASS` only when nothing is left to print.
 
@@ -379,17 +380,90 @@ fn fix_areas(facts: &Facts, opts: &Options, out: &mut Outcome) {
     }
 }
 
-/// `text` of the scan registry with ` --test <stem>` added to one cargo check line of the scan
-/// `id`, edited in place: the JSON text of the line is replaced and nothing else is re-written.
-/// `None` when the scan has no cargo line that already names a `--test` target or the line's text
-/// cannot be found as it is.
-fn add_test_option(text: &str, id: &str, stem: &str) -> Option<String> {
-    let value: Value = serde_json::from_str(text).ok()?;
-    let scan = value
+/// The entry of the scan `id` in a parsed scan registry.
+fn scan_of<'a>(registry: &'a Value, id: &str) -> Option<&'a Value> {
+    registry
         .get("scans")?
         .as_array()?
         .iter()
-        .find(|s| s.get("id").and_then(Value::as_str) == Some(id))?;
+        .find(|s| s.get("id").and_then(Value::as_str) == Some(id))
+}
+
+/// The scan `id` keeps its cargo targets in a `test_targets` field.
+fn lists_targets(text: &str, id: &str) -> bool {
+    serde_json::from_str::<Value>(text)
+        .ok()
+        .and_then(|v| {
+            scan_of(&v, id)?
+                .get("test_targets")
+                .map(|list| !list.is_null())
+        })
+        .unwrap_or(false)
+}
+
+/// `text` of the scan registry with `stem` added to the `test_targets` array of the scan `id` at
+/// its place in the ascending list, edited in place: one name is inserted with the white space
+/// its neighbour has, and nothing else is re-written. `None` when the stem is no target name or
+/// is listed already, the array holds anything but names, or its text cannot be found.
+fn add_target_name(text: &str, id: &str, stem: &str) -> Option<String> {
+    let value: Value = serde_json::from_str(text).ok()?;
+    let names: Vec<&str> = scan_of(&value, id)?
+        .get("test_targets")?
+        .as_array()?
+        .iter()
+        .map(Value::as_str)
+        .collect::<Option<_>>()?;
+    if !crate::repo_scans::is_target_name(stem) || names.contains(&stem) {
+        return None;
+    }
+    let at = names
+        .iter()
+        .position(|name| *name > stem)
+        .unwrap_or(names.len());
+    // The one document the edit may give: the old one with the name at its place.
+    let mut grown = names.clone();
+    grown.insert(at, stem);
+    let mut want = value.clone();
+    *want
+        .get_mut("scans")?
+        .as_array_mut()?
+        .iter_mut()
+        .find(|s| s.get("id").and_then(Value::as_str) == Some(id))?
+        .get_mut("test_targets")? = json!(grown);
+    // The name the new one goes before, or the last name when it goes at the end.
+    let neighbour = format!("\"{}\"", names.get(at).or_else(|| names.last())?);
+    let added = format!("\"{stem}\"");
+    // The same array text can stand in several scans: keep the edit that gives `want`.
+    text.match_indices("\"test_targets\"")
+        .find_map(|(key, found)| {
+            let open = key + found.len() + text[key + found.len()..].find('[')?;
+            let close = open + text[open..].find(']')?;
+            let start = open + text[open..close].find(&neighbour)?;
+            let lead = &text[text[..start].trim_end().len()..start];
+            let candidate = if at < names.len() {
+                format!("{}{added},{lead}{}", &text[..start], &text[start..])
+            } else {
+                let end = start + neighbour.len();
+                format!("{},{lead}{added}{}", &text[..end], &text[end..])
+            };
+            let doc: Value = serde_json::from_str(&candidate).ok()?;
+            (doc == want).then_some(candidate)
+        })
+}
+
+/// `text` of the scan registry with `stem` added to the targets of the scan `id`. A scan with a
+/// `test_targets` field gets the name there and keeps its check lines as they are: a name put
+/// into a filtered line would cut the module filters behind it out of the selection of
+/// `check affected`. A scan without the field gets ` --test <stem>` on one of its cargo check
+/// lines, edited in place: the JSON text of the line is replaced and nothing else is re-written.
+/// `None` when the scan has no cargo line that already names a `--test` target or the line's text
+/// cannot be found as it is.
+fn add_test_option(text: &str, id: &str, stem: &str) -> Option<String> {
+    if lists_targets(text, id) {
+        return add_target_name(text, id, stem);
+    }
+    let value: Value = serde_json::from_str(text).ok()?;
+    let scan = scan_of(&value, id)?;
     let line = scan
         .get("checks")?
         .as_array()?
@@ -458,10 +532,12 @@ fn fix_registry(facts: &Facts, out: &mut Outcome) {
         };
         if let Some(candidate) = add_test_option(&current, id, stem) {
             if crate::gate::registry_only_grew(rel, &old, &candidate) {
+                what.push(if lists_targets(&candidate, id) {
+                    format!("added `{stem}` to `test_targets` of the scan `{id}`")
+                } else {
+                    format!("added `--test {stem}` to a check of the scan `{id}`")
+                });
                 current = candidate;
-                what.push(format!(
-                    "added `--test {stem}` to a check of the scan `{id}`"
-                ));
             }
         }
     }
@@ -606,5 +682,54 @@ mod tests {
         let no_target = registry.replace("--test one ", "");
         assert_eq!(add_test_option(&no_target, "a", "two"), None);
         assert_eq!(add_test_option(registry, "b", "two"), None);
+    }
+
+    #[test]
+    fn a_scan_with_test_targets_gets_the_name_at_its_place_and_keeps_its_check_lines() {
+        // Two scans with the same target list: only the named one changes.
+        let entry = |id: &str| {
+            json!({
+                "id": id,
+                "test_targets": ["bb", "dd"],
+                "checks": ["cargo test --offline --locked --test card one:: -- two::"],
+            })
+        };
+        let doc = json!({"scans": [entry("a"), entry("b")]});
+        let registry = serde_json::to_string_pretty(&doc).unwrap() + "\n";
+        let array = |names: &[&str]| {
+            let lines: Vec<String> = names.iter().map(|n| format!("        \"{n}\"")).collect();
+            format!("\"test_targets\": [\n{}\n      ]", lines.join(",\n"))
+        };
+        let old_array = array(&["bb", "dd"]);
+        for (stem, names) in [
+            ("aa", ["aa", "bb", "dd"]),
+            ("cc", ["bb", "cc", "dd"]),
+            ("ee", ["bb", "dd", "ee"]),
+        ] {
+            let grown = add_test_option(&registry, "b", stem).unwrap();
+            let at = registry.rfind(&old_array).unwrap();
+            let want = format!(
+                "{}{}{}",
+                &registry[..at],
+                array(&names),
+                &registry[at + old_array.len()..]
+            );
+            assert_eq!(grown, want, "{stem}: one new line in the second scan only");
+            assert!(crate::gate::registry_only_grew(
+                crate::gate::SCAN_REGISTRY,
+                &registry,
+                &grown
+            ));
+        }
+        // A one-line array stays on its line.
+        let compact = r#"{"scans":[{"id":"a","test_targets":["bb"]}]}"#;
+        assert_eq!(
+            add_test_option(compact, "a", "cc").as_deref(),
+            Some(r#"{"scans":[{"id":"a","test_targets":["bb","cc"]}]}"#)
+        );
+        // Listed already, no target name, no such scan: nothing, and never a check line.
+        assert_eq!(add_test_option(&registry, "a", "bb"), None);
+        assert_eq!(add_test_option(&registry, "a", "Bad"), None);
+        assert_eq!(add_test_option(&registry, "z", "cc"), None);
     }
 }
