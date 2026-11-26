@@ -104,20 +104,18 @@ created: 2026-11-26
 
 AC 의 확인 명령을 적힌 그대로 돌렸어요. head `3ea9c4b83754c2fc64b535004010d5ecaf64a2e3`(코드는 `f5af3ae71c` 와 같음), macOS, `--max 2` 슬롯, 로그 `target/zoe/ac-verbatim.log`, 모든 명령 종료 0.
 
-| AC | 명령 | 통과한 테스트 |
-| --- | --- | --- |
-| AC-1 | `cargo test --locked --offline --test heavy_slot_cli cpu_ac1_` | 4 |
-| AC-2 | `cargo test --locked --offline --test heavy_slot_cli cpu_ac2_` | 3 |
-| AC-3 | `cargo test --locked --offline --test heavy_slot_cli cpu_ac3_` | 6 |
-| AC-4 | `cargo test --locked --offline --lib heavy_slot::cpu_tests` | 9 |
-| AC-5 | `cargo test --locked --offline --test check_affected_one_slot cpu_ac5_` | 2 |
-| AC-6 | `cargo test --locked --offline --test heavy_slot_cli cpu_ac6_` | 1 |
-| AC-7 | `cargo test --locked --offline --test heavy_slot_cli --test heavy_slot_fifo_cli --test heavy_slot_jobs_cleanup_cli --test check_affected_one_slot` | 54, 10, 6, 9 |
-| AC-8 | `cargo test --locked --offline --test heavy_slot_cli cpu_ac8_` | 2 |
+- AC-1: met — `cargo test --locked --offline --test heavy_slot_cli cpu_ac1_` 4 통과
+- AC-2: met — `cargo test --locked --offline --test heavy_slot_cli cpu_ac2_` 3 통과
+- AC-3: met — `cargo test --locked --offline --test heavy_slot_cli cpu_ac3_` 6 통과
+- AC-4: met — `cargo test --locked --offline --lib heavy_slot::cpu_tests` 9 통과
+- AC-5: met — `cargo test --locked --offline --test check_affected_one_slot cpu_ac5_` 2 통과
+- AC-6: met — `cargo test --locked --offline --test heavy_slot_cli cpu_ac6_` 1 통과
+- AC-7: met — `cargo test --locked --offline --test heavy_slot_cli --test heavy_slot_fifo_cli --test heavy_slot_jobs_cleanup_cli --test check_affected_one_slot` 54, 10, 6, 9 통과
+- AC-8: met — `cargo test --locked --offline --test heavy_slot_cli cpu_ac8_` 2 통과
 
 같은 실행에서 스캔 테스트 `state_folder_literal_scan`(13), `next_flow_skill_scan`(76), `source_manifest_facts`(8)도 통과했어요. 코드 head `f5af3ae71c` 에서는 `cargo clippy --locked --offline --lib --test heavy_slot_cli --test check_affected_one_slot -- -D warnings`, `--lib heavy_slot`(32), `test_switch_release_scan`(4), `cli_text_citations`(5)가 통과했어요(로그 `target/zoe/green-ac5.log`).
 
-AC-5 의 실패 확인: `bab95d2cc9` 에 테스트만 더해(`6b79bebf2b`) `cargo test --locked --offline --test check_affected_one_slot cpu_ac5_` 를 돌리면 종료 101 이에요. 기다린 실행의 테스트가 `no slot_wait word` 단언에서 실패하고, 기다리지 않은 실행의 테스트는 통과해요.
+`slot_wait` 테스트의 실패 확인: `bab95d2cc9` 에 테스트만 더해(`6b79bebf2b`) `cargo test --locked --offline --test check_affected_one_slot cpu_ac5_` 를 돌리면 종료 101 이에요. 기다린 실행의 테스트가 `no slot_wait word` 단언에서 실패하고, 기다리지 않은 실행의 테스트는 통과해요.
 
 구현 중에 찾아 고친 것: macOS 는 짧은 간격의 두 CPU 틱 읽기에 같은 값을 돌려줘서, 처음 코드는 실제 기다림을 1초 만에 끝냈어요. 같은 값은 표본으로 치지 않고 앞의 비율을 유지해요(`88e69902c0`, D-2).
 
