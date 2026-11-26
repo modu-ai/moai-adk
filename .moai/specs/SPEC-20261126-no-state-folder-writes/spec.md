@@ -56,3 +56,16 @@ created: 2026-11-26
 - D-2: 첫 초기화는 `git init` 과 CLAUDE.md 까지 통째로 건너뛰어요(결정 9717 "아무것도 만들지 않고"). host 는 시작해요.
 - D-3: 안내는 다른 CLI 거절·launcher 알림처럼 영어 한 줄이에요. 화면 번역은 더하지 않아요.
 - D-4: `project-apply` 는 plan 입력을 읽기 전에 거절해요. 그래서 낡은 plan 이어도 같은 안내를 받아요.
+
+## Result
+
+구현 head `896444ec58b6d55920c460a6ad2dc7266994943d`, base `5a6aa857d3d0fc5d088f4f46a785eb28f6dcd5df`.
+
+- AC-1 met: `apply_writes_nothing_and_names_the_next_step_for_every_stopped_verdict`, `apply_refuses_before_it_reads_the_plan` 통과. 고치기 전 코드에서는 interrupted 프로젝트의 `project-apply` 가 `ok: true` 로 상태를 썼어요(red).
+- AC-2 met: `launch_creates_nothing_says_one_line_and_starts_the_host`, `launch_dry_run_reports_the_same_line_and_writes_nothing` 통과(저장소 있음·없음, 네 판정).
+- AC-3 met: `control_apply_writes_where_it_wrote_before`, `control_launch_initializes_a_new_project_and_one_with_the_earlier_folder` 통과.
+- AC-4 met: `follow_apply_writes_exactly_when_the_resolver_answers_moai`, `follow_launch_initializes_exactly_when_the_resolver_answers_moai` 통과. 되돌아온 Go 표식을 `.moai` 로 답하는 resolver 변경을 얹은 상태에서도 새 시험 8개가 통과했어요.
+- 위험 경로: 빌드한 바이너리로 일회용 Go 프로젝트에서 `moai cc` 는 host 를 시작하고 알림 한 줄만, `project-apply` 는 거절, 트리는 전후 같음.
+- guard-mutant: 멈춤 호출 셋, 조건을 항상 거짓·항상 참(`.moai` 트리까지), 옛 폴더 조건 제거 — 여섯 가지 모두 해당 시험이 실패(exit 100).
+- 다루지 않은 것: `project-apply` 와 첫 초기화 밖의 쓰기 명령(Non-goals).
+- 위험 경로·guard-mutant·resolver 변경 확인은 `2adb6109516617adb51141292429019874de7c55` 에서 돌렸어요. 그 뒤 바뀐 것은 시험의 폴더 이름 표기(resolver 상수)와 이 Result 뿐이고 `src` 는 같아요.
