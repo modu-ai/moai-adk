@@ -958,6 +958,10 @@ fn update_with_another_hold_prints_no_command_and_says_why_the_folder_stays() {
         assert_eq!(state["apply"], Value::Null, "{state}");
         let why = state["reason"].as_str().unwrap();
         assert!(why.contains(stays), "{stays:?}: {why}");
+        assert!(
+            why.contains("run `moai project-update-plan` again"),
+            "{why}"
+        );
         assert!(why.contains("a session never edits"), "{why}");
     }
 }

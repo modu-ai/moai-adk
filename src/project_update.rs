@@ -694,8 +694,8 @@ fn local_pick_next(picked: &go_state::GoStatePlan) -> String {
         .find(|i| i.path == state_root::MOAI_DIR)
         .map_or("", |i| i.reason.as_str());
     format!(
-        "`{pick}` rewrites {LOCAL_SETTINGS}, but the folder still stays: {why}; a session never \
-         edits that file by hand"
+        "`{pick}` rewrites {LOCAL_SETTINGS}, but the folder still stays: {why}; once that is \
+         resolved, run `moai project-update-plan` again; a session never edits that file by hand"
     )
 }
 
