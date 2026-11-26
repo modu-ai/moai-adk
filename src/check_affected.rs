@@ -3078,6 +3078,9 @@ pub fn run_with(
             "label": s.label, "exit": code, "log": log.to_string_lossy(), "command": words,
         }));
     }
+    // SPEC-20261126-heavy-slot-cpu-free REQ-7: how long the slot waited for CPU headroom, read
+    // before the slot is let go; `None` when it did not wait.
+    let slot_wait = held.as_ref().and_then(|(h, _)| h.cpu_waited_secs());
     drop(held);
     // Nothing verified a repository without Rust code that declares no check: that is `not_run`,
     // unless a step failed (REQ-3, REQ-4).
@@ -3118,6 +3121,9 @@ pub fn run_with(
     let mut extra = rerun.words(kept.as_deref());
     if !flaky.is_empty() {
         extra.push(format!("flaky={}", flaky.len()));
+    }
+    if let Some(secs) = slot_wait {
+        extra.push(format!("slot_wait={secs}"));
     }
     let line = crate::check_flaky::with_words(&line, &extra);
     let mut answer = serde_json::json!({
