@@ -116,3 +116,12 @@ head 05ccfb5e13 은 옮기지 않는 `cd` 세 가지(`$( … )` 안 here-documen
 - AC-6: met — `a_known_false_denial_stays_denied` 1/1 통과(입력 4개 × 두 모드), 같은 변경에서 `hooks_cd_guard_cli`·`hook_bash_boundary_cli` 43/43 통과. 동작을 고정하는 테스트라 처음 실행부터 통과했어요(RED 기록 없음).
 - 셸 실행 확인(`cd` 를 `echo` 로 바꿔서): 주석 입력 둘과 `EOF$X` 입력은 zsh 5.9 와 bash 3.2 모두 그 줄을 실행하지 않아요. here-document 입력은 zsh 5.9 만 본문으로 읽고 bash 3.2 는 실행해요.
 - 가드 뮤턴트: 새 가드 코드가 없어 추가하지 않았어요(앞의 8개는 그대로).
+
+### 개정 3: 거절 글의 cargo 꼴
+
+배치 24 의 글 수정에 대한 리뷰 노트 10564 의 논블로킹 둘을 고쳤어요. 글이 권한 `cargo --manifest-path <path>/Cargo.toml` 은 cargo 가 거절하는 꼴이라(플래그는 부속 명령 뒤) `cargo test --manifest-path <path>/Cargo.toml` 로 고쳤고, AC-1 문구를 실제 글에 맞췄어요(D-8). 코드 head 1380fe8dfc(base 8933f238cd), 승인은 노트 10637(사용자가 직접 골랐어요, 2026-11-27).
+
+- AC-1: met — `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_worktree_session_cd_is_denied)'` 1/1 통과(종료 0, 개정 3 문구 그대로)
+- AC-7: met — `cargo nextest run --test hooks_cd_guard_cli -E 'test(the_session_cd_refusal_cargo_form_is_one_cargo_accepts)'` 1/1 통과(종료 0). 글을 고치기 전에는 같은 테스트가 단언 실패, 종료 100(`tdd red` 기록, 커밋 4640b4dba4).
+- AC-2, AC-3, AC-5, AC-6 와 `hooks_cd_guard_cli` 전체: `cargo nextest run --offline --locked --test hooks_cd_guard_cli --test hook_bash_boundary_cli` 45/45 통과(`hook_bash_boundary_cli` 38, `hooks_cd_guard_cli` 7), AC-4 `rg -c 'cd into it' src` 종료 1.
+- 가드 뮤턴트 1개: 글의 `cargo test --manifest-path` 에서 `test` 를 지우면(Edit, 되돌림) `the_session_cd_refusal_cargo_form_is_one_cargo_accepts` 종료 100.
