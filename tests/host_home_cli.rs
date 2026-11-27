@@ -322,7 +322,7 @@ fn agents_and_the_output_style_follow_the_variables() {
         vec![
             (
                 "style_file".to_string(),
-                s(&conf.join("output-styles/MoAI-Easy.md"))
+                s(&conf.join("output-styles/MoAI-Style.md"))
             ),
             ("setting".to_string(), s(&conf.join("settings.json"))),
         ],
@@ -679,7 +679,7 @@ fn the_user_scope_guards_refuse_empty_and_relative_values() {
         let m = refused(&w.run_os(
             &[("CLAUDE_CONFIG_DIR", std::ffi::OsStr::new(bad))],
             &["claude-settings-plan", &s(&project)],
-            Some(br#"{"outputStyle":"MoAI-Easy"}"#),
+            Some(br#"{"outputStyle":"MoAI-Style"}"#),
         ));
         assert!(m.contains("CLAUDE_CONFIG_DIR"), "{bad:?}: {m}");
     }

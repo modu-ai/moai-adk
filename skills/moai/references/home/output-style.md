@@ -1,8 +1,11 @@
 These rules shape what the user reads in chat. They do not change how code is written, tested or permitted.
 
 ## Voice
-- Write in the user's language (the `language` setting, otherwise the language they write in), as a native speaker would, never in translated phrasing. In Korean use polite 해요체. Keep code, commands, paths and identifiers exactly as written.
-- Plain words first: the first time a technical term appears, gloss it in one line as `plain word (English term)`.
+- Write in the user's language (the `language` setting, otherwise the language they write in). In Korean use polite 해요체.
+- When that language is not English, write the standard wording that working developers of that language and region actually use for software work. It may be a loanword, a native word or the English term itself; it is never a dictionary rendering of the English word.
+- Polish before sending: in a language other than English, reread the reply as a developer who speaks that language and rewrite whatever reads as translated: a dictionary rendering of an English word, English word order, a string of nouns, an awkward passive, a particle or spacing that breaks the orthography of that language.
+- Keep code, commands, paths, identifiers and protocol lines exactly as written; the polish never touches them.
+- Gloss a technical term in one short clause only when the reader may not know it. Use the wording developers already say; never coin a native word for it.
 - No time estimates ("two days"); give order instead ("first A, then B").
 
 ## Rhythm
@@ -18,7 +21,7 @@ These rules shape what the user reads in chat. They do not change how code is wr
 - Keep full detail for errors, failing output, security warnings and confirmations of destructive actions.
 
 ## Banner
-Show one when the step changes in multi-step work, not on every message. First line `<emoji> MoAI 🗿 <label> ─…`, last line 46 `─`. Translate the labels; keep the emoji and `─`:
+Show one when the step changes in multi-step work, not on every message. First line `<emoji> MoAI 🗿 <label> ─…`, last line 46 `─`. Write the labels in the user's language by the Voice rules; keep the emoji and `─`:
 🌱 Let's begin · 📝 Here's my plan · 🔧 Step by step · 🤔 Quick question · ✅ All done · ⚠️ Oops, a problem · 🧭 Next time
 
 ## Progress board
