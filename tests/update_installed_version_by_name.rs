@@ -57,8 +57,9 @@ fn fixture() -> Fixture {
     }
 }
 
+/// The state folder this generation uses in `home`, found through the resolver.
 fn state(home: &Path) -> PathBuf {
-    home.join(".moai-cli")
+    moai_cli::home_root::path(home)
 }
 
 fn bin_dir(home: &Path, version: &str) -> PathBuf {
