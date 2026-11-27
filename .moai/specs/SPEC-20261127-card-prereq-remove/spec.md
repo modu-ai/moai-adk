@@ -59,8 +59,7 @@ created: 2026-11-27
 
 - write: `src/ledger/workflow.rs`, `src/ledger/reservation.rs`, `src/card/dispatch.rs`, `src/card/work.rs`, `src/ops/card.rs`(공유 파일, 줄 리스로), `docs/design-review/appendix/operations/card.md`(공유 파일, 줄 리스로), `tests/card/card_hold_gate_cli.rs`, `tests/card/ledger_reservation.rs`, `.moai/specs/SPEC-20261127-card-prereq-remove/**`, `.moai/specs/SPEC-20261121-card-hold-gate/spec.md`(Result 에 두 줄만)
 - read-only: `src/ledger/schema.rs`, `src/card/hold_candidates.rs`, `src/card/command.rs`, `tests/common/home.rs`
-- forbidden: 스키마 변경, 진짜 HOME 과 진짜 장부(시험은 임시 HOME 만)
-- 읽은 사실(2026-11-27, tip `7ec80a8155`): `add_prerequisite`(`src/ledger/workflow.rs`)는 같은 쌍의 거꾸로 링크 하나만 봐서 두 카드 순환만 거절해요. `card_link` 는 `kind IN ('blocks',…)` 와 `state IN ('active','retired')` 를 갖고 `card_link_no_delete` 트리거가 행 삭제를 막아요. `event` 에는 `kind` 검사가 없어서 새 이벤트 이름은 스키마를 안 바꿔요. `hold_gate_refusal` 은 `src/card/dispatch.rs` 에서 `card take` 가 `is_ready` 일 때 예약 앞에서 불러요; `reserve_in_tx`(`src/ledger/reservation.rs`)는 그 검사를 하지 않아요. `ReserveError` 는 시험 둘(`tests/card/ledger_reservation.rs`, `ledger_recover.rs`)이 이름으로 맞춰 보는데 `other =>` 갈래와 `matches!` 를 써서 변형을 더해도 깨지지 않아요(`ledger_reservation.rs` 의 `match` 를 읽었어요).
+- forbidden: `src/ledger/schema.rs`(스키마는 바꾸지 않아요), 진짜 HOME 의 장부(시험은 임시 HOME 만 써요)
 
 ## Plan
 
@@ -70,6 +69,8 @@ created: 2026-11-27
 4. `reservation.rs`: `ReserveError::HoldGate(String)`(`code` 는 `hold_gate`, 글은 그대로 보여 줘요)와 `reserve_in_tx` 의 `gate` 인자. 두 sweeping 길만 `true` 를 넘겨요. 검사는 `state != "ready"` 거절 뒤, 쓰기 앞이에요.
 5. `work.rs`·`ops/card.rs`: `card prereq` 에 `--remove`, 답에 `removed`. 운영 문서와 옛 SPEC 의 Result 두 줄.
 6. 검증: AC 의 명령. 가드 뮤턴트(새 가드 테스트마다 한 줄: 순환 검사 끔, 철회 규칙 끔, 접힌 카드까지 풀어 줌, 트랜잭션 안 검사 끔, 링크를 지우지 않고 `active` 로 둠). 위험한 길: 행이 지워지지 않는 장부(트리거)와 임시 HOME 에서 진짜 `moai` 로 take·remove 를 돌려요. `check affected --card` 뒤 READY.
+
+읽은 사실(2026-11-27, NeXT 끝점 7ec80a8155): `add_prerequisite`(`src/ledger/workflow.rs`)는 같은 쌍의 거꾸로 링크 하나만 봐서 두 카드 순환만 거절해요. `card_link` 는 `kind IN ('blocks',…)` 와 `state IN ('active','retired')` 를 갖고 `card_link_no_delete` 트리거가 행 삭제를 막아요. `event` 에는 `kind` 검사가 없어서 새 이벤트 이름은 스키마를 안 바꿔요. `hold_gate_refusal` 은 `src/card/dispatch.rs` 에서 `card take` 가 `is_ready` 일 때 예약 앞에서 불러요; `reserve_in_tx`(`src/ledger/reservation.rs`)는 그 검사를 하지 않아요. `ReserveError` 는 시험 둘(`tests/card/ledger_reservation.rs`, `ledger_recover.rs`)이 이름으로 맞춰 보는데 `other =>` 갈래와 `matches!` 를 써서 변형을 더해도 깨지지 않아요(`ledger_reservation.rs` 의 `match` 를 읽었어요).
 
 ## Decisions
 
