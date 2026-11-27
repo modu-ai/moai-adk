@@ -257,6 +257,37 @@ fn choice_shaped(row: &str) -> bool {
     bracket_question(row) || bracketed(body) || marked(body, true) || split_choice(body)
 }
 
+/// Whether a question row carries its own choices: a bracket question (`Overwrite? (y/N/a)`), or a
+/// choice shape in the tail after a question mark (`Do you want to proceed? Yes/No`, `… ?
+/// [Yes] [No]`, `… ? yes or no`). The question's own words are never read as a shape (`Would you
+/// like me to commit or push?` is a plain question), so only the text after a `?` counts. A row
+/// with no question mark (`are you sure Yes/No`) is read from each of its last three words on.
+fn question_tail_shaped(row: &str) -> bool {
+    if bracket_question(row) {
+        return true;
+    }
+    if row.contains('?') {
+        return row
+            .split('?')
+            .skip(1)
+            .map(str::trim)
+            .any(|tail| !tail.is_empty() && choice_shaped(tail));
+    }
+    let mut starts: Vec<usize> = Vec::new();
+    let mut offset = 0;
+    for word in row.split(' ') {
+        if !word.is_empty() {
+            starts.push(offset);
+        }
+        offset += word.len() + 1;
+    }
+    starts
+        .iter()
+        .rev()
+        .take(3)
+        .any(|at| choice_shaped(&row[*at..]))
+}
+
 /// Whether a row is a list entry the shape reader newly knows (no question needed): `[1] Yes`,
 /// `1: Yes`, `a. Yes`. The `1.` and `1)` rows are the reader of [`numbered`].
 fn list_entry(row: &str) -> bool {
@@ -400,9 +431,11 @@ pub fn classify(rows: &[String]) -> Seen {
     // below it, and no numbered Yes and No rows the reader could use (the choices are drawn in a
     // way it does not know, or in other words): Enter may pick the first choice, so the lane is
     // not `working` or `idle` whatever its footer says (leader R-N1, note 3256). The choices
-    // are there when a choice-shaped row (`choice_shaped`: a bracket question, a button or list
-    // entry, a split of short words) is on the question row or below it (R-B1, note 3433:
-    // `proceed? (yes/no)` is one row), when two or more numbered rows are below it whatever they
+    // are there when the question row ends in a choice shape (`question_tail_shaped`: the tail
+    // after its question mark, R-B1, note 3433: `proceed? (yes/no)` is one row, and review note
+    // 10724: `Do you want to proceed? Yes/No`), when a choice-shaped row (`choice_shaped`: a
+    // bracket question, a button or list entry, a split of short words) is below it, when two or
+    // more numbered rows are below it whatever they
     // say (R-N1, note 3433: `1. Allow once`, `3. Deny`), or when two bare words stand one to a
     // row (`Allow`, `Deny`). A bracket question such as `Overwrite? (y/N/a)` is its own question.
     // A question with only the input line under it is a lane that ended its turn and waits: that
@@ -418,7 +451,8 @@ pub fn classify(rows: &[String]) -> Seen {
     if let Some((i, _)) = near_bottom.iter().find(|(i, row)| {
         let known = QUESTIONS.iter().any(|q| lower[*i].contains(q)) || bracket_question(row);
         known
-            && (rows[*i..].iter().any(|r| choice_shaped(r))
+            && (question_tail_shaped(row)
+                || rows[*i + 1..].iter().any(|r| choice_shaped(r))
                 || word_rows(&rows[*i + 1..])
                 || rows[*i + 1..]
                     .iter()
@@ -1302,6 +1336,67 @@ mod tests {
         assert_eq!(screen(&["yes", "All done.", q]).state, State::Working);
         // Numbered rows ABOVE the question do not count.
         assert_eq!(screen(&["1. a", "2. b", q]).state, State::Working);
+    }
+
+    #[test]
+    fn a_question_row_is_read_by_its_tail_after_the_question_mark() {
+        // The tail after a `?` is a choice shape; the question's own words never are.
+        for row in [
+            "Do you want to proceed? Yes/No",
+            "Do you want to delete the build folder? Yes/No",
+            "Do you want to delete the build folder? [Yes] [No]",
+            "Do you want to continue? yes or no",
+            "Do you want to continue? Allow / Deny",
+            "Do you want to proceed? Yes/No?",
+            "Do you want to proceed? 1. Yes 2. No",
+            "Overwrite? (y/N/a)",
+            // No question mark: read from each of the last three words on.
+            "Are you sure Yes/No",
+            "Do you want to proceed [Yes] [No]",
+        ] {
+            assert!(question_tail_shaped(row), "{row:?} carries its choices");
+        }
+        for row in [
+            "Do you want me to run the tests now?",
+            "Would you like me to commit or push?",
+            "Do you want to continue or stop?",
+            "Do you want to continue? no changes yet",
+            "Do you want to continue? yes, go ahead",
+            "Do you want to continue? allowed 3 lanes so far",
+            "Are you sure about the plan",
+        ] {
+            assert!(!question_tail_shaped(row), "{row:?} is a plain question");
+        }
+        // The same rows on a screen: a refusal on a working and on a waiting one, a pass for the
+        // plain questions.
+        let on_screen = |row: &str, waiting: bool| {
+            let mut v = filler(
+                4,
+                &[if waiting {
+                    "agent waiting"
+                } else {
+                    "✳ Frosting… (esc to interrupt)"
+                }],
+            );
+            v.push(row.to_string());
+            if waiting {
+                v.push("❯ ".to_string());
+                v.push("? for shortcuts".to_string());
+            }
+            classify(&v).state
+        };
+        for waiting in [false, true] {
+            assert_eq!(
+                on_screen("Do you want to proceed? Yes/No", waiting),
+                State::Unknown,
+                "waiting {waiting}"
+            );
+            assert_ne!(
+                on_screen("Would you like me to commit or push?", waiting),
+                State::Unknown,
+                "waiting {waiting}"
+            );
+        }
     }
 
     #[test]
