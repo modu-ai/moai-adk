@@ -567,7 +567,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai agent` takes one card at a time, hands its plan, implementation and documents to the base agents in turn, submits it with `moai card submit` and waits for the leader (user decision 2026-11-25); a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "608c91fe55cf446a1b8e98f0fd2ea6cb7aaeb6b9fbd376a79d064473492a2fa0"
+      "sha256": "6f4a9b444eb542192e0d8c0aa83908708257793e9bd21a698f0295f6733f2df4"
     }
   }
 }

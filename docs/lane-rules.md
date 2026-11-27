@@ -54,6 +54,17 @@ Write each commit message in the profile's `language.commit_messages` (`en` in t
 - A rejection is not non-execution: after a denied or interrupted side-effecting command, re-query the real effects before reporting.
 - A lane runs its own self-audit and repairs, and never declares PASS for its own change. A resting lane may audit another lane's card (`skills/moai/references/audit.md`) and records that verdict itself with `moai card verdict`.
 
+## Command forms
+
+The host's worktree guard, the boundary hook and the SPEC-branch preflight read a command's text before it runs and refuse what they cannot prove safe; `skills/moai/workflows/work.md` states the principles, and each bullet names what it protects.
+
+- One plain command per call. A `git` command inside a loop, a chain, a shell function, a substitution or `eval` cannot be proved to stay in the lane's own worktree, so the worktree guard refuses it; run the commands one after another in separate calls.
+- Literal paths and branch names. A variable, a glob or a brace pattern leaves the boundary hook unable to read the target (`moai-boundary/unreadable`).
+- Files for long text. SQL and any long or multi-line text go in a file made with Write or Edit, and the command names that file.
+- SPEC file first. On a `spec/<slug>-<yyyymmdd>` branch the SPEC-branch preflight refuses every file outside `.moai/specs/` until the branch's SPEC exists.
+- Shell search. Search file contents with the shell's `grep`; a tool the host does not list answers `No such tool available`.
+- A refusal is a fact about the form, not the card: write it once as a plain command; a refusal of the plain form is a block to report (Blocks and limits), never a reason to try another spelling or another tool for the same effect.
+
 ## Dangerous path
 
 A change that deletes, resets, starts a process or builds a permission rule carries in its READY a run of the dangerous path itself in a throwaway (a link, a plain folder at a registered path, a hung child, a compound command), not only the green tests.
