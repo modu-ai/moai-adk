@@ -476,6 +476,9 @@ fn spec_show_lists_the_linked_cards_of_this_machine_as_local() {
     ok(&w.card(&["spec", &one, &login]));
     // Two open cards on one SPEC: a pair an earlier build allowed, which `card spec` refuses now.
     w.legacy_link(&two, &login);
+    // The third card names `login` first and then moves to `other`, so `login` must lose it. The
+    // first link is written as the ledger held it before `card spec` refused a second open card.
+    w.legacy_link(&three, &login);
     ok(&w.card(&["spec", &three, &other]));
 
     let shown = ok(&w.run(&["spec", "show", &login, "--project", w.p()]));

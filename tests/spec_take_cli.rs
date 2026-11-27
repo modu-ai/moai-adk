@@ -471,6 +471,114 @@ fn a_card_refusal_changes_nothing() {
     assert_eq!(everything(&bare), before);
 }
 
+/// `card add` of a fix card with a scope of its own, optionally on `spec`; returns its name.
+fn add_card(w: &World, scope: &str, spec: Option<&str>) -> String {
+    let mut args = vec![
+        "card",
+        "add",
+        "--title",
+        "t",
+        "--kind",
+        "fix",
+        "--scope",
+        scope,
+        "--ac",
+        "fixture",
+        "--project",
+        w.p(),
+    ];
+    if let Some(spec) = spec {
+        args.extend_from_slice(&["--spec", spec]);
+    }
+    let added = ok(&w.run(&args, &[]));
+    added["name"].as_str().unwrap().to_string()
+}
+
+/// Closes card `name` the way a landing leaves it: a met criterion, a `card.landed` event, then
+/// `review` and `done`.
+fn close_card(w: &World, name: &str) {
+    let n: i64 = name.trim_start_matches("C-").parse().unwrap();
+    let raw =
+        rusqlite::Connection::open(ledger::ledger_path(w.home.path(), "demo").unwrap()).unwrap();
+    raw.execute_batch(&format!(
+        "UPDATE card_ac SET status = 'met', evidence_ref = 'test' WHERE card_id = {n}; \
+         INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+         VALUES ('card.landed:{n}:test', unixepoch(), 'test', {n}, 'card.landed', '{{}}'); \
+         UPDATE card SET state = 'ready' WHERE card_id = {n}; \
+         UPDATE card SET state = 'active' WHERE card_id = {n}; \
+         UPDATE card SET state = 'review' WHERE card_id = {n}; \
+         UPDATE card SET state = 'done', closed_at = unixepoch() WHERE card_id = {n};"
+    ))
+    .unwrap();
+}
+
+/// SPEC-20261124-card-help-gates AC-16 (REQ-13): `spec take --card` refuses a card that `card
+/// spec` would refuse to link to the SPEC, before it creates a branch, records a base or writes
+/// the ledger. A card that already names the SPEC, a `done` or `hold` card and a SPEC with no
+/// other open card are taken as before.
+#[test]
+fn spec_take_card_does_not_add_a_second_open_card_to_a_spec() {
+    // The SPEC `id` has the open card C-1; C-2 names no SPEC yet.
+    let setup = || {
+        let w = World::new();
+        let id = w.draft_spec("login-fix");
+        let c1 = add_card(&w, "src/a", Some(&id));
+        let c2 = add_card(&w, "src/b", None);
+        assert_eq!((c1.as_str(), c2.as_str()), ("C-1", "C-2"));
+        (w, id)
+    };
+
+    let (w, id) = setup();
+    let before = everything(&w);
+    let message = refused(&w.take(&id, &["--card", "C-2"], &[]));
+    assert!(message.starts_with("spec take refused: "), "{message}");
+    for word in ["conflict in spec", id.as_str(), "C-1", "--follow-up"] {
+        assert!(
+            message.contains(word),
+            "the refusal lacks {word}: {message}"
+        );
+    }
+    assert!(
+        message.contains("nothing was changed"),
+        "the refusal does not say it wrote nothing: {message}"
+    );
+    assert_eq!(everything(&w), before, "the refusal wrote something");
+    assert_eq!(w.branch(), "main");
+
+    // The card already names the SPEC: the link is a no-op and the take goes on.
+    let (w, id) = setup();
+    let r = ok(&w.take(&id, &["--card", "C-1"], &[]));
+    assert_eq!(r["card"]["changed"], false, "{r}");
+
+    // A `done` card and a `hold` card are not open cards, so each links to the SPEC.
+    let (w, id) = setup();
+    close_card(&w, "C-2");
+    let r = ok(&w.take(&id, &["--card", "C-2"], &[]));
+    assert_eq!(r["card"]["changed"], true, "{r}");
+    let (w, id) = setup();
+    ok(&w.run(
+        &[
+            "card",
+            "withdraw",
+            "C-2",
+            "--reason",
+            "fixture",
+            "--by",
+            "leader",
+            w.p(),
+        ],
+        &[],
+    ));
+    let r = ok(&w.take(&id, &["--card", "C-2"], &[]));
+    assert_eq!(r["card"]["changed"], true, "{r}");
+
+    // A SPEC with no open card takes the open card.
+    let (w, _) = setup();
+    let other = w.draft_spec("other-fix");
+    let r = ok(&w.take(&other, &["--card", "C-2"], &[]));
+    assert_eq!(r["card"]["changed"], true, "{r}");
+}
+
 #[test]
 fn an_option_shaped_base_or_remote_is_refused_and_writes_nothing() {
     let w = World::new();
