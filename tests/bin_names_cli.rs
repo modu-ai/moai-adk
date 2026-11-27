@@ -732,3 +732,20 @@ fn ac8_a_name_left_in_place_is_listed_and_never_touched() {
         assert_eq!(p["left_in_place"], json!([]), "{p}");
     }
 }
+
+// A name counts as absent only when the system says it is not found. A read error (a name
+// below a regular file here) leaves the state unknown, so the plan treats it as the closed side.
+#[test]
+fn a_read_error_is_not_an_absent_name() {
+    let dir = TempDir::new().unwrap();
+    let file = dir.path().join("regular");
+    fs::write(&file, "x").unwrap();
+    assert!(moai_cli::bin_names::path_is_absent(
+        &dir.path().join("missing")
+    ));
+    assert!(!moai_cli::bin_names::path_is_absent(&file));
+    assert!(
+        !moai_cli::bin_names::path_is_absent(&file.join("below")),
+        "a name below a regular file is a read error, not an absent name"
+    );
+}

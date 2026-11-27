@@ -4326,6 +4326,40 @@ mod user_layer_tests {
         assert!(!text.contains("  skipped style claude"), "{text}");
     }
 
+    /// SPEC-20261127-installed-binary-name-moai AC-8: the terminal summary names a command name
+    /// an earlier install left in place on a line of its own after the `command names` state,
+    /// one line per name, and none when nothing was left.
+    #[test]
+    fn the_summary_names_each_command_name_left_in_place() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("home");
+        fs::create_dir_all(&home).unwrap();
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let pkg = root.join("skills/moai");
+        let agents = root.join(crate::agent_defs::SOURCE_DIR);
+        let mut layer =
+            user_layer_plan(&home, &pkg, &agents, &stage_package(&pkg).unwrap()).unwrap();
+        layer.bin_names.left_in_place = Vec::new();
+        assert!(
+            !layer_summary(&layer).contains("left in place"),
+            "{}",
+            layer_summary(&layer)
+        );
+        let names = [
+            PathBuf::from("/home/u/state/versions/a/bin/moai-cli"),
+            PathBuf::from("/home/u/state/path/moai-cli"),
+        ];
+        layer.bin_names.left_in_place = names.to_vec();
+        let text = layer_summary(&layer);
+        let state = format!("command names\n  moai: {}\n", layer.bin_names.state);
+        let expected = format!(
+            "{state}  left in place: {}\n  left in place: {}\n",
+            names[0].display(),
+            names[1].display()
+        );
+        assert!(text.contains(&expected), "{text}");
+    }
+
     /// #2872 stage 2: the terminal summary gets a cleanup block only when the cleanup plan
     /// archives something; otherwise it is the summary it was.
     #[test]
