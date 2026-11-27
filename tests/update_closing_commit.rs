@@ -212,8 +212,9 @@ fn claude_md_step_is_read_as_the_commands_print_it() {
             "`undo_order`",
             "`agents-picks` and `agents-local-merge` read `skip`",
             "no `append-managed`",
-            "the optional `go-residue` step included, offer that step's choice first",
+            "it waits behind the `go-settings` command or the `go-state` move",
             "because the instruction step waits for it",
+            "A `reports` or `go-residue` command never holds the step",
         ],
     );
     let at = |needle: &str| {

@@ -508,6 +508,27 @@ fn go_project() -> Fx {
     fx
 }
 
+/// A Go project of the update plan with no profile: the Go manifest in the live state folder, a
+/// settings file that carries a Go-made `plansDirectory` (recorded by the manifest when
+/// `recorded`), and a root `CLAUDE.md` that is a Go-generation file by its curator markers.
+fn go_settings_project(recorded: bool) -> Fx {
+    let mut fx = Fx::new();
+    let section = format!("{MOAI_DIR}/config/sections/a.yaml");
+    let settings = r#"{"model":"opus","plansDirectory":".moai/plans"}"#;
+    fx.write(&section, "a: 1\n");
+    fx.write(".claude/settings.json", settings);
+    fx.record(&section, "a: 1\n");
+    if recorded {
+        fx.record(".claude/settings.json", settings);
+    }
+    fx.write(
+        &format!("{MOAI_DIR}/manifest.json"),
+        json!({"version": "v3.2.1-rc.6", "files": fx.recorded}).to_string(),
+    );
+    fx.go_marker();
+    fx
+}
+
 #[test]
 fn base_the_sources_are_listed_in_order_with_their_facts() {
     let fx = go_project();
@@ -3847,13 +3868,10 @@ fn step_reads_unchanged_without_a_go_proof_and_the_other_steps_stay() {
     }
 }
 
-#[test]
-fn step_waits_while_the_reports_step_has_a_command() {
-    let fx = apply_project();
-    fx.write(&format!("{MOAI_DIR}/reports/zq-report.md"), "zq-report\n");
-    let plan = fx.update();
-    let step = update_step(&plan, STEP);
-    assert!(update_step(&plan, "reports")["apply"].is_object(), "{plan}");
+/// The step waits: it reads `blocked` with no command, digest, preview or decline, and the
+/// plan's `follows` list says it comes after exactly the steps `after`.
+fn assert_waits_behind(plan: &Value, after: &[&str]) {
+    let step = update_step(plan, STEP);
     assert_eq!(step["state"], json!("blocked"), "{step}");
     assert_eq!(step["next"], json!("wait"), "{step}");
     assert!(
@@ -3868,11 +3886,23 @@ fn step_waits_while_the_reports_step_has_a_command() {
         .iter()
         .find(|f| f["step"] == STEP)
         .unwrap_or_else(|| panic!("the step does not follow: {plan}"));
-    assert_eq!(waiting["after"], json!(["reports"]), "{waiting}");
+    assert_eq!(waiting["after"], json!(after), "{waiting}");
 }
 
 #[test]
-fn step_waits_while_the_optional_residue_step_has_a_command() {
+fn step_asks_while_only_the_reports_step_has_a_command() {
+    let fx = apply_project();
+    fx.write(&format!("{MOAI_DIR}/reports/zq-report.md"), "zq-report\n");
+    let plan = fx.update();
+    let step = update_step(&plan, STEP);
+    assert!(update_step(&plan, "reports")["apply"].is_object(), "{plan}");
+    // The reports command moves files the step never reads, so it does not hold the step.
+    assert_left_to_the_user(&plan);
+    assert_eq!(choice_ids(step), ["replace", "leave"], "{step}");
+}
+
+#[test]
+fn step_asks_while_the_optional_residue_step_has_a_command() {
     let mut fx = apply_project();
     let agent = ".claude/agents/zq-go.md";
     fx.record(agent, "zq-go agent\n");
@@ -3882,14 +3912,94 @@ fn step_waits_while_the_optional_residue_step_has_a_command() {
     let residue = update_step(&plan, "go-residue");
     assert_eq!(residue["state"], json!("optional"), "{residue}");
     assert!(residue["apply"].is_object(), "{residue}");
-    let step = update_step(&plan, STEP);
-    assert_eq!(step["state"], json!("blocked"), "{step}");
-    assert_eq!(step["next"], json!("wait"), "{step}");
-    assert_eq!(step["preview"], Value::Null, "{step}");
+    // The optional residue command never holds the step: it asks while the command is printed.
+    assert_left_to_the_user(&plan);
 
-    // Once the printed command ran, the step asks.
+    // Once the printed command ran, the step still asks.
     fx.printed(&residue["apply"]["argv"]);
     assert_left_to_the_user(&fx.update());
+}
+
+#[test]
+fn step_waits_while_the_go_settings_step_has_a_command() {
+    let fx = go_settings_project(false);
+    let plan = fx.update();
+    let settings = update_step(&plan, "go-settings");
+    assert_eq!(settings["state"], json!("ready"), "{settings}");
+    assert!(settings["apply"].is_object(), "{settings}");
+    assert_waits_behind(&plan, &["go-settings"]);
+
+    // After the printed command ran the step no longer waits for the go-settings step: it
+    // waits behind the go-state move, which the plan now prints.
+    fx.printed(&settings["apply"]["argv"]);
+    let again = fx.update();
+    let settings = update_step(&again, "go-settings");
+    assert_eq!(settings["apply"], Value::Null, "{settings}");
+    let state = update_step(&again, "go-state");
+    assert_eq!(state["state"], json!("needs_decision"), "{state}");
+    assert!(state["apply"].is_object(), "{state}");
+    assert_waits_behind(&again, &["go-state"]);
+}
+
+#[test]
+fn step_waits_while_the_go_state_step_has_a_move() {
+    let fx = go_settings_project(true);
+    let plan = fx.update();
+    // The manifest proves the settings file, so it moves with the go-state step.
+    assert_eq!(
+        update_step(&plan, "go-settings")["state"],
+        json!("skip"),
+        "{plan}"
+    );
+    let state = update_step(&plan, "go-state");
+    assert_eq!(state["state"], json!("needs_decision"), "{state}");
+    assert_eq!(
+        state["apply"]["argv"][1],
+        json!("go-state-apply"),
+        "{state}"
+    );
+    assert_waits_behind(&plan, &["go-state"]);
+}
+
+#[test]
+fn step_waits_while_the_go_state_move_waits_behind_the_reports_apply() {
+    let fx = go_settings_project(true);
+    // The reports step asks git which files are tracked: the project is a repository.
+    fx.git_init();
+    let report = format!("{MOAI_DIR}/reports/zq-report.md");
+    fx.write(&report, "zq-report\n");
+    let plan = fx.update();
+    assert_eq!(
+        update_step(&plan, "go-settings")["state"],
+        json!("skip"),
+        "{plan}"
+    );
+    let reports = update_step(&plan, "reports");
+    assert!(reports["apply"].is_object(), "{reports}");
+    let state = update_step(&plan, "go-state");
+    assert_eq!(state["state"], json!("blocked"), "{state}");
+    assert_eq!(state["reason"], json!("re-run after the reports apply"));
+    assert_eq!(state["apply"], Value::Null, "{state}");
+    assert_waits_behind(&plan, &["reports"]);
+
+    // Once the reports moved the go-state step offers its move again, and the step still waits,
+    // now behind that move.
+    let words = filled(&reports["apply"]["argv"]);
+    fx.piped(&strs(&words), &reports["apply"]["stdin"]);
+    let again = fx.update();
+    assert_eq!(
+        update_step(&again, "reports")["apply"],
+        Value::Null,
+        "{again}"
+    );
+    let state = update_step(&again, "go-state");
+    assert_eq!(state["state"], json!("needs_decision"), "{state}");
+    assert_eq!(
+        state["apply"]["argv"][1],
+        json!("go-state-apply"),
+        "{state}"
+    );
+    assert_waits_behind(&again, &["go-state"]);
 }
 
 #[test]

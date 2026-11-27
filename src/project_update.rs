@@ -54,9 +54,10 @@ pub const AFTER_GO_SETTINGS: &str = "re-run after the go-settings apply";
 /// changes what the go-state plan lists under the report folders, so a digest made before it
 /// would be stale.
 pub const AFTER_REPORTS: &str = "re-run after the reports apply";
-/// Why the `claude-md` step waits while an earlier backup step has a command to run: that command
-/// moves or rewrites project files, so the instruction files are read after it.
-pub const AFTER_BACKUP_COMMANDS: &str = "re-run after the backup steps that still print a command";
+/// Why the `claude-md` step waits while the go-settings step has a command or the go-state step
+/// has a move to make: those two rewrite settings and move the Go state files, so the instruction
+/// files are read after them. No other backup step holds it.
+pub const AFTER_GO_BACKUP: &str = "re-run after the go-settings and go-state backup steps";
 
 const BACKUP_REASON: &str = "the Go-generation .moai/ and the earlier .moai-cli/ state, the \
      Go tool files under .claude/ and .agents/, settings and instruction files \
@@ -77,9 +78,9 @@ pub const AFTER_INSTALL: &str = "re-run after the install phase";
 const BEHIND: [(&str, Option<&str>, &[&str]); 8] = [
     (AFTER_BACKUP, None, &["go-settings", "go-state", "reports"]),
     (
-        AFTER_BACKUP_COMMANDS,
+        AFTER_GO_BACKUP,
         None,
-        &["go-settings", "go-state", "reports", "go-residue"],
+        &["go-settings", "go-state", "reports"],
     ),
     (AFTER_PROFILE, None, &["profile"]),
     (AFTER_SETTINGS, None, &["claude-settings"]),
@@ -1537,6 +1538,20 @@ fn backup_pending(backup: &[Step]) -> bool {
     })
 }
 
+/// Whether the `claude-md` step has to wait: the go-settings step has a command, or the go-state
+/// step has a move to make, also while that move waits behind the go-settings or `reports` apply
+/// (it then prints no command of its own). The `reports` and `go-residue` commands never change
+/// what the step reads, so they do not hold it.
+fn claude_md_waits(backup: &[Step]) -> bool {
+    backup_pending(backup)
+        || backup.iter().any(|s| {
+            s.name == "go-state"
+                && (s.apply.is_some()
+                    || (s.state == "blocked"
+                        && (s.reason == AFTER_GO_SETTINGS || s.reason == AFTER_REPORTS)))
+        })
+}
+
 /// The merge phase (#2936 R10): `AGENTS.local.md` into `AGENTS.md`. It waits while the backup
 /// phase has a move to make, and while the generation step has files to write.
 fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> Vec<Step> {
@@ -2198,7 +2213,8 @@ fn go_residue_step(root: &Path, shown: &str, others_pending: bool) -> Result<Ste
 /// `leave` records the decline.
 ///
 /// - `unchanged`: the root `CLAUDE.md` is no Go-generation file; nothing more is read.
-/// - `blocked`: an earlier backup step has a command to run.
+/// - `blocked`: the go-settings step has a command or the go-state step has a move to make (see
+///   [`claude_md_waits`]); the other backup steps, `reports` and `go-residue` included, never hold it.
 /// - `needs_decision`: the user picks. `replace` is offered only while the preview prints an apply
 ///   command; otherwise it is listed under `blocked` with every reason. `leave` is offered only
 ///   while every file the step would move can be read.
@@ -2212,8 +2228,8 @@ fn claude_md_step(root: &Path, shown: &str, backup: &[Step]) -> Result<Step> {
             "the root CLAUDE.md is not a Go-generation instruction file",
         ));
     }
-    if backup.iter().any(|s| s.apply.is_some()) {
-        return Ok(Step::waiting(NAME, "blocked", AFTER_BACKUP_COMMANDS));
+    if claude_md_waits(backup) {
+        return Ok(Step::waiting(NAME, "blocked", AFTER_GO_BACKUP));
     }
     let plan = claude_md::plan(root, &[])?;
     let reasons: Vec<&str> = plan["apply_blocked"]

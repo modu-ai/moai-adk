@@ -51,7 +51,7 @@ merge 단계의 첫 단계다. 설치 단계의 상태와 상관없이 계산하
 | 상태 | 조건 |
 | --- | --- |
 | `unchanged` | 루트 `CLAUDE.md` 가 Go 세대 지침 파일이 아니다(`go_claude_md` 가 `null`). 그 밖은 읽지 않고 `preview` 는 `null` 이다. |
-| `blocked` | 백업 단계(`go-settings`, `go-state`, `reports`, `go-residue`) 가운데 명령을 낸 단계가 있다. `reason` 은 `re-run after the backup steps that still print a command`, `next` 는 `wait` 이다. `go-residue` 는 `optional` 이어도 명령이 있으면 여기에 든다. 명령 없이 `needs_decision` 인 `go-state` 는 들지 않는다. |
+| `blocked` | `go-settings` 단계가 명령을 냈거나, `go-state` 단계가 명령을 냈거나 `needs_decision` 이거나, `go-state` 가 `go-settings` 나 `reports` 적용을 기다리며 `blocked` 이다. `reason` 은 `re-run after the go-settings and go-state backup steps`, `next` 는 `wait` 이다. `reports` 와 `go-residue` 의 명령은 이 단계를 막지 않는다(`go-state` 의 이동이 `reports` 적용을 기다리는 동안만 `reports` 를 기다린다). |
 | `needs_decision` | 그 밖. 사용자가 고른다. |
 | `skip` | 지금 출처 바이트에 대해 사용자가 거절했다. 선택은 빠지고 `decline.ask_again_argv` 가 붙는다. |
 
