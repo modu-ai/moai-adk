@@ -256,3 +256,222 @@ fn a_line_neither_name_reads_is_refused_closed_as_before() {
     let r = decide(&input(REVIEW, 1, &src, &["agent-1"], vec![quoted]));
     assert_eq!(r["state"], json!("missing"), "{r}");
 }
+
+// ---- The merge gate (`gate-check`): reservations, withdrawals and non-member lines ----
+
+/// The spellings of the reservation line and its two whole-lane withdrawals.
+const CLAIM_AUDIT: (&str, &str, &str) = (
+    "moai-audit-claim",
+    "moai-audit-withdraw",
+    "moai-audit-claim-withdraw",
+);
+const CLAIM_REVIEW: (&str, &str, &str) = (
+    "moai-review-claim",
+    "moai-review-withdraw",
+    "moai-review-claim-withdraw",
+);
+
+/// Every pairing of a verdict word with a reservation word: the two names mix freely.
+fn pairings() -> Vec<(
+    (&'static str, &'static str),
+    (&'static str, &'static str, &'static str),
+)> {
+    vec![
+        (AUDIT, CLAIM_AUDIT),
+        (REVIEW, CLAIM_REVIEW),
+        (REVIEW, CLAIM_AUDIT),
+        (AUDIT, CLAIM_REVIEW),
+    ]
+}
+
+fn gate_check(snapshot: &Value) -> Value {
+    let mut child = Command::new(crate::common::MOAI_BIN)
+        .arg("gate-check")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, snapshot.to_string().as_bytes());
+    let out = child.wait_with_output().unwrap();
+    serde_json::from_slice(&out.stdout)
+        .unwrap_or_else(|_| panic!("{}", String::from_utf8_lossy(&out.stderr)))
+}
+
+fn claim(words: (&str, &str, &str), id: u64, lane: &str) -> Value {
+    json!({"id": id, "author_association": "MEMBER",
+           "body": format!("{}: lane={lane} head={H}\n", words.0)})
+}
+
+fn gate_verdict(names: (&str, &str), id: u64, lane: &str) -> Value {
+    json!({"id": id, "author_association": "MEMBER",
+           "body": format!("{} #9 (x) head {H} base {B} — verdict: PASS\n\n감사: {lane} (예약 100).\n", names.0)})
+}
+
+/// A complete snapshot that passes: one reservation, one PASS by the same lane, a local check.
+fn passing(names: (&str, &str), words: (&str, &str, &str)) -> Value {
+    let local = json!({"id": 900, "author_association": "MEMBER",
+        "body": format!("local-check: head={H} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n")});
+    json!({
+        "schema_version": 1, "pr": 9, "head": H,
+        "comments": [claim(words, 100, "agent-10"), gate_verdict(names, 200, "agent-10"), local],
+        "checks": [
+            {"name": "ci", "conclusion": "success", "head_sha": H},
+            {"name": "ci / linux-x86_64", "conclusion": "success", "head_sha": H},
+            {"name": "windows-build", "conclusion": "skipped", "head_sha": H}
+        ],
+        "pr_files": ["src/a.rs"], "tip_files_since_verdict_base": ["src/b.rs"],
+        "merge_clean": true, "body_check_ok": true, "verdict_base_known": true,
+        "verdict_base_in_tip": true, "pr_authors": ["agent-26"],
+        "tip_ci": {"state": "green", "tip": OLD, "decided_by": OLD, "detail": "green"},
+        "commits_without_claim": [], "body_claim": true, "stacked_below": []
+    })
+}
+
+fn stopped(v: &Value) -> (bool, String) {
+    let r = &v["result"];
+    (
+        r["pass"].as_bool().unwrap(),
+        r["rule"].as_str().unwrap_or("").to_string(),
+    )
+}
+
+#[test]
+fn a_complete_snapshot_passes_under_every_pairing_of_the_names() {
+    for (names, words) in pairings() {
+        let v = gate_check(&passing(names, words));
+        assert_eq!(v["result"]["pass"], json!(true), "{names:?} {words:?}: {v}");
+        assert_eq!(
+            v["result"]["verdict_base"],
+            json!(B),
+            "{names:?} {words:?}: {v}"
+        );
+    }
+}
+
+#[test]
+fn a_lower_reservation_under_either_name_takes_the_review() {
+    for (names, words) in pairings() {
+        for other in [CLAIM_AUDIT, CLAIM_REVIEW] {
+            let mut s = passing(names, words);
+            s["comments"]
+                .as_array_mut()
+                .unwrap()
+                .insert(0, claim(other, 50, "agent-99"));
+            let v = gate_check(&s);
+            assert_eq!(
+                stopped(&v),
+                (false, "G2".into()),
+                "{names:?} {words:?} {other:?}: {v}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_withdrawal_under_either_name_gives_the_reservation_up_and_only_its_own() {
+    for (names, words) in pairings() {
+        for other in [CLAIM_AUDIT, CLAIM_REVIEW] {
+            let lower = |s: &mut Value| {
+                s["comments"]
+                    .as_array_mut()
+                    .unwrap()
+                    .insert(0, claim(other, 50, "agent-99"));
+            };
+            // `<claim> 철회: <lane> (<claim id>)` withdraws that claim of that lane.
+            let mut s = passing(names, words);
+            lower(&mut s);
+            let line = format!("{} 철회: agent-99 (50)\n", other.0);
+            s["comments"].as_array_mut().unwrap().insert(
+                1,
+                json!({"id": 60, "author_association": "MEMBER", "body": line}),
+            );
+            let v = gate_check(&s);
+            assert_eq!(
+                v["result"]["pass"],
+                json!(true),
+                "{names:?} {other:?} withdrawn: {v}"
+            );
+            // The withdrawal names another lane: the reservation keeps counting.
+            let mut s = passing(names, words);
+            lower(&mut s);
+            let line = format!("{} 철회: agent-1 (50)\n", other.0);
+            s["comments"].as_array_mut().unwrap().insert(
+                1,
+                json!({"id": 60, "author_association": "MEMBER", "body": line}),
+            );
+            let v = gate_check(&s);
+            assert_eq!(
+                stopped(&v),
+                (false, "G2".into()),
+                "{names:?} {other:?} wrong lane: {v}"
+            );
+            // The whole-lane withdrawals, under both of their spellings, posted after the claim.
+            for withdraw in [other.1, other.2] {
+                let mut s = passing(names, words);
+                lower(&mut s);
+                let line = format!("{withdraw}: lane=agent-99\n");
+                s["comments"].as_array_mut().unwrap().insert(
+                    1,
+                    json!({"id": 60, "author_association": "MEMBER", "body": line.clone()}),
+                );
+                let v = gate_check(&s);
+                assert_eq!(v["result"]["pass"], json!(true), "{names:?} {line}: {v}");
+                // Posted before the claim it gives nothing up.
+                let mut s = passing(names, words);
+                lower(&mut s);
+                s["comments"].as_array_mut().unwrap().insert(
+                    0,
+                    json!({"id": 40, "author_association": "MEMBER", "body": line.clone()}),
+                );
+                let v = gate_check(&s);
+                assert_eq!(
+                    stopped(&v),
+                    (false, "G2".into()),
+                    "{names:?} early {line}: {v}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn a_non_member_verdict_or_reservation_under_the_review_names_is_ignored_and_named() {
+    // The verdict from someone who is no member stops the gate, and the answer names its line.
+    for (names, words) in pairings() {
+        let mut s = passing(names, words);
+        s["comments"][1]["author_association"] = json!("NONE");
+        let v = gate_check(&s);
+        assert_eq!(v["result"]["pass"], json!(false), "{names:?}: {v}");
+        assert_eq!(
+            v["result"]["ignored_control_lines"]["items"][0]["comment_id"],
+            json!(200),
+            "{names:?}: {v}"
+        );
+        assert_eq!(
+            v["result"]["ignored_control_lines"]["items"][0]["kind"],
+            json!("audit_verdict"),
+            "{names:?}: {v}"
+        );
+    }
+    // A forged lower reservation takes nothing, and the answer names it with the same kind as
+    // the earlier name.
+    for other in [CLAIM_AUDIT, CLAIM_REVIEW] {
+        let mut s = passing(REVIEW, CLAIM_REVIEW);
+        let mut forged = claim(other, 50, "agent-99");
+        forged["author_association"] = json!("NONE");
+        s["comments"].as_array_mut().unwrap().insert(0, forged);
+        let v = gate_check(&s);
+        assert_eq!(v["result"]["pass"], json!(true), "{other:?}: {v}");
+        assert_eq!(
+            v["result"]["ignored_control_lines"]["items"][0]["comment_id"],
+            json!(50),
+            "{other:?}: {v}"
+        );
+        assert_eq!(
+            v["result"]["ignored_control_lines"]["items"][0]["kind"],
+            json!("audit_claim"),
+            "{other:?}: {v}"
+        );
+    }
+}
