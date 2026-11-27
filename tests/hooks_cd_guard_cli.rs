@@ -89,6 +89,12 @@ struct World {
     home: PathBuf,
     primary: PathBuf,
     own: PathBuf,
+    /// A linked worktree of the same repository made inside the primary checkout.
+    nested: PathBuf,
+    /// A linked worktree of another repository.
+    other_wt: PathBuf,
+    /// A plain folder that is no checkout.
+    plain: PathBuf,
 }
 
 impl World {
@@ -131,12 +137,65 @@ impl World {
                 own.to_str().unwrap(),
             ],
         );
+        let nested = primary.join(".claude/worktrees/x");
+        git(
+            &primary,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "-b",
+                "lane/nested",
+                nested.to_str().unwrap(),
+            ],
+        );
+        let other = root.join("other");
+        fs::create_dir_all(&other).unwrap();
+        git(&other, &["init", "-q", "-b", "main"]);
+        fs::write(other.join("y"), "y\n").unwrap();
+        git(&other, &["add", "y"]);
+        git(&other, &["commit", "-q", "-m", "fixture"]);
+        let other_wt = root.join("other-wt");
+        git(
+            &other,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "-b",
+                "lane/other",
+                other_wt.to_str().unwrap(),
+            ],
+        );
+        let plain = root.join("plain");
+        fs::create_dir_all(&plain).unwrap();
+        std::os::unix::fs::symlink(&own, home.join("link-own")).unwrap();
         World {
             _tmp: tmp,
             home,
             primary,
             own,
+            nested,
+            other_wt,
+            plain,
         }
+    }
+
+    /// Puts a live registry entry of a lane session in the clone: the session id the hook input
+    /// carries (`fixture`), mode `agent`, a lease far in the future, registered from `worktree`.
+    fn register(&self, worktree: &Path) {
+        let dir = moai_cli::clone_root::path(&self.primary.join(".git")).join("sessions");
+        fs::create_dir_all(&dir).unwrap();
+        let entry = json!({
+            "schema_version": 1,
+            "name": "agent-1",
+            "instance": moai_cli::lane_registry::new_instance(),
+            "lease_until": 4_000_000_000_i64,
+            "mode": "agent",
+            "session": "fixture",
+            "worktree": worktree,
+        });
+        fs::write(dir.join("agent-1.json"), entry.to_string()).unwrap();
     }
 
     /// One `tool-preflight` call from `cwd` in `mode`; `project_dir` sets `CLAUDE_PROJECT_DIR`.
@@ -285,6 +344,12 @@ fn the_session_cd_refusal_cargo_form_is_one_cargo_accepts() {
     let reason = w
         .call(&w.own, "cd src", "default", None)
         .expect("a worktree session cd is denied");
+    assert_cargo_accepts(&reason);
+}
+
+/// The backtick span of `reason` that starts with `cargo` is a form cargo accepts (see the test
+/// above for how it is run).
+fn assert_cargo_accepts(reason: &str) {
     let span = reason
         .split('`')
         .skip(1)
@@ -422,5 +487,250 @@ fn a_session_outside_a_worktree_keeps_cd() {
     for mode in MODES {
         let got = plain.call(&plain.own, "cd src", mode, None);
         assert_eq!(got, None, "no MoAI project, {mode}");
+    }
+}
+
+/// Whether the deny reason is one of the session-cd rule.
+fn is_session_cd(got: &Option<String>) -> bool {
+    got.as_deref().is_some_and(|r| r.starts_with(PREFIX))
+}
+
+/// SPEC-20261126-shell-cd-guard revision 4, AC-8 (REQ-6): a session in the primary checkout, or in
+/// a folder of it, that would move its shell into a linked worktree of the same repository is
+/// denied with one line that names `EnterWorktree`, in both permission modes.
+#[test]
+fn a_main_checkout_cd_into_a_worktree_is_denied() {
+    let w = World::new(true, true);
+    let own = w.own.display();
+    let nested = w.nested.display();
+    let from_primary = [
+        format!("cd {own}"),
+        format!("cd {own}/src"),
+        "cd .claude/worktrees/x".to_owned(),
+        format!("pushd {own}"),
+        format!("ls && cd {own}"),
+        format!("cd src && cd {own}"),
+        format!("X=1 cd {own}"),
+        format!("builtin cd {own}"),
+        format!("eval 'cd {own}'"),
+        format!("cd {nested}"),
+        "cd ~/link-own".to_owned(),
+    ];
+    let from_sub = [format!("cd {own}"), "cd ../.claude/worktrees/x".to_owned()];
+    for mode in MODES {
+        for (cwd, commands) in [
+            (w.primary.clone(), &from_primary[..]),
+            (w.primary.join("src"), &from_sub[..]),
+        ] {
+            for command in commands {
+                let reason = w
+                    .call(&cwd, command, mode, None)
+                    .unwrap_or_else(|| panic!("allowed in {mode}: {command:?} from {cwd:?}"));
+                assert!(reason.starts_with(PREFIX), "{command:?}: {reason}");
+                assert_eq!(reason.lines().count(), 1, "one line: {reason}");
+                assert!(reason.contains("EnterWorktree"), "{command:?}: {reason}");
+            }
+        }
+    }
+}
+
+/// AC-9 (REQ-7, REQ-8): a `cd` that does not enter a linked worktree of the same repository, a
+/// target the text does not hold, a subshell and a string given to another shell are not denied
+/// by the entering rule.
+#[test]
+fn a_main_checkout_cd_that_does_not_enter_a_worktree_is_allowed() {
+    let w = World::new(true, true);
+    let own = w.own.display();
+    let primary = w.primary.display();
+    let commands = [
+        "cd src".to_owned(),
+        "cd .".to_owned(),
+        format!("cd {primary}/src"),
+        format!("cd {}", w.plain.display()),
+        format!("cd {primary}/does-not-exist"),
+        "cd \"$W\"".to_owned(),
+        "cd $W".to_owned(),
+        "cd -".to_owned(),
+        "cd".to_owned(),
+        "cd ~".to_owned(),
+        "cd ../*".to_owned(),
+        format!("cd {{{own},src}}"),
+        format!("(cd {own} && ls)"),
+        format!("v=$(cd {own} && pwd)"),
+        format!("bash -c 'cd {own}'"),
+        format!("echo \"cd {own}\""),
+        format!("git -C {own} status"),
+        format!("cd {}", w.other_wt.display()),
+        format!("pushd {primary}/src"),
+        "popd".to_owned(),
+    ];
+    for mode in MODES {
+        for command in &commands {
+            let got = w.call(&w.primary, command, mode, None);
+            assert!(
+                !is_session_cd(&got),
+                "denied in {mode}: {command:?}: {got:?}"
+            );
+        }
+    }
+}
+
+/// AC-10 (REQ-9): the refusal of a worktree session tells a session that a shell `cd` moved there
+/// how to get out, and the entering refusal names the other way in; both are one line, recommend
+/// no `cd` form and hold one cargo form that cargo accepts.
+#[test]
+fn the_session_cd_refusal_tells_a_moved_session_how_to_get_out() {
+    const FORBIDDEN: [&str; 7] = ["( cd", "(cd", "cd <", "cd ..", "git -c", "pushd", "popd"];
+    let w = World::new(true, true);
+    let own = w.own.display();
+    let in_worktree = w
+        .call(&w.own, "cd src", "default", None)
+        .expect("a worktree session cd is denied");
+    let entering = w
+        .call(&w.primary, &format!("cd {own}"), "default", None)
+        .expect("an entering cd is denied");
+    for reason in [&in_worktree, &entering] {
+        assert!(reason.starts_with(PREFIX), "{reason}");
+        assert_eq!(reason.lines().count(), 1, "one line: {reason}");
+        assert!(reason.contains("EnterWorktree"), "{reason}");
+        assert_eq!(
+            reason.matches('`').count(),
+            2,
+            "one backtick span: {reason}"
+        );
+        let text = reason.to_ascii_lowercase();
+        for form in FORBIDDEN {
+            assert!(!text.contains(form), "recommends {form:?}: {reason}");
+        }
+        assert_cargo_accepts(reason);
+    }
+    for words in ["end the session", "start it again from the main checkout"] {
+        assert!(in_worktree.contains(words), "{words}: {in_worktree}");
+    }
+    assert!(
+        entering.contains("main checkout") && entering.contains("linked worktree"),
+        "{entering}"
+    );
+}
+
+/// AC-11 (REQ-10, default of D-12): a live registry entry of a lane session does not exempt the
+/// session from the entering rule, whichever worktree the entry was registered from.
+#[test]
+fn a_registered_session_is_not_exempt_from_the_entering_cd_rule() {
+    let w = World::new(true, true);
+    let command = format!("cd {}", w.own.display());
+    for registered_from in [&w.primary, &w.own] {
+        w.register(registered_from);
+        for mode in MODES {
+            let got = w.call(&w.primary, &command, mode, None);
+            assert!(
+                is_session_cd(&got),
+                "registered from {registered_from:?}, {mode}: {got:?}"
+            );
+        }
+    }
+}
+
+/// The id of the empty tree: a plain object name, so the command text holds no brace pattern.
+const EMPTY_TREE: &str = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+
+/// AC-12 (REQ-11, default of D-14): the subcommands that write objects only are still refused when
+/// they aim at a checkout that is not the session's own, and left alone when they do not.
+#[test]
+fn an_objects_only_git_command_toward_another_checkout_stays_denied() {
+    let w = World::new(true, true);
+    let primary = w.primary.display();
+    let toward = [
+        format!("git -C {primary} checkout x"),
+        format!("git -C {primary} commit-tree -m x {EMPTY_TREE}"),
+        format!("git -C {primary} hash-object -w src/x"),
+        format!("git -C {primary} mktree"),
+        format!("git -C {primary} mktag"),
+        format!("git -C {primary} write-tree"),
+        format!("git --git-dir={primary}/.git commit-tree -m x {EMPTY_TREE}"),
+    ];
+    let own_checkout = [
+        "git commit-tree -m x 4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+        "git hash-object -w src/x",
+        "git mktree",
+        "git mktag",
+        "git write-tree",
+    ];
+    for mode in MODES {
+        // The bash boundary is a deny only in a session that skips permission prompts
+        // (`bypass_boundary_deny`); the first entry is the control that shows the fixture world
+        // refuses a plain git write toward the primary checkout there.
+        for command in toward.iter().filter(|_| mode == "bypassPermissions") {
+            let reason = w
+                .call(&w.own, command, mode, None)
+                .unwrap_or_else(|| panic!("allowed in {mode}: {command:?}"));
+            assert!(
+                reason.starts_with("moai-boundary/git-state: "),
+                "{command:?}: {reason}"
+            );
+        }
+        for command in own_checkout {
+            let got = w.call(&w.own, command, mode, None);
+            assert_eq!(got, None, "{mode}: {command:?}");
+        }
+    }
+}
+
+/// AC-13 (REQ-1, REQ-2, REQ-3): the forms the SPEC lists as already allowed stay allowed for the
+/// session that may use them.
+#[test]
+fn the_read_forms_stay_allowed() {
+    let w = World::new(true, true);
+    let own = w.own.display();
+    let primary = w.primary.display();
+    let main_checkout = [
+        "cd src".to_owned(),
+        format!("cd {primary}/src"),
+        "cd /tmp/x".to_owned(),
+        "pushd src".to_owned(),
+        "popd".to_owned(),
+        "cd".to_owned(),
+        "cd -".to_owned(),
+        "cd \"$X\"".to_owned(),
+        format!("(cd {own} && ls)"),
+        format!("bash -c 'cd {own}'"),
+        format!("git -C {own} status"),
+        format!("git -C {own} log -1"),
+        format!("git -C {own} diff"),
+        format!("git -C {own} rev-parse HEAD"),
+        format!("git -C {own} cat-file -p HEAD"),
+        format!("git -C {own} ls-tree HEAD"),
+        format!("git -C {own} show HEAD"),
+        format!("git -C {own} branch --show-current"),
+        format!("git -C {own} worktree list"),
+        "git add src/x".to_owned(),
+        "git fetch origin".to_owned(),
+        "git restore src/x".to_owned(),
+        "git rm --cached src/x".to_owned(),
+    ];
+    let worktree = [
+        format!("git -C {primary} status"),
+        format!("git -C {primary} log -1"),
+        format!("git -C {primary} diff"),
+        format!("git -C {primary} rev-parse HEAD"),
+        format!("git -C {} status", w.nested.display()),
+        "git -C /tmp status".to_owned(),
+    ];
+    for mode in MODES {
+        for command in &main_checkout {
+            let got = w.call(&w.primary, command, mode, None);
+            assert_eq!(got, None, "main checkout, {mode}: {command:?}");
+        }
+        for command in &worktree {
+            let got = w.call(&w.own, command, mode, None);
+            assert_eq!(got, None, "worktree, {mode}: {command:?}");
+        }
+        for command in STAYS {
+            let got = w.call(&w.own, command, mode, None);
+            assert!(
+                !is_session_cd(&got),
+                "worktree, {mode}: {command:?}: {got:?}"
+            );
+        }
     }
 }
