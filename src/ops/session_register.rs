@@ -133,11 +133,18 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         let project = args.project.clone().unwrap_or_else(|| PathBuf::from("."));
         // A folder outside a git repository has no clone and no sessions: say so.
         moai_cli::lane_registry::registry_dir(&project)?;
+        // SPEC-20261127-launcher-session-names REQ-9: the names the launcher gives now, and
+        // under `earlier` the project-prefixed forms a session started before the change carries.
+        let names = moai_cli::session::project_names(&project);
         return Ok(serde_json::json!({
             "action": "session.names",
-            "project": moai_cli::session::project_name(&project),
-            "leader": moai_cli::session::leader_session_name(&project),
+            "project": names.current,
+            "leader": format!("leader-{}", names.current),
             "agent_prefix": moai_cli::session::agent_prefix(&project),
+            "earlier": {
+                "leader": format!("{}-leader", names.earlier),
+                "agent_prefix": format!("{}-agent-", names.earlier),
+            },
             "writes": false,
         }));
     }

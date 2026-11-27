@@ -238,19 +238,28 @@ fn assert_refused(fx: &Fx, old: &Value) {
 
 // ---- D1, D2: preview-only data does not make the digest stale ----
 
+/// A file the Go manifest does not record is a restore row since the restore rule
+/// (SPEC-20261126-go-state-restore-rule), so one that appears after the preview makes the
+/// digest stale: the apply is refused and the new preview lists it as a copy.
 #[test]
-fn a_new_log_file_under_moai_keeps_the_digest_valid() {
+fn a_new_unrecorded_file_under_moai_makes_the_digest_stale() {
     let fx = base();
     let old = fx.plan();
     fx.write(".moai/logs/x.log", "line\n");
+    assert_refused(&fx, &old);
     let fresh = fx.plan();
-    assert_ne!(
-        fresh["left_in_backup"], old["left_in_backup"],
-        "the log file shows in the preview"
+    assert!(
+        fresh["restores"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| { r["from"] == ".moai-backup/logs/x.log" && r["action"] == "copy" }),
+        "the log file shows in the preview as a copy: {fresh}"
     );
-    let v = assert_accepted(&fx, &old);
+    let v = fx.apply(fresh["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
     assert_eq!(
-        fs::read_to_string(fx.root.join(".moai-backup/logs/x.log")).unwrap(),
+        fs::read_to_string(fx.root.join(".moai/logs/x.log")).unwrap(),
         "line\n",
         "{v}"
     );

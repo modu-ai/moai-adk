@@ -215,13 +215,15 @@ fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
                 "row `{name}`, column {column} must start with works, replaced or unsupported: {cell}"
             );
         }
-        // The audit of #3018 (B1): an Orca profile moves the settings folder to
-        // `CLAUDE_CONFIG_DIR`, which `moai update` does not look at, so SETUP and UPDATE are not
-        // "works" with Orca (SETUP left with its route). The shipped text carries no Issue number.
+        // An Orca profile moves the settings folder to `CLAUDE_CONFIG_DIR`. The update preview and
+        // the skill copy follow that variable, so UPDATE works with Orca and the cell names the
+        // variable (SETUP left with its route). The shipped text carries no Issue number.
         if name == "UPDATE" {
             assert!(
-                cells[1].starts_with("unsupported") && !cells[1].contains('#'),
-                "row `{name}`, With Orca must start with unsupported and carry no number: {}",
+                cells[1].starts_with("works")
+                    && cells[1].contains("CLAUDE_CONFIG_DIR")
+                    && !cells[1].contains('#'),
+                "row `{name}`, With Orca must start with works, name CLAUDE_CONFIG_DIR and carry no number: {}",
                 cells[1]
             );
         }
@@ -234,8 +236,8 @@ fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
     // The list itself, not the table: a cell elsewhere must not satisfy these.
     let list = missing
         .lines()
-        .find(|l| l.starts_with("Unsupported today"))
-        .expect("the section has an `Unsupported today` paragraph");
+        .find(|l| l.starts_with("Nothing is unsupported with Orca today"))
+        .expect("the section has a `Nothing is unsupported with Orca today` paragraph");
     // SPEC-20261122-next-flow-skills-agents REQ-8 retired Codex and OMP: the Codex or OMP
     // leader's periodic run is no longer an unsupported item, and the settled OMP entry
     // spelling, skill folders and lane wake of #3005 P10 and P11 left the paragraph with it.

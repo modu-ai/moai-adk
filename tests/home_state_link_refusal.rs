@@ -487,21 +487,24 @@ impl Move {
     }
 }
 
-/// AC-6 (REQ-6): the HOME state folder is itself a link; the default move root is below it.
+/// AC-6 (REQ-6): the HOME state folder is itself a link; the explicit `--root` is below it.
 #[test]
 fn worktree_move_plan_refuses_a_linked_state_folder() {
     let m = move_tree();
     symlink(&m.behind, m.state()).unwrap();
-    m.plan_refused(&[], ROOT_REFUSED);
+    let root = m.worktrees();
+    m.plan_refused(&["--root", root.to_str().unwrap()], ROOT_REFUSED);
 }
 
-/// AC-6 (REQ-6): the `worktrees` folder of the HOME state folder, the default move root, is a link.
+/// AC-6 (REQ-6): the `worktrees` folder of the HOME state folder, given as the explicit `--root`,
+/// is a link.
 #[test]
 fn worktree_move_plan_refuses_a_linked_worktrees_folder() {
     let m = move_tree();
     fs::create_dir(m.state()).unwrap();
     symlink(&m.behind, m.worktrees()).unwrap();
-    m.plan_refused(&[], FOLDER_REFUSED);
+    let root = m.worktrees();
+    m.plan_refused(&["--root", root.to_str().unwrap()], FOLDER_REFUSED);
 }
 
 /// AC-6 (REQ-6): an explicit `--root` below the HOME state folder whose parent folder is a link.
@@ -536,9 +539,12 @@ fn worktree_move_apply_refuses_a_linked_root_and_moves_nothing() {
     symlink(&m.behind, m.worktrees()).unwrap();
     let before = listing(&m.behind);
     let obs = m.obs();
+    let root = m.worktrees();
     let v = m.run(&[
         "worktree-move-apply",
         m.repo.to_str().unwrap(),
+        "--root",
+        root.to_str().unwrap(),
         "--observations",
         obs.to_str().unwrap(),
         "--plan-digest",

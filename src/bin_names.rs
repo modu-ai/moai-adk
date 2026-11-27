@@ -6,11 +6,11 @@
 //! `main`); here the folder gets `bin/moai` as a hard link to `bin/moai-cli`, so the two names
 //! are one file and the installation keeps the one identity `install::identity_exe` gives it.
 //!
-//! Plan → apply with a plan digest and a caller-supplied permission reference. Only the
-//! version folder this binary runs from is touched; PATH, shell files and any other `moai`
-//! (the Go `moai` included) are never written — `install-inspect` reports those. Nothing is
-//! deleted: a separate `moai` copy of the same build is moved aside to
-//! `moai.replaced-<UTC>` before the link is made.
+//! Plan → apply with a plan digest and a caller-supplied permission reference. Only this
+//! binary's version folder is touched; PATH, shell files and any other `moai` (the Go one
+//! included) are never written. Nothing is deleted: a separate `moai` copy of this build is
+//! moved aside to `moai.replaced-<UTC>` before the link is made. A name that is a link to the
+//! other, regular name is also an installed layout and is written to nothing.
 
 use serde_json::{json, Value};
 use std::fs;
@@ -116,6 +116,19 @@ fn layout_bin(home: &Path, exe: &Path) -> Option<PathBuf> {
     versions_dir_of(&canonical_home, bin).map(|_| bin.to_path_buf())
 }
 
+/// Whether `link` is a symbolic link that resolves to the regular file `file` beside it
+/// (SPEC-20261127-launcher-bin-layout). Judged by the resolved path and the file kind only,
+/// never by the bytes; a link that cannot be resolved is no such link.
+fn links_to_sibling(link: &Path, file: &Path) -> bool {
+    let kind = |p: &Path| fs::symlink_metadata(p).map(|m| m.file_type());
+    kind(link).is_ok_and(|t| t.is_symlink())
+        && kind(file).is_ok_and(|t| t.is_file())
+        && matches!(
+            (fs::canonicalize(link), fs::canonicalize(file)),
+            (Ok(a), Ok(b)) if a == b
+        )
+}
+
 /// Whether a `--version` first line names this very build under either binary name: the
 /// signature (`<version> (rust)`) comes after `moai` or after the earlier name `moai-cli`, so
 /// the check holds before and after the printed name changes (SPEC-20261121-moai-name REQ-1).
@@ -149,6 +162,17 @@ pub fn plan_for(home: &Path, exe: &Path) -> Result<Plan> {
     let alias = bin.join(alias_name);
     let canonical_ok = fs::symlink_metadata(&canonical).is_ok_and(|m| m.file_type().is_file());
     if !canonical_ok {
+        if links_to_sibling(&canonical, &alias) {
+            let sha = crate::install::sha256_file(&alias)?;
+            return finish(
+                "unchanged",
+                None,
+                Some(canonical),
+                Some(alias),
+                Some(sha.clone()),
+                Some(sha),
+            );
+        }
         return finish(
             "blocked",
             Some("bin/moai-cli is missing or not a regular file".into()),
@@ -170,6 +194,16 @@ pub fn plan_for(home: &Path, exe: &Path) -> Result<Plan> {
         );
     };
     if !meta.file_type().is_file() {
+        if links_to_sibling(&alias, &canonical) {
+            return finish(
+                "unchanged",
+                None,
+                Some(canonical),
+                Some(alias),
+                Some(canonical_sha.clone()),
+                Some(canonical_sha),
+            );
+        }
         return finish(
             "blocked",
             Some("bin/moai is a link or a folder; it is left as it is".into()),

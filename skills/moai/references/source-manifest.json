@@ -69,7 +69,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "7e1d3cb1b35f2ef091f6582dc4297c812e053bd9826b8054deeebc3ffcf96440",
+      "sha256": "faa3db2ee96668cdc7b8e2d21f019145301c2fb62117990d34efe78fe3a3bef3",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",
@@ -114,7 +114,7 @@
       }
     },
     "references/flows/team-messages.md": {
-      "sha256": "f14809338f3ccc3250eb79022e78f9d2ec7fe40d8e432e44293372f8d772bdb1",
+      "sha256": "4b330dbc71babab7f5fc54c909f681d7bb677eee898a8e06bd67b99e5b1b8875",
       "origin": {
         "kind": "design-spec",
         "template_id": "flow-team-messages",
@@ -137,7 +137,7 @@
         "kind": "design-spec",
         "template_id": "home-output-style",
         "adoption": "new",
-        "reason": "Written for rc.2 #2875 (#2871 I3, user instruction #1975 6872023826): the one MoAI-Style source, the same items as the moai-easy block of the user's ~/.claude/CLAUDE.md, in English per the instruction-file language rule. src/home_style.rs renders it per host: ~/.claude/output-styles/MoAI-Style.md with frontmatter, and a moai:managed block in ~/.codex/AGENTS.md."
+        "reason": "Written for rc.2 #2875 (#2871 I3, user instruction #1975 6872023826): the one MoAI-Style source, the same items as the moai-easy block of the user's ~/.claude/CLAUDE.md, in English per the instruction-file language rule. src/home_style.rs renders it per host: ~/.claude/output-styles/MoAI-Style.md with frontmatter."
       }
     },
     "references/home/routing.md": {
@@ -263,7 +263,7 @@
         "kind": "design-spec",
         "template_id": "internal-git-safety",
         "adoption": "new",
-        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006); new worktrees under `~/.moai/worktrees/<project>-<id>`, existing ones never moved and the Go generation's `~/.moai/worktrees/projects/` never touched (#2811 D3, D8)."
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006); new worktrees in the project's `.claude/worktrees/<name>` (SPEC-20261122-worktree-place, in place of the earlier home folder of #2811 D3), existing ones never moved and the Go generation's `~/.moai/worktrees/projects/` never touched (#2811 D8)."
       }
     },
     "references/internal/interview.md": {
@@ -504,7 +504,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261124-moai-leader-route (REQ-1 to REQ-12): `/moai leader` makes the window that types it the registered coordination window; it registers with `session-register`, renews once per round, reads the ledger, sends audits to another session, lands with `moai card land --by leader` and releases the registration at the end. The completion-message and transition sentences stay in `flows/next-flow`."
       },
-      "sha256": "89679771c1bf25d52af53037cf4795465fc88aaa200698f5e603683244848dc3"
+      "sha256": "047f56375f89cfb8b9e3baaccc37ce15da0ddbfdf30be133fd6b3fa6acd8b040"
     },
     "workflows/plan.md": {
       "sha256": "10c9373b81fc549fd178f556643af750166fb1850f27d76d8637ab7089138876",
@@ -516,7 +516,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "98ff832852b6d6a899df62a5ba0c52060726078475cb099e91d98956941826a5",
+      "sha256": "f06b06b063de05dcaa109a3a3132cbd1b5df9e1d5c2bff84dce3a2a296873a46",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -552,7 +552,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "0a2e6909613f7fe7cc02269ff0e91096075126059edf6853135b2b520d5c6d4b",
+      "sha256": "0c6ea0748c05406daf3ec16d9dbe7707c389e25e8ca840966478498d03c79638",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
@@ -567,7 +567,7 @@
         "adoption": "new",
         "reason": "Written for SPEC-20261122-next-flow-skills-agents (REQ-3, text slice A): `/moai agent` takes one card at a time, hands its plan, implementation and documents to the base agents in turn, submits it with `moai card submit` and waits for the leader (user decision 2026-11-25); a decision becomes a blocked note on the card. The card take, check, criterion and fresh-state sentences moved here from the retired MODE-AGENT workflow with their pins."
       },
-      "sha256": "b8f94eadebd75bd6fd19be9aaf4d652469ef46395a9a0b1a357bba7da08704b0"
+      "sha256": "608c91fe55cf446a1b8e98f0fd2ea6cb7aaeb6b9fbd376a79d064473492a2fa0"
     }
   }
 }

@@ -49,6 +49,7 @@ Write each commit message in the profile's `language.commit_messages` (`en` in t
 ## Blocks and limits
 
 - Report a real block (permission or hook denial, missing decision, failing gate) with the exact command and stop; a card that needs a decision ends in `LANE-BLOCKED kind=decision …` as a note on the card. Never route around an unapproved permission, spend, HOLD or security gate. Stop after three failures of the same step.
+- Before you wait for the leader's answer or for another card's landing, run `moai card renew <card> --generation <g> --lease-secs 86400`; when your own lease has already ended, run the same command instead of `moai card reclaim`, which counts against the three-reclaim limit.
 - No forced deletion or process kill, and no branch switch, reset or stash in the shared checkout.
 - A rejection is not non-execution: after a denied or interrupted side-effecting command, re-query the real effects before reporting.
 - A lane runs its own self-audit and repairs, and never declares PASS for its own change. A resting lane may audit another lane's card (`skills/moai/references/audit.md`) and records that verdict itself with `moai card verdict`.
