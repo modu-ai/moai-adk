@@ -2271,11 +2271,13 @@ fn undo_order() -> Value {
 /// The `go-residue` step (SPEC-20261121-go-residue-detect, SPEC-20261125-go-residue-apply):
 /// the files the Go generation left behind, proven against the first manifest the survey still
 /// finds. Every surveyed item is listed. The step returns one of two states: `optional` while a
-/// `go_same` or `go_changed` file is left to move or at least one other item is not `keep`, and
-/// `unchanged` when nothing is surveyed or every item is `keep` (the user's own files) or only
-/// items another step owns remain beside the moved ones. It never returns `needs_decision`:
-/// leaving the files where they are is a valid answer, and `needs_decision` would hold
-/// `all_unchanged` false for good. `optional` counts as nothing to do.
+/// `go_same` or `go_changed` file is left to move (a file something still reads, or one kept
+/// because a reader could not be read, is not left to move), and `unchanged` otherwise: nothing
+/// is surveyed, or what remains is the user's own files, files in use, markers, folders or items
+/// another step owns. It never returns `needs_decision`: leaving the files where they are is a
+/// valid answer, and `needs_decision` would hold `all_unchanged` false for good. `optional`
+/// counts as nothing to do. The reason always gives the number of files in use and the number of
+/// readers that could not be read (SPEC-20261126-go-residue-in-use REQ-6).
 ///
 /// The proven bundle has a printed `go-residue-apply` command; a changed file moves only when
 /// the user names it with `--pick`, so no command carries one. While another backup step still
@@ -2297,6 +2299,12 @@ fn go_residue_step(root: &Path, shown: &str, others_pending: bool) -> Result<Ste
         words.extend(["--bundle", "proven"].map(String::from));
         (words, Value::Null)
     });
+    let in_use = survey
+        .items
+        .iter()
+        .filter(|i| i.class == "go_in_use")
+        .count();
+    let unread = survey.unread.len();
     let (state, reason) = if survey.items.is_empty() {
         (
             "unchanged",
@@ -2323,8 +2331,9 @@ fn go_residue_step(root: &Path, shown: &str, others_pending: bool) -> Result<Ste
         (
             "unchanged",
             format!(
-                "{} surveyed files are listed; none is a Go file to move now (markers, \
-                 earlier-generation folders and files another step owns wait for their own step)",
+                "{} surveyed files are listed; none is a Go file to move now (files in use and \
+                 files kept for an unread reader stay; markers, earlier-generation folders and \
+                 files another step owns wait for their own step)",
                 survey.items.len(),
             ),
         )
@@ -2337,6 +2346,14 @@ fn go_residue_step(root: &Path, shown: &str, others_pending: bool) -> Result<Ste
             ),
         )
     };
+    let reason = format!(
+        "{reason}; {in_use} files in use are kept in place, {unread} readers could not be read{}",
+        if unread > 0 {
+            " (every Go file stays where it is until they can be read; see unread_readers)"
+        } else {
+            ""
+        }
+    );
     let mut preview = crate::go_residue::preview(&survey);
     preview["bundles"] = json!({"proven": proven, "changed": changed});
     Ok(Step {

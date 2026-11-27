@@ -6,6 +6,8 @@
 
 mod common;
 
+use common::pty::output_within;
+use common::CleanEnv;
 use serde_json::{json, Value};
 use std::os::unix::fs::MetadataExt as _;
 use std::{
@@ -99,6 +101,159 @@ fn version_line(exe: &Path) -> String {
         .to_string()
 }
 
+/// The two reasons the plan gives today for a name it will not touch (REQ-3 and REQ-4 keep them).
+const CLI_REASON: &str = "bin/moai-cli is missing or not a regular file";
+const MOAI_REASON: &str = "bin/moai is a link or a folder";
+
+/// Every entry of `dir` sorted by name, judged by its own metadata and never through a link:
+/// the kind, the raw link text of a symlink, and `(dev, ino)` with the link count and length
+/// of a file. `names` reads through links, so it cannot tell these cases apart.
+fn snapshot(dir: &Path) -> Vec<(String, String)> {
+    let mut v: Vec<_> = fs::read_dir(dir)
+        .unwrap()
+        .flatten()
+        .map(|e| {
+            let p = e.path();
+            let m = fs::symlink_metadata(&p).unwrap();
+            let kind = m.file_type();
+            let what = if kind.is_symlink() {
+                format!("symlink -> {}", fs::read_link(&p).unwrap().display())
+            } else if kind.is_dir() {
+                "dir".to_string()
+            } else {
+                format!(
+                    "file dev={} ino={} nlink={} len={}",
+                    m.dev(),
+                    m.ino(),
+                    m.nlink(),
+                    m.len()
+                )
+            };
+            (e.file_name().to_string_lossy().into_owned(), what)
+        })
+        .collect();
+    v.sort();
+    v
+}
+
+/// How the second name of a pair is made from the first.
+#[derive(Debug, Clone, Copy)]
+enum Link {
+    Hard,
+    Relative,
+    Absolute,
+}
+
+fn link_to(target: &Path, link: &Path, how: Link) {
+    match how {
+        Link::Hard => fs::hard_link(target, link),
+        Link::Relative => std::os::unix::fs::symlink(target.file_name().unwrap(), link),
+        Link::Absolute => std::os::unix::fs::symlink(target, link),
+    }
+    .unwrap();
+}
+
+/// In `bin`, makes `regular` a regular copy of `binary` and `linked` a link to it, replacing
+/// both names. Returns `(regular, linked)`.
+fn pair(bin: &Path, binary: &str, regular: &str, linked: &str, how: Link) -> (PathBuf, PathBuf) {
+    let (r, l) = (bin.join(regular), bin.join(linked));
+    for p in [&r, &l] {
+        let _ = fs::remove_file(p);
+    }
+    common::copy_executable(Path::new(binary), &r);
+    link_to(&r, &l, how);
+    (r, l)
+}
+
+fn bin_dir(exe: &Path) -> PathBuf {
+    exe.parent().unwrap().to_path_buf()
+}
+
+/// A regular copy of the binary that is no part of the pair under test: the plan and the apply
+/// of a negative case run from it, so they never run through the link being judged.
+fn probe_beside(exe: &Path) -> PathBuf {
+    let probe = exe.with_file_name("probe");
+    common::copy_executable(Path::new(EXE), &probe);
+    probe
+}
+
+/// The `bin/` of another version folder of the same temporary HOME (`versions/b/bin`).
+fn other_version_bin(exe: &Path) -> PathBuf {
+    let versions = exe.parent().unwrap().parent().unwrap().parent().unwrap();
+    let dir = versions.join("b/bin");
+    fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+/// The plan says `unchanged` and the apply writes nothing: the names, their link texts and
+/// their inodes are as they were.
+fn assert_unchanged_untouched(runner: &Path, home: &Path, bin: &Path, case: &str) {
+    let before = snapshot(bin);
+    let p = plan(runner, home);
+    assert_eq!(p["state"], json!("unchanged"), "{case}: {p}");
+    let a = apply(runner, home, p["plan_digest"].as_str().unwrap(), "approved");
+    assert_eq!(a["ok"], json!(true), "{case}: {a}");
+    assert_eq!(a["result"]["written"], json!([]), "{case}: {a}");
+    assert_eq!(snapshot(bin), before, "{case}");
+}
+
+/// The plan says `blocked` with `reason` and the apply writes nothing.
+fn assert_blocked_untouched(runner: &Path, home: &Path, bin: &Path, reason: &str, case: &str) {
+    let before = snapshot(bin);
+    let p = plan(runner, home);
+    assert_eq!(p["state"], json!("blocked"), "{case}: {p}");
+    assert!(
+        p["reason"].as_str().unwrap().contains(reason),
+        "{case}: {p}"
+    );
+    let a = apply(runner, home, p["plan_digest"].as_str().unwrap(), "approved");
+    assert_eq!(a["ok"], json!(true), "{case}: {a}");
+    assert_eq!(a["result"]["written"], json!([]), "{case}: {a}");
+    assert_eq!(snapshot(bin), before, "{case}");
+}
+
+/// The package a version folder carries beside `bin/` for a full `update` run.
+const PACKAGE: [(&str, &str); 3] = [
+    (
+        "SKILL.md",
+        "---\nname: moai\ndescription: fixture package\n---\n# MoAI\nbody\n",
+    ),
+    ("workflows/update.md", "# UPDATE\nv1\n"),
+    ("references/routes.json", "{\"routes\":1}\n"),
+];
+
+/// An agent source folder and the package under `folder`, as `install_version` of
+/// `tests/update_command_cli.rs` lays them out.
+fn put_package(folder: &Path) {
+    fs::create_dir_all(folder.join("agents")).unwrap();
+    for (rel, body) in PACKAGE {
+        let p = folder.join("skills/moai").join(rel);
+        fs::create_dir_all(p.parent().unwrap()).unwrap();
+        fs::write(p, body).unwrap();
+    }
+}
+
+/// One `moai update` run with a cleared environment: an inherited Claude folder variable could
+/// write into the real Claude folder. Returns the whole envelope.
+fn update(runner: &Path, home: &Path, args: &[&str]) -> Value {
+    let mut cmd = Command::new(runner);
+    cmd.arg("update")
+        .args(args)
+        .clean_env()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", home)
+        .env("LC_ALL", "C")
+        .current_dir(home);
+    let out = output_within(&mut cmd, None);
+    serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+        panic!(
+            "envelope JSON on stdout: {}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        )
+    })
+}
+
 #[test]
 fn create_links_the_alias_and_a_rerun_is_unchanged() {
     let (_d, home, exe) = layout();
@@ -188,9 +343,15 @@ fn another_program_a_link_or_a_folder_is_left_alone() {
     assert_eq!(a["result"]["written"], json!([]), "{a}");
     assert_eq!(names(&bin), before);
 
+    // A link to a regular file of another version folder is not this folder's own `moai`
+    // (a link to the sibling `moai-cli` is, SPEC-20261127-launcher-bin-layout D-2).
     fs::remove_file(&alias).unwrap();
-    std::os::unix::fs::symlink(&exe, &alias).unwrap();
-    assert_eq!(plan(&exe, &home)["state"], json!("blocked"));
+    let elsewhere = other_version_bin(&exe).join("moai");
+    common::copy_executable(Path::new(MOAI), &elsewhere);
+    std::os::unix::fs::symlink(&elsewhere, &alias).unwrap();
+    let p = plan(&exe, &home);
+    assert_eq!(p["state"], json!("blocked"), "{p}");
+    assert!(p["reason"].as_str().unwrap().contains(MOAI_REASON), "{p}");
     fs::remove_file(&alias).unwrap();
     fs::create_dir(&alias).unwrap();
     assert_eq!(plan(&exe, &home)["state"], json!("blocked"));
@@ -214,4 +375,200 @@ fn outside_the_version_folder_nothing_is_linked() {
         assert_eq!(a["result"]["written"], json!([]), "{rel}: {a}");
         assert!(!dir.join("moai").exists(), "{rel}");
     }
+}
+
+// SPEC-20261127-launcher-bin-layout AC-1 (REQ-1, REQ-5): `moai` is the regular file and
+// `moai-cli` a link to it, relative and absolute, run from both names.
+#[test]
+fn ac1_a_cli_link_to_the_sibling_moai_is_unchanged() {
+    for how in [Link::Relative, Link::Absolute] {
+        let (_d, home, exe) = layout();
+        let bin = bin_dir(&exe);
+        let (moai, cli) = pair(&bin, MOAI, "moai", "moai-cli", how);
+        for runner in [&moai, &cli] {
+            let case = format!(
+                "{how:?} via {}",
+                runner.file_name().unwrap().to_string_lossy()
+            );
+            assert_unchanged_untouched(runner, &home, &bin, &case);
+        }
+    }
+}
+
+// SPEC-20261127-launcher-bin-layout AC-2 (REQ-2, REQ-5): `moai-cli` stays the regular file and
+// `moai` is a link to it, relative and absolute, run from both names.
+#[test]
+fn ac2_a_moai_link_to_the_sibling_moai_cli_is_unchanged() {
+    for how in [Link::Relative, Link::Absolute] {
+        let (_d, home, exe) = layout();
+        let bin = bin_dir(&exe);
+        let moai = bin.join("moai");
+        link_to(&exe, &moai, how);
+        for runner in [&exe, &moai] {
+            let case = format!(
+                "{how:?} via {}",
+                runner.file_name().unwrap().to_string_lossy()
+            );
+            assert_unchanged_untouched(runner, &home, &bin, &case);
+        }
+    }
+}
+
+// SPEC-20261127-launcher-bin-layout AC-3 (REQ-3): a `moai-cli` link that does not lead to the
+// sibling regular `moai` stays blocked. Run from a regular copy, never through the link.
+#[test]
+fn ac3_a_cli_link_that_leaves_the_pair_stays_blocked() {
+    let cases = [
+        "dangling",
+        "folder",
+        "sibling moai is a folder",
+        "file of another version folder",
+        "file outside the state folder",
+    ];
+    for case in cases {
+        let (_d, home, exe) = layout();
+        let bin = bin_dir(&exe);
+        let probe = probe_beside(&exe);
+        let outside = TempDir::new().unwrap();
+        let target = match case {
+            "dangling" => PathBuf::from("nowhere"),
+            "folder" => {
+                fs::create_dir(bin.join("adir")).unwrap();
+                PathBuf::from("adir")
+            }
+            "sibling moai is a folder" => {
+                fs::create_dir(bin.join("moai")).unwrap();
+                PathBuf::from("moai")
+            }
+            "file of another version folder" => {
+                let f = other_version_bin(&exe).join("moai");
+                common::copy_executable(Path::new(MOAI), &f);
+                f
+            }
+            _ => {
+                let f = outside.path().join("moai");
+                common::copy_executable(Path::new(MOAI), &f);
+                f
+            }
+        };
+        fs::remove_file(&exe).unwrap();
+        std::os::unix::fs::symlink(&target, &exe).unwrap();
+        assert_blocked_untouched(&probe, &home, &bin, CLI_REASON, case);
+    }
+}
+
+// SPEC-20261127-launcher-bin-layout AC-4 (REQ-3, REQ-6): a link to another file with the very
+// same bytes as the sibling `moai` is no link to the pair.
+#[test]
+fn ac4_a_cli_link_to_the_same_bytes_elsewhere_stays_blocked() {
+    for how in [Link::Relative, Link::Absolute] {
+        let (_d, home, exe) = layout();
+        let bin = bin_dir(&exe);
+        let probe = probe_beside(&exe);
+        let moai = bin.join("moai");
+        let other = bin.join("other");
+        common::copy_executable(Path::new(MOAI), &moai);
+        common::copy_executable(Path::new(MOAI), &other);
+        assert_eq!(fs::read(&moai).unwrap(), fs::read(&other).unwrap(), "setup");
+        fs::remove_file(&exe).unwrap();
+        link_to(&other, &exe, how);
+        assert_blocked_untouched(&probe, &home, &bin, CLI_REASON, &format!("{how:?}"));
+    }
+}
+
+// SPEC-20261127-launcher-bin-layout AC-5 (REQ-4, REQ-6): a `moai` link that does not lead to
+// the sibling regular `moai-cli` stays blocked. Run from a regular copy.
+#[test]
+fn ac5_a_moai_link_that_leaves_the_pair_stays_blocked() {
+    let cases = [
+        "dangling",
+        "folder",
+        "same bytes elsewhere",
+        "file of another version folder",
+    ];
+    for case in cases {
+        let (_d, home, exe) = layout();
+        let bin = bin_dir(&exe);
+        let probe = probe_beside(&exe);
+        let target = match case {
+            "dangling" => PathBuf::from("nowhere"),
+            "folder" => {
+                fs::create_dir(bin.join("adir")).unwrap();
+                PathBuf::from("adir")
+            }
+            "same bytes elsewhere" => {
+                common::copy_executable(Path::new(EXE), &bin.join("other"));
+                assert_eq!(
+                    fs::read(&exe).unwrap(),
+                    fs::read(bin.join("other")).unwrap(),
+                    "setup"
+                );
+                PathBuf::from("other")
+            }
+            _ => {
+                let f = other_version_bin(&exe).join("moai-cli");
+                common::copy_executable(Path::new(EXE), &f);
+                f
+            }
+        };
+        std::os::unix::fs::symlink(&target, bin.join("moai")).unwrap();
+        assert_blocked_untouched(&probe, &home, &bin, MOAI_REASON, case);
+    }
+}
+
+// SPEC-20261127-launcher-bin-layout AC-6 (REQ-5, REQ-7): a full `update` run from a version
+// folder in each layout reports `unchanged` and leaves both names as they were. The hard link
+// layout passes today; the other four are the red part.
+#[test]
+fn ac6_update_does_not_block_itself_on_a_linked_layout() {
+    let shapes = [
+        ("hard link", "moai-cli", "moai", Link::Hard),
+        ("reversed relative", "moai", "moai-cli", Link::Relative),
+        ("reversed absolute", "moai", "moai-cli", Link::Absolute),
+        ("mirror relative", "moai-cli", "moai", Link::Relative),
+        ("mirror absolute", "moai-cli", "moai", Link::Absolute),
+    ];
+    let mut problems: Vec<String> = Vec::new();
+    for (label, regular, linked, how) in shapes {
+        let (_d, home, first) = layout();
+        let bin = bin_dir(&first);
+        put_package(bin.parent().unwrap());
+        let (runner, _) = pair(&bin, MOAI, regular, linked, how);
+        let before = snapshot(&bin);
+
+        let v = update(&runner, &home, &["--json"]);
+        let r = &v["result"];
+        if v["ok"] != json!(true) || r["mode"] != json!("preview") {
+            problems.push(format!("{label}: the preview answered {v}"));
+            continue;
+        }
+        if r["bin_names"]["state"] != json!("unchanged") {
+            problems.push(format!(
+                "{label}: the preview says bin_names {}",
+                r["bin_names"]
+            ));
+            continue;
+        }
+        if snapshot(&bin) != before {
+            problems.push(format!("{label}: the preview changed the names"));
+        }
+
+        let digest = r["plan_digest"].as_str().unwrap().to_string();
+        let v = update(&runner, &home, &["--confirm", &digest]);
+        let r = &v["result"];
+        if v["ok"] != json!(true) || r["mode"] != json!("applied") {
+            problems.push(format!("{label}: the confirm answered {v}"));
+            continue;
+        }
+        if r["bin_names_result"]["state"] != json!("unchanged") {
+            problems.push(format!(
+                "{label}: the confirm says bin_names_result {}",
+                r["bin_names_result"]
+            ));
+        }
+        if snapshot(&bin) != before {
+            problems.push(format!("{label}: the confirm changed the names"));
+        }
+    }
+    assert!(problems.is_empty(), "{problems:#?}");
 }
