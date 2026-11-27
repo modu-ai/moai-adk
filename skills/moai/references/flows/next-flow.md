@@ -42,22 +42,22 @@ Four technical rules make the flow run.
 - A message the ledger does not back starts nothing: the leader sends no `/clear` and no dispatch, and waits for the ledger.
 - The lane's message and the leader's dispatch, answer and line after `/clear` are written in the user's conversation language; only a prompt to a subagent is English, and commands, paths, card ids and protocol lines stay verbatim.
 - The leader sends `/clear` to the exact existing window only after the ledger shows the lane's card done or released, and only when nothing is open: no card in review, no live reservation, no run of the lane's own, no unsaved change, no input or selection prompt on the screen and nothing unknown.
-- A fixed delay after `/clear` proves nothing; the leader confirms that the new session is ready, sends the next line once, and confirms that session's reservation of the new card (the ACK). When the ACK is not seen it inspects the window and does not send again.
-- A new window is opened only when the existing one cannot be recovered.
+- A fixed delay after `/clear` proves nothing; the leader confirms that the new session is ready, sends the next line once, and confirms that session's reservation of the new card (the ACK). Without the ACK it inspects the window and sends nothing more.
 
 ### Final flow
 
 - `/clear` and a lane-terminal manager are not conditions of dispatch. The start signal is the card verified and landed on the local integration branch, then done with its reservation released in the ledger.
-- With no registered leader the agent reserves the next eligible card once, and an automatic restart runs only through the existing HOLD, ownership, priority and safety checks.
-- No leader: flow ends at submission. Waiting for an audit and the hand-back of a card are separate from done and start nothing. An agent clearing its own session is not documented as a guarantee.
+- With no registered leader the agent reserves the next eligible card once, and a restart passes the HOLD, ownership, priority and safety checks.
+- No leader: flow ends at submission. Waiting for an audit and the hand-back of a card are separate from done and start nothing.
 
 ## Landing
 
 - A card lands exactly once, by the lander: the leader session, the only caller the command accepts. The command is `moai card land <card> --head <40 hex> --by leader`.
-- READY receipt: `check affected --card`. The wide set runs once per batch in `card land-batch`; the full run every five landings stays.
+- READY receipt: `check affected --card`. The wide set runs once per batch in `card land-batch`.
 - When the tip is not on the first-parent line of the head (the tip moved after the lane's base), the command refuses with `stale_base` and changes nothing. The lander then merges the lane's head onto the tip in a worktree of its own, with the tip as the first parent, and lands that merge.
 - Audit brief: name the scan tests `moai repo-scans --refs <tip> <head>` picks; run only their `cargo` checks on the merge tree, leaving out a Python line, and record each as a receipt step `scan:<id>` of the PASS for `moai card land`.
 - The protection hook is git's `reference-transaction` hook, which runs `moai card guard`. It refuses every create, move and delete of the integration branch that the landing command did not announce, a rename or copy onto its name included. Land with `moai card land`; never look for a way around the hook.
-- After a landing the landing command pushes the integration branch to the remote, fast-forward only, and only when the user has turned the remote copy on: the `remote_copy` setting, off by default, a key of the project profile. While it is off nothing is pushed and the remote is not read. A copy that could not finish waits for the next landing, and a remote whose branch went another way is held as it is; neither undoes the landing.
+- `guard_record_stale` in a landing answer, or the notice of `moai update`, says the guard record names another branch than the profile; RC1 only reports it. Preview with `moai card guard-repoint`; only the leader runs `--apply --plan-digest <digest> --permission-reference <ref>`, after the user's yes; `--revert <stamp>` undoes it. The old branch is unguarded afterwards.
+- After a landing the landing command pushes the integration branch to the remote, fast-forward only, and only when the user has turned the remote copy on: the `remote_copy` setting, off by default. While it is off nothing is pushed and the remote is not read. A copy that could not finish waits for the next landing; a diverged remote is held as it is.
 - Remote checks never block a landing; a failed remote run becomes one line of `docs/later.md`.
 - Nobody moves the integration branch by hand, by a reset or by a push to it, and a landing never names a head nobody audited.
