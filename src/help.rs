@@ -484,7 +484,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ),
     (
         "improve-note",
-        &["improve-note --kind failure --key cargo --text 'check was red' ."],
+        &["improve-note --kind failure --key cargo --text check-was-red ."],
     ),
     ("claim-acquire", &["claim-acquire . < request.json"]),
     ("claim-verify", &["claim-verify . < request.json"]),

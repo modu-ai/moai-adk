@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 
-/// Plan a change to a project skill or agent file without writing anything
+/// Plan lessons for a project skill or agent file
 ///
 /// Reads one target file below the project folder (a skill or agent the project's generation
 /// manifest owns, grade A) and shows what one to three lesson items would do to it: the old and
