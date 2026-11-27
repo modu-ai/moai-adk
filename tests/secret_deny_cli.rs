@@ -898,6 +898,15 @@ fn apply_adds_rules_without_taking_ownership() {
     let receipt_after = read_receipt();
     assert_eq!(receipt_after["owned"], receipt_before["owned"]);
     assert!(receipt_after["owned"].get("permissions").is_none());
+    // Its file fingerprint follows the file the apply wrote, and no interrupted-apply mark stays.
+    let written = fs::read(root.join(".claude/settings.json")).expect("settings file");
+    assert_ne!(written, original, "the apply changed the file");
+    assert_eq!(
+        receipt_after["settings_sha256"],
+        json!(moai_cli::digest(&written)),
+        "{receipt_after}"
+    );
+    assert!(receipt_after.get("pending").is_none(), "{receipt_after}");
     // So a request for the same key without `permissions` plans no removal of it.
     let (code, again) = claude_settings(
         &["claude-settings-plan", project_arg],
