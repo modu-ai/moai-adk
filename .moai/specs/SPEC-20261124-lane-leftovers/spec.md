@@ -1,9 +1,10 @@
 ---
 id: SPEC-20261124-lane-leftovers
 title: "lanes keep their throwaway copies and temporary HOMEs inside the worktree and report what is left in READY"
-status: draft
+status: approved
 revision: 5
 created: 2026-11-24
+approval: {by: user, at: 2026-11-27, basis: "레저 결정 노트 10729 (ref note:571:bca33cf383c072543ff03855744e9d4e) 인용: 사용자가 직접 골랐어요(2026-11-27, 리더 세션의 질문 도구): \"`.moai/state/`만 빼기 (Recommended)\" = D-4 (a), 개정 5 를 글 그대로 승인", digest: "sha256:52d6b3385bf7e24aafa02919498a378b8a8b8348ee799ae0c1a38dc6761326d2"}
 ---
 
 # lanes keep their throwaway copies and temporary HOMEs inside the worktree and report what is left in READY
@@ -29,7 +30,7 @@ created: 2026-11-24
 - Q3: `<worktree>/target/<name>/` 의 것은 정리 때 같이 사라지는가? -> A: 저절로는 아니에요(카드 본문의 가정과 달라요). `docs/lane-rules.md` 가 말하듯 정리는 cargo 출력만 지우고 `target/<name>/` 의 노트가 있는 워크트리는 `worktree-gc-plan` 의 `remove` 후보가 아니에요. 그래서 레인이 READY 전에 자기 것을 상대 경로로 지우고(워크트리 안이라 허용), 못 지운 것만 `leftovers:` 에 적어요(REQ-1).
 - Q4: 시스템 임시 폴더나 scratchpad 의 것을 잡는 검사를 더하는가? -> A: 아니요(Non-goals). git 이 볼 수 없는 곳이라 위치 규칙과 READY 줄이 보고의 전부예요. 이 한계는 Risks 에 적었어요.
 - Q5: 새 거절 규칙은 observe 부터인가(SDD 규칙 11)? -> A: 부분만이에요. `leftovers:` 줄의 있고 없음은 읽는 일뿐이라 오탐이 없어서 카드대로 바로 거절해요. 공용 체크아웃 목록은 다른 레인의 파일이나 `.DS_Store` 같은 것에 오탐할 수 있어서 observe 로 시작해요. 이 선택은 D-1 로 리더에게 물어요.
-- Q6: (판 5) `shared_checkout_new` 에서 무시된 파일을 전부 빼는가, `.moai/state/` 만 빼는가? -> A: `.moai/state/` 만 빼요. 이 SPEC 의 REQ-4 와 AC-3 이 무시된 파일을 일부러 넣었고(Intent 의 `.moai/*` 확인: 무시된 곳에는 레인이 남긴 로그가 숨을 수 있어요), 통합 테스트 `the_shared_checkout_is_read_without_changing_it` 와 `--ignored=matching` 을 뺀 뮤턴트가 그걸 지켜요. 전부 빼면 레인이 공용 체크아웃에 남긴 무시된 흔적을 못 봐요. 세 레인이 겪은 것은 상태줄 캐시 한 곳이라, 도구가 스스로 만드는 상태 폴더 하나를 기대 목록에 더하는 것이 좁은 고침이에요. 이 선택은 리더가 2026-11-27 에 (가) 로 골랐고(C-571 카드 메시지), 사용자의 승인이 필요해요(D-4).
+- Q6: (판 5) `shared_checkout_new` 에서 무시된 파일을 전부 빼는가, `.moai/state/` 만 빼는가? -> A: `.moai/state/` 만 빼요. 이 SPEC 의 REQ-4 와 AC-3 이 무시된 파일을 일부러 넣었고(Intent 의 `.moai/*` 확인: 무시된 곳에는 레인이 남긴 로그가 숨을 수 있어요), 통합 테스트 `the_shared_checkout_is_read_without_changing_it` 와 `--ignored=matching` 을 뺀 뮤턴트가 그걸 지켜요. 전부 빼면 레인이 공용 체크아웃에 남긴 무시된 흔적을 못 봐요. 세 레인이 겪은 것은 상태줄 캐시 한 곳이라, 도구가 스스로 만드는 상태 폴더 하나를 기대 목록에 더하는 것이 좁은 고침이에요. 이 선택은 리더가 2026-11-27 에 (가) 로 골랐고(리더의 카드 메시지), 사용자가 같은 날 D-4 (a) 로 승인했어요(레저 노트 10729).
 
 ## Non-goals
 
@@ -95,10 +96,11 @@ created: 2026-11-24
 - D-2: 공용 체크아웃 파일을 가르는 기준. 선택지 (a) 예약 시작 이후 만들거나 바뀐 것(생성 시각과 수정 시각 중 큰 값) — 기본값; (b) 예약 때 목록을 원장에 저장해 비교(더 정확하나 원장 쓰기와 `card take` 변경이 필요해요, 다른 카드의 몫). 기본값은 원장도 `card take` 도 바꾸지 않아요. 되돌릴 수 있어요. 분류: none.
 - D-3: 위치 규칙의 범위. 선택지 (a) 버리는 복사본·임시 HOME·`mktemp` 폴더만 `target/<name>/` — 기본값; (b) 레인의 모든 임시 파일(노트, 로그 포함)을 같은 곳으로 합치기. (b)는 scratchpad 를 쓰라는 호스트 지침과 부딪혀서 이 SPEC 에서는 하지 않아요. 되돌릴 수 있어요. 분류: none.
 - D-4 (판 5): 상태줄 캐시 폴더의 처리. 선택지 (a) 고정 목록에 `.moai/state/` 하나만 더해요 — 추천: 세 레인이 겪은 한 곳이고 무시된 다른 흔적은 계속 보고해요; (b) 무시된 파일을 전부 목록에서 빼요(`--ignored=matching` 을 `status` 처럼 뺌): REQ-4·AC-3·통합 테스트가 바뀌고 레인이 남긴 무시된 흔적을 못 봐요; (c) 아무것도 바꾸지 않고 레인이 `.moai/state/` 를 알아서 무시해요. 이 SPEC 의 승인된 요구 한 줄을 바꾸는 개정이라 사용자의 승인이 필요해요. 되돌릴 수 있어요(목록의 한 항목). 분류: none. 결정자: 사용자.
+  - 답(2026-11-27, 사용자가 리더 세션의 질문 도구에서 직접 골랐어요, 레저 노트 10729): (a) `.moai/state/` 만 빼기 (Recommended). 다른 무시된 흔적은 계속 보고해요. 개정 5 를 글 그대로 승인해요.
 
 ## Result
 
-판 5 는 초안이에요. 구현하지 않았어요. 사용자의 승인과 D-4 의 선택을 기다려요. 아래 줄은 판 4 까지의 결과예요.
+판 5 는 사용자가 D-4 (a) 로 승인했어요(레저 노트 10729). 아직 구현하지 않았어요. 아래 줄은 판 4 까지의 결과예요.
 
 NeXT 팁 efb3a80ae9 를 합친 가지에서 읽은 것이에요(합치기는 리더 결정 노트 8196 의 (a); 같은 시각의 `check affected` 영수증은 READY 노트가 가져요). 모든 실행은 `RUSTC_WRAPPER=sccache`, 힙 슬롯 `--max 3`, `cargo nextest run --locked --offline` 이에요.
 
