@@ -171,6 +171,8 @@ pub const GROUPS: &[Group] = &[
             ("optimize-plan", true),
             ("baseline-inventory", true),
             ("improve-signals", false),
+            ("improve-plan", false),
+            ("improve-note", false),
         ],
     },
     Group {
@@ -476,6 +478,14 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("optimize-plan", &["optimize-plan --integration-ref origin/main ."]),
     ("baseline-inventory", &["baseline-inventory ."]),
     ("improve-signals", &["improve-signals ."]),
+    (
+        "improve-plan",
+        &["improve-plan --target .claude/agents/moai/prj-x.md --item '{\"op\":\"retire\",\"id\":\"old\"}' ."],
+    ),
+    (
+        "improve-note",
+        &["improve-note --kind failure --key cargo --text 'check was red' ."],
+    ),
     ("claim-acquire", &["claim-acquire . < request.json"]),
     ("claim-verify", &["claim-verify . < request.json"]),
     (
