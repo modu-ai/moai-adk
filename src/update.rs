@@ -2468,6 +2468,9 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
         ));
     }
     out.push_str(&format!("command names\n  moai: {}\n", p.bin_names.state));
+    for left in &p.bin_names.left_in_place {
+        out.push_str(&format!("  left in place: {}\n", left.display()));
+    }
     out.push_str(&p.hooks.summary());
     out.push_str(&p.keys.summary());
     out.push_str(&p.home.summary());
