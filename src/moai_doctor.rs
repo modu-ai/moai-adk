@@ -403,7 +403,7 @@ fn auth_status() -> AuthResult {
 
 /// The whole report.
 pub fn report(g: &Gathered, platform: &str) -> Value {
-    let checks = vec![
+    let checks = [
         config_folder_check(g),
         version_check(&g.version, platform),
         login_check(g),
