@@ -120,4 +120,64 @@ created: 2026-11-27
 
 ## Result
 
-`status: draft`예요. 승인은 이 파일에 기록하지 않았어요. 아직 구현하지 않았어요.
+`status: draft`예요. 승인은 이 파일에 기록하지 않았어요(리더가 카드 노트에 인용한 사용자 승인이 레저에 있어요). 구현 head 는 이 Result 를 담은 문서 커밋 바로 앞이에요. 작업 범위는 `fa2b49dc44..HEAD`예요.
+
+한 일: 무시 블록 끝에 `.moai.rust-*/` 한 줄(`render_ignore`)과 골든 16·17, 계획 쪽(`src/project_update/leftovers.rs` 새 파일: 다섯 종류의 보관 가능 판정, 출처 sha256, 보관 명령과 남기기 명령, `declined.rs`의 `leftover:<경로>` 키, `all_unchanged`, `guide.rs`의 `finish.open`), 적용·되돌리기(`leftovers_archive.rs` 새 파일, `project-update-leftovers-apply`·`-revert` 새 명령 둘, 영수증 `.moai/backups/<UTC>/leftovers-receipt.json`, 보관 `leftovers/<같은 경로>`), `undo_order` 의 조건부 첫 행, 도움말 행과 골든 넷, 운영 문서와 `docs/later.md` 두 줄이에요. 이동은 한 번의 rename(폴더) 또는 link 뒤 unlink(파일)이고 아무것도 지우지 않아요. 되돌리기는 영수증이 아니라 디스크로 판단해요.
+
+결정과 해석:
+
+- D-2: `STATE_KEPT` 좁히기는 하지 않았고 후속 카드는 리더가 열어요. 카드 기준의 "좁히기" 문장은 met 으로 표시하지 않아요(AC-14 와 `KEPT` 불변으로만 충족돼요). 랜딩은 `--keep-open`이에요.
+- D-4: `.moai-backup/.update.lock` 은 보관하고, 보관 되돌리기를 `go-state-revert` 보다 먼저 하도록 `undo_order` 첫 행과 AC-16 테스트로 고정했어요.
+- 되돌리기 명령은 `--receipt` 에 더해 `--permission-reference` 도 받아요(`go-residue-revert` 와 같아요). 본문 REQ-19 는 최소 형태만 적었어요.
+- REQ-1 의 키는 `action`·`keep_only`·`keep`·`kept`·`ask_again` 이고, 다른 백업 단계가 명령을 가진 동안 보관 가능한 항목은 `action` 도 `keep_only` 도 없이 `action_waits` 문장만 가져요(REQ-2).
+- 폴더 이름은 프로젝트의 글이라서 `.moai.rust-` 뒤가 ASCII 영숫자와 `-_.`(64자 이하)인 폴더만 목록에 올려요(보안 검토 지적을 반영했어요).
+
+다른 카드 테스트를 바꾼 곳(리뷰어가 약화 여부를 볼 곳): `tests/update_end_to_end_cli.rs`의 `shape_e_reaches_all_unchanged` 는 이제 `.moai-backup/.update.lock` 도 목록에 있어서 기대 목록이 둘이에요. `the_printed_undo_order_takes_the_chain_back_to_the_start_bytes` 의 `may_stay_behind` 는 정확히 `.moai-cli/manifests/update-declined.json` 한 파일만 더 허용해요(walk 가 열린 `.moai-cli/` 를 남기기 명령으로 답해서 생겨요). `ran == 7` 핀과 다른 단언은 그대로예요. `tests/fixtures/state_folder_literals/allow.tsv` 는 `tests/gitignore_block_cli.rs` 의 기준선을 74 에서 81 로 올렸어요(새 테스트가 `.moai.rust-…` 이름을 써요).
+
+Verification (이 세션과 에이전트 실행에서 본 결과; 같은 헤드의 체크 결과는 READY 노트가 인용해요):
+
+- 무시 블록: RED → `gitignore_block_cli` 48개 중 3개 실패(단언), GREEN 뒤 48개 통과, `product_cli protocol_fixtures_record_current_contract` 1개 통과(골든은 `MOAI_UPDATE_FIXTURES=1` 로 다시 만들었고 바뀐 필드는 `detail`·`rendered_sha256`·`manifest_sha256` 뿐이에요).
+- 계획 쪽: RED 새 테스트 4개와 끝에서 끝 2개가 단언으로 실패, GREEN 뒤 통과.
+- apply/revert: RED 9개와 끝에서 끝 1개가 단언으로 실패, GREEN 뒤 `project_update_leftovers_cli` 15개, `update_end_to_end_cli` 10개, `project_update_plan_cli` 74개, `project_update_go_residue_cli` 17개, `update_moved_receipts` 8개, `--lib project_update::` 통과.
+- 도움말: `help_layout` 11개 통과. 네 골든은 새 행 두 줄 단어만 늘고 나머지는 열 폭과 줄바꿈이에요(60·80 열은 단어 단위 비교).
+- clippy: 라이브러리와 바이너리, 그리고 세 테스트 대상 `-D warnings` 모두 exit 0.
+- 위험 경로(이동·되돌리기·위조 영수증·권한 0 파일)는 임시 프로젝트와 임시 HOME 의 진짜 바이너리로 도는 Rust 통합 테스트로만 실행했어요(AC-3, 4, 5, 6, 8, 10, 18 과 되돌리기 충돌 테스트 둘).
+
+Guard mutants(각 뮤턴트는 슬롯에서 정확히 한 번씩 Edit 으로 넣고 지정 테스트를 돌린 뒤 되돌렸어요. 처음 실행에서 3개가 `exit 0` 으로 살아남아서 테스트를 보강한 뒤 같은 뮤턴트가 `exit 100` 이 됐어요):
+
+- `guard-mutant: leftover_apply_refuses_stale_digest_bad_reference_and_unknown_item | apply 의 plan digest 비교 | exit 100`
+- `guard-mutant: an_item_behind_a_link_is_refused_by_the_look_before_a_move | still_as_planned 의 contained 검사 | exit 100`
+- `guard-mutant: apply_names_a_pick_behind_a_link_as_such | apply 의 pick contained 검사 | exit 100`
+- `guard-mutant: an_archive_place_behind_a_link_is_refused_before_the_receipt_is_saved | preflight 의 보관 자리 contained 검사 | exit 100`
+- `guard-mutant: leftover_apply_never_moves_a_link_or_an_escaping_path | revert 의 영수증 경로 가드 | exit 100`
+- `guard-mutant: leftover_folder_with_an_unfinished_receipt_is_keep_only | 계획의 pending 영수증 검사 | exit 100`
+- `guard-mutant: a_lock_whose_process_is_alive_when_the_apply_starts_is_refused | apply 때 pid 재확인 | exit 100`
+- `guard-mutant: leftover_revert_leaves_a_taken_place_and_the_archive_as_they_are | revert 의 원래 자리 검사 | exit 100`
+- `guard-mutant: leftover_revert_refuses_an_archive_that_differs_from_the_receipt | revert 의 보관본 listing digest 비교 | exit 100`
+- `guard-mutant: leftover_apply_stops_before_any_move_on_another_filesystem | preflight 의 leftovers_cross_device 고장 지점 | exit 100`
+- `guard-mutant: same_filesystem_compares_the_device_of_the_item_and_of_the_backup_area | 장치 id 비교 | exit 100`
+- `guard-mutant: the_block_ignores_the_rust_set_aside_folders | render_ignore 의 새 마지막 줄 | exit 100`
+- `guard-mutant: a_set_aside_folder_is_listed_only_under_a_plain_name | plain_suffix 필터 | exit 100`
+
+Acceptance:
+
+- AC-1: met · `leftover_plan_gives_each_item_an_action_or_a_keep_only_reason` 통과
+- AC-2: met · `leftover_folder_with_an_unfinished_receipt_is_keep_only` 통과
+- AC-3: met · `leftover_apply_moves_and_revert_puts_back_every_byte` 통과
+- AC-4: met · `leftover_apply_refuses_stale_digest_bad_reference_and_unknown_item` 통과
+- AC-5: met · `leftover_apply_never_moves_a_link_or_an_escaping_path` 통과
+- AC-6: met · `leftover_lock_is_archived_only_while_its_process_is_dead` 통과(apply 때 pid 재확인은 단위 테스트가 따로 덮어요)
+- AC-7: met · `leftover_keep_is_recorded_counted_and_asked_again_when_the_folder_changes` 통과
+- AC-8: met · `leftover_apply_stops_before_any_move_on_another_filesystem` 통과(다른 파일 시스템은 시험용 고장 지점으로만 증명했어요: simulated)
+- AC-9: met · `leftover_apply_says_how_many_tracked_files_moved` 통과
+- AC-10: met · `leftover_apply_never_opens_a_secret_shaped_name` 통과
+- AC-11: met · `leftover_undo_order_names_the_revert_only_after_an_apply` 통과
+- AC-12: met · `the_block_ignores_the_rust_set_aside_folders` 통과
+- AC-13: met · `protocol_fixtures_record_current_contract` 통과(1 passed)
+- AC-14: met · `a_file_git_already_tracks_stays_tracked` 가 `gitignore_block_cli` 48개 안에서 통과
+- AC-15: met · `shape_g_reaches_all_unchanged` 통과
+- AC-16: met · `shape_e_backup_lock_needs_the_leftovers_revert_first` 통과
+- AC-17: met · `leftover_open_item_is_listed_by_the_guide` 통과
+- AC-18: met · `leftover_apply_moves_nothing_when_the_receipt_cannot_be_saved` 통과
+
+Not run / 남은 것: Windows·Linux 결과는 주장하지 않아요(Mac 픽스처만). 실제 다른 파일 시스템 이동은 재현하지 못했고 시험용 고장 지점과 `same_filesystem` 단위 테스트로만 덮었어요. 계획 문장의 `.moai-cli/` fact 는 맨 위 항목 이름을 비밀 이름 거르기 없이 최대 8개 보여 줘요(`docs/later.md` 한 줄). go-residue 조사가 같은 폴더를 `leftover_folder` 로 한 번 더 알리는 중복도 `docs/later.md` 에 한 줄로 남겼어요. 이 Result 커밋 뒤 헤드의 `check affected --card` 결과는 READY 노트가 인용해요(여기에 적으면 헤드가 바뀌어요).
