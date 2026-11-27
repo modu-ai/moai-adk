@@ -1157,6 +1157,11 @@ fn apply_refuses_a_linked_settings_file_or_claude_folder() {
         .is_symlink());
 }
 
+/// The two route texts, compiled in so `tools/repo_scans.json` selects this target when one of
+/// them changes.
+const PROJECT_ROUTE: &str = include_str!("../skills/moai/workflows/project.md");
+const UPDATE_ROUTE: &str = include_str!("../skills/moai/workflows/update.md");
+
 /// The line of `text` that holds `marker`, or a failure that names the file.
 fn route_line<'a>(text: &'a str, marker: &str, file: &str) -> &'a str {
     text.lines()
@@ -1168,12 +1173,10 @@ fn route_line<'a>(text: &'a str, marker: &str, file: &str) -> &'a str {
 /// rule only after the user's pick; the update route names the preview and has no apply step.
 #[test]
 fn the_routes_offer_the_preview_and_apply_only_on_a_pick() {
-    let package = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows");
-    let project = fs::read_to_string(package.join("project.md")).expect("the PROJECT route text");
-    let update = fs::read_to_string(package.join("update.md")).expect("the UPDATE route text");
+    let (project, update) = (PROJECT_ROUTE, UPDATE_ROUTE);
 
     let step = route_line(
-        &project,
+        project,
         "SPEC-20261122-secret-file-deny-rules",
         "project.md",
     );
@@ -1198,7 +1201,7 @@ fn the_routes_offer_the_preview_and_apply_only_on_a_pick() {
         "the retire pick is not separate"
     );
 
-    let named = route_line(&update, "secret-deny-plan", "update.md");
+    let named = route_line(update, "secret-deny-plan", "update.md");
     for needle in ["read-only", "/moai project", "applies nothing"] {
         assert!(named.contains(needle), "update.md line lacks `{needle}`");
     }
