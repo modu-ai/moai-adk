@@ -10,6 +10,7 @@ use common::pty::output_within;
 use common::CleanEnv;
 use serde_json::{json, Value};
 use std::os::unix::fs::MetadataExt as _;
+use std::os::unix::fs::PermissionsExt as _;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -571,4 +572,163 @@ fn ac6_update_does_not_block_itself_on_a_linked_layout() {
         }
     }
     assert!(problems.is_empty(), "{problems:#?}");
+}
+
+/// A version folder that holds `bin/moai` alone: a regular copy of the `moai` binary and no
+/// `bin/moai-cli`, the shape of a new install (SPEC-20261127-installed-binary-name-moai).
+/// Returns `(guard, home, moai)`.
+fn only_moai() -> (TempDir, PathBuf, PathBuf) {
+    let (d, home, cli) = layout();
+    let bin = bin_dir(&cli);
+    fs::remove_file(&cli).unwrap();
+    let moai = bin.join("moai");
+    common::copy_executable(Path::new(MOAI), &moai);
+    (d, home, moai)
+}
+
+/// Whether `path` names anything at all, judged by its own metadata and never through a link.
+fn exists_by_lstat(path: &Path) -> bool {
+    fs::symlink_metadata(path).is_ok()
+}
+
+// SPEC-20261127-installed-binary-name-moai AC-5 (REQ-5): a version folder with `bin/moai`
+// alone is the installed shape. The plan says `unchanged`, the apply writes nothing, and a full
+// `update` run reports `unchanged` before and after the confirm and never makes a `moai-cli`.
+#[test]
+fn ac5_only_moai_is_unchanged_by_the_plan_and_by_update() {
+    let (_d, home, moai) = only_moai();
+    let bin = bin_dir(&moai);
+    put_package(bin.parent().unwrap());
+    assert_unchanged_untouched(&moai, &home, &bin, "only moai");
+    assert!(
+        !exists_by_lstat(&bin.join("moai-cli")),
+        "the plan or the apply made a moai-cli"
+    );
+
+    let before = snapshot(&bin);
+    let v = update(&moai, &home, &["--json"]);
+    let r = &v["result"];
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(r["mode"], json!("preview"), "{v}");
+    assert_eq!(
+        r["bin_names"]["state"],
+        json!("unchanged"),
+        "{}",
+        r["bin_names"]
+    );
+    assert_eq!(snapshot(&bin), before, "the preview changed the names");
+
+    let digest = r["plan_digest"].as_str().unwrap().to_string();
+    let v = update(&moai, &home, &["--confirm", &digest]);
+    let r = &v["result"];
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(r["mode"], json!("applied"), "{v}");
+    assert_eq!(
+        r["bin_names_result"]["state"],
+        json!("unchanged"),
+        "{}",
+        r["bin_names_result"]
+    );
+    assert_eq!(snapshot(&bin), before, "the confirm changed the names");
+    assert!(!exists_by_lstat(&bin.join("moai-cli")));
+}
+
+// SPEC-20261127-installed-binary-name-moai AC-6 (REQ-6): the earlier shapes keep their states
+// and no state makes or refreshes a `moai-cli`. A `moai-cli` that was there keeps its inode, one
+// that was not there stays absent. A `moai` that is another program beside `moai-cli` stays
+// blocked and names the program. This one passes before the change: it pins the earlier shapes.
+#[test]
+fn ac6_no_name_state_makes_or_refreshes_a_moai_cli() {
+    // The folder holds `moai-cli` alone: `create` links `moai` and leaves `moai-cli` as it is.
+    {
+        let (_d, home, cli) = layout();
+        let bin = bin_dir(&cli);
+        let before = snapshot(&bin);
+        let p = plan(&cli, &home);
+        assert_eq!(p["state"], json!("create"), "{p}");
+        let a = apply(&cli, &home, p["plan_digest"].as_str().unwrap(), "approved");
+        assert_eq!(a["ok"], json!(true), "{a}");
+        let after = snapshot(&bin);
+        let cli_before = before.iter().find(|(n, _)| n == "moai-cli").unwrap();
+        let cli_after = after.iter().find(|(n, _)| n == "moai-cli").unwrap();
+        assert!(cli_after.1.starts_with("file dev="), "{cli_after:?}");
+        assert_eq!(
+            cli_before.1.split(" nlink=").next(),
+            cli_after.1.split(" nlink=").next(),
+            "moai-cli was rewritten"
+        );
+    }
+    // The hard link layout stays `unchanged` and gains nothing.
+    {
+        let (_d, home, cli) = layout();
+        let bin = bin_dir(&cli);
+        fs::hard_link(&cli, bin.join("moai")).unwrap();
+        assert_unchanged_untouched(&cli, &home, &bin, "hard link");
+    }
+    // A `moai` that is another program beside `moai-cli`: blocked, naming the program, and both
+    // names keep their inodes.
+    {
+        let (_d, home, cli) = layout();
+        let bin = bin_dir(&cli);
+        let moai = bin.join("moai");
+        fs::write(&moai, "#!/bin/sh\necho 'other 9.9.9 (go)'\n").unwrap();
+        fs::set_permissions(&moai, fs::Permissions::from_mode(0o755)).unwrap();
+        let probe = probe_beside(&cli);
+        assert_blocked_untouched(&probe, &home, &bin, "another program", "other program");
+    }
+}
+
+// SPEC-20261127-installed-binary-name-moai AC-8 (REQ-8): a `bin/moai-cli` and a link
+// `moai-cli` in the link folder of the state folder are listed as `left_in_place` by the plan
+// and by the update preview, and neither command changes them.
+#[test]
+fn ac8_a_name_left_in_place_is_listed_and_never_touched() {
+    // The hard link layout lists its `bin/moai-cli`.
+    {
+        let (_d, home, cli) = layout();
+        let bin = bin_dir(&cli);
+        fs::hard_link(&cli, bin.join("moai")).unwrap();
+        let p = plan(&cli, &home);
+        assert_eq!(
+            p["left_in_place"],
+            json!([bin.join("moai-cli").to_string_lossy()]),
+            "{p}"
+        );
+        assert_unchanged_untouched(&cli, &home, &bin, "hard link");
+    }
+    // `bin/moai` alone with a link `moai-cli` in the link folder lists that link.
+    {
+        let (_d, home, moai) = only_moai();
+        let bin = bin_dir(&moai);
+        let state = bin.parent().unwrap().parent().unwrap().parent().unwrap();
+        let links = state.join("path");
+        fs::create_dir_all(&links).unwrap();
+        let link = links.join("moai-cli");
+        std::os::unix::fs::symlink("../versions/a/bin/moai-cli", &link).unwrap();
+        let before = snapshot(&links);
+        let p = plan(&moai, &home);
+        assert_eq!(p["state"], json!("unchanged"), "{p}");
+        assert_eq!(p["left_in_place"], json!([link.to_string_lossy()]), "{p}");
+        assert_unchanged_untouched(&moai, &home, &bin, "only moai with a link");
+        assert_eq!(snapshot(&links), before, "the link folder changed");
+
+        put_package(bin.parent().unwrap());
+        let v = update(&moai, &home, &["--json"]);
+        assert_eq!(
+            v["result"]["bin_names"]["left_in_place"],
+            json!([link.to_string_lossy()]),
+            "{v}"
+        );
+        assert_eq!(
+            snapshot(&links),
+            before,
+            "the preview changed the link folder"
+        );
+    }
+    // `bin/moai` alone and nothing else lists nothing.
+    {
+        let (_d, home, moai) = only_moai();
+        let p = plan(&moai, &home);
+        assert_eq!(p["left_in_place"], json!([]), "{p}");
+    }
 }

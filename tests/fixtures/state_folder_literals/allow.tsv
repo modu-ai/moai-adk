@@ -158,6 +158,7 @@ tests/lane_handoff_cli.rs	6	0
 tests/lane_next_cli.rs	0	4
 tests/lane_next_proposals_cli.rs	1	0
 tests/lane_safe_to_reset.rs	0	2
+tests/lane_screen_followups_cli.rs	0	1
 tests/language_set_cli.rs	32	7
 tests/language_setting.rs	6	6
 tests/language_three_questions.rs	4	0

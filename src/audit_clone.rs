@@ -117,7 +117,9 @@ pub fn evidence_dir(home_state_root: &Path, project_id: &str, pr: u64, head: &st
         .join(format!("{pr}-{}", &head[..8]))
 }
 
-pub fn plan(project: &Path, req: &Request) -> Result<Value> {
+/// Plans the clone of `req`. `home` is the HOME whose home state root holds the evidence folder
+/// (the caller reads it from the environment); with `None` no evidence folder is named.
+pub fn plan(project: &Path, req: &Request, home: Option<&Path>) -> Result<Value> {
     if req.pr == 0 {
         return Err("audit clone refused: --pr must be a pull request number".into());
     }
@@ -145,7 +147,7 @@ pub fn plan(project: &Path, req: &Request) -> Result<Value> {
     let dir = req.tmp_root.join(format!("moai-audit-{}-{head8}", req.pr));
     let dir_s = dir.to_string_lossy().into_owned();
     let base_ref = format!("refs/remotes/origin/{}", req.base_branch);
-    let id = crate::identity::identity(project)?;
+    let id = crate::identity::identity_in(project, home)?;
     let (evidence, evidence_reason) = match (
         id["project_id"].as_str(),
         id["home_state_root"].as_str(),
