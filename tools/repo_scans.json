@@ -1794,6 +1794,32 @@
       "rejects": "a change to a checked-in file that a test of this group opens at run time that the test did not re-run on the merge tree (SPEC-20261123-land-file-read-scans)"
     },
     {
+      "id": "reads-gitignore-block-cli",
+      "always": true,
+      "tests": [
+        "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
+      ],
+      "test_targets": [
+        "gitignore_block_cli",
+        "repo_scans_table"
+      ],
+      "rules": [
+        "src/agents.rs",
+        "src/state_root.rs",
+        "tests/gitignore_block_cli.rs",
+        "tests/repo_scans_table.rs"
+      ],
+      "scope": [
+        {
+          "prefix": ".moai/evals/audit/cases-tuning.json"
+        },
+        {
+          "prefix": "src/"
+        }
+      ],
+      "rejects": "a change under src/ that tests/gitignore_block_cli.rs reads at run time to find the state paths the sources spell, that the test did not re-run on the merge tree (SPEC-20261127-state-kept-narrowing REQ-7)"
+    },
+    {
       "id": "reads-moai-state",
       "always": true,
       "tests": [
