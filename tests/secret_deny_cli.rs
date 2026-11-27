@@ -1156,3 +1156,56 @@ fn apply_refuses_a_linked_settings_file_or_claude_folder() {
         .file_type()
         .is_symlink());
 }
+
+/// The line of `text` that holds `marker`, or a failure that names the file.
+fn route_line<'a>(text: &'a str, marker: &str, file: &str) -> &'a str {
+    text.lines()
+        .find(|l| l.contains(marker))
+        .unwrap_or_else(|| panic!("{file} has no line with `{marker}`"))
+}
+
+/// Slice C, AC-10 (REQ-11): the project-setup route offers the preview as one pick and applies a
+/// rule only after the user's pick; the update route names the preview and has no apply step.
+#[test]
+fn the_routes_offer_the_preview_and_apply_only_on_a_pick() {
+    let package = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows");
+    let project = fs::read_to_string(package.join("project.md")).expect("the PROJECT route text");
+    let update = fs::read_to_string(package.join("update.md")).expect("the UPDATE route text");
+
+    let step = route_line(
+        &project,
+        "SPEC-20261122-secret-file-deny-rules",
+        "project.md",
+    );
+    for needle in [
+        "moai secret-deny-plan <project>",
+        "read-only",
+        "one selection",
+        "moai secret-deny-apply <project>",
+        "--plan-digest <plan_digest>",
+        "--permission-reference <ref>",
+        "--pick",
+        "--retire-claudeignore",
+        "guarded",
+        "only after the user",
+        "declined or unanswered",
+    ] {
+        assert!(step.contains(needle), "project.md step lacks `{needle}`");
+    }
+    // The retire pick is a second, separate pick, and the route never applies without a pick.
+    assert!(
+        step.contains("separate pick"),
+        "the retire pick is not separate"
+    );
+
+    let named = route_line(&update, "secret-deny-plan", "update.md");
+    for needle in ["read-only", "/moai project", "applies nothing"] {
+        assert!(named.contains(needle), "update.md line lacks `{needle}`");
+    }
+    for apply_word in ["secret-deny-apply", "--pick", "--retire-claudeignore"] {
+        assert!(
+            !update.contains(apply_word),
+            "update.md must not carry `{apply_word}`: the update route has no apply step for it"
+        );
+    }
+}
