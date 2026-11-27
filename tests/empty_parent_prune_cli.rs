@@ -100,7 +100,7 @@ fn skills(ids: &[&str]) -> Value {
     )
 }
 
-const LAST: &str = ".claude/skills/prj-checks/SKILL.md";
+const LAST: &str = ".claude/skills/moai-prj-checks/SKILL.md";
 
 // ---- AC-9: generation-apply removing the last project skill ----
 
@@ -114,7 +114,11 @@ fn removing_the_last_project_skill_leaves_no_empty_skills_folder() {
     let p = plan(r, &request(Value::Null));
     apply(r, &p);
     assert!(!r.join(LAST).exists());
-    for gone in [".claude/skills/prj-checks", ".claude/skills", ".claude"] {
+    for gone in [
+        ".claude/skills/moai-prj-checks",
+        ".claude/skills",
+        ".claude",
+    ] {
         assert!(!r.join(gone).exists(), "{gone} was left behind");
     }
     // The project root itself and its instruction file stay; since the CLAUDE.md layout the
@@ -132,14 +136,14 @@ fn a_folder_that_still_holds_something_stays() {
     apply(r, &plan(r, &request(skills(&["prj-checks", "prj-extra"]))));
     let p = plan(r, &request(skills(&["prj-checks"])));
     apply(r, &p);
-    assert!(!r.join(".claude/skills/prj-extra").exists());
-    assert!(r.join(".claude/skills/prj-checks/SKILL.md").exists());
+    assert!(!r.join(".claude/skills/moai-prj-extra").exists());
+    assert!(r.join(".claude/skills/moai-prj-checks/SKILL.md").exists());
 
     // Now the last one goes, but the user has a skill of their own beside it.
     fs::create_dir_all(r.join(".claude/skills/mine")).unwrap();
     fs::write(r.join(".claude/skills/mine/SKILL.md"), "mine\n").unwrap();
     apply(r, &plan(r, &request(Value::Null)));
-    assert!(!r.join(".claude/skills/prj-checks").exists());
+    assert!(!r.join(".claude/skills/moai-prj-checks").exists());
     assert!(r.join(".claude/skills/mine/SKILL.md").exists(), "{r:?}");
     assert!(r.join(".claude").exists());
 }

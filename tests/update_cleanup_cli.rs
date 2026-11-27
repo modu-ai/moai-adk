@@ -241,7 +241,7 @@ fn fixture() -> Fixture {
     write(&home, ".codex/agents/moai-c.toml", "agent c\n");
 
     // Keys are `<slug>/<path>`. The skill slugs are joined at run time: a literal
-    // `…-skills/<path>` reads as a repository skill path to tests/skill_references_test.py
+    // `…-skills/<path>` reads as a repository skill path to tests/skill_references_scan.rs
     // (#2885 re-audit B3).
     let mut files = serde_json::Map::new();
     for (slug, rel, body) in [

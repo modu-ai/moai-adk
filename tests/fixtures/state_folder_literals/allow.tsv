@@ -191,6 +191,7 @@ tests/project_ci_plan_lib.rs	1	0
 tests/project_ci_profile_cli.rs	2	3
 tests/project_detect_cli.rs	10	21
 tests/project_flow_closing.rs	4	38
+tests/project_harness_namespace.rs	0	1
 tests/project_id_cli.rs	5	2
 tests/project_layer_follow_ups.rs	0	1
 tests/project_scale_detect_lib.rs	2	3
@@ -216,7 +217,6 @@ tests/session_registry_cli.rs	2	0
 tests/skeleton_language.rs	2	0
 tests/skill_entry_order.rs	0	1
 tests/skill_name_collision.rs	2	0
-tests/skill_references_test.py	1	1
 tests/smoke_harness_test.py	4	0
 tests/spec_approval_digest.rs	0	1
 tests/spec_before_code_hook.rs	0	26

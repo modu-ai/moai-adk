@@ -103,7 +103,7 @@ fn action(p: &Value, path: &str) -> Option<String> {
         .map(|f| f["action"].as_str().unwrap().to_string())
 }
 
-const CLAUDE: &str = ".claude/skills/prj-checks/SKILL.md";
+const CLAUDE: &str = ".claude/skills/moai-prj-checks/SKILL.md";
 /// The path a Codex copy used to have; nothing is planned or written there any more.
 const CODEX: &str = ".agents/skills/prj-checks/SKILL.md";
 
@@ -124,7 +124,7 @@ fn a_project_skill_is_written_for_claude_only_from_the_answers() {
     let text = fs::read_to_string(r.join(CLAUDE)).unwrap();
     assert!(
         text.starts_with(
-            "---\nname: prj-checks\ndescription: \"How this project is checked\"\n---\n"
+            "---\nname: moai-prj-checks\ndescription: \"How this project is checked\"\n---\n"
         ),
         "{text}"
     );
@@ -176,7 +176,7 @@ fn a_rerun_keeps_hand_edits_and_conflicts_when_both_sides_move() {
 fn a_folder_it_did_not_write_is_never_claimed() {
     let root = project();
     let r = root.path();
-    fs::create_dir_all(r.join(".claude/skills/prj-checks")).unwrap();
+    fs::create_dir_all(r.join(".claude/skills/moai-prj-checks")).unwrap();
     fs::write(r.join(CLAUDE), "someone else's skill\n").unwrap();
     let p = result(&plan(r, &request(checks())));
     assert_eq!(action(&p, CLAUDE).as_deref(), Some("conflict"));
@@ -188,8 +188,8 @@ fn a_folder_it_did_not_write_is_never_claimed() {
     // A folder holding other files but no SKILL.md is someone else's too (mutation K4).
     let root = project();
     let r = root.path();
-    fs::create_dir_all(r.join(".claude/skills/prj-checks")).unwrap();
-    fs::write(r.join(".claude/skills/prj-checks/notes.md"), "notes\n").unwrap();
+    fs::create_dir_all(r.join(".claude/skills/moai-prj-checks")).unwrap();
+    fs::write(r.join(".claude/skills/moai-prj-checks/notes.md"), "notes\n").unwrap();
     let p = result(&plan(r, &request(checks())));
     assert_eq!(action(&p, CLAUDE).as_deref(), Some("conflict"));
     assert!(!r.join(CLAUDE).exists());
@@ -240,7 +240,7 @@ fn names_hosts_and_hosts_list_are_checked() {
         &request(json!([{"id": "prj-x", "purpose": "p", "hosts": ["codex"]}])),
     ));
     assert_eq!(
-        action(&only_codex, ".claude/skills/prj-x/SKILL.md").as_deref(),
+        action(&only_codex, ".claude/skills/moai-prj-x/SKILL.md").as_deref(),
         Some("create")
     );
     assert_eq!(action(&only_codex, ".agents/skills/prj-x/SKILL.md"), None);
@@ -274,7 +274,7 @@ fn recover(root: &Path, receipt: &str) -> std::process::Output {
     )
 }
 
-const EXTRA_CLAUDE: &str = ".claude/skills/prj-extra/SKILL.md";
+const EXTRA_CLAUDE: &str = ".claude/skills/moai-prj-extra/SKILL.md";
 
 fn two() -> Value {
     json!([{"id": "prj-checks", "purpose": "How this project is checked"},
@@ -297,7 +297,7 @@ fn a_skill_no_longer_requested_is_removed_and_can_be_recovered() {
     let applied = result(&apply(r, &p));
     assert!(!r.join(EXTRA_CLAUDE).exists());
     assert!(
-        !r.join(".claude/skills/prj-extra").exists(),
+        !r.join(".claude/skills/moai-prj-extra").exists(),
         "the emptied folder goes too"
     );
     assert!(r.join(CLAUDE).exists());
@@ -348,7 +348,7 @@ fn a_linked_host_folder_is_a_conflict_and_nothing_is_written_outside() {
     for (link, path) in [
         (".claude", CLAUDE),
         (".claude/skills", CLAUDE),
-        (".claude/skills/prj-checks", CLAUDE),
+        (".claude/skills/moai-prj-checks", CLAUDE),
     ] {
         let root = project();
         let r = root.path();
@@ -447,10 +447,10 @@ fn a_remove_never_follows_a_link_or_a_recorded_path_of_another_kind() {
     assert_eq!(action(&p, EXTRA_CLAUDE).as_deref(), Some("conflict"), "{p}");
     assert!(!apply(r, &p).status.success());
     // Joined per component: a single `skills/<id>/SKILL.md` string reads as a package
-    // reference to tests/skill_references_test.py.
+    // reference to tests/skill_references_scan.rs.
     assert!(moved
         .join("skills")
-        .join("prj-extra")
+        .join("moai-prj-extra")
         .join("SKILL.md")
         .exists());
 

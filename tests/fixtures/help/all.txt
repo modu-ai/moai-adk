@@ -145,7 +145,7 @@ Lane and leader
   leader-round            Build the leader's per-lane action list
   lane-next               Find the lane's next task
   lane-loop-line          Print a lane's wake line for its host
-  lane-stop-hook          Answer a Codex lane's Stop hook
+  lane-stop-hook          Answer a removed lane Stop hook
   lane-resume-note        Write a card's resume note
   lane-resume-check       Read a card's resume note from a comment
   lane-duty-line          Print the line a leader types into a lane

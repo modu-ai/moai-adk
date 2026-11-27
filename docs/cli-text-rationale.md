@@ -85,3 +85,36 @@ Removed from the Korean command descriptions (each was a parenthesis or a clause
 ## `src/worktree_report.rs`
 
 - Removed `(WT-4)` and the label `Q4`: the reason now reads "removal candidates need the in-use checks of worktree.gc.plan and a decision by the user".
+
+# Shipped files: citations that were removed
+
+SPEC-20261126-shipped-text-citations. The files under `skills/`, `agents/`, `templates/` and `install/` reach a user as they are, so they no longer quote moai-adk's own history. `tests/skill_text_citations.rs` checks them. Its one pending file is `skills/moai/references/source-manifest.json`, whose `origin.reason` sentences still carry citations and are to be cleaned before the first release.
+
+## `skills/moai/workflows/update.md`
+
+- Removed `(user decision of 2026-11-13 on #2634, Issue #2696)` after the first sentence.
+- Removed `(user decision 2026-11-16, card C-51)` after "this session runs it for the user" (pinned by `tests/update_route.rs`, changed with it), after the `.worktreeinclude` pick, and, with its leading dash, after "is not an authorization check".
+- Removed `card C-47` before "a preview does not".
+- Removed `(Issue #2936)`, `Issue #2936 R10`, `Issue #2936 R8` (twice), `(Issue #2383)` and `(Issue #2670)`.
+
+## `skills/moai/references/adapters/aside.md`
+
+- Removed `(user decision)` after "MoAI uses Aside through its CLI only" (user decision 6845653775 on #2634).
+
+## `install/install.sh` and `install/install.ps1`
+
+- Comments only. Removed `(#2935)`, `(#2871 I2)`, `(#2935 L1)`, `(#2935 L1, G6)`, `(audit #2943 B1)`, `(audit #2943 note 2)` (sh) and `(codex review P1 on #2943)` twice with `(codex review P2 on #2943)` (ps1). `user decision 2026-11-17` left the supported-platforms comment; its SPEC id stays.
+
+## `install/README.md`
+
+- Removed `(#2935, #2871 I1)`, `(audit #2943 B1)`, `(#2871 I2)`, `(#2871 I1-b)` and `(#2935)`.
+- The release step `I1-e` of #2871 is now written as "a release step that a person confirms", "the release step that replaces the published files" and "when the site switches".
+
+## `templates/github/manifest.json`
+
+- `license` of nine entries read `unspecified: the moai-adk repository has no LICENSE file; recorded, not decided` and now reads `unspecified: recorded, not decided`. The stated reason was out of date: the repository has had a `LICENSE` file since commit `0c72320d39` (2026-11-11). Which license these templates carry is still undecided.
+- Removed `#2434 AC-6 (design 6788185980, decisions 6842518327): ` from `contract`.
+
+## `skills/moai-html-report/references/artifact-contract.md` and `fonts.md`
+
+- Removed `User decision (2026-11-22): ` (artifact-contract.md, section 6) and `User decisions (2026-11-22): ` (fonts.md). The font rules stay as they were.

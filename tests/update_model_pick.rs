@@ -214,7 +214,8 @@ fn a_typed_glm_key_is_vaulted_and_appears_nowhere_else() {
         "the result names no key: {result}"
     );
     let scope =
-        moai_cli::model_effort_questions::glm_key_scope(&std::env::current_dir().unwrap(), &h.path)
+        moai_cli::key_vault::project_scope_in(&std::env::current_dir().unwrap(), Some(&h.path))
+            .unwrap()
             .expect("the tests run inside a git work tree");
     assert_eq!(
         moai_cli::key_vault::read_entry(&h.path, &scope, "glm")

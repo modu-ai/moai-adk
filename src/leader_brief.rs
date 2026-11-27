@@ -3,7 +3,8 @@
 //! list. It adds no judgement and no query of its own: it shrinks the answer of
 //! `card orchestrate plan` to the landing queue, the blocks and the decisions, each with the
 //! number of the note (or verdict event) it comes from, and keeps the whole printed answer within
-//! [`LIMIT_BYTES`].
+//! [`LIMIT_BYTES`]. Of the plan's `superseded` heads it gives only the number
+//! (`counts.superseded`, SPEC-20261126-orchestrate-superseded-heads).
 //!
 //! Nothing here reads the clock, so an unchanged ledger prints the same bytes twice. The command
 //! writes nothing, starts no host program and reads no terminal.
@@ -88,13 +89,9 @@ pub fn shrink(plan: &Value) -> Value {
             (None, Some(event)) => format!("event:{event}"),
             (None, None) => continue,
         };
-        let mut item = json!({
+        queue.push(json!({
             "card": entry["card"], "head": entry["head"], "ref": reference,
-        });
-        if entry["current"] == json!(false) {
-            item["old"] = json!(true);
-        }
-        queue.push(item);
+        }));
     }
     let audit = plan["actions"]
         .as_array()
@@ -138,6 +135,7 @@ pub fn shrink(plan: &Value) -> Value {
     let counts = json!({
         "queue": queue.len(), "audit": audit,
         "blocked": blocked.len(), "decisions": decisions.len(),
+        "superseded": list_len(&plan["superseded"]),
     });
     let mut out = json!({
         "action": "brief",

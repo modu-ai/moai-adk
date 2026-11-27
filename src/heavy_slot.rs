@@ -76,6 +76,26 @@
 //! (`max`, `min_free_gb`, `max_swap_pct`, `min_mem_free_pct`; defaults 3, 50, 80, 10). A
 //! caller's flag wins only when it is stricter. A limits file that is not a plain file of at most 4096 bytes holding only
 //! those keys, or that sets `max` 0, is refused: acquire exits 125 without running COMMAND.
+//!
+//! The CPU rule (SPEC-20261126-heavy-slot-cpu-free): a caller that could take a slot waits while
+//! the CPU free percentage is below `min_cpu_free_pct` of `limits.json` (default 0, which
+//! switches the rule off; a value above 100, a negative number or a text is refused like `max`
+//! 0). An earlier build refuses a file that holds this key, so write it only once every build
+//! that reads the folder knows it. The rule is
+//! a wait, not a refusal like low disk or memory (exit 75). The percentage is the idle share of
+//! the CPU ticks between two readings at least 100 ms apart, so it is the load of now and not an
+//! average since boot; a machine that gives no reading never makes a caller wait, and a slot
+//! inherited from an outer holder is not judged again. The caller prints
+//! `waiting for CPU headroom; cpu free <n>% is below <limit>% (<cores> cores)` when the wait
+//! starts and again every 30 seconds while it lasts. The wait has a cap of 300 seconds: after
+//! that COMMAND starts anyway, and the slot line says that the cap ended the wait. A caller that
+//! waited ends its slot line and its exit line with `waited <n>s for CPU headroom` (the seconds
+//! spent held back by the CPU rule, rounded up); a caller that did not wait gets no waiting
+//! text. Whether the rule is on or off, the slot line of a slot this caller took names the
+//! reading when the machine gives one, before any wait text: `cpu free <n>% (limit <m>%)` or
+//! `cpu free <n>% (rule off)`.
+//! `status` reports `cpu_free_pct` (`null` when the machine gives no reading), `cpu_cores`,
+//! `min_cpu_free_pct` and `heavy_runs` (every held slot, one held by a dead pid included).
 
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -104,14 +124,22 @@ pub struct Limits {
     /// Lowest memory free percentage (`kern.memorystatus_level`) at which a run still starts.
     /// macOS only (card C-88).
     pub min_mem_free_pct: u64,
+    /// Lowest CPU free percentage at which a caller takes a slot at once; below it the caller
+    /// waits (at most [`CPU_WAIT_CAP`]). 0 switches the rule off.
+    pub min_cpu_free_pct: u64,
 }
 
-/// The leader's numbers (comment 6850581277); `min_mem_free_pct` 10 is card C-88's.
+/// The leader's numbers (comment 6850581277); `min_mem_free_pct` 10 is card C-88's. The CPU
+/// rule is off until a limits file names a value (SPEC-20261126-heavy-slot-cpu-free D-7).
 pub const DEFAULT_LIMITS: Limits = Limits {
     min_free_gb: 50,
     max_swap_pct: 80,
     min_mem_free_pct: 10,
+    min_cpu_free_pct: 0,
 };
+
+/// The longest a caller waits for CPU headroom; after it COMMAND starts anyway.
+pub const CPU_WAIT_CAP: std::time::Duration = std::time::Duration::from_secs(300);
 
 /// `kern.memorystatus_vm_pressure_level` values: 1 normal, 2 warn, 4 critical (the
 /// `DISPATCH_MEMORYPRESSURE_*` levels). A run is refused from this level on (card C-88).
@@ -165,6 +193,7 @@ pub struct LimitsFile {
     pub min_free_gb: Option<u64>,
     pub max_swap_pct: Option<u64>,
     pub min_mem_free_pct: Option<u64>,
+    pub min_cpu_free_pct: Option<u64>,
 }
 
 /// The limits file in `folder`: `None` when there is none. A path that is not a plain file
@@ -221,6 +250,17 @@ fn read_limits_in(folder: &Path) -> Result<Option<LimitsFile>> {
     if !value.is_object() {
         return Err(format!("{}: not a JSON object", path.display()));
     }
+    // Read from the value before serde sees it, so the refusal names the key: a negative
+    // number, a text or a fraction would otherwise only say "expected u64".
+    // `null` means the key is not set, as for every other key.
+    if let Some(v) = value.get("min_cpu_free_pct").filter(|v| !v.is_null()) {
+        if v.as_u64().is_none_or(|p| p > 100) {
+            return Err(format!(
+                "{}: min_cpu_free_pct must be a whole number from 0 to 100 (0 switches the rule off), not {v}",
+                path.display()
+            ));
+        }
+    }
     let file: LimitsFile =
         serde_json::from_value(value).map_err(|e| format!("{}: {e}", path.display()))?;
     if file.max == Some(0) {
@@ -249,6 +289,10 @@ pub fn effective(
     let base_mem_free = file
         .and_then(|f| f.min_mem_free_pct)
         .unwrap_or(DEFAULT_LIMITS.min_mem_free_pct);
+    // No caller flag for the CPU rule: the machine's file is the one place that sets it.
+    let min_cpu_free_pct = file
+        .and_then(|f| f.min_cpu_free_pct)
+        .unwrap_or(DEFAULT_LIMITS.min_cpu_free_pct);
     let source = if file.is_some() {
         LIMITS_FILE
     } else {
@@ -302,6 +346,7 @@ pub fn effective(
             min_free_gb,
             max_swap_pct,
             min_mem_free_pct,
+            min_cpu_free_pct,
         },
         notes,
     )
@@ -343,14 +388,22 @@ struct Machine {
     free: Option<u64>,
     swap: Option<u64>,
     memory: Option<Memory>,
+    /// The injected CPU free percentage (`cpu_free_pct`); never set from the real machine, whose
+    /// CPU is read by [`CpuGauge`] over two readings.
+    #[cfg_attr(not(unix), allow(dead_code))]
+    cpu_free_pct: Option<u64>,
+    /// The injected CPU count (`cpu_cores`).
+    #[cfg_attr(not(unix), allow(dead_code))]
+    cpu_cores: Option<u64>,
 }
 
-/// The machine now. Debug builds take
-/// `MOAI_TEST_MACHINE=free_gb=<n>,swap_pct=<n>[,pressure=<n>,mem_free_pct=<n>]` instead
+/// The machine a debug build is told to have: `MOAI_TEST_MACHINE`, or `None` when it is unset
+/// and in every release build, which never reads it. The value is
+/// `free_gb=<n>,swap_pct=<n>[,pressure=<n>,mem_free_pct=<n>][,cpu_free_pct=<0..100>,cpu_cores=<n>]`
 /// (or `@<file>` holding that text, read on every call so a test can change the machine during
-/// a wait); a `pressure` or `mem_free_pct` key makes it a machine with memory readings (macOS).
-/// Release builds never read it.
-fn measured(folder: &Path) -> Machine {
+/// a wait); a `pressure` or `mem_free_pct` key makes it a machine with memory readings (macOS). A
+/// machine that is injected without a `cpu_free_pct` key gives no CPU reading at all.
+fn injected_machine() -> Option<Machine> {
     #[cfg(debug_assertions)]
     if let Ok(mut s) = std::env::var("MOAI_TEST_MACHINE") {
         if let Some(file) = s.strip_prefix('@') {
@@ -360,6 +413,8 @@ fn measured(folder: &Path) -> Machine {
             free: None,
             swap: None,
             memory: None,
+            cpu_free_pct: None,
+            cpu_cores: None,
         };
         for part in s.trim().split(',') {
             match part.split_once('=') {
@@ -371,15 +426,184 @@ fn measured(folder: &Path) -> Machine {
                 Some(("mem_free_pct", v)) => {
                     m.memory.get_or_insert_with(Memory::default).free_pct = v.parse().ok()
                 }
+                Some(("cpu_free_pct", v)) => m.cpu_free_pct = v.parse().ok(),
+                Some(("cpu_cores", v)) => m.cpu_cores = v.parse().ok(),
                 _ => {}
             }
         }
+        return Some(m);
+    }
+    None
+}
+
+/// The machine now: the injected one in a debug build that has one ([`injected_machine`]),
+/// otherwise the system's readings.
+fn measured(folder: &Path) -> Machine {
+    if let Some(m) = injected_machine() {
         return m;
     }
     Machine {
         free: sys::free_bytes(folder),
         swap: sys::swap_pct(),
         memory: sys::memory(),
+        cpu_free_pct: None,
+        cpu_cores: None,
+    }
+}
+
+/// One CPU tick reading as a pair `(idle, total)`, wrapping at 32 bits: the macOS counters
+/// are 32 bits wide and wrap, and a difference over a short pause is far below 2^31, so the
+/// wrapped difference is the true one.
+#[cfg(unix)]
+type Ticks = (u32, u32);
+
+/// The share of the CPU that was idle between two tick readings, in whole percent (rounded
+/// down), or `None` when the readings give no usable difference: no tick passed, or the total
+/// went backwards (a difference above 2^31 cannot be a wrapped short pause).
+#[cfg(unix)]
+fn cpu_free_pct(prev: Ticks, next: Ticks) -> Option<u64> {
+    let total = next.1.wrapping_sub(prev.1);
+    let idle = next.0.wrapping_sub(prev.0);
+    if total == 0 || total > i32::MAX as u32 {
+        return None;
+    }
+    Some(u64::from(idle.min(total)) * 100 / u64::from(total))
+}
+
+/// The `(idle, total)` ticks of the first `cpu ` line of a `/proc/stat` text: idle counts the
+/// idle and iowait fields, total the first eight fields (user, nice, system, idle, iowait, irq,
+/// softirq, steal; guest time is already inside user). `None` when there is no such line or a
+/// field is not a number. Cut to 32 bits like [`Ticks`].
+#[cfg(all(unix, any(target_os = "linux", test)))]
+fn parse_proc_stat(text: &str) -> Option<Ticks> {
+    let line = text.lines().find(|l| l.starts_with("cpu "))?;
+    let fields = line
+        .split_whitespace()
+        .skip(1)
+        .take(8)
+        .map(|f| f.parse::<u64>().ok())
+        .collect::<Option<Vec<u64>>>()?;
+    if fields.len() < 4 {
+        return None;
+    }
+    let idle = fields[3].wrapping_add(fields.get(4).copied().unwrap_or(0));
+    let total = fields.iter().fold(0u64, |a, f| a.wrapping_add(*f));
+    Some((idle as u32, total as u32))
+}
+
+/// What a caller does at one look when it could take a slot: [`CpuStep::Wait`] for CPU
+/// headroom or [`CpuStep::Run`] (take the slot).
+#[cfg(unix)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CpuStep {
+    Run,
+    Wait,
+}
+
+/// Wait while the CPU is `low` and the time already spent held back is under [`CPU_WAIT_CAP`];
+/// at the cap the caller starts anyway.
+#[cfg(unix)]
+fn cpu_wait_decision(low: bool, waited: std::time::Duration) -> CpuStep {
+    if low && waited < CPU_WAIT_CAP {
+        CpuStep::Wait
+    } else {
+        CpuStep::Run
+    }
+}
+
+/// The CPU readings a caller has taken for the CPU rule: `Some((free, cores))` of a debug build
+/// that was given a machine ([`injected_machine`]; `free` is `None` without a `cpu_free_pct`
+/// key), `None` when the real machine is read.
+#[cfg(unix)]
+fn cpu_injected() -> Option<(Option<u64>, Option<u64>)> {
+    injected_machine().map(|m| (m.cpu_free_pct, m.cpu_cores))
+}
+
+/// The logical CPUs, the same count `build_jobs_cap` shares out.
+#[cfg(unix)]
+fn logical_cpus() -> u64 {
+    std::thread::available_parallelism().map_or(1, |n| n.get()) as u64
+}
+
+/// The CPU count the CPU rule and the status report: the injected one, else the logical CPUs.
+#[cfg(unix)]
+fn cpu_cores() -> u64 {
+    cpu_injected()
+        .and_then(|(_, cores)| cores)
+        .unwrap_or_else(logical_cpus)
+}
+
+/// The shortest time between the two tick readings a CPU percentage is made of.
+#[cfg(unix)]
+const CPU_SAMPLE_GAP: std::time::Duration = std::time::Duration::from_millis(100);
+
+/// How long the first look reads again while the system hands out the same ticks, before the
+/// reading counts as one the machine does not give.
+#[cfg(unix)]
+const CPU_FIRST_SAMPLE_BOUND: std::time::Duration = std::time::Duration::from_secs(2);
+
+/// Reads the CPU free percentage turn by turn: every reading is the idle share of the ticks
+/// since the last reading that differed, at least [`CPU_SAMPLE_GAP`] apart. macOS hands the
+/// same counters to calls that follow each other closely, so an unchanged reading is no new
+/// sample: the last percentage holds. A debug build that was given a machine reads that machine
+/// instead (and takes no tick reading).
+#[cfg(unix)]
+struct CpuGauge {
+    last: Option<(Ticks, std::time::Instant)>,
+    pct: Option<u64>,
+}
+
+#[cfg(unix)]
+impl CpuGauge {
+    /// A gauge with its first tick reading taken now (none for an injected machine, or when the
+    /// system gives none).
+    fn new() -> CpuGauge {
+        let last = if cpu_injected().is_some() {
+            None
+        } else {
+            sys::cpu_ticks().map(|t| (t, std::time::Instant::now()))
+        };
+        CpuGauge { last, pct: None }
+    }
+
+    /// The CPU free percentage now; `None` when the machine gives no reading (never a reason
+    /// to wait). The look waits out the rest of [`CPU_SAMPLE_GAP`] when the reading before it
+    /// is younger. Until there is a first percentage it reads again, for at most
+    /// [`CPU_FIRST_SAMPLE_BOUND`].
+    fn read(&mut self) -> Option<u64> {
+        if let Some((free, _)) = cpu_injected() {
+            return free;
+        }
+        if self.last.is_none() {
+            self.take(sys::cpu_ticks()?, std::time::Instant::now());
+        }
+        let start = std::time::Instant::now();
+        loop {
+            let age = self.last.map_or(CPU_SAMPLE_GAP, |(_, at)| at.elapsed());
+            if age < CPU_SAMPLE_GAP {
+                std::thread::sleep(CPU_SAMPLE_GAP - age);
+            }
+            let pct = self.take(sys::cpu_ticks()?, std::time::Instant::now());
+            if pct.is_some() || start.elapsed() >= CPU_FIRST_SAMPLE_BOUND {
+                return pct;
+            }
+            std::thread::sleep(CPU_SAMPLE_GAP);
+        }
+    }
+
+    /// Adds the tick reading `now`, taken at `at`, and answers the percentage that holds after
+    /// it. A reading equal to the one before it leaves the base and the percentage as they are;
+    /// one that gives no usable difference keeps the percentage and becomes the base.
+    fn take(&mut self, now: Ticks, at: std::time::Instant) -> Option<u64> {
+        let Some((before, _)) = self.last else {
+            self.last = Some((now, at));
+            return self.pct;
+        };
+        if now != before {
+            self.last = Some((now, at));
+            self.pct = cpu_free_pct(before, now).or(self.pct);
+        }
+        self.pct
     }
 }
 
@@ -387,7 +611,11 @@ fn measured(folder: &Path) -> Machine {
 /// reason to refuse (it is shown as `unknown` elsewhere). A machine with memory readings
 /// (macOS) is judged on them and its swap is only shown; one without them (Linux) on swap.
 pub fn over_limits(folder: &Path, limits: Limits) -> Option<String> {
-    let Machine { free, swap, memory } = measured(folder);
+    // The CPU readings are not part of these limits: low CPU is a wait ([`sys::hold`]), not a
+    // refusal.
+    let Machine {
+        free, swap, memory, ..
+    } = measured(folder);
     let mut why = Vec::new();
     if let Some(b) = free {
         if b < limits.min_free_gb.saturating_mul(1_000_000_000) {
@@ -627,6 +855,9 @@ impl Held {
     pub fn inherited(&self) -> bool {
         false
     }
+    pub fn cpu_waited_secs(&self) -> Option<u64> {
+        None
+    }
     pub fn env_value(&self) -> std::ffi::OsString {
         std::ffi::OsString::new()
     }
@@ -680,8 +911,9 @@ mod sys {
 #[cfg(unix)]
 mod sys {
     use super::{
-        low_space_line, machine_line, measured, over_limits, Limits, Path, PathBuf, Result, Value,
-        BUSY, REFUSED, USAGE,
+        cpu_cores, cpu_wait_decision, logical_cpus, low_space_line, machine_line, measured,
+        over_limits, CpuGauge, CpuStep, Limits, Path, PathBuf, Result, Value, BUSY, CPU_WAIT_CAP,
+        DEFAULT_LIMITS, REFUSED, USAGE,
     };
     use serde_json::json;
     use std::fs::{self, File, OpenOptions, TryLockError};
@@ -690,9 +922,11 @@ mod sys {
     use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
     use std::os::unix::io::AsRawFd;
     use std::os::unix::process::{CommandExt, ExitStatusExt};
-    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
     const POLL: Duration = Duration::from_millis(200);
+    /// How often the line "waiting for CPU headroom" is printed again while the wait lasts.
+    const CPU_SAY_EVERY: Duration = Duration::from_secs(30);
     const FORWARDED: [libc::c_int; 3] = [libc::SIGINT, libc::SIGTERM, libc::SIGHUP];
 
     pub fn load() -> Option<[f64; 3]> {
@@ -700,6 +934,60 @@ mod sys {
         // SAFETY: getloadavg writes at most `nelem` doubles into the buffer it is given.
         let n = unsafe { libc::getloadavg(l.as_mut_ptr(), 3) };
         (n == 3).then_some(l)
+    }
+
+    /// The `host_port` of this process: `mach_host_self` is deprecated in the locked `libc`
+    /// (its note points to the `mach2` crate, which this crate does not depend on), and it is
+    /// the call that names the host for `host_statistics`. It is made once; every call adds a
+    /// reference to the port.
+    #[cfg(target_os = "macos")]
+    fn host_port() -> libc::mach_port_t {
+        static HOST: std::sync::OnceLock<libc::mach_port_t> = std::sync::OnceLock::new();
+        *HOST.get_or_init(|| {
+            // SAFETY: mach_host_self takes no argument and returns the host port name.
+            #[allow(deprecated)]
+            unsafe {
+                libc::mach_host_self()
+            }
+        })
+    }
+
+    /// The CPU ticks since boot as `(idle, total)`, or `None` when the system gives none. macOS:
+    /// `host_statistics` with `HOST_CPU_LOAD_INFO`, four 32-bit counters (user, system, idle,
+    /// nice) that wrap, so the total wraps too. One reading is only an average since boot; the
+    /// free percentage is made of two ([`super::CpuGauge`]).
+    #[cfg(target_os = "macos")]
+    pub fn cpu_ticks() -> Option<super::Ticks> {
+        // SAFETY: host_statistics fills at most `count` integers of the zeroed struct, and
+        // `count` is the size the flavour asks for.
+        let mut info: libc::host_cpu_load_info = unsafe { std::mem::zeroed() };
+        let mut count: libc::mach_msg_type_number_t = libc::HOST_CPU_LOAD_INFO_COUNT;
+        let rc = unsafe {
+            libc::host_statistics(
+                host_port(),
+                libc::HOST_CPU_LOAD_INFO,
+                (&mut info as *mut libc::host_cpu_load_info).cast(),
+                &mut count,
+            )
+        };
+        if rc != 0 {
+            return None;
+        }
+        let idle = info.cpu_ticks[libc::CPU_STATE_IDLE as usize];
+        let total = info.cpu_ticks.iter().fold(0u32, |a, t| a.wrapping_add(*t));
+        Some((idle, total))
+    }
+
+    /// Linux: the first `cpu ` line of `/proc/stat`.
+    #[cfg(target_os = "linux")]
+    pub fn cpu_ticks() -> Option<super::Ticks> {
+        super::parse_proc_stat(&fs::read_to_string("/proc/stat").ok()?)
+    }
+
+    /// Other Unix systems give no CPU reading, so the CPU rule never makes a caller wait.
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    pub fn cpu_ticks() -> Option<super::Ticks> {
+        None
     }
 
     pub fn free_bytes(folder: &Path) -> Option<u64> {
@@ -1156,11 +1444,29 @@ mod sys {
         /// `None` for an inherited slot: the descriptor belongs to the process that took it.
         file: Option<File>,
         fd: libc::c_int,
+        /// The CPU free percentage read when this caller took the slot and the limit it was
+        /// held against; `None` when the machine gave no reading or the slot is inherited.
+        cpu_seen: Option<(u64, u64)>,
+        /// The wait for CPU headroom this caller went through; `None` when it did not wait.
+        cpu_wait: Option<CpuWaited>,
+    }
+
+    /// A wait for CPU headroom that happened: the whole seconds spent held back (rounded up, at
+    /// least 1) and whether the cap of [`CPU_WAIT_CAP`] ended it.
+    struct CpuWaited {
+        secs: u64,
+        capped: bool,
     }
 
     impl Held {
         pub fn slot(&self) -> usize {
             self.slot
+        }
+
+        /// The seconds this caller waited for CPU headroom before it took the slot; `None` when
+        /// it did not wait.
+        pub fn cpu_waited_secs(&self) -> Option<u64> {
+            self.cpu_wait.as_ref().map(|w| w.secs)
         }
 
         /// Whether the slot came from the process that started this one (REQ-5).
@@ -1169,13 +1475,34 @@ mod sys {
         }
 
         /// The line a caller prints once it has the slot: `heavy-slot: slot <i> taken by <name>`,
-        /// or `heavy-slot: <name> reuses slot <i> it inherited`.
+        /// or `heavy-slot: <name> reuses slot <i> it inherited`. A CPU reading follows as
+        /// `; cpu free <n>% (limit <m>%)`, or `(rule off)` for a limit of 0. A caller that
+        /// waited for CPU headroom ends the line with `; waited <n>s for CPU headroom`, with
+        /// `; cpu wait ended by the 300 s cap after <n>s` before that when the cap ended it.
         pub fn taken_line(&self, name: &str) -> String {
-            if self.inherited() {
+            let mut line = if self.inherited() {
                 format!("heavy-slot: {name} reuses slot {} it inherited", self.slot)
             } else {
                 format!("heavy-slot: slot {} taken by {name}", self.slot)
+            };
+            if let Some((free, limit)) = self.cpu_seen {
+                let rule = match limit {
+                    0 => "rule off".to_string(),
+                    l => format!("limit {l}%"),
+                };
+                line.push_str(&format!("; cpu free {free}% ({rule})"));
             }
+            if let Some(w) = &self.cpu_wait {
+                if w.capped {
+                    line.push_str(&format!(
+                        "; cpu wait ended by the {} s cap after {}s",
+                        CPU_WAIT_CAP.as_secs(),
+                        w.secs
+                    ));
+                }
+                line.push_str(&format!("; waited {}s for CPU headroom", w.secs));
+            }
+            line
         }
 
         /// The [`super::SLOT_FD_ENV`] value for a child: `<fd>:<slot path>`.
@@ -1278,6 +1605,8 @@ mod sys {
             path: here,
             file: None,
             fd,
+            cpu_seen: None,
+            cpu_wait: None,
         })
     }
 
@@ -1355,7 +1684,9 @@ mod sys {
     /// doc); the waiting lines go to `progress`, and the caller announces the slot it got
     /// ([`Held::taken_line`]). A machine over `limits` gets [`BUSY`]; a waiter whose parent
     /// ended leaves the queue with [`REFUSED`] — nobody is left to take its result (#2677 items
-    /// 3, 4).
+    /// 3, 4). A caller that could take a slot while the CPU free percentage is below
+    /// `limits.min_cpu_free_pct` keeps its place in the queue and waits (the module doc's CPU
+    /// rule), at most [`CPU_WAIT_CAP`].
     pub fn hold(
         folder: &Path,
         max: usize,
@@ -1371,6 +1702,8 @@ mod sys {
         if let Some(held) = inherited(folder) {
             return Ok(held);
         }
+        // The first CPU reading of the CPU rule; a limit of 0 switches the rule off and takes none.
+        let mut gauge = (limits.min_cpu_free_pct > 0).then(CpuGauge::new);
         let cwd = std::env::current_dir().unwrap_or_else(|_| folder.to_path_buf());
         if let Some(why) = over_limits(&cwd, limits) {
             return Err(busy(name, &why, &cwd));
@@ -1409,27 +1742,77 @@ mod sys {
         }
         let mut last = None;
         let mut waited = false;
+        // The CPU rule: the time spent held back by it (closed intervals, and the one that is
+        // open since `low_since`), when its line was last printed, and whether the cap ended it.
+        let mut cpu_waited = Duration::ZERO;
+        let mut low_since: Option<Instant> = None;
+        let mut cpu_said: Option<Instant> = None;
+        let mut cpu_capped = false;
+        // The reading of the latest look, for the slot line.
+        let mut cpu_free;
         let taken = loop {
+            // Read at every look, so a reading is always the last pause's and not an older one;
+            // before the queue is read, since the first reading may wait out the sample gap.
+            cpu_free = gauge.as_mut().and_then(CpuGauge::read);
             // One read of the queue per look serves both the turn and the place.
             let live = live_waiters(&waiting, &me);
+            let mut cpu_hold = false;
             match free_slots(folder, max).map(|free| my_slots(free, &live, &me)) {
                 Err(e) => break Err(e),
-                Ok(mine) => match take_one(folder, &mine) {
-                    Ok(Some(t)) => break Ok(Some(t)),
-                    Ok(None) => {}
-                    Err(e) => break Err(e),
-                },
+                Ok(mine) => {
+                    // The rule only holds back a caller that could take a slot now: time spent
+                    // behind other callers is the queue's wait, not the CPU's.
+                    let low = cpu_free.filter(|&f| !mine.is_empty() && f < limits.min_cpu_free_pct);
+                    let now = Instant::now();
+                    match low {
+                        Some(f) => {
+                            let since = *low_since.get_or_insert(now);
+                            match cpu_wait_decision(true, cpu_waited + now.duration_since(since)) {
+                                CpuStep::Wait => {
+                                    cpu_hold = true;
+                                    if cpu_said
+                                        .is_none_or(|t| now.duration_since(t) >= CPU_SAY_EVERY)
+                                    {
+                                        let _ = writeln!(
+                                            progress,
+                                            "heavy-slot: waiting for CPU headroom; cpu free {f}% is below {}% ({} cores)",
+                                            limits.min_cpu_free_pct,
+                                            cpu_cores()
+                                        );
+                                        cpu_said = Some(now);
+                                    }
+                                }
+                                CpuStep::Run => cpu_capped = true,
+                            }
+                        }
+                        None => {
+                            if let Some(since) = low_since.take() {
+                                cpu_waited += now.duration_since(since);
+                            }
+                            cpu_said = None;
+                        }
+                    }
+                    if !cpu_hold {
+                        match take_one(folder, &mine) {
+                            Ok(Some(t)) => break Ok(Some(t)),
+                            Ok(None) => {}
+                            Err(e) => break Err(e),
+                        }
+                    }
+                }
             }
-            let place = queue_place(&live, &me);
-            if last != Some(place) {
-                let _ = writeln!(
-                    progress,
-                    "heavy-slot: waiting {} of {} for {max} slot(s); {}",
-                    place.0,
-                    place.1,
-                    machine_line(&cwd)
-                );
-                last = Some(place);
+            if !cpu_hold {
+                let place = queue_place(&live, &me);
+                if last != Some(place) {
+                    let _ = writeln!(
+                        progress,
+                        "heavy-slot: waiting {} of {} for {max} slot(s); {}",
+                        place.0,
+                        place.1,
+                        machine_line(&cwd)
+                    );
+                    last = Some(place);
+                }
             }
             waited = true;
             std::thread::sleep(POLL);
@@ -1479,11 +1862,26 @@ mod sys {
         let path = std::env::current_dir()
             .map_or_else(|_| folder.to_path_buf(), |c| c.join(folder))
             .join(format!("slot-{slot}"));
+        // The interval the loop left open (the cap ended it) counts too; whole seconds, rounded
+        // up, so a caller that was held back at all says at least 1.
+        if let Some(since) = low_since.take() {
+            cpu_waited += since.elapsed();
+        }
+        let cpu_wait = (!cpu_waited.is_zero()).then(|| CpuWaited {
+            secs: cpu_waited.as_secs() + u64::from(cpu_waited.subsec_nanos() > 0),
+            capped: cpu_capped,
+        });
+        // With the rule off no look read the CPU: one reading now, for the slot line.
+        if gauge.is_none() {
+            cpu_free = CpuGauge::new().read();
+        }
         let mut held = Held {
             slot,
             path,
             file: Some(file),
             fd,
+            cpu_seen: cpu_free.map(|f| (f, limits.min_cpu_free_pct)),
+            cpu_wait,
         };
         held.write_record(name, command);
         Ok(held)
@@ -1568,10 +1966,18 @@ mod sys {
                 .unwrap_or(1),
             Err(_) => 1,
         };
+        let cpu_waited = held.cpu_waited_secs();
         drop(held);
         // Every started command ends with one exit line, 0 included, so a shell waiting for
-        // that line ends on success too (SPEC-20261122-heavy-slot-exit-line).
-        eprintln!("heavy-slot: {name} exited {code}; {}", machine_line(cwd));
+        // that line ends on success too (SPEC-20261122-heavy-slot-exit-line). A caller that
+        // waited for CPU headroom ends it with the seconds it waited.
+        let waited = cpu_waited
+            .map(|s| format!("; waited {s}s for CPU headroom"))
+            .unwrap_or_default();
+        eprintln!(
+            "heavy-slot: {name} exited {code}; {}{waited}",
+            machine_line(cwd)
+        );
         code
     }
 
@@ -1650,8 +2056,15 @@ mod sys {
     }
 
     /// The slots held now (their records, each with `alive`) and slot paths that are not plain
-    /// files. Reads only.
+    /// files, with the CPU readings of the CPU rule (`cpu_free_pct`, `null` when the machine
+    /// gives none, `cpu_cores`, `min_cpu_free_pct`) and `heavy_runs`, the number of held slots.
+    /// Reads only; the CPU free percentage is taken over two readings 100 ms apart, once.
     pub fn status(folder: &Path) -> Result<Value> {
+        let free = CpuGauge::new().read();
+        status_with(folder, free, cpu_cores())
+    }
+
+    fn status_with(folder: &Path, cpu_free: Option<u64>, cores: u64) -> Result<Value> {
         let (mut held, mut refused) = (Vec::new(), Vec::new());
         let mut names: Vec<String> = match fs::read_dir(folder) {
             Err(_) => vec![],
@@ -1677,16 +2090,25 @@ mod sys {
             .map_or(0, |w| stale_waiters(&w, "").len());
         // The cap a command under a slot gets, from the slot count of `limits.json` (or the
         // default); `null` when that file cannot be used, since acquire refuses then too.
-        let build_jobs_cap = match super::read_limits_file(folder) {
+        let (build_jobs_cap, min_cpu_free_pct) = match super::read_limits_file(folder) {
             Ok(file) => {
-                let slots = file.and_then(|f| f.max).unwrap_or(super::DEFAULT_MAX);
-                json!({
-                    "slots": slots,
-                    "cpus": std::thread::available_parallelism().map_or(1, |n| n.get()),
-                    "jobs": super::build_jobs_cap(slots),
-                })
+                let slots = file
+                    .as_ref()
+                    .and_then(|f| f.max)
+                    .unwrap_or(super::DEFAULT_MAX);
+                let min_cpu = file
+                    .and_then(|f| f.min_cpu_free_pct)
+                    .unwrap_or(DEFAULT_LIMITS.min_cpu_free_pct);
+                (
+                    json!({
+                        "slots": slots,
+                        "cpus": logical_cpus(),
+                        "jobs": super::build_jobs_cap(slots),
+                    }),
+                    json!(min_cpu),
+                )
             }
-            Err(_) => Value::Null,
+            Err(_) => (Value::Null, Value::Null),
         };
         // The warning line of every held slot that has one, so a reader finds them in one place.
         let warnings: Vec<Value> = held
@@ -1695,10 +2117,14 @@ mod sys {
             .collect();
         let mut answer = json!({
             "folder": folder.display().to_string(),
+            "heavy_runs": held.len(),
             "held": held,
             "warnings": warnings,
             "refused": refused,
             "build_jobs_cap": build_jobs_cap,
+            "cpu_free_pct": cpu_free,
+            "cpu_cores": cores,
+            "min_cpu_free_pct": min_cpu_free_pct,
             "stale_waiting": stale_waiting,
             "machine": machine_line(folder),
             "writes": false,
@@ -1707,7 +2133,8 @@ mod sys {
         // (read only); an earlier folder that cannot be read answers `null`.
         if let Some(earlier) = super::earlier_dir(folder) {
             if fs::symlink_metadata(&earlier).is_ok_and(|m| m.is_dir()) {
-                answer["earlier_folder"] = status(&earlier).unwrap_or(Value::Null);
+                answer["earlier_folder"] =
+                    status_with(&earlier, cpu_free, cores).unwrap_or(Value::Null);
             }
         }
         Ok(answer)
@@ -2244,6 +2671,7 @@ mod limits_tests {
             min_free_gb: free,
             max_swap_pct: swap,
             min_mem_free_pct: None,
+            min_cpu_free_pct: None,
         }
     }
 
@@ -2526,5 +2954,136 @@ mod low_space_tests {
         assert!(low_space_line(Some(60 * GB), 61, Path::new("/w"))
             .unwrap()
             .ends_with("the floor is 61 GB"));
+    }
+}
+
+/// The CPU rule's pure parts: the free percentage from two tick readings (a wrapping difference
+/// included), the `/proc/stat` text, the limit's default and the decision after a wait.
+#[cfg(all(test, unix))]
+mod cpu_tests {
+    use super::{
+        cpu_free_pct, cpu_wait_decision, effective, parse_proc_stat, CpuGauge, CpuStep, LimitsFile,
+        CPU_WAIT_CAP, DEFAULT_LIMITS,
+    };
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn a_look_with_no_new_tick_keeps_the_last_percentage() {
+        let at = Instant::now();
+        let mut g = CpuGauge {
+            last: None,
+            pct: None,
+        };
+        assert_eq!(g.take((0, 0), at), None);
+        // The same counters again before any percentage: still none.
+        assert_eq!(g.take((0, 0), at), None);
+        assert_eq!(g.take((50, 100), at), Some(50));
+        // A repeated answer of the system is no new sample.
+        assert_eq!(g.take((50, 100), at), Some(50));
+        // The next difference is measured from the last reading that changed.
+        assert_eq!(g.take((140, 200), at), Some(90));
+        // Counters that went backwards give no difference: the percentage holds, and the next
+        // one is measured from them.
+        assert_eq!(g.take((10, 100), at), Some(90));
+        assert_eq!(g.take((30, 200), at), Some(20));
+    }
+
+    #[test]
+    fn the_free_percentage_is_the_idle_share_of_the_ticks_between_two_readings() {
+        assert_eq!(cpu_free_pct((10, 100), (60, 200)), Some(50));
+        assert_eq!(cpu_free_pct((10, 100), (110, 200)), Some(100));
+        assert_eq!(cpu_free_pct((10, 100), (10, 200)), Some(0));
+        // Whole percent, rounded down: 19.9 is 19, so a limit of 20 still waits.
+        assert_eq!(cpu_free_pct((0, 0), (199, 1000)), Some(19));
+        assert_eq!(cpu_free_pct((0, 0), (200, 1000)), Some(20));
+    }
+
+    #[test]
+    fn no_passed_tick_and_an_idle_count_above_the_total_give_no_nonsense() {
+        assert_eq!(cpu_free_pct((5, 50), (5, 50)), None);
+        // More idle ticks than ticks cannot be above 100.
+        assert_eq!(cpu_free_pct((0, 0), (300, 100)), Some(100));
+    }
+
+    #[test]
+    fn a_wrapping_tick_difference_is_read_right() {
+        let prev = (u32::MAX - 20, u32::MAX - 30);
+        let next = (prev.0.wrapping_add(50), prev.1.wrapping_add(100));
+        assert!(next.1 < prev.1 && next.0 < prev.0, "the readings wrapped");
+        assert_eq!(cpu_free_pct(prev, next), Some(50));
+        // Only the total wrapped: the idle difference is still its own.
+        let prev = (1_000, u32::MAX - 49);
+        let next = (1_040, prev.1.wrapping_add(100));
+        assert!(next.1 < prev.1);
+        assert_eq!(cpu_free_pct(prev, next), Some(40));
+    }
+
+    #[test]
+    fn a_total_that_went_backwards_is_no_reading() {
+        // The wrapped difference would be above 2^31: no short pause is that long.
+        assert_eq!(cpu_free_pct((0, 1_000), (0, 900)), None);
+    }
+
+    const PROC_STAT: &str = "\
+cpu  100 20 30 400 50 6 7 8 90 10
+cpu0 50 10 15 200 25 3 3 4 45 5
+intr 12345
+";
+
+    #[test]
+    fn proc_stat_counts_idle_and_iowait_as_idle_and_leaves_guest_time_out() {
+        // total = user nice system idle iowait irq softirq steal = 100+20+30+400+50+6+7+8
+        assert_eq!(parse_proc_stat(PROC_STAT), Some((450, 621)));
+    }
+
+    #[test]
+    fn proc_stat_without_a_cpu_line_or_with_a_bad_field_is_no_reading() {
+        assert_eq!(parse_proc_stat(""), None);
+        assert_eq!(parse_proc_stat("cpu0 1 2 3 4\nintr 1\n"), None);
+        assert_eq!(parse_proc_stat("cpu  1 2 3\n"), None);
+        assert_eq!(parse_proc_stat("cpu  1 2 x 4 5\n"), None);
+        // An old kernel gives four fields: idle without iowait.
+        assert_eq!(parse_proc_stat("cpu  1 2 3 4\n"), Some((4, 10)));
+    }
+
+    #[test]
+    fn below_the_limit_under_the_cap_waits_and_at_the_cap_the_caller_starts() {
+        assert_eq!(cpu_wait_decision(true, Duration::ZERO), CpuStep::Wait);
+        let just_under = CPU_WAIT_CAP - Duration::from_millis(1);
+        assert_eq!(cpu_wait_decision(true, just_under), CpuStep::Wait);
+        assert_eq!(cpu_wait_decision(true, CPU_WAIT_CAP), CpuStep::Run);
+        assert_eq!(
+            cpu_wait_decision(true, CPU_WAIT_CAP + Duration::from_secs(1)),
+            CpuStep::Run
+        );
+        // Not low: never a wait, at any waited time.
+        assert_eq!(cpu_wait_decision(false, Duration::ZERO), CpuStep::Run);
+        assert_eq!(cpu_wait_decision(false, CPU_WAIT_CAP), CpuStep::Run);
+        assert_eq!(CPU_WAIT_CAP, Duration::from_secs(300));
+    }
+
+    #[test]
+    fn the_limit_is_0_without_a_file_and_the_files_value_with_one() {
+        let (_, l, notes) = effective(None, None, None, None, None);
+        assert_eq!(l.min_cpu_free_pct, 0);
+        assert_eq!(DEFAULT_LIMITS.min_cpu_free_pct, 0);
+        assert!(notes.is_empty());
+        let f = LimitsFile {
+            min_cpu_free_pct: Some(30),
+            ..LimitsFile::default()
+        };
+        let limit = |f: &LimitsFile| {
+            effective(Some(f), None, None, None, None)
+                .1
+                .min_cpu_free_pct
+        };
+        assert_eq!(limit(&f), 30);
+        let f = LimitsFile {
+            min_cpu_free_pct: Some(0),
+            ..LimitsFile::default()
+        };
+        assert_eq!(limit(&f), 0);
+        // A file without the key keeps the default.
+        assert_eq!(limit(&LimitsFile::default()), 0);
     }
 }

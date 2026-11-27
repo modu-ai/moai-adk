@@ -672,67 +672,6 @@ fn hook_receipt_keeps_a_plain_tree() {
     );
 }
 
-/// The lane Stop hook is the other writer that calls `ProjectHome::write_area` (its `state`
-/// area): with a link on the way the count cannot be saved, so no block is sent, and nothing is
-/// written behind the link.
-fn stop_hook_refused(test: &str, at: At) {
-    with_home(
-        test,
-        |t| link_for(t, at, "state"),
-        |seen| {
-            let before = snapshot(&seen.behind);
-            let out = moai_cli::lane_loop::stop_hook(
-                &seen.project,
-                "a",
-                "o/r",
-                &moai_cli::lane_loop::Reading::Unknown,
-            );
-            assert_eq!(out, "", "a block was sent without a saved count");
-            assert_eq!(snapshot(&seen.behind), before, "something changed behind");
-        },
-    );
-}
-
-/// AC-8 (REQ-7): `projects/` is a link.
-#[test]
-fn stop_hook_refuses_a_linked_projects_folder() {
-    stop_hook_refused("stop_hook_refuses_a_linked_projects_folder", At::Projects);
-}
-
-/// AC-8 (REQ-7): `projects/widgets/` is a link.
-#[test]
-fn stop_hook_refuses_a_linked_project_folder() {
-    stop_hook_refused("stop_hook_refuses_a_linked_project_folder", At::Project);
-}
-
-/// AC-8 (REQ-7): the `state` folder itself is a link.
-#[test]
-fn stop_hook_refuses_a_linked_state_folder() {
-    stop_hook_refused("stop_hook_refuses_a_linked_state_folder", At::Store);
-}
-
-/// AC-8 (REQ-7), control: a plain tree sends the block and saves the count in the home side.
-#[test]
-fn stop_hook_keeps_a_plain_tree() {
-    with_home(
-        "stop_hook_keeps_a_plain_tree",
-        |_| {},
-        |seen| {
-            let out = moai_cli::lane_loop::stop_hook(
-                &seen.project,
-                "a",
-                "o/r",
-                &moai_cli::lane_loop::Reading::Unknown,
-            );
-            assert!(out.contains("block"), "{out}");
-            assert!(seen
-                .state
-                .join("projects/widgets/state/lane-stop-hook/a.json")
-                .is_file());
-        },
-    );
-}
-
 /// `backup_area` refuses with the sentence of the link at `at`, and nothing changed behind it.
 fn backup_area_refused(at: At) {
     let t = tree();

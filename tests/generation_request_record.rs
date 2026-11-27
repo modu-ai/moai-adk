@@ -527,8 +527,8 @@ fn an_apply_with_every_file_unchanged_still_records_the_request_and_clears_the_d
 // `needs_decision` behind.
 
 const ROLE_FILE: &str = ".claude/agents/moai/prj-test-runner.md";
-const SKILL_FILE: &str = ".claude/skills/prj-checks/SKILL.md";
-const PROJECTION_FILE: &str = ".claude/skills/ref-b/SKILL.md";
+const SKILL_FILE: &str = ".claude/skills/moai-prj-checks/SKILL.md";
+const PROJECTION_FILE: &str = ".claude/skills/moai-ref-b/SKILL.md";
 const GENERATED_KINDS: [&str; 3] = [
     "generation:native-role:",
     "generation:project-skill:",

@@ -10,7 +10,6 @@ use common::home::TempHome;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::{Duration, SystemTime};
 
 const SLOTS: [&str; 14] = [
@@ -311,15 +310,12 @@ fn a_slot_warmed_from_the_seed_compiles_only_the_workspace_crate() {
             "fn main() { println!(\"{}\", slotdep::one()); }\n",
         ),
     ]);
-    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
     let build = |dir: &Path| {
-        let out = Command::new(&cargo)
+        let out = common::cargo::cargo_at(common::cargo::cargo_path())
             .args(["build", "-v", "--offline"])
             .current_dir(dir)
             .env_remove("CARGO_TARGET_DIR")
             .env_remove("CARGO_BUILD_TARGET_DIR")
-            .env_remove("RUSTC_WRAPPER")
-            .env_remove("CARGO_BUILD_RUSTC_WRAPPER")
             .env_remove("CARGO_INCREMENTAL")
             .output()
             .unwrap();

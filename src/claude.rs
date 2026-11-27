@@ -1040,6 +1040,20 @@ struct SettingsState {
     replace: Option<Replace>,
 }
 
+impl SettingsState {
+    /// What the write of this state, or else the confirmed replacement it offers, would be
+    /// refused for (SPEC-20261122-settings-write-check). Observation only, outside the digest.
+    fn would_refuse(&self, scope: SettingsScope) -> Vec<Value> {
+        let offered = self.replace.as_ref().map(|r| r.after.as_slice());
+        crate::settings_write::entries(
+            scope.file(),
+            self.before.as_deref(),
+            &self.current,
+            self.after.as_deref().or(offered),
+        )
+    }
+}
+
 /// #2383 range 2 (leader decision 6846938102): a conflict on keys a caller may set can be
 /// replaced after the user confirms. The existing file is kept byte for byte under
 /// `.moai-cli/settings-backups/<UTC>-<scope>/` first; only the conflicting keys change.
@@ -1411,6 +1425,10 @@ fn plan_of(project: &Path, s: SettingsState, scope: SettingsScope) -> Result<Val
             "confirm_token": r.token,
         });
     }
+    let observed = s.would_refuse(scope);
+    if !observed.is_empty() {
+        out[crate::settings_write::FIELD] = json!(observed);
+    }
     Ok(out)
 }
 
@@ -1578,6 +1596,7 @@ fn apply_of(
             Some(keep_original(project, scope, s.before.as_deref())?)
         }
     };
+    let observed = s.would_refuse(scope);
     let owned: Map<String, Value> = desired
         .iter()
         .filter(|(k, v)| s.owned.contains_key(*k) || s.current.get(*k) != Some(*v))
@@ -1604,19 +1623,29 @@ fn apply_of(
         #[cfg(unix)]
         if scope == SettingsScope::Local && s.before.is_none() {
             use std::os::unix::fs::PermissionsExt;
-            fs::set_permissions(&s.settings, fs::Permissions::from_mode(0o600))
-                .map_err(|_| "local settings permission change failed".to_string())?;
+            fs::set_permissions(&s.settings, fs::Permissions::from_mode(0o600)).map_err(|_| {
+                // The file did change, so it is recorded although the apply fails.
+                let _ = crate::settings_write::record(project, file, &observed);
+                "local settings permission change failed".to_string()
+            })?;
         }
         files.push(file);
     }
-    if receipt_now.as_deref() != Some(receipt.as_slice()) {
-        if let Err(e) = crate::agents::write_replace(&s.receipt, receipt_now.as_deref(), &receipt) {
-            return Err(if files.is_empty() {
-                e
-            } else {
-                format!("partial apply: applied [{file}]; failed at {rel}: {e}")
-            });
-        }
+    let receipt_written = if receipt_now.as_deref() != Some(receipt.as_slice()) {
+        crate::agents::write_replace(&s.receipt, receipt_now.as_deref(), &receipt)
+    } else {
+        Ok(())
+    };
+    // REQ-9, REQ-10: one line for an apply that changed the file, after its writes (a receipt
+    // write has made the state folder by then). A line that cannot be appended fails nothing.
+    let unrecorded =
+        !files.is_empty() && crate::settings_write::record(project, file, &observed).is_err();
+    if let Err(e) = receipt_written {
+        return Err(if files.is_empty() {
+            e
+        } else {
+            format!("partial apply: applied [{file}]; failed at {rel}: {e}")
+        });
     }
     let created: Vec<&str> = if s.before.is_none() {
         files.clone()
@@ -1633,6 +1662,12 @@ fn apply_of(
         "host_loaded": "not_run",
         "execution_verified": "not_run",
     });
+    if !observed.is_empty() {
+        out[crate::settings_write::FIELD] = json!(observed);
+    }
+    if unrecorded {
+        out["observation_recorded"] = json!(false);
+    }
     if let (Some(r), Some(dir)) = (&replacing, &backup) {
         let kept = format!("{dir}/{}", settings_name(scope));
         out["state"] = json!("replaced");
