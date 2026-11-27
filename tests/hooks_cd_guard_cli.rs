@@ -275,6 +275,70 @@ fn the_session_cd_refusal_recommends_no_cd_form() {
     }
 }
 
+/// AC-7 (REQ-1): the cargo form the refusal suggests is one cargo accepts. The test takes the
+/// backtick span that starts with `cargo` out of the text, requires the subcommand before the
+/// flag (cargo refuses a flag in front of it), puts a temporary crate in place of `<path>` and
+/// runs that exact form from another folder, so no `cd` is needed for it to work.
+#[test]
+fn the_session_cd_refusal_cargo_form_is_one_cargo_accepts() {
+    let w = World::new(true, true);
+    let reason = w
+        .call(&w.own, "cd src", "default", None)
+        .expect("a worktree session cd is denied");
+    let span = reason
+        .split('`')
+        .skip(1)
+        .step_by(2)
+        .find(|s| s.starts_with("cargo "))
+        .unwrap_or_else(|| panic!("no cargo form in backticks: {reason}"));
+    let words: Vec<&str> = span.split_whitespace().collect();
+    assert_eq!(words[0], "cargo", "{span}");
+    assert!(
+        !words[1].starts_with('-'),
+        "the subcommand comes before the flag, cargo refuses it the other way round: {span}"
+    );
+    assert_eq!(words[1], "test", "{span}");
+    let flag_at = words
+        .iter()
+        .position(|word| *word == "--manifest-path")
+        .unwrap_or_else(|| panic!("no --manifest-path in {span}"));
+    assert!(flag_at > 1, "{span}");
+    let value = words[flag_at + 1];
+    assert!(value.starts_with("<path>/"), "{span}");
+
+    let tmp = tempfile::tempdir().unwrap();
+    let base = fs::canonicalize(tmp.path()).unwrap();
+    let krate = base.join("crate");
+    let elsewhere = base.join("elsewhere");
+    fs::create_dir_all(krate.join("src")).unwrap();
+    fs::create_dir_all(&elsewhere).unwrap();
+    fs::write(
+        krate.join("Cargo.toml"),
+        "[package]\nname = \"suggested\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+    )
+    .unwrap();
+    fs::write(krate.join("src/lib.rs"), "pub fn one() -> u32 { 1 }\n").unwrap();
+    let args: Vec<String> = words[1..]
+        .iter()
+        .map(|word| word.replace("<path>", krate.to_str().unwrap()))
+        .collect();
+    let out = common::cargo::cargo_at(common::cargo::cargo_path())
+        .args(&args)
+        .args(["--no-run", "--offline"])
+        .current_dir(&elsewhere)
+        .env_remove("CARGO_TARGET_DIR")
+        .env_remove("CARGO_BUILD_TARGET_DIR")
+        .env_remove("CARGO_INCREMENTAL")
+        .stdin(Stdio::null())
+        .output()
+        .expect("spawn cargo");
+    assert!(
+        out.status.success(),
+        "cargo refuses the suggested form {span:?}: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
 /// AC-2 (REQ-2, REQ-3): letters in a string, a comment or a here-document, a subshell, a
 /// substitution, another shell's string and a program called `cd` are not denied.
 #[test]
