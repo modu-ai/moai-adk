@@ -838,3 +838,26 @@ fn the_applied_screen_shows_a_kept_agent_file_as_partial() {
         "{done}"
     );
 }
+
+/// A blocked agents host (a link at its folder) is no finished run: the agents row carries the
+/// reason and the run ends on Partly applied instead of Done, in English and Korean.
+#[test]
+fn the_applied_screen_shows_a_blocked_agents_host_as_partial() {
+    let reason = "claude: the agents folder is a link";
+    let mut blocked = fixture("applied");
+    blocked["agents_result"] = serde_json::json!({
+        "state": "blocked",
+        "written": [],
+        "reason": reason,
+        "blocked": [{"host": "claude", "reason": "the agents folder is a link"}],
+    });
+    for (lang, head) in [(Lang::En, "Partly applied"), (Lang::Ko, "일부만 바꿨어요")] {
+        let text = screen(&blocked, Asked::Yes, &view(lang, Look::Plain, 80, None));
+        assert!(text.contains(head), "{text}");
+        assert!(!text.contains("Done"), "{text}");
+        assert!(
+            text.lines().any(|l| l.contains(reason)),
+            "the reason is on the agents row: {text}"
+        );
+    }
+}

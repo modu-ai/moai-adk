@@ -546,3 +546,117 @@ fn a_link_at_the_flat_path_is_never_followed_or_removed() {
     assert_eq!(fs::read_to_string(&outside).unwrap(), "not an agent\n");
     assert!(!fx.nested("impl").exists());
 }
+
+/// A flat file this tool never wrote (no record) is asked about like an edited one: keeping it
+/// ends `partial` with the other files written, using MoAI's moves it with the person's bytes in
+/// the receipt, and the revert puts it back.
+#[test]
+fn a_foreign_flat_file_is_asked_about_and_kept_or_moved_by_the_choice() {
+    const MINE: &str = "someone else's plan agent\n";
+    let kept = fx();
+    kept.write_flat("plan", MINE);
+    let plan = kept.plan();
+    assert_eq!(line(&plan, "plan").legacy.as_deref(), Some("kept_foreign"));
+    assert!(agent_install::asks_anything(&plan));
+    let (chosen, out, _) = choose(&plan, "k\n", false);
+    assert!(chosen.is_empty(), "{out}");
+    assert!(out.contains("moai-plan.md"), "{out}");
+    let v = kept.apply(&plan, &[]);
+    assert_eq!(v["state"], "partial", "{v}");
+    assert_eq!(v["kept"], serde_json::json!(["claude:moai-plan.md"]), "{v}");
+    assert!(!v["written"].as_array().unwrap().is_empty(), "{v}");
+    assert_eq!(fs::read_to_string(kept.flat("plan")).unwrap(), MINE);
+    assert!(!kept.nested("plan").exists());
+
+    let moved = fx();
+    moved.write_flat("plan", MINE);
+    let plan = moved.plan();
+    let (chosen, out, _) = choose(&plan, "m\n", false);
+    assert_eq!(chosen, ["claude:moai-plan.md"], "{out}");
+    let names: Vec<&str> = chosen.iter().map(String::as_str).collect();
+    let v = moved.apply(&plan, &names);
+    assert_eq!(v["state"], "applied", "{v}");
+    assert!(v.get("kept").is_none(), "{v}");
+    assert_eq!(
+        fs::read_to_string(moved.nested("plan")).unwrap(),
+        render_of("plan")
+    );
+    assert!(!moved.flat("plan").exists());
+    let id = v["receipt"].as_str().unwrap().to_string();
+    let receipt_copy = moai_cli::home_root::path(&moved.home)
+        .join("agents/receipts")
+        .join(&id)
+        .join("before/claude/legacy/moai-plan.md");
+    assert_eq!(fs::read_to_string(receipt_copy).unwrap(), MINE);
+    let r = agent_install::revert(&moved.home, &id, PERM).unwrap();
+    assert_eq!(r["state"], "reverted", "{r}");
+    assert_eq!(fs::read_to_string(moved.flat("plan")).unwrap(), MINE);
+    assert!(!moved.nested("plan").exists());
+}
+
+/// REQ-4: the difference prints at most 80 lines and counts the rest: exactly 80 differing lines
+/// print with no count, one more line prints the same 80 and the count `… 1`.
+#[test]
+fn the_difference_stops_at_eighty_lines_and_counts_the_rest() {
+    let moai_lines = render_of("research").lines().count();
+    assert!(
+        moai_lines < 80,
+        "the case needs a render shorter than the cap: {moai_lines}"
+    );
+    for (total, more) in [(80usize, None), (81, Some("… 1"))] {
+        let fx = fx();
+        fx.earlier_layout();
+        // No line in common: every line of mine and of MoAI's is a differing line.
+        let mine: String = (0..total - moai_lines)
+            .map(|i| format!("mine line {i}\n"))
+            .collect();
+        fx.write_flat("research", &mine);
+        let (_, out, _) = choose(&fx.plan(), "d\nk\n", false);
+        let shown = out
+            .lines()
+            .filter(|l| l.starts_with("- ") || l.starts_with("+ "))
+            .count();
+        assert_eq!(shown, 80, "{total} differing lines: {out}");
+        let counts: Vec<&str> = out.lines().filter(|l| l.starts_with('…')).collect();
+        assert_eq!(
+            counts,
+            more.into_iter().collect::<Vec<_>>(),
+            "{total}: {out}"
+        );
+    }
+}
+
+/// A host whose agents folder is a link is never written through, and the apply says so: the
+/// result is `blocked` with the host and the reason, so the end screen cannot read it as done.
+/// A clean apply carries no `blocked` key.
+#[cfg(unix)]
+#[test]
+fn an_apply_names_a_blocked_host_and_writes_nothing_through_the_link() {
+    use std::os::unix::fs::symlink;
+    let fx = fx();
+    let outside = fx.home.join("outside");
+    fs::create_dir_all(&outside).unwrap();
+    fs::create_dir_all(fx.home.join(".claude")).unwrap();
+    symlink(&outside, fx.claude_agents()).unwrap();
+    let plan = fx.plan();
+    assert_eq!(plan.hosts[0].preflight, "blocked", "{:?}", plan.hosts[0]);
+    let v = fx.apply(&plan, &[]);
+    assert_eq!(v["state"], "blocked", "{v}");
+    assert_eq!(v["written"], serde_json::json!([]), "{v}");
+    assert_eq!(v["blocked"][0]["host"], "claude", "{v}");
+    let reason = v["blocked"][0]["reason"].as_str().unwrap_or_default();
+    assert!(!reason.is_empty(), "{v}");
+    assert!(
+        v["reason"].as_str().unwrap_or_default().contains("claude"),
+        "{v}"
+    );
+    assert!(
+        fs::read_dir(&outside).unwrap().next().is_none(),
+        "wrote through the link"
+    );
+
+    let clean = self::fx();
+    let v = clean.apply(&clean.plan(), &[]);
+    assert_eq!(v["state"], "applied", "{v}");
+    assert!(v.get("blocked").is_none(), "{v}");
+}
