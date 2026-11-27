@@ -24,7 +24,7 @@ const FORMAT_LINES: [(&str, &str); 1] = [("skills/moai/references/audit.md", "AU
 
 /// Shipped files that still carry citations, sorted. It can only shrink: a file that was cleaned
 /// leaves the list in the same change.
-const PENDING: [&str; 1] = ["skills/moai/references/source-manifest.json"];
+const PENDING: [&str; 0] = [];
 
 /// Names of moai-adk's own development scripts and repository, which a user does not have.
 const DEV_WORDS: [&str; 8] = [
