@@ -350,24 +350,95 @@ fn own_checkout(cwd: Option<&Path>, project_dir: Option<&Path>) -> Option<Checko
 
 // ------------------------------------------------------------------ session folder
 
-const SESSION_CD: &str = "moai-boundary/session-cd: this command would move the folder of a session that works in its own worktree. Stay where you are: name files by their absolute path, give a path argument to a command that takes one (`cargo test --manifest-path <path>/Cargo.toml`), run git as plain single commands in your own worktree, or read another revision by its object id.";
+const SESSION_CD: &str = "moai-boundary/session-cd: this command would move the folder of a session that works in its own worktree. Stay where you are: name files by their absolute path, give a path argument to a command that takes one (`cargo test --manifest-path <path>/Cargo.toml`), run git as plain single commands in your own worktree, or read another revision by its object id. If a shell cd (not EnterWorktree) already moved a session that started in the main checkout into this worktree, the shell cannot go back: end the session and start it again from the main checkout.";
+
+const SESSION_ENTER: &str = "moai-boundary/session-cd: this command would move the shell of a session in the main checkout into a linked worktree, and a shell cd cannot take it back out. Stay where you are: name files by their absolute path, give a path argument to a command that takes one (`cargo test --manifest-path <path>/Cargo.toml`), or enter the worktree with EnterWorktree.";
 
 /// The deny of the session-folder rule (SPEC-20261126-shell-cd-guard): the command would run
 /// `cd`, `pushd` or `popd` in the session shell of a session whose checkout is a linked worktree
-/// of a MoAI project. `None` otherwise, also when the command cannot be split into commands.
-/// Reads files only.
+/// of a MoAI project, or would move the shell of a session in the main checkout into a linked
+/// worktree of the same repository (revision 4, REQ-6). `None` otherwise, also when the command
+/// cannot be split into commands and when a target is not held by the command text. `home` is
+/// what `~` and a bare `cd` stand for. Reads files only.
 pub fn session_cd(
     input: &Value,
     project_dir: Option<&Path>,
+    home: Option<&Path>,
     process_cwd: &Path,
 ) -> Option<&'static str> {
     let command = input["tool_input"]["command"].as_str()?;
-    if command.len() > MAX_BYTES || !moves_session(command, 0) {
+    if command.len() > MAX_BYTES {
+        return None;
+    }
+    let moves = session_moves(command, 0);
+    if moves.is_empty() {
         return None;
     }
     let cwd = session_folder(input.as_object()?, process_cwd);
     let own = own_checkout(cwd.as_deref(), project_dir)?;
-    (!own.primary && moai_project(&own)).then_some(SESSION_CD)
+    if !moai_project(&own) {
+        return None;
+    }
+    if !own.primary {
+        return Some(SESSION_CD);
+    }
+    enters_worktree(&moves, &own, cwd, home).then_some(SESSION_ENTER)
+}
+
+/// A `cd`, `pushd` or `popd` the session shell runs, with its words.
+struct DirMove {
+    name: String,
+    args: Vec<Word>,
+}
+
+/// Whether the moves, followed in order from the session's folder, leave the shell in a linked
+/// worktree of the repository `own` belongs to. A target the text does not hold (a variable, a
+/// glob, a word that spells several folders, `cd -`) leaves the folder unknown and the walk goes
+/// on from there, as the boundary's own walk does.
+fn enters_worktree(
+    moves: &[DirMove],
+    own: &Checkout,
+    cwd: Option<PathBuf>,
+    home: Option<&Path>,
+) -> bool {
+    let world = World {
+        cwd: cwd.clone(),
+        own: None,
+        home: home.map(Path::to_path_buf),
+        protected: Vec::new(),
+        roots: Vec::new(),
+    };
+    let walker = Walker {
+        world: &world,
+        count: 0,
+        others: None,
+        unread: None,
+    };
+    let mut state = State {
+        cwd,
+        stack: Vec::new(),
+        git_env: BTreeMap::new(),
+    };
+    let prefix = BTreeMap::new();
+    for step in moves {
+        let several = step
+            .args
+            .iter()
+            .filter(|w| !w.is_option())
+            .any(|w| walker.expand(w, &state).is_some_and(|list| list.len() > 1));
+        if several {
+            state.cwd = None;
+            continue;
+        }
+        walker.change_dir(&step.name, &step.args, &mut state, &prefix);
+        let Some(here) = state.cwd.as_deref().and_then(checkout_of) else {
+            continue;
+        };
+        if !here.primary && here.common == own.common {
+            return true;
+        }
+    }
+    false
 }
 
 /// Whether the repository of `checkout` is a MoAI project: the profile is at the checkout, or at
@@ -404,19 +475,20 @@ fn parens_balanced(items: &[Item]) -> bool {
     open == 0
 }
 
-/// Whether a command of `src` outside every pair of parentheses is `cd`, `pushd` or `popd`.
-/// Substitutions, here-documents and strings given to another shell run elsewhere and are not
-/// read; a literal `eval` string runs here and is read the same way. A line the lexer cannot
-/// split (arrays, `(( … ))`, `;;`, an unmatched quote, unbalanced parentheses and the like) is
-/// not judged at all, whatever stands before that part. Reading stops, with no deny, at a
-/// function definition, a `case`, a `function` or a `coproc`.
-fn moves_session(src: &str, depth: usize) -> bool {
+/// The commands of `src` outside every pair of parentheses that are `cd`, `pushd` or `popd`, in
+/// the order they run. Substitutions, here-documents and strings given to another shell run
+/// elsewhere and are not read; a literal `eval` string runs here and is read the same way. A line
+/// the lexer cannot split (arrays, `(( … ))`, `;;`, an unmatched quote, unbalanced parentheses
+/// and the like) is not judged at all, whatever stands before that part. Reading stops at a
+/// function definition, a `case`, a `function` or a `coproc`, keeping what came before it.
+fn session_moves(src: &str, depth: usize) -> Vec<DirMove> {
+    let mut found = Vec::new();
     if depth > MAX_DEPTH {
-        return false;
+        return found;
     }
     let script = lex(src);
     if script.unsupported || !parens_balanced(&script.items) {
-        return false;
+        return found;
     }
     let mut parens = 0usize;
     let mut just_opened = false;
@@ -428,7 +500,7 @@ fn moves_session(src: &str, depth: usize) -> bool {
                 continue;
             }
             // `name () { … }` defines a function: its body does not run here.
-            Item::Close if just_opened => return false,
+            Item::Close if just_opened => return found,
             Item::Close => {
                 parens = parens.saturating_sub(1);
                 continue;
@@ -446,18 +518,19 @@ fn moves_session(src: &str, depth: usize) -> bool {
             continue;
         }
         match first.text().as_str() {
-            "cd" | "pushd" | "popd" => return true,
-            "case" | "function" | "coproc" => return false,
+            name @ ("cd" | "pushd" | "popd") => found.push(DirMove {
+                name: name.to_owned(),
+                args: args.to_vec(),
+            }),
+            "case" | "function" | "coproc" => return found,
             "eval" if args.iter().all(|w| !w.dynamic) => {
                 let text: Vec<String> = args.iter().map(Word::text).collect();
-                if moves_session(&text.join(" "), depth + 1) {
-                    return true;
-                }
+                found.extend(session_moves(&text.join(" "), depth + 1));
             }
             _ => {}
         }
     }
-    false
+    found
 }
 
 /// The words from the command word on: assignments, the reserved words that may stand in front,
