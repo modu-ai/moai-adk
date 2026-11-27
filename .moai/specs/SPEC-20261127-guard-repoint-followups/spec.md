@@ -116,3 +116,54 @@ approval:
 | D-5 | `next-flow.md` 에 문단을 더하고 기존 문장을 줄여 8192 한도 둘은 그대로 지키며, 팁 래칫(`FLOW_REF_TIP_BYTES`)만 새 크기로 올려요. 줄이지 못하면 사용자에게 물어요. 선택지 b: 세 한도를 모두 올려요. c: 문단을 `landing-release.md` 에 두고 `next-flow.md` 에는 한 줄 포인터만 둬요(기준 2 의 글자는 `next-flow.md` 를 가리켜서 사용자의 확인이 필요해요). 기본값: a. | 한도는 스킬 문서를 짧게 지키려는 장치예요. 임의로 올리지 않고 줄여 보는 쪽이 한도를 약하게 하지 않아요. | 문단과 래칫 값을 되돌리는 판. |
 | D-6 | `card land` 답의 `profile_disagrees` 필드는 지금 값 그대로 두어요(`guard_record_stale` 필드는 그 옆에 더해요). 선택지 b: 필드를 지워요. 기본값: a(사용자 확정). | 답의 모양을 바꾸지 않아 읽는 쪽(`ac22_`, 리더 도구)이 안 깨져요. | 필드를 지우는 판. |
 | D-7 | 링크 워크트리에서 `moai update` 의 훅 보류는 조용히 해요(안내는 주 워크트리에만 있어요). 선택지 b: 링크 워크트리에도 안내 한 줄을 더해요(앞 SPEC 의 REQ-10 을 바꾸는 개정). 기본값: a. | 앞 SPEC 의 REQ-10 과 그 테스트를 건드리지 않아요. | 해당 없음(후속 카드). |
+
+## Result
+
+구현 레인(moai-adk-agent-jade)이 2026-11-27T04:05Z(date -u)에 채웠어요. macOS(개발 Mac), 빌드 폴더는 이 워크트리의 `target/`, 무거운 명령은 모두 `moai heavy-slot-acquire --name moai-adk-agent-jade --max 2 --` 슬롯 안에서 돌렸어요. 승인은 레저 노트 10644·10647(사용자가 리더 세션에서 직접 고른 답 "승인, 거절은 관찰부터 (Recommended)")이고, 이 파일 머리글에 승인 블록이 있어요. 기준은 NeXT `8933f238cd` 예요.
+
+변경: `src/card/guard/repoint.rs`(`disagrees`, `observation`, 비교를 `compare` 로 분리, `stale()`·`probe`·`repoint_notice` 는 그대로), `src/card/land.rs`·`src/card/land/batch.rs`·`src/card/land/sync.rs`(답에 `guard_record_stale` 한 필드), `src/update.rs`(`guard_answer` 가 `disagrees` 를 씀), `skills/moai/references/flows/next-flow.md`(Landing 에 문단 하나, 다른 줄을 줄여 8180 바이트), `skills/moai/references/source-manifest.json`(해시 한 줄, 줄 임대), 문서 둘(`card.md` 줄 임대, `git_hooks_plan.md`), 테스트 다섯 파일과 `tests/next_flow_skill_scan.rs`(새 시험 하나, 팁 래칫 8121 → 8180).
+
+테스트 (이 레인이 슬롯에서 직접 돌린 결과예요):
+
+| 명령 | 결과 |
+|---|---|
+| `cargo nextest run --test card -- guard_record_stale` | 7 통과 (RED 때는 4 실패 + 가드 3 통과) |
+| `cargo nextest run --test card -- card_land` | 176 통과, 0 실패 (`ac22_`, `ac9_`, `ac13_` 포함, 수정 없음) |
+| `cargo nextest run --test integration_guard_repoint` | 33 통과 (`disagrees_` 7 포함, `ac7_` 수정 없음) |
+| `cargo nextest run --test update_git_hooks_cli` | 17 통과 (새 링크 워크트리 시험 포함) |
+| `cargo nextest run` 대상: `next_flow_skill_scan`, `source_manifest_facts`, `repo_scans_table`, `lane_team_names`, `lane_completion_handshake`, `leader_route`, `repo_claude_md`, `integration_guard_repoint` | 224 통과, 0 실패 |
+| `cargo nextest run --test card -- followup_per_spec` | 2 통과 |
+
+RED 는 `moai tdd red` 로 기록했어요(커밋 `e9233b60ba`, 체크 둘 모두 assertion 실패 exit 101). `disagrees_` 시험은 함수가 없어 컴파일 실패였고 RED 체크에 넣을 수 없어서(컴파일 실패는 RED 가 아니에요) 두 체크에서 뺐어요; 함수가 생긴 뒤 7개 모두 통과했어요. `moai tdd green` 은 두 체크를 통과로 재생했어요. 새 `next_flow_skill_scan` 시험(`guard_repoint_is_told_in_the_landing_section`)은 문서 수정과 같은 라운드에 써서 문서 수정 전에 실패하는 것을 따로 돌려 보지 않았어요(not_run).
+
+- AC-1: met
+- AC-2: met
+- AC-3: met
+- AC-4: met
+- AC-5: met
+- AC-6: met
+- AC-7: met
+- AC-8: met
+- AC-9: met
+
+가드 뮤턴트 (편집 한 번, 슬롯 안 nextest, 평범한 `git restore`, 매번 트리가 깨끗한 것까지 읽었어요; 배치·싱크·업데이트 셋은 한 번에 편집해 한 번 빌드하고 시험은 각각의 결과를 읽었어요):
+
+guard-mutant: guard_record_stale_land_in_the_primary_worktree_observes_and_lands_as_before | land 가 `guard_record_stale` 를 답에 더하지 않음 | exit 101
+guard-mutant: guard_record_stale_land_in_a_linked_worktree_adds_the_primary_checkout_sentence | `observation` 이 링크 워크트리 문장(`note`)을 빼 버림 | exit 100
+guard-mutant: guard_record_stale_batch_lands_both_heads_and_reports_the_record_once | land-batch 가 필드를 더하지 않음 | exit 100
+guard-mutant: guard_record_stale_sync_moves_the_recorded_branch_and_reports_the_record | land-sync 가 필드를 더하지 않음 | exit 100
+guard-mutant: update_offers_the_guard_hook_not_for_a_stale_record_in_a_linked_worktree | `guard_answer` 가 다시 `stale()`(주 워크트리만)를 씀 | exit 100
+guard-mutant: none | `disagrees_*` 일곱 시험은 뮤턴트를 돌리지 않았어요(not_run) | 해당 없음
+
+(exit 100 은 nextest 의 시험 실패 종료 코드이고 101 은 `cargo test` 의 것이에요. 둘 다 시험이 단언에서 실패했어요.)
+
+next-flow.md 한도 (D-5 a): 8111 → 8180 바이트(한도 8192 두 곳은 그대로, 팁 래칫만 8180 으로). 문단을 넣으려고 줄인 곳은 아래 다섯 가지이고 테스트가 고정하지 않는 문장만이에요(고정된 문장은 `GAP`, 원격 복사 줄의 `remote_copy` 구절, 감사 브리프 줄, 재시작 줄의 앞부분이라 그대로 뒀어요): 새 창 문장 한 줄, "스스로 세션을 비우는 것은 보장이 아니다" 문장, 원격 복사 줄의 두 꼬리(`a key of the project profile` 과 끝 절), ACK 줄과 재시작 줄의 단어, 넓은 체크 줄의 "full run every five landings stays". 이 마지막 문장은 의미가 있는 문장이었어요(전체 실행 주기): `CLAUDE.md` 의 Verify 절에 같은 규칙이 있어서 그쪽이 원본으로 남아요. 되돌리고 싶으면 알려 주세요.
+
+알려진 빈틈과 사용자에게 남는 질문:
+
+- 기준 1(카드 본문의 글: "카드 land 가 낡은 기록이면 거절")은 이 SPEC 이 RC1 에서 관찰만 하므로 충족되지 않았어요(not met). 리더 결정(노트 10647)대로 글은 고치지 않았고, `card land --keep-open` 으로 올려야 해요.
+- Plan 11, 관찰 결과: 이 레인은 실제 랜딩을 보지 못해요. 리더가 `guard_record_stale` 필드가 실린 랜딩 답의 건수와 오탐(필드가 있었는데 기록이 낡지 않았던 경우)을 카드 노트로 알리면 여기에 적어요. 관찰 건수: 없음(not_run, 리더 입력 대기). 다음 릴리즈의 질문: "관찰한 건수와 오탐이 이래요. 관찰을 거절로 바꿀까요?"
+- 링크 워크트리에서 `moai update` 는 낡은 기록이면 훅을 조용히 보류해요(D-7 a, 안내 없음).
+- `src/update.rs` 를 다른 카드 둘(같은 holder, 번호는 카드 노트에 적었어요)이 쥐고 있어요(`card scope` 의 겹침 답). 이 카드는 `guard_answer` 한 줄만 바꿨고, 병합은 리더의 몫이에요.
+
+서브 에이전트 기록: 두 에이전트의 기록에서 도구 거절은 없었어요(오류 결과는 `cargo fmt --check` 와 실패하는 시험의 종료 코드뿐이에요). 첫 에이전트는 자기 워크트리의 `target/debug` 를 `rm -rf`(상대 경로)로 지워서 다음 빌드가 느려졌어요; 둘째에게는 지우지 말라고 했고 지우지 않았어요.
