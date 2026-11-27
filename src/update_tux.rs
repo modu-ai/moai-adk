@@ -2547,7 +2547,15 @@ fn applied(v: &Value, view: &View) -> String {
                     ),
                 ));
             }
-            Some("unchanged") | None => {}
+            // A host whose folder is blocked (a link) writes nothing and answers `unchanged`; its
+            // reason is on the row and the run ends partly applied, never on Done.
+            Some("unchanged") | None => {
+                if r["blocked"].as_array().is_some_and(|b| !b.is_empty()) {
+                    bad = true;
+                    let msg = r["reason"].as_str().unwrap_or("blocked");
+                    rows.push(row(Mark::Warn, label, msg.to_string()));
+                }
+            }
             Some("skipped") => rows.push(row(Mark::Skip, label, w(lang, W::Skipped).into())),
             Some(other) => {
                 bad = true;

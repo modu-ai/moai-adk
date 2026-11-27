@@ -2,13 +2,13 @@
 id: SPEC-20261126-shell-cd-guard
 title: "A worktree session's shell cd is refused with the other way in one line"
 status: approved
-revision: 2
+revision: 3
 created: 2026-11-26
 approval:
-  by: leader
-  at: 2026-11-26
-  basis: "리더 GOAL-APPROVAL 노트 10298 (사용자 목표 2026-11-26 \"불포함 카드 까지 모두 다 구현을 해서 릴리즈를 하자. 카드 우선순위도 정해서 계속해서 모든 카드 구현 완료를 하자\" 에 따른 리더 판단, 사용자 직접 선택 아님): 판 2 의 방향은 결정 10265 와 보충 10289 예요"
-  digest: "sha256:3092b8f1d45f47cdf1cb498007cd60c23e1c78741569436810a7a5fdc7c2f219"
+  by: user
+  at: 2026-11-27
+  basis: "USER-APPROVAL 노트 10637 (개정 3, 사용자가 직접 골랐어요 2026-11-27, 리더 세션의 질문 도구 \"승인 (Recommended)\"; 리더가 노트에 적었고 레인은 그 노트를 인용만 해요). 앞 개정의 근거는 리더 GOAL-APPROVAL 노트 10298 (사용자 목표 2026-11-26 에 따른 리더 판단, 사용자 직접 선택 아님): 판 2 의 방향은 결정 10265 와 보충 10289 예요"
+  digest: "sha256:f00fb1d97535dfd8e388c15ade294496fb92408efc066456275af259696ba656"
 ---
 
 # A worktree session's shell cd is refused with the other way in one line
@@ -39,12 +39,13 @@ approval:
 
 ## Acceptance
 
-- AC-1 (REQ-1): 임시 HOME 의 MoAI 프로젝트에 `git worktree add` 로 만든 연결 워크트리에서 `moai hook-dispatch --host claude --event tool-preflight` 가 `cd x`, `ls && cd x`, `ls; cd x`, `{ cd x; }`, `if true; then cd x; fi`, `X=1 cd x`, `builtin cd x`, `eval 'cd x'`, `pushd x`, `popd` 를 `default` 와 `bypassPermissions` 두 모드에서 거절하고, 이유가 한 줄이며 절대 경로·`git -C`·객체 id 읽기·서브셸을 말해요 · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_worktree_session_cd_is_denied)'`
+- AC-1 (REQ-1): 임시 HOME 의 MoAI 프로젝트에 `git worktree add` 로 만든 연결 워크트리에서 `moai hook-dispatch --host claude --event tool-preflight` 가 `cd x`, `ls && cd x`, `ls; cd x`, `{ cd x; }`, `if true; then cd x; fi`, `X=1 cd x`, `builtin cd x`, `eval 'cd x'`, `pushd x`, `popd` 를 `default` 와 `bypassPermissions` 두 모드에서 거절하고, 이유가 한 줄이며 절대 경로·부속 명령 뒤에 경로를 주는 `--manifest-path`·git 단일 명령·객체 id 읽기를 말해요(개정 3: `git -C` 와 서브셸은 레인 규칙이 금지한 꼴이라 글에서 빠졌어요, D-8) · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_worktree_session_cd_is_denied)'`
 - AC-2 (REQ-2, REQ-3): 같은 워크트리 세션에서 `echo "cd x"`, `grep 'cd ' a.txt`, `printf '%s' 'a && cd x'`, `ls # cd x`, here-document 본문의 `cd x`, `ls cd`, `(cd x && ls)`, `v=$(cd x && pwd)`, `bash -c 'cd x'`, `sh -c "cd x"`, `command -v cd`, `/usr/bin/cd x` 는 거절되지 않아요(R-5 의 입력은 여기에 들지 않아요) · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_cd_that_does_not_move_the_session_is_allowed)'`
 - AC-3 (REQ-4): 주 체크아웃 세션, MoAI 프로필이 없는 폴더의 연결 워크트리, 나눌 수 없는 명령은 이 규칙으로 거절되지 않아요 · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_session_outside_a_worktree_keeps_cd)'`
 - AC-4 (REQ-5): `git-state` 거절 이유에 `cd into it` 이 남지 않아요 · verify: `rg -c 'cd into it' src` (일치 없음, exit 1)
 - AC-5 (REQ-1, REQ-2): 기존 경계 시험(`moai hook bash-boundary` 의 허용·거절 표)은 바뀌지 않고 통과해요 · verify: `cargo nextest run --test hook_bash_boundary_cli`
 - AC-6 (REQ-2, REQ-3): 같은 워크트리 세션에서 R-5 의 대표 입력 네 가지는 `default` 와 `bypassPermissions` 두 모드에서 session-cd 규칙으로 거절돼요(알려진 동작을 고정) · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_known_false_denial_stays_denied)'`
+- AC-7 (REQ-1): 거절 이유가 권하는 cargo 꼴은 cargo 가 받아들여요: 이유의 백틱 안 `cargo` 꼴은 부속 명령(`test`)이 플래그 앞에 오고, `<path>` 자리에 임시 crate 를 넣어 다른 폴더에서 그대로 돌리면(`--no-run --offline` 만 덧붙임) cargo 가 종료 0 으로 끝나요 · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(the_session_cd_refusal_cargo_form_is_one_cargo_accepts)'`
 
 ## Scope
 
@@ -68,6 +69,7 @@ approval:
 | D-5 | 파이프의 각 단계는 세션 셸로 보고 거절해요. | zsh 는 마지막 단계를 현재 셸에서 돌려요; 나머지 단계의 `cd` 는 쓸모가 없어요. | 마지막 단계만 보는 개정. |
 | D-6 | `hook_engine.rs` 의 `capabilities` 가드 목록에는 항목을 더하지 않아요(상태 보고가 새 가드를 적게 말할 뿐 더 말하지 않아요). | `SPEC-20261126-reports-staged-guard` 작업이 같은 배열 두 줄을 고치는 중이에요. | 그 착지 뒤 후속 작업에서 한 줄 더하기. |
 | D-7 | R-5 의 입력은 폴더를 옮기지 않아도 거절될 수 있어요. REQ-2·REQ-3 의 예외예요. | 리더 결정(노트 10265): 막아야 할 것을 놓치지 않는 거절 쪽 빈틈이고, 일부러 만든 입력에서만 나와요. | 렉서가 그 부분을 읽게 고치고 AC-6 의 입력을 허용 목록으로 옮기는 개정. |
+| D-8 | 거절 글은 `git -C`, 서브셸 `( cd … )`, 맨 `cd <경로>`, `pushd`, `popd` 를 권하지 않아요. 글이 권하는 cargo 꼴은 `cargo test --manifest-path <path>/Cargo.toml` 이에요(플래그는 부속 명령 뒤). | 레인 규칙이 그 꼴들을 금지해서 권하면 레인이 두 번째 거절을 만나요(배치 24 의 C-583 이 글을 고쳤어요). cargo 는 부속 명령 앞의 `--manifest-path` 를 거절해요(cargo 1.94.1, 리뷰 노트 10564). | 글을 되돌리는 개정. |
 
 ## Risks
 
@@ -114,3 +116,12 @@ head 05ccfb5e13 은 옮기지 않는 `cd` 세 가지(`$( … )` 안 here-documen
 - AC-6: met — `a_known_false_denial_stays_denied` 1/1 통과(입력 4개 × 두 모드), 같은 변경에서 `hooks_cd_guard_cli`·`hook_bash_boundary_cli` 43/43 통과. 동작을 고정하는 테스트라 처음 실행부터 통과했어요(RED 기록 없음).
 - 셸 실행 확인(`cd` 를 `echo` 로 바꿔서): 주석 입력 둘과 `EOF$X` 입력은 zsh 5.9 와 bash 3.2 모두 그 줄을 실행하지 않아요. here-document 입력은 zsh 5.9 만 본문으로 읽고 bash 3.2 는 실행해요.
 - 가드 뮤턴트: 새 가드 코드가 없어 추가하지 않았어요(앞의 8개는 그대로).
+
+### 개정 3: 거절 글의 cargo 꼴
+
+배치 24 의 글 수정에 대한 리뷰 노트 10564 의 논블로킹 둘을 고쳤어요. 글이 권한 `cargo --manifest-path <path>/Cargo.toml` 은 cargo 가 거절하는 꼴이라(플래그는 부속 명령 뒤) `cargo test --manifest-path <path>/Cargo.toml` 로 고쳤고, AC-1 문구를 실제 글에 맞췄어요(D-8). 코드 head 1380fe8dfc(base 8933f238cd), 승인은 노트 10637(사용자가 직접 골랐어요, 2026-11-27).
+
+- AC-1: met — `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_worktree_session_cd_is_denied)'` 1/1 통과(종료 0, 개정 3 문구 그대로)
+- AC-7: met — `cargo nextest run --test hooks_cd_guard_cli -E 'test(the_session_cd_refusal_cargo_form_is_one_cargo_accepts)'` 1/1 통과(종료 0). 글을 고치기 전에는 같은 테스트가 단언 실패, 종료 100(`tdd red` 기록, 커밋 4640b4dba4).
+- AC-2, AC-3, AC-5, AC-6 와 `hooks_cd_guard_cli` 전체: `cargo nextest run --offline --locked --test hooks_cd_guard_cli --test hook_bash_boundary_cli` 45/45 통과(`hook_bash_boundary_cli` 38, `hooks_cd_guard_cli` 7), AC-4 `rg -c 'cd into it' src` 종료 1.
+- 가드 뮤턴트 1개: 글의 `cargo test --manifest-path` 에서 `test` 를 지우면(Edit, 되돌림) `the_session_cd_refusal_cargo_form_is_one_cargo_accepts` 종료 100.
