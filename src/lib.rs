@@ -161,6 +161,7 @@ pub mod run;
 pub mod scope;
 pub mod scopes;
 pub mod search;
+pub mod secret_deny;
 pub mod self_audit;
 pub mod self_update;
 pub mod session;

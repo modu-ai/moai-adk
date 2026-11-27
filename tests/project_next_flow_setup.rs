@@ -406,8 +406,9 @@ fn hook_first_then_branch_create_is_refused() {
 }
 
 /// REQ-4, the case the hook cannot cover: with `core.hooksPath` set, git runs no hook from
-/// `.git/hooks`, so a hand move goes through although the apply wrote the record. Step 9 reads
-/// that setting and never calls the branch protected then.
+/// `.git/hooks`, so a hand move goes through although the apply wrote the hook and the record.
+/// The apply answers `not_active` with the folder git reads, and step 9 reads the same setting
+/// and never calls the branch protected then.
 #[test]
 fn hooks_path_leaves_the_hook_unused_and_step_9_says_so() {
     let fx = Fx::new();
@@ -415,7 +416,14 @@ fn hooks_path_leaves_the_hook_unused_and_step_9_says_so() {
     fx.git(&["branch", BRANCH, &fx.tip]);
     fx.git(&["config", "core.hooksPath", ".husky"]);
     let applied = fx.install_hook();
-    assert_eq!(applied["guard"]["record"], "written", "{applied}");
+    assert_eq!(applied["guard"]["record"], "not_active", "{applied}");
+    assert!(
+        applied["guard"]["hooks_path"]
+            .as_str()
+            .is_some_and(|p| p.ends_with(".husky")),
+        "the answer names the folder git reads: {applied}"
+    );
+    assert!(applied["guard"]["why"].is_string(), "{applied}");
     assert!(fx.hook().exists(), "{applied}");
     let other = fx.git(&[
         "commit-tree",
@@ -787,6 +795,7 @@ fn step_9_order_and_closing_line() {
         "--confirm-git-hooks <result.confirm_token>",
         "`result.guard.record`",
         "`not_written`",
+        "`not_active`",
         "`result.guard.why`",
         "`moai git-hooks-revert <result.stamp> <project>`",
         "only the landing command (`moai card land`) moves",

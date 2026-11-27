@@ -149,6 +149,66 @@ fn a_home_place_worktree_reads_outside_project() {
     );
 }
 
+/// SPEC-20261124-home-env-readers AC-19 (REQ-15): the HOME entries follow the HOME the command
+/// runs with. A set HOME is looked at, an empty one reads relative to the working folder, and
+/// without HOME every entry reads `null`.
+#[test]
+fn baseline_inventory_reports_home_entries() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("repo");
+    let home = tmp.path().join("home");
+    let cwd = tmp.path().join("cwd");
+    fs::create_dir_all(&project).unwrap();
+    // One different entry in each folder, so a read of the wrong folder shows.
+    fs::create_dir_all(home.join(".claude")).unwrap();
+    fs::create_dir_all(cwd.join(".agents")).unwrap();
+    repo(&project, "p");
+    // The `exists` value of every entry, keyed by the name after `~/`.
+    let entries = |home_value: Option<&Path>| -> Vec<(String, Value)> {
+        let mut cmd = Command::new(crate::common::MOAI_BIN);
+        cmd.arg("baseline-inventory")
+            .arg(&project)
+            .current_dir(&cwd)
+            .env_remove("GIT_DIR")
+            .env_remove("GIT_WORK_TREE");
+        match home_value {
+            Some(value) => cmd.env("HOME", value),
+            None => cmd.env_remove("HOME"),
+        };
+        let out = cmd.output().unwrap();
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        v["result"]["baseline"]["home"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|row| {
+                let name = row["path"].as_str().unwrap().strip_prefix("~/").unwrap();
+                (name.to_string(), row["exists"].clone())
+            })
+            .collect()
+    };
+    let only = |rows: &[(String, Value)], present: &str| {
+        assert_eq!(rows.len(), 3, "{rows:?}");
+        assert!(rows.iter().any(|(name, _)| name == present), "{rows:?}");
+        for (name, exists) in rows {
+            assert_eq!(exists, &Value::from(name == present), "{name}: {rows:?}");
+        }
+    };
+    only(&entries(Some(&home)), ".claude");
+    only(&entries(Some(Path::new(""))), ".agents");
+    let unset = entries(None);
+    assert_eq!(unset.len(), 3, "{unset:?}");
+    assert!(
+        unset.iter().all(|(_, exists)| exists.is_null()),
+        "{unset:?}"
+    );
+}
+
 /// A baseline commit that only `--go-repo` holds is read from there (#2834 R3 moved the
 /// command to `src/ops/` and must still pass the flag on).
 #[test]

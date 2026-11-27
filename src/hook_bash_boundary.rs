@@ -350,7 +350,7 @@ fn own_checkout(cwd: Option<&Path>, project_dir: Option<&Path>) -> Option<Checko
 
 // ------------------------------------------------------------------ session folder
 
-const SESSION_CD: &str = "moai-boundary/session-cd: this command would move the folder of a session that works in its own worktree. Name files by their absolute path, use `git -C <path>` or read another revision by its object id, or move only a subshell: `( cd <path> && … )`.";
+const SESSION_CD: &str = "moai-boundary/session-cd: this command would move the folder of a session that works in its own worktree. Stay where you are: name files by their absolute path, give a path argument to a command that takes one (`cargo --manifest-path <path>/Cargo.toml`), run git as plain single commands in your own worktree, or read another revision by its object id.";
 
 /// The deny of the session-folder rule (SPEC-20261126-shell-cd-guard): the command would run
 /// `cd`, `pushd` or `popd` in the session shell of a session whose checkout is a linked worktree

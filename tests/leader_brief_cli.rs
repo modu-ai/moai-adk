@@ -5,6 +5,7 @@
 //! Every command runs against a temporary HOME and a temporary git project; the user's real
 //! state folder and registry are not read or written. Ledger rows are inserted with SQL so their
 //! author, state and order are exactly what a case needs. No `claude` or `orca` process starts.
+// check-affected: when-changed src/card/work.rs
 #![cfg(unix)]
 
 mod common;

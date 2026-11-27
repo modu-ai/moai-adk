@@ -432,6 +432,22 @@ pub fn current(conn: &Connection, card_id: i64) -> Result<Option<Reservation>, L
     )
 }
 
+/// [`current`] for every card: each reservation that holds a card now, by card number.
+/// Read-only: it works on a [`ReadLedger::conn`] too.
+pub fn current_all(conn: &Connection) -> Result<Vec<Reservation>, LedgerError> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT card_id FROM reservation WHERE status IN {ACTIVE_STATUSES} ORDER BY card_id"
+    ))?;
+    let cards: Vec<i64> = stmt
+        .query_map([], |r| r.get(0))?
+        .collect::<Result<_, _>>()?;
+    let mut out = Vec::with_capacity(cards.len());
+    for card_id in cards {
+        out.extend(current(conn, card_id)?);
+    }
+    Ok(out)
+}
+
 /// The heartbeat of the reservation of `holder` on a card (SPEC-20261119-live-lease-takeover
 /// REQ-1): the later of the reservation's `updated_at` (a take, a renew, a widening) and the `at`
 /// of the latest event of the card that `holder` wrote (a note, a criterion, a rejected write).

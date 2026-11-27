@@ -122,9 +122,10 @@ struct LaunchOpts {
     /// Effort (default `medium` on `cc`, `high` on `glm`).
     #[arg(long)]
     effort: Option<String>,
-    /// Advisor model on Claude hosts (fable|opus|sonnet or a full claude-* id). None by default;
-    /// the user setting `launcher.advisor` can turn it on. May bill to usage credits.
-    #[arg(long)]
+    /// Advisor model on Claude hosts (fable|opus|sonnet or a full claude-* id); `opus` when the
+    /// model is left out. None by default, also with `-a`; the user setting `launcher.advisor` can
+    /// turn it on. May bill to usage credits.
+    #[arg(long, value_name = "MODEL", num_args = 0..=1, default_missing_value = "opus")]
     advisor: Option<String>,
     /// Pass no `--advisor` even when the user setting `launcher.advisor` turns it on.
     #[arg(long)]
@@ -1165,8 +1166,8 @@ fn launch(
         });
     }
     // Validate user configuration even for a CLI override. Resolution precedes host
-    // composition. No advisor by default (user decision 2026-11-12, #2476): only `--advisor`
-    // or the user setting `launcher.advisor`.
+    // composition. No advisor by default (user decision 2026-11-12, #2476), also with `-a` (user
+    // decision 2026-11-26): only `--advisor` or the user setting `launcher.advisor`.
     let settings = launch_settings(host, o.permissions, o.advisor.as_deref(), o.no_advisor)?;
     let advisor_note = (host == "claude"
         && settings.advisor.as_ref().map(|(_, s)| *s) == Some(AdvisorSource::UserSetting))
@@ -1184,13 +1185,6 @@ fn launch(
         name: o.name,
         model: o.model,
         effort: o.effort,
-        // REQ-9: `-a` on `cc` passes `opus` when no option, no `--no-advisor` and no user
-        // setting decided; the model ranking check (D-14) happens where the model is known.
-        default_advisor: (o.agent
-            && host == "claude"
-            && !o.no_advisor
-            && settings.advisor.is_none())
-        .then(|| "opus".to_string()),
         advisor: settings.advisor.map(|(a, _)| a),
         access,
         prompt,
@@ -1414,7 +1408,6 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
                     access: moai_cli::session::Access::Prompt,
                     prompt: None,
                     first_input: None,
-                    default_advisor: None,
                     claude_bin,
                 },
                 dry_run,

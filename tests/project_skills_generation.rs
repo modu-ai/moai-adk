@@ -447,7 +447,7 @@ fn a_remove_never_follows_a_link_or_a_recorded_path_of_another_kind() {
     assert_eq!(action(&p, EXTRA_CLAUDE).as_deref(), Some("conflict"), "{p}");
     assert!(!apply(r, &p).status.success());
     // Joined per component: a single `skills/<id>/SKILL.md` string reads as a package
-    // reference to tests/skill_references_test.py.
+    // reference to tests/skill_references_scan.rs.
     assert!(moved
         .join("skills")
         .join("moai-prj-extra")

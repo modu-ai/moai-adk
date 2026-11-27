@@ -68,18 +68,28 @@ pub struct AgentsRequest {
 /// and skills alone is not held up by a hand-edited managed file
 /// (SPEC-20261120-project-harness-research, revision 2). Its name belongs to the request file,
 /// never to a question or an option shown to the user.
+/// `keep-harness` leaves the project agent and skill files a generation manifest owns but its
+/// request does not name as they are, and this engine plans its own files as usual
+/// (SPEC-20261127-update-old-manifest-way). Only the generation planner reads it; like
+/// `harness-only`, its name belongs to the request file, never to a question or an option shown
+/// to the user.
 /// `personal-file` creates `CLAUDE.local.md` once. The earlier picks `import` and `claude-import`
 /// are gone: they are refused like any unknown id, and no code reads them by name.
-pub const PICKS: [&str; 5] = [
+pub const PICKS: [&str; 6] = [
     "append-managed",
     "skip-conflicts",
     "move",
     "personal-file",
     HARNESS_ONLY,
+    KEEP_HARNESS,
 ];
 
 /// The pick that plans every file of this engine as `skip` (see [`PICKS`]).
 pub(crate) const HARNESS_ONLY: &str = "harness-only";
+
+/// The pick that keeps the owned project agent and skill files a request does not name (see
+/// [`PICKS`]).
+pub(crate) const KEEP_HARNESS: &str = "keep-harness";
 
 fn picked(r: &AgentsRequest, id: &str) -> bool {
     r.picks.iter().any(|p| p == id)
@@ -530,15 +540,49 @@ pub fn is_generated_local(bytes: &[u8]) -> bool {
 const STATE_KEPT: [&str; 11] = crate::state_root::KEPT;
 
 /// File names that never go to git anywhere under the state folder, `tools/` and `evals/`
-/// included (SPEC-20261120-moai-layout REQ-11): the credential files of an earlier generation's
-/// template, `credentials.json` and the `.env` family. The lines come after the allow-list, so an
-/// allow line cannot lift them.
-const STATE_SECRETS: [&str; 5] = [
+/// included (SPEC-20261120-moai-layout REQ-11, REQ-19): first the credential files of an earlier
+/// generation's template, `credentials.json` and the `.env` family, then the researched credential
+/// and key files. A name is added only when the file is there to hold a usable secret (plain text,
+/// a value that can be turned back, a private key or a token) and the name is narrow. General
+/// settings files, encrypted or hashed files, extensions with several uses and files with no fixed
+/// name stay off the list (D-10). The lines come after the allow-list, so an allow line cannot
+/// lift them.
+const STATE_SECRETS: [&str; 35] = [
     "**/credentials.yaml",
     "**/credentials.json",
     "**/*.credentials",
     "**/.env",
     "**/.env.*",
+    "**/.git-credentials",
+    "**/.netrc",
+    "**/_netrc",
+    "**/.pgpass",
+    "**/pgpass.conf",
+    "**/.pypirc",
+    "**/.credentials.json",
+    "**/credentials.tfrc.json",
+    "**/application_default_credentials.json",
+    "**/credentials.toml",
+    "**/.vault-token",
+    "**/.mylogin.cnf",
+    "**/master.key",
+    "**/keystore.properties",
+    "**/id_rsa",
+    "**/id_dsa",
+    "**/id_ecdsa",
+    "**/id_ecdsa_sk",
+    "**/id_ed25519",
+    "**/id_ed25519_sk",
+    "**/id_mldsa44_ed25519",
+    "**/*.ppk",
+    "**/*.tfstate",
+    "**/*.tfstate.*",
+    "**/.dev.vars",
+    "**/.dev.vars.*",
+    "**/.aws/credentials",
+    "**/.cargo/credentials",
+    "**/.gem/credentials",
+    "**/.streamlit/secrets.toml",
 ];
 
 /// How many `now visible:` lines the plan shows before it counts the rest.
@@ -812,38 +856,54 @@ fn is_below(path: &str, dir: &str) -> bool {
 }
 
 /// The bytes of the `.gitignore` at `rel` (a path from the project root), or `None` when the plan
-/// must not read it: a path piece that is not a plain name, a link anywhere on the path (a linked
-/// parent folder as well as a linked file, so nothing outside the project is read through it), a
-/// file that is not a regular file, one larger than [`NESTED_IGNORE_MAX_BYTES`], or one that cannot
-/// be read.
+/// must not read it: [`open_below`] refuses the path (a piece that is not a plain name, or a link
+/// anywhere below the root, a linked parent folder as well as a linked file), the opened file is
+/// not a regular file or is larger than [`NESTED_IGNORE_MAX_BYTES`], or it cannot be read.
 fn read_nested_ignore(root: &Path, rel: &str) -> Option<Vec<u8>> {
     use std::io::Read;
-    let mut at = root.to_path_buf();
-    let mut len = 0;
-    let mut is_file = false;
-    for piece in Path::new(rel).components() {
-        let std::path::Component::Normal(name) = piece else {
-            return None;
-        };
-        at.push(name);
-        let meta = std::fs::symlink_metadata(&at).ok()?;
-        if meta.file_type().is_symlink() {
-            return None;
-        }
-        len = meta.len();
-        is_file = meta.is_file();
-    }
-    if !is_file || len > NESTED_IGNORE_MAX_BYTES {
+    let file = open_below(root, rel)?;
+    // Asked of the opened handle, so the answer is about the file that is read.
+    let meta = file.metadata().ok()?;
+    if !meta.is_file() || meta.len() > NESTED_IGNORE_MAX_BYTES {
         return None;
     }
     // The size can change between the check and the read: read one byte past the limit and refuse.
     let mut bytes = Vec::new();
-    std::fs::File::open(&at)
-        .ok()?
-        .take(NESTED_IGNORE_MAX_BYTES + 1)
+    file.take(NESTED_IGNORE_MAX_BYTES + 1)
         .read_to_end(&mut bytes)
         .ok()?;
     (bytes.len() as u64 <= NESTED_IGNORE_MAX_BYTES).then_some(bytes)
+}
+
+/// Opens the file at `rel` (a path from `root`) for reading, one piece at a time from a directory
+/// handle on `root`, following no link below it: each parent folder is opened from the handle
+/// before it with `open_dir_nofollow`, and the last piece with `FollowSymlinks::No`, so no earlier
+/// look at the path is relied on. `root` itself is opened as given. `None` when `rel` is empty, a
+/// piece is not a plain name, or an open fails. What opened need not be a regular file: the caller
+/// asks the handle. On Unix the open does not wait for a pipe (`O_NONBLOCK`). The same model as
+/// the code map's reads (`docs/index-generation.md`).
+fn open_below(root: &Path, rel: &str) -> Option<std::fs::File> {
+    use cap_fs_ext::{DirExt, FollowSymlinks, OpenOptionsFollowExt};
+    #[cfg(unix)]
+    use cap_std::fs::OpenOptionsExt;
+    use cap_std::fs::{Dir, OpenOptions};
+    let mut dir = Dir::open_ambient_dir(root, cap_std::ambient_authority()).ok()?;
+    let mut pieces = Path::new(rel).components().peekable();
+    while let Some(piece) = pieces.next() {
+        let std::path::Component::Normal(name) = piece else {
+            return None;
+        };
+        if pieces.peek().is_some() {
+            dir = dir.open_dir_nofollow(name).ok()?;
+            continue;
+        }
+        let mut options = OpenOptions::new();
+        options.read(true).follow(FollowSymlinks::No);
+        #[cfg(unix)]
+        options.custom_flags(libc::O_NONBLOCK);
+        return Some(dir.open_with(name, &options).ok()?.into_std());
+    }
+    None
 }
 
 /// The `.gitignore` files the project keeps under its state folder (the folder itself, `tools/`
@@ -3121,4 +3181,138 @@ mod tests {
     }
 
     // relative_paths_are_bounded moved to src/apply.rs with the shared helper.
+
+    /// A project root and a folder beside it, outside the root, in one temporary folder.
+    #[cfg(unix)]
+    fn project_and_outside() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let root = tmp.path().join("project");
+        let outside = tmp.path().join("outside");
+        fs::create_dir_all(&root).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        (tmp, root, outside)
+    }
+
+    /// Writes `rules` to `path`, creating its parent folders.
+    #[cfg(unix)]
+    fn put_rules(path: &Path, rules: &str) {
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, rules).unwrap();
+    }
+
+    /// `open_below` and `read_nested_ignore` both refuse `rel`, although a reader that follows
+    /// links gets `rules` through it (so the fixture's link resolves).
+    #[cfg(unix)]
+    fn assert_link_refused(root: &Path, rel: &str, rules: &str) {
+        assert_eq!(fs::read_to_string(root.join(rel)).unwrap(), rules);
+        assert!(open_below(root, rel).is_none(), "{rel} was opened");
+        assert_eq!(read_nested_ignore(root, rel), None);
+    }
+
+    /// Replaces the file `sub/.gitignore` under `root` with a link to `target`.
+    #[cfg(unix)]
+    fn swap_file_for_link(root: &Path, target: &Path) {
+        let file = root.join("sub/.gitignore");
+        put_rules(&file, "before\n");
+        fs::remove_file(&file).unwrap();
+        std::os::unix::fs::symlink(target, &file).unwrap();
+    }
+
+    /// Replaces the folder `sub` under `root`, which holds a `.gitignore`, with a link to
+    /// `target`.
+    #[cfg(unix)]
+    fn swap_parent_for_link(root: &Path, target: &Path) {
+        let folder = root.join("sub");
+        put_rules(&folder.join(".gitignore"), "before\n");
+        fs::remove_dir_all(&folder).unwrap();
+        std::os::unix::fs::symlink(target, &folder).unwrap();
+    }
+
+    /// SPEC-20261120-moai-layout REQ-18: a file swapped for a link to a file outside the project
+    /// root is not opened.
+    #[cfg(unix)]
+    #[test]
+    fn a_file_swapped_for_a_link_to_outside_the_root_is_not_opened() {
+        let (_tmp, root, outside) = project_and_outside();
+        put_rules(&outside.join("rules"), "*.sh\n");
+        swap_file_for_link(&root, &outside.join("rules"));
+        assert_link_refused(&root, "sub/.gitignore", "*.sh\n");
+    }
+
+    /// SPEC-20261120-moai-layout REQ-18: a file swapped for a link to a file inside the project
+    /// root is not opened. The target is a name in the same folder: `cap-std` refuses an
+    /// absolute target, and one that climbs out of the folder handle the link is opened from,
+    /// even in an open that follows links, so only this shape shows that the link itself is
+    /// refused.
+    #[cfg(unix)]
+    #[test]
+    fn a_file_swapped_for_a_link_inside_the_root_is_not_opened() {
+        let (_tmp, root, _outside) = project_and_outside();
+        put_rules(&root.join("sub/rules"), "*.sh\n");
+        swap_file_for_link(&root, Path::new("rules"));
+        assert_link_refused(&root, "sub/.gitignore", "*.sh\n");
+    }
+
+    /// SPEC-20261120-moai-layout REQ-18: a parent folder swapped for a link to a folder outside
+    /// the project root is not walked through.
+    #[cfg(unix)]
+    #[test]
+    fn a_parent_swapped_for_a_link_to_outside_the_root_is_not_opened() {
+        let (_tmp, root, outside) = project_and_outside();
+        put_rules(&outside.join(".gitignore"), "*.sh\n");
+        swap_parent_for_link(&root, &outside);
+        assert_link_refused(&root, "sub/.gitignore", "*.sh\n");
+    }
+
+    /// SPEC-20261120-moai-layout REQ-18: a parent folder swapped for a link to a folder inside
+    /// the project root is not walked through. The target is relative and stays under the root
+    /// handle the link is opened from, for the reason above.
+    #[cfg(unix)]
+    #[test]
+    fn a_parent_swapped_for_a_link_inside_the_root_is_not_opened() {
+        let (_tmp, root, _outside) = project_and_outside();
+        put_rules(&root.join("kept/.gitignore"), "*.sh\n");
+        swap_parent_for_link(&root, Path::new("kept"));
+        assert_link_refused(&root, "sub/.gitignore", "*.sh\n");
+    }
+
+    /// SPEC-20261120-moai-layout REQ-18: a pipe in the file's place is neither waited on nor
+    /// read. The calls run on their own thread, so an open that blocks fails the test.
+    #[cfg(unix)]
+    #[test]
+    fn a_pipe_is_neither_waited_on_nor_read() {
+        let (_tmp, root, _outside) = project_and_outside();
+        fs::create_dir_all(root.join("sub")).unwrap();
+        let made = std::process::Command::new("mkfifo")
+            .arg(root.join("sub/.gitignore"))
+            .status()
+            .unwrap();
+        assert!(made.success(), "{made}");
+        let (send, receive) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let regular = open_below(&root, "sub/.gitignore")
+                .is_some_and(|file| file.metadata().unwrap().is_file());
+            let read = read_nested_ignore(&root, "sub/.gitignore");
+            let _ = send.send((regular, read));
+        });
+        let (regular, read) = receive
+            .recv_timeout(std::time::Duration::from_secs(10))
+            .expect("the open waited on the pipe");
+        assert!(!regular);
+        assert_eq!(read, None);
+    }
+
+    /// SPEC-20261120-moai-layout REQ-17: a plain nested file is opened and read.
+    #[cfg(unix)]
+    #[test]
+    fn a_plain_nested_file_is_opened_and_read() {
+        let (_tmp, root, _outside) = project_and_outside();
+        put_rules(&root.join("sub/deeper/.gitignore"), "*.sh\n");
+        let opened = open_below(&root, "sub/deeper/.gitignore").expect("a plain file opens");
+        assert!(opened.metadata().unwrap().is_file());
+        assert_eq!(
+            read_nested_ignore(&root, "sub/deeper/.gitignore"),
+            Some(b"*.sh\n".to_vec())
+        );
+    }
 }

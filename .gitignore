@@ -393,6 +393,12 @@ dist-ssr/
 # the state move (#2725 S2); the `/.moai/*` rule below already covers it today.
 /.moai-cli/state/
 /.moai/state/
+# The ledger of FLAKY test names that `moai check affected` keeps. This build writes it to
+# `.moai/local/check-flaky.jsonl`, which `/.moai/*` already covers; an earlier build wrote it to
+# the earlier state folder, so a worktree that ran one still holds it as an untracked file and
+# `card submit` refuses that worktree (card C-590). The report still reads it; nobody has to move
+# or delete a file of the earlier folder.
+/.moai-cli/check-flaky.jsonl
 # Go-generation MoAI state at any depth (user instruction 2026-11-08; the root entries above cover the primary).
 # The `.moai/` line matches below the root only (`*/**/`), so it does not undo `!/.moai/specs/` above.
 .claude/

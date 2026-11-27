@@ -199,7 +199,7 @@ impl InWork {
 /// The head that the newest hand-back note of the card names, only while that note belongs to the
 /// card's present work: its `card.note` event is newer than every event that put the card back
 /// into work. `None` when this cannot be confirmed; an older note is never read instead.
-fn current_head(conn: &Connection, card_id: i64) -> Result<Option<String>, String> {
+pub(super) fn current_head(conn: &Connection, card_id: i64) -> Result<Option<String>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT note_id, kind, author, body FROM card_note \

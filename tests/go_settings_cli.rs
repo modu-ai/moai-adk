@@ -9,6 +9,7 @@
 //! does not record the settings file) and H (it does, and a Rust settings receipt owns a key).
 //! A preview leaves the whole tree byte for byte as it was.
 
+// check-affected: every-source-change
 #![cfg(unix)]
 
 mod common;

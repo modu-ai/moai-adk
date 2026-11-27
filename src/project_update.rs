@@ -533,6 +533,20 @@ fn go_state_preview_step(
             plan_digest: Some(plan.plan_digest.clone()),
         });
     }
+    // SPEC-20261126-tracked-state-move REQ-2, REQ-3: the move would hide tracked state, or git
+    // cannot say. The apply would refuse before writing, so no command is offered: the user
+    // changes the rules or stops tracking the files, then previews again.
+    if let Some(found) = &plan.ignored_tracked {
+        preview["ignored_tracked"] = encode(found)?;
+        return Ok(Step {
+            name: "go-state",
+            state: "needs_decision",
+            reason: found.reason.clone(),
+            preview,
+            apply: None,
+            plan_digest: Some(plan.plan_digest.clone()),
+        });
+    }
     Ok(if pending {
         Step {
             name: "go-state",
@@ -957,19 +971,12 @@ pub(crate) fn rebuilt_request(root: &Path) -> Result<GenerationRequest> {
 
 fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> {
     let manifest = read_generation_manifest(root)?;
-    // The user decides instead; nothing is planned.
-    let unrebuildable = unrebuildable_paths(&manifest);
-    if !unrebuildable.is_empty() {
-        return Ok(Step {
-            name: "generation",
-            state: "needs_decision",
-            reason: "the generation manifest owns project agent or skill files whose request is \
-                     not recorded; regenerate them through /moai project"
-                .into(),
-            preview: json!({"not_rebuilt": unrebuildable}),
-            plan_digest: None,
-            apply: None,
-        });
+    let kept: Vec<String> = unrebuildable_paths(&manifest)
+        .into_iter()
+        .map(String::from)
+        .collect();
+    if !kept.is_empty() {
+        return unrecorded_step(root, shown, profile, &manifest, kept);
     }
     // R3 (#2936): a profile that is still the first-launch placeholder cannot generate; the
     // interview comes first, so no apply is printed that `generation-apply` would refuse.
@@ -986,7 +993,79 @@ fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> 
         Err(reason) => return Ok(Step::waiting("generation", "needs_decision", &reason)),
     };
     let plan = generation::generation_plan(root, request.clone())?;
-    let choices = generation_choices(root, shown, &request, &plan)?;
+    planned_step(root, shown, &request, plan)
+}
+
+/// Why a manifest that owns project agent and skill files without a recorded request waits.
+const UNRECORDED: &str = "the generation manifest owns project agent or skill files whose request \
+                          is not recorded; regenerate them through /moai project";
+
+/// What the choice `keep-project-files` does.
+const KEEP_EFFECT: &str = "keep the project agent and skill files the manifest owns and their \
+                           manifest lines as they are; the other managed files are still written";
+
+/// The generation step for a manifest that owns project agent or skill files without a recorded
+/// request (SPEC-20261127-update-old-manifest-way): the request cannot be rebuilt from the
+/// record, so the rest of the generation is planned with the pick `keep-harness`, which leaves
+/// those files and their manifest lines as they are.
+///
+/// - `unchanged`: every row of that plan is current.
+/// - `conflict`: a managed part was edited by hand; the choices carry the pick too.
+/// - `needs_decision`: there are rows to write; the user picks `keep-project-files`, or
+///   regenerates the project files through `/moai project`.
+/// - The same state and sentence as before when no such plan can be built.
+fn unrecorded_step(
+    root: &Path,
+    shown: &str,
+    profile: &Profile,
+    manifest: &Value,
+    kept: Vec<String>,
+) -> Result<Step> {
+    let held = |kept: &[String]| Step {
+        name: "generation",
+        state: "needs_decision",
+        reason: UNRECORDED.into(),
+        preview: json!({"not_rebuilt": kept}),
+        plan_digest: None,
+        apply: None,
+    };
+    if profile.is_placeholder() {
+        return Ok(held(&kept));
+    }
+    let Ok(mut request) = generation_request(root, profile, manifest) else {
+        return Ok(held(&kept));
+    };
+    request.picks = vec![crate::agents::KEEP_HARNESS.to_string()];
+    let Ok(plan) = generation::generation_plan(root, request.clone()) else {
+        return Ok(held(&kept));
+    };
+    let mut step = planned_step(root, shown, &request, plan)?;
+    step.preview["not_rebuilt"] = json!(kept);
+    if step.state == "ready" {
+        let (words, stdin) = step.apply.take().expect("a ready step carries its command");
+        step.state = "needs_decision";
+        step.reason = UNRECORDED.into();
+        step.preview["choices"] = json!([{
+            "id": "keep-project-files",
+            "recommended": true,
+            "picks": request.picks,
+            "effect": KEEP_EFFECT,
+            "plan_digest": step.plan_digest,
+            "apply": {"argv": words, "stdin": stdin},
+        }]);
+    }
+    Ok(step)
+}
+
+/// The generation step for a plan that was built: its state, its files and the choices the
+/// plan's conflicts allow.
+fn planned_step(
+    root: &Path,
+    shown: &str,
+    request: &GenerationRequest,
+    plan: generation::GenerationPlan,
+) -> Result<Step> {
+    let choices = generation_choices(root, shown, request, &plan)?;
     let files: Vec<Value> = plan
         .files
         .iter()
@@ -1079,7 +1158,13 @@ fn generation_choices(
     let mut out = Vec::new();
     for (id, picks, effect) in sets {
         let mut picked = request.clone();
-        picked.picks = picks.iter().map(|p| p.to_string()).collect();
+        // The picks the request already carries (`keep-harness`) stay with each choice.
+        picked.picks = picks
+            .iter()
+            .map(|p| p.to_string())
+            .chain(request.picks.iter().cloned())
+            .collect();
+        let all_picks = picked.picks.clone();
         let Ok(choice_plan) = generation::generation_plan(root, picked) else {
             continue;
         };
@@ -1089,7 +1174,7 @@ fn generation_choices(
         out.push(json!({
             "id": id,
             "recommended": id == "append-managed",
-            "picks": picks,
+            "picks": all_picks,
             "effect": effect,
             "plan_digest": choice_plan.plan_digest,
             "apply": {

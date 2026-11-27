@@ -69,7 +69,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "7e1d3cb1b35f2ef091f6582dc4297c812e053bd9826b8054deeebc3ffcf96440",
+      "sha256": "faa3db2ee96668cdc7b8e2d21f019145301c2fb62117990d34efe78fe3a3bef3",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",
@@ -258,12 +258,12 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "d3f70c843649b189a9fb21de3f2ae0b5c2d66b2b269539a45c8fe0c24708bdb8",
+      "sha256": "e6221681171736c5aa86c2a2cd02dbe39347e2946f2337caff4772bffbed7e0b",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
         "adoption": "new",
-        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006); new worktrees under `~/.moai/worktrees/<project>-<id>`, existing ones never moved and the Go generation's `~/.moai/worktrees/projects/` never touched (#2811 D3, D8)."
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006); new worktrees in the project's `.claude/worktrees/<name>` (SPEC-20261122-worktree-place, in place of the earlier home folder of #2811 D3), existing ones never moved and the Go generation's `~/.moai/worktrees/projects/` never touched (#2811 D8)."
       }
     },
     "references/internal/interview.md": {
@@ -312,7 +312,7 @@
       }
     },
     "references/internal/sdd.md": {
-      "sha256": "c510ceeef9c35f9935e60fa7ead11e34daa30c43f6311948a17772f67678bb56",
+      "sha256": "459e5b8f3c3022ae09c151e49c8ad5f8bf98f66c7a1e269edfd40b3e2e810437",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-sdd",
@@ -342,7 +342,7 @@
       }
     },
     "references/internal/shell-guards.md": {
-      "sha256": "9423fb72a4f5664adbedac8bb618d68fd4ddde6eeb61ea932525dda7a313bd8c",
+      "sha256": "b734a58e4bc0f902e41dd5a4ce2ad71d34e4b65b8f7d11d3debca6e5ad3dfefc",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-shell-guards",
@@ -507,7 +507,7 @@
       "sha256": "89679771c1bf25d52af53037cf4795465fc88aaa200698f5e603683244848dc3"
     },
     "workflows/plan.md": {
-      "sha256": "690ea42cee7448ee4528f43c0b9137237a0c77a7a56197fb8347839b38891725",
+      "sha256": "10c9373b81fc549fd178f556643af750166fb1850f27d76d8637ab7089138876",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-plan",
@@ -516,7 +516,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "98ff832852b6d6a899df62a5ba0c52060726078475cb099e91d98956941826a5",
+      "sha256": "beef770180679820689cf02482826b55d3b91946dc4029ef77693351ead006e4",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
