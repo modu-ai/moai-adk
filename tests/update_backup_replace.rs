@@ -1993,6 +1993,35 @@ fn prior_install_offer_is_not_guessed_between_two_backups() {
     assert_offers_prior(&recovery_plan_by(&b, &f.home), &a);
 }
 
+// Guard of the candidate choice beyond AC-1..7: a backup the restore already used is skipped even
+// while its receipt still reads `committed` (a restore that stopped before closing it), so an
+// older backup that was never used is the one offered.
+#[test]
+fn prior_install_used_backup_never_hides_an_unused_one() {
+    let (f, _, a, b, _) = upgraded(false);
+    let a_receipt = read_receipt(&f.home, &id_of(&a));
+    let a_dir = PathBuf::from(a_receipt["backup"]["dir"].as_str().unwrap());
+
+    // A newer earlier installation whose backup (a copy of the first one) is already used.
+    let newer = sha256_hex(b"fixture-newer-earlier-installation");
+    let used = a_dir.parent().unwrap().join("zz-used-copy-claude");
+    for (rel, (bytes, _)) in snapshot(&a_dir) {
+        let to = used.join(&rel);
+        fs::create_dir_all(to.parent().unwrap()).unwrap();
+        fs::write(to, bytes).unwrap();
+    }
+    fs::write(used.join("RESTORED.json"), "{}\n").unwrap();
+    let mut copy = a_receipt.clone();
+    copy["install_id"] = json!(newer);
+    copy["finished_at"] = json!("2999-01-01T00:00:00Z");
+    copy["backup"]["dir"] = json!(used.to_str().unwrap());
+    let path = receipt_file(&f.home, &newer);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(&path, serde_json::to_vec_pretty(&copy).unwrap()).unwrap();
+
+    assert_offers_prior(&recovery_plan_by(&b, &f.home), &a);
+}
+
 // SPEC-20261127-recovery-prior-install AC-7
 #[test]
 fn prior_install_used_backup_is_not_offered_again() {
