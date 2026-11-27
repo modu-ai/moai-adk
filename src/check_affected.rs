@@ -3080,6 +3080,7 @@ fn slot_folder(opts: &RunOptions) -> Result<std::path::PathBuf> {
 fn hold_slot(
     opts: &RunOptions,
     out: &Path,
+    repo: &Path,
 ) -> std::result::Result<(crate::heavy_slot::Held, usize), i32> {
     use std::io::Write;
     let mut log: Box<dyn Write> = match std::fs::File::create(out.join("heavy-slot.log")) {
@@ -3121,10 +3122,45 @@ fn hold_slot(
     let command: Vec<String> = std::env::args_os()
         .map(|a| a.to_string_lossy().into_owned())
         .collect();
-    let held = crate::heavy_slot::hold(&folder, max, name, &command, limits, &mut log)
-        .map_err(i32::from)?;
+    // A `--full` run of the confirmed leader session queues at the front; the log says which place
+    // the run took and why (SPEC-20261126-leader-slot-front REQ-1, REQ-4, REQ-7). A run that
+    // inherits a slot does not queue, so it says nothing.
+    let front = if opts.full && std::env::var_os(crate::heavy_slot::SLOT_FD_ENV).is_none() {
+        let verdict = front_place(repo);
+        let _ = match verdict {
+            Ok(()) => writeln!(
+                log,
+                "heavy-slot: queue front place (registered leader session)"
+            ),
+            Err(why) => writeln!(log, "heavy-slot: queue arrival order ({why})"),
+        };
+        verdict.is_ok()
+    } else {
+        false
+    };
+    let held =
+        crate::heavy_slot::hold_ordered(&folder, max, name, &command, limits, &mut log, front)
+            .map_err(i32::from)?;
     let _ = writeln!(log, "{}", held.taken_line(name));
     Ok((held, max))
+}
+
+/// Whether the session that makes this call is the one the live registry entry `leader` of mode
+/// leader names, as `card land-batch` confirms it (SPEC-20261126-leader-slot-front D-2): the
+/// session id comes from the host's environment variable and `repo` is any checkout of the
+/// repository, a linked worktree included. `Err` carries the reason for arrival order in fixed
+/// words; a refusal text of the registry check is never copied (REQ-4). Nothing is refused or
+/// written: a call that cannot be confirmed queues like every other.
+fn front_place(repo: &Path) -> std::result::Result<(), &'static str> {
+    let session = crate::session_current::resolve(|key| std::env::var(key).ok());
+    let Some(me) = session["source_session_id"].as_str() else {
+        return Err("no session id");
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64);
+    crate::card::land::batch::confirm_leader(repo, Some(me), now)
+        .map_err(|_| "not confirmed as the registered leader session")
 }
 
 /// An in-process step: its verdict lines go to the log and any line makes the exit code 1.
@@ -3281,7 +3317,7 @@ pub fn run_with(
         }
         if planned[i].heavy && !tried {
             tried = true;
-            match hold_slot(opts, &out) {
+            match hold_slot(opts, &out, dir) {
                 Ok(h) => {
                     let r = runner_in(dir);
                     planned = tuned(plan(
