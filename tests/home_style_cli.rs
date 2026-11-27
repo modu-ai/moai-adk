@@ -1617,11 +1617,11 @@ fn ac3_the_revert_gives_back_the_old_file_the_value_and_the_record() {
     );
 }
 
-/// AC-3 (REQ-9), found by a guard mutant: the revert never writes over a file that is now at the
+/// REQ-11, found by a guard mutant: the revert never writes over a file that is now at the
 /// old path. The user's file stays as it is and the target is skipped as
 /// `user_changed_since_apply`; the other targets still revert.
 #[test]
-fn ac3_a_file_put_at_the_old_path_since_the_apply_is_never_overwritten_by_the_revert() {
+fn revert_never_overwrites_a_file_put_at_the_old_style_path_since_the_apply() {
     let (_t, home) = home_with_old(OLD_SETTINGS);
     let p = plan(&home, &package()).unwrap();
     let id = apply(&home, &package(), &p.plan_digest, PERM).unwrap()["receipt"]
