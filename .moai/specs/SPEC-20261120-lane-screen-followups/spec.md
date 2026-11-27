@@ -146,3 +146,12 @@ RED 커밋 7d0926fe03(`moai tdd red`: 두 확인 모두 test-failure, 종료 101
 - 질문이 없는 새 모양 목록 줄(둘 이상)은 비어 있지 않은 마지막 6줄 안에서만 세요(`LIST_ROWS`): 기존 `lane_screen_cli` 의 창 시험(질문이 9번째, 선택 줄이 7·8번째)이 그대로 맞고, 살아 있는 선택 창은 맨 아래에 그려지기 때문이에요.
 
 Windows·Linux 는 not_run 이에요(fake orca 는 `/bin/sh` 스크립트).
+
+### 수리 (2026-11-27, 리뷰 노트 10724 의 첫 FAIL)
+
+kenan 의 리뷰가 헤드 d354dfe4cf 에서 하나를 찾았어요: 확인 질문 줄 자신이 끝에 선택 모양을 달고 있으면(`Do you want to proceed? Yes/No`, `… ? [Yes] [No]`) 팁은 낱말 목록으로 거절하는데 헤드는 모양 검사를 줄 전체에 걸어서(40자 이하만 모양) 못 읽고 `working`·`idle` 로 읽어 `lane-send` 가 보냈어요. 옛 재감사 R-B1 이 닫았던 구멍이 다시 열린 안전 분류기 약화예요.
+
+- 승인된 REQ-6/REQ-7 의 글 안에서 고쳤어요(SPEC 본문은 바뀌지 않았고 승인 digest 도 그대로예요). REQ-6 은 "질문 줄이나 아래 줄에 선택 모양이 있으면 거절"이고 이 줄은 선택 모양이 있는 줄이에요; REQ-7 이 푸는 것은 선택 모양이 아닌 평범한 줄이에요.
+- 수리: 질문 줄은 첫 `?` 뒤의 꼬리에 모양 검사를 해요(`?` 가 없으면 끝의 세 낱말에서부터 각각). 질문 자신의 낱말은 모양으로 읽지 않아요. 이 때문에 같은 뿌리의 반대쪽 틈도 닫혔어요: `Would you like me to commit or push?` 를 줄 전체 모양(`commit or push?`)으로 읽어 head 가 거절했는데 팁은 보냈어요(S-N2: 질문으로 대화를 끝내고 기다리는 레인). 이 줄은 이제 보내요.
+- RED 커밋 9c3beb50c7(`moai tdd reopen` 으로 잠금을 풀고 사유를 기록한 뒤 새 사이클): `a_question_row_ending_in_a_choice_shape_is_never_working_or_idle`(일하는 화면·대기 화면 일곱 줄), `a_question_row_without_a_choice_shape_still_reads_working_or_idle`(가드, REQ-7 평범한 줄 포함), `lane_send_refuses_a_question_row_ending_in_a_choice_shape_and_sends_nothing`(fake orca, 보내기 호출 0회); 확인 `cargo test --offline --locked --test lane_screen_followups_cli question_row` 종료 101. 수리 b082df8988 뒤 `moai tdd green` 통과. 단위 시험 `a_question_row_is_read_by_its_tail_after_the_question_mark`(src/lane_screen.rs)도 더했어요.
+- 대가: 질문 줄의 `?` 뒤에 선택처럼 생긴 꼬리가 오면(`Are you sure? continue or abort`) 일하는 레인도 거절돼요(안전한 쪽). `?` 가 없는 질문 줄은 끝의 세 낱말 중 하나가 모양이면 거절해요.
