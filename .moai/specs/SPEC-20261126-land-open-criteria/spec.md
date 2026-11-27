@@ -99,6 +99,15 @@ approval:
 
 ## Result
 
+- AC-1: met — 합친 트리(head c45b32c26d)에서 `card_land_open_criteria` 11개 통과, 그 안의 `a_held_criterion_keeps_the_card_open_and_marks_nothing` 포함(`target/keziah/open-criteria-558.log`)
+- AC-2: met — 같은 실행, `a_held_criterion_the_author_marked_met_is_opened_again` 포함
+- AC-3: met — 같은 실행, `card_verdict_stores_only_a_hold_it_can_keep` 포함
+- AC-4: met — 같은 실행, `land_refuses_met_for_a_held_criterion` 포함
+- AC-5: met — 같은 실행, `the_hold_is_the_union_of_each_reviewers_newest_pass` 포함
+- AC-6: met — 같은 실행, `land_batch_lands_a_held_head_as_a_slice` 포함
+- AC-7: met — 검증 줄 그대로 `cargo nextest run --locked --offline --test card card_land` 187개 실행, 187 통과, 0 실패(`target/keziah/ac7-558.log`)
+- AC-8: met — 검증 줄 그대로 `grep -F -e '--open <n>' skills/moai/references/audit.md` exit 0
+
 - 결정: D-1 = A, D-2 = C (승인 노트 9863, 리더의 위임 승인). 승인 블록은 착지 때 리더가 써요.
 - 구현: `card verdict --open <n>`, 착지의 보류 집합 계산(`land/check.rs`의 `held`), 보류가 있는 조각 착지와 met 기준 다시 열기(`ledger/workflow.rs`의 한 트랜잭션), `audit.md` 안내 한 문단, 운영 문서의 land·verdict 행.
 - RED/GREEN: 새 테스트 8개(`tests/card/card_land_open_criteria.rs`). AC-1~AC-6의 6개에 더해, 보류가 있어도 닫는 착지와 같은 독립 PASS를 요구하는지(`a_hold_asks_for_the_same_pass_as_a_close`), 철회한 기준은 더 보류되지 않는지(`a_withdrawn_criterion_is_held_no_longer`)를 확인해요.
