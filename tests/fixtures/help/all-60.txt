@@ -212,6 +212,8 @@ Diagnose
   worktree-report         Report the space worktrees use
   optimize-plan           Preview space that can be freed
   baseline-inventory      List a checkout's baseline facts
+  improve-signals         Read the observed problems of a
+                          project as counted classes
 Lane and leader
   claim-acquire           Claim a task with one Issue
                           comment
