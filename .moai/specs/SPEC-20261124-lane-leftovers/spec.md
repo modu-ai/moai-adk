@@ -100,7 +100,11 @@ approval: {by: user, at: 2026-11-27, basis: "레저 결정 노트 10729 (ref not
 
 ## Result
 
-판 5 는 사용자가 D-4 (a) 로 승인했어요(레저 노트 10729). 아직 구현하지 않았어요. 아래 줄은 판 4 까지의 결과예요.
+판 5 는 사용자가 D-4 (a) 로 승인했어요(레저 노트 10729). NeXT 끝점 cf2c0b1374 를 합친 가지에서 읽은 것이에요(`cargo nextest run --locked --offline`, 힙 슬롯 `--max 2`). 아래 두 줄이 판 5, 그 아래 줄은 판 4 까지의 결과예요.
+
+- AC-6: met — `the_status_line_cache_is_not_a_leftover_but_other_new_files_still_are` 통과: `.gitignore` 모양(`<상태 폴더>/*` 무시)의 임시 저장소에서 `state/` 아래 새 파일 둘은 `shared_checkout_new` 에 없고, `state-old/`, 같은 폴더의 `other.log`, `src/state/x.txt`, 새 미추적 파일, 새 `*.log` 는 그대로 나와요. 같은 모듈 아홉 개 통과. 뮤턴트: `is_expected` 에서 캐시 폴더 두 줄을 지운 복사본이 이 테스트와 AC-7 의 테스트를 둘 다 실패시켰어요(exit 100, 제자리 변경 뒤 되돌림, 되돌린 뒤 같은 모듈 다시 통과).
+- AC-7: met — `card::ready_leftovers::tests::the_status_line_cache_folder_is_expected_state` 통과(폴더, 끝 `/`, 아래 파일 셋은 기대 상태, `state-old`·`states`·다른 위치의 `state/` 와 이전 배치의 상태 폴더 이웃은 아님). 모듈 열네 개 통과. 구현 메모: `state_root::rel(<주 체크아웃>, "state")` 가 프로젝트의 실제 상태 폴더(이 저장소는 `.moai/state`)를 알려 주므로 글자를 코드에 두지 않았어요(`state_folder_literal_scan` 통과).
+- 판 5 의 같은 실행에서 `home_isolation_scan`·`state_folder_literal_scan`·`source_manifest_facts`·`repo_scans_table` 합쳐 93개 통과.
 
 NeXT 팁 efb3a80ae9 를 합친 가지에서 읽은 것이에요(합치기는 리더 결정 노트 8196 의 (a); 같은 시각의 `check affected` 영수증은 READY 노트가 가져요). 모든 실행은 `RUSTC_WRAPPER=sccache`, 힙 슬롯 `--max 3`, `cargo nextest run --locked --offline` 이에요.
 
