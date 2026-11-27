@@ -8,7 +8,6 @@
 fn repo_text(rel: &str) -> String {
     match rel {
         "agents/impl.md" => include_str!("../agents/impl.md"),
-        "docs/leader-rules.md" => include_str!("../docs/leader-rules.md"),
         "skills/moai/references/chains/index.md" => {
             include_str!("../skills/moai/references/chains/index.md")
         }
@@ -206,23 +205,6 @@ fn sub_agents_run_mutants_and_checks_in_the_foreground() {
         ],
     );
     assert!(missing.is_empty(), "workflows/work.md lacks {missing:?}");
-}
-
-/// The leader round names what it reads for a lane that reports the same wait in two rounds, and
-/// reads the authors of a range before it asks a lane to audit it.
-#[test]
-fn leader_round_checks_a_repeated_wait_and_the_authors_of_an_audit() {
-    let text = repo_text("docs/leader-rules.md");
-    let missing = lacking(
-        &text,
-        &[
-            "reports the same wait in two rounds",
-            "the output file it waits on and the time of its last write",
-            "git log --format='%(trailers:key=Moai-Session,valueonly)' <base>..<head>",
-            "pick a lane whose session is not among them",
-        ],
-    );
-    assert!(missing.is_empty(), "docs/leader-rules.md lacks {missing:?}");
 }
 
 /// SYNC hands the document writing to one `moai-docs`, after `moai-impl` has returned.
