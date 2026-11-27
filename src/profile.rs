@@ -2,7 +2,8 @@
 //! (Issue #1995, 03-A).
 //!
 //! Schema v2 keeps the seven v1 keys and adds `interview_revision` and `decisions`,
-//! each bounded and run through the same portable filter as the v1 values. A plan
+//! each bounded. Their texts run through the same portable filter as the v1 values, except a
+//! decision value, whose own screen lets a command hold "/". A plan
 //! decides per key with a baseline/current/desired three-way table. The baseline is
 //! the profile `project-apply` last wrote, recorded in
 //! `.moai-cli/manifests/profile-baseline.json`; the generation manifest records only
@@ -228,7 +229,7 @@ const SHARED_FILES_ENTRY_MAX: usize = 512;
 /// padding (the reader does not trim), no comma and no line or bidi separator. A failure names
 /// no value.
 fn validate_shared_files(files: &[String]) -> Result<()> {
-    let bad = || -> String { "invalid or nonportable profile; no values were logged".into() };
+    let bad = || refused("shared_files");
     if files.len() > SHARED_FILES_MAX {
         return Err(bad());
     }
@@ -492,6 +493,154 @@ fn bounded_decision_string(s: &str) -> bool {
     !s.is_empty() && s.len() <= DECISION_STRING_LIMIT && portable(s)
 }
 
+/// The screen of a decision value, which may be a command such as `go test ./...`: a "/" is
+/// taken inside a relative path only. A blank or over-long value, a control character, a
+/// backslash, a secret shape, a home path (by tilde or by a home variable) and a password before
+/// an "@" in a word that goes on to a path are refused. Every other profile text keeps
+/// [`portable`].
+fn command_value(s: &str) -> bool {
+    let lower = s.to_ascii_lowercase();
+    !s.trim().is_empty()
+        && s.len() <= DECISION_STRING_LIMIT
+        && !s.chars().any(char::is_control)
+        && !s.contains('\\')
+        && !crate::secret_shaped(s)
+        && crate::redact::redact_outgoing(s).1 == 0
+        // The outgoing screen reads a key shape at the start of a word only, so it also reads
+        // each piece between "/" and "=" (`x/<key>`, `--key=<key>`).
+        && s.split(['/', '=']).all(|piece| crate::redact::redact_outgoing(piece).1 == 0)
+        && !lower.contains("~/")
+        // A word ends where a shell ends it, at ASCII white space.
+        && !lower
+            .split_ascii_whitespace()
+            .any(|word| home_variable_path(word) || password_before_at(word))
+        && relative_paths_only(s)
+}
+
+/// The variables that hold the home folder or a part of its path, in lower case.
+const HOME_VARIABLES: [&str; 4] = ["home", "userprofile", "homedrive", "homepath"];
+
+/// Whether the lower-case `word` builds a path on a home variable: `$name` or `${name` that does
+/// not start a longer variable name, with a "/" later in the word (`$home.d/x`, `${home}$x/y`).
+fn home_variable_path(word: &str) -> bool {
+    word.match_indices('$').any(|(at, _)| {
+        let name = &word[at + 1..];
+        let name = name.strip_prefix('{').unwrap_or(name);
+        HOME_VARIABLES.iter().any(|variable| {
+            name.strip_prefix(variable).is_some_and(|rest| {
+                !rest.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_')
+                    && rest.contains('/')
+            })
+        })
+    })
+}
+
+/// Whether `word` holds a password before an "@" and goes on to a path (`user:pw@host/db`): the
+/// text before the "@", counted from the word start or the last "/", has a ":" with at least one
+/// character on each side, and a "/" follows the "@".
+fn password_before_at(word: &str) -> bool {
+    word.match_indices('@').any(|(at, _)| {
+        let login = word[..at].rsplit('/').next().unwrap_or_default().as_bytes();
+        login.len() > 2 && login[1..login.len() - 1].contains(&b':') && word[at + 1..].contains('/')
+    })
+}
+
+/// A character of a relative path. Only ASCII counts, so no invisible letter passes as one.
+fn name_byte(b: u8) -> bool {
+    b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-' | b'*' | b'/')
+}
+
+/// Whether `rest` starts with a "~" path: a "~", any user-name characters, then a "/".
+fn tilde_path(rest: &[u8]) -> bool {
+    rest.strip_prefix(b"~").is_some_and(|user| {
+        user.iter()
+            .find(|&&b| !(b.is_ascii_alphanumeric() || matches!(b, b'_' | b'.' | b'+' | b'-')))
+            == Some(&b'/')
+    })
+}
+
+/// Whether every "/" of `s` directly follows a name character, no "~" path starts a word and no
+/// flag is glued to a "/" or to a "~" path (`-I/usr/include`). A word starts at the start of `s`
+/// and after any character that is no name character.
+fn relative_paths_only(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    (0..bytes.len()).all(|i| {
+        let inside = i > 0 && name_byte(bytes[i - 1]);
+        match bytes[i] {
+            b'/' => inside,
+            b'~' => inside || !tilde_path(&bytes[i..]),
+            b'-' if !inside => {
+                let after = bytes[i..]
+                    .iter()
+                    .position(|&b| !(b.is_ascii_alphanumeric() || b == b'-'))
+                    .map_or(&[][..], |end| &bytes[i + end..]);
+                !after.starts_with(b"/") && !tilde_path(after)
+            }
+            _ => true,
+        }
+    })
+}
+
+/// The refusal of the profile screen: it names the field and repeats no value.
+fn refused(field: &str) -> String {
+    format!("invalid or nonportable profile field {field}; no values were logged")
+}
+
+/// The first part of a decision record the screen refuses, as `decisions[<id>].<part>`. A record
+/// whose id may not be shown (no portable id, or one a secret screen matches) is named by its
+/// position, counted from 0.
+fn refused_decision(index: usize, d: &DecisionRecord) -> Option<String> {
+    let source_known = ["repo", "user", "default"].contains(&d.source.as_str());
+    let (part, _) = [
+        ("id", portable_id(&d.id)),
+        ("topic", bounded_decision_string(&d.topic)),
+        ("value", command_value(&d.value)),
+        ("source", source_known),
+        ("scope", bounded_decision_string(&d.scope)),
+    ]
+    .into_iter()
+    .find(|(_, ok)| !ok)?;
+    let shown = portable_id(&d.id)
+        && !crate::secret_shaped(&d.id)
+        && crate::redact::redact_outgoing(&d.id).1 == 0;
+    let name = if shown {
+        d.id.clone()
+    } else {
+        format!("#{index}")
+    };
+    Some(format!("decisions[{name}].{part}"))
+}
+
+/// The refusal for an input that does not read as a [`Profile`]. It names the first key of
+/// [`PROFILE_KEYS`] that is missing or has the wrong type, found by reading the smallest profile
+/// with that one key as the input has it. An input that is no object, holds an unknown key (the
+/// user's own word) or has no key to blame gets the sentence without a field. No text of the
+/// input or of the parser is repeated.
+pub fn input_refusal(input: &Value) -> String {
+    let smallest = json!({
+        "schema_version": 2, "purpose": "", "tools": [], "development_methods": [], "hosts": []
+    });
+    input
+        .as_object()
+        .filter(|map| map.keys().all(|k| managed_keys().any(|m| m == k.as_str())))
+        .and_then(|map| {
+            managed_keys().find(|&key| {
+                let mut probe = smallest.clone();
+                match map.get(key) {
+                    Some(value) => probe[key] = value.clone(),
+                    None => {
+                        probe.as_object_mut().expect("an object").remove(key);
+                    }
+                }
+                Profile::deserialize(&probe).is_err()
+            })
+        })
+        .map_or_else(
+            || "invalid or nonportable profile; no values were logged".into(),
+            refused,
+        )
+}
+
 /// The hosts a profile may list (SPEC-20261118-profile-host-omp); one more entry than these is a
 /// duplicate or an unknown name.
 pub const KNOWN_HOSTS: [&str; 3] = ["claude", "codex", "omp"];
@@ -551,9 +700,9 @@ fn validate(p: &Profile) -> Result<()> {
     }
     if let Some(versioning) = &p.versioning {
         crate::versioning::validate(versioning)?;
-        // The format is text like every other profile string: no path, no secret shape.
+        // The format is plain profile text: no path, no secret shape.
         if versioning.format.as_ref().is_some_and(|f| !portable(f)) {
-            return Err("invalid or nonportable profile; no values were logged".into());
+            return Err(refused("versioning.format"));
         }
     }
     if let Some(paths) = &p.test_paths {
@@ -568,40 +717,45 @@ fn validate(p: &Profile) -> Result<()> {
     if let Some(files) = &p.shared_files {
         validate_shared_files(files)?;
     }
-    let decisions_ok = p.decisions.len() <= DECISION_ITEM_LIMIT
-        && p.decisions.iter().all(|d| {
-            ["repo", "user", "default"].contains(&d.source.as_str())
-                && portable_id(&d.id)
-                && bounded_decision_string(&d.topic)
-                && bounded_decision_string(&d.value)
-                && bounded_decision_string(&d.scope)
-        });
-    if (p.schema_version != 1 && p.schema_version != 2)
-        || !portable_id(&p.project_id)
-        || !portable(&p.purpose)
-        || p.tools.is_empty()
-        || p.development_methods.is_empty()
-        || p.hosts.is_empty()
-        || p.tools.len() > 32
-        || p.development_methods.len() > 32
-        || p.hosts.len() > KNOWN_HOSTS.len()
-        || !p
-            .tools
-            .iter()
-            .chain(&p.development_methods)
-            .all(|s| portable(s))
-        || !p.hosts.iter().all(|s| KNOWN_HOSTS.contains(&s.as_str()))
-        || p.package_pin.as_ref().is_some_and(|s| !valid_digest(s))
-        || p.interview_revision
-            .as_ref()
-            .is_some_and(|s| !portable(s) || s.len() > REVISION_LIMIT)
-        || !decisions_ok
-        || p.context_max_bytes == Some(0)
-        || p.archive_grace_days == Some(0)
-        || p.stale_draft_days == Some(0)
-        || p.lease_sweep_hours == Some(0)
-    {
-        return Err("invalid or nonportable profile; no values were logged".into());
+    let texts = |v: &[String]| !v.is_empty() && v.len() <= 32 && v.iter().all(|s| portable(s));
+    let hosts_ok = !p.hosts.is_empty()
+        && p.hosts.len() <= KNOWN_HOSTS.len()
+        && p.hosts.iter().all(|s| KNOWN_HOSTS.contains(&s.as_str()));
+    let revision_ok = p
+        .interview_revision
+        .as_ref()
+        .is_none_or(|s| portable(s) && s.len() <= REVISION_LIMIT);
+    // In the order of [`PROFILE_KEYS`]: the first refused key is the one named.
+    let keys = [
+        ("schema_version", matches!(p.schema_version, 1 | 2)),
+        ("project_id", portable_id(&p.project_id)),
+        ("purpose", portable(&p.purpose)),
+        ("tools", texts(&p.tools)),
+        ("development_methods", texts(&p.development_methods)),
+        ("hosts", hosts_ok),
+        (
+            "package_pin",
+            p.package_pin.as_ref().is_none_or(|s| valid_digest(s)),
+        ),
+        ("interview_revision", revision_ok),
+        ("decisions", p.decisions.len() <= DECISION_ITEM_LIMIT),
+    ];
+    if let Some((key, _)) = keys.iter().find(|(_, ok)| !ok) {
+        return Err(refused(key));
+    }
+    let mut records = p.decisions.iter().enumerate();
+    if let Some(field) = records.find_map(|(i, d)| refused_decision(i, d)) {
+        return Err(refused(&field));
+    }
+    for (key, number) in [
+        ("context_max_bytes", p.context_max_bytes),
+        ("archive_grace_days", p.archive_grace_days),
+        ("stale_draft_days", p.stale_draft_days),
+        ("lease_sweep_hours", p.lease_sweep_hours),
+    ] {
+        if number == Some(0) {
+            return Err(refused(key));
+        }
     }
     Ok(())
 }
@@ -966,7 +1120,7 @@ pub fn plan_in(active: &[&str], root: &Path, mut profile: Profile) -> Result<Pla
     }
     validate(&profile)?;
     if profile.schema_version != 2 {
-        return Err("invalid or nonportable profile; no values were logged".into());
+        return Err(refused("schema_version"));
     }
     let old = profile_bytes(root)?;
     let current = match &old {
