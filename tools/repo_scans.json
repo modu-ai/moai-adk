@@ -1804,6 +1804,8 @@
         "repo_scans_table"
       ],
       "rules": [
+        "src/agents.rs",
+        "src/state_root.rs",
         "tests/gitignore_block_cli.rs",
         "tests/repo_scans_table.rs"
       ],
