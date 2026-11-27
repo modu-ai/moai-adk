@@ -137,3 +137,32 @@ created: 2026-11-27
 | D-9 | 상류 템플릿 세 파일은 그대로 (Q5 의 기본값) | NOTICE 와 Go 세대 감지 | 후속 카드 |
 | D-10 | 모델이 원칙을 따르는지는 AC-14 `unknown` 으로 두고 met 로 적지 않음 | 평가 실행기 없음 | 실행기가 생기면 verify 추가 |
 | D-11 | 새 행동 단어는 `retire`(옛 파일)와 `replace`(설정 값)이고, 화면의 `change_mark` 와 `tally` 가 변경으로 세요 | `update_tux` 가 아는 단어에 `replace` 가 이미 있음 | 단어 제거 |
+
+## Result
+
+2026-11-27T02:32Z 기준이에요. REQ-1 부터 REQ-22 까지 구현했어요. 승인은 원장 노트 10577 이고, 승인 블록은 이 파일에 넣지 않았어요(리더가 랜딩 커밋에서 써요).
+
+바뀐 파일: `src/home_style.rs`, `src/update_tux.rs`, `src/host_home.rs`, `src/update.rs`, `src/ops/home_style_apply.rs`, `src/ops/home_style_plan.rs`, `skills/moai/references/home/output-style.md`, `skills/moai/references/source-manifest.json`(해시와 사유 문장), `skills/moai-html-report/SKILL.md`, `templates/bundle-packs/.claude/skills/moai-domain-html-report/SKILL.md`, `.moai/evals/style/{README.md,cases.json,controls.json}`(새), `tests/fixtures/help/all*.txt` 4개(도움말 문장), `tools/repo_scans.json`(새 테스트의 읽기 11줄, line-lease), 테스트 파일 10개와 `tests/fixtures/home-style/render-8.md`(새).
+
+AC 의 확인 명령을 적힌 그대로 돌렸어요. head `fba09ac274bce281e2565012a5307cb7dddddfc6`, macOS, `--max 2` 슬롯, 모든 명령 종료 0. 통과 개수는 각 출력의 `test result` 줄에서 읽었어요.
+
+- AC-1: met — `home_style_cli ac1_` 1 통과
+- AC-2: met — `home_style_cli ac2_` 1 통과
+- AC-3: met — `home_style_cli ac3_` 1 통과
+- AC-4: met — `home_style_cli ac4_` 1 통과
+- AC-5: met — `home_style_cli ac5_` 1 통과
+- AC-6: met — `home_style_cli ac6_` 1 통과
+- AC-7: met — `home_style_cli ac7_` 1 통과
+- AC-8: met — `home_style_cli ac8_` 1 통과
+- AC-9: met — `update_user_layer_cli ac9_` 1 통과(환경을 비운 실제 바이너리, 임시 HOME)
+- AC-10: met — `home_style_ownership_cli ac10_` 1 통과
+- AC-11: met — `home_style_ownership_cli ac11_` 1 통과
+- AC-12: met — `style_banner_scan ac12_` 1 통과
+- AC-13: met — `style_banner_scan ac13_` 1 통과
+- AC-14: unknown — 모델을 실제로 돌리는 평가 실행기가 없어요. 픽스처를 읽어 확인하는 일은 후속 카드예요.
+- AC-15: met — `host_home_cli` 12, `update_linked_config_files` 9, `home_style_cli` 39 통과
+- AC-16: met — `moai spec check` 오류 0, 경고 3(AC-14 unknown, 요구 12개 초과, 카드 번호 안내)
+
+가드 뮤턴트 5개를 Edit 로 하나씩 넣었어요. 새 소유 검사 제거(`ac4_`), 정확한 이름 조건 완화(`ac5_`), 새 파일이 안 써질 때 옛 파일을 남기는 가드 제거(`ac7_`), 옛 되돌리기 기록의 기본 경로를 새 이름으로(`ac6_`)는 테스트가 실패해서 잡혔어요. 이름 조건 완화는 계획 단계에서 텍스트 교체를 미리 해 보는 검사가 같은 값을 따로 거절해서 단독으로는 통과했고(깊이 방어), 두 겹을 함께 지우면 `ac5_` 가 실패해요. 되돌리기에서 옛 경로에 사용자가 둔 파일이 있어도 건너뛰는 가드는 어떤 테스트도 잡지 못해서 테스트 `revert_never_overwrites_a_file_put_at_the_old_style_path_since_the_apply` 를 더했고 뮤턴트가 그 테스트에서 실패해요.
+
+범위 밖 관찰: 이 SPEC 이 `tests/common/go_project_real_run.rs` 를 건드리지 않아요. 한 번 `windows_unix_gate_scan` 이 그 파일을 가리켰는데, 원인은 이 SPEC 의 `style_banner_scan.rs` 허용 목록이 그 도우미의 전체 경로를 적은 것이었고 접두어 매칭으로 고쳤어요.
