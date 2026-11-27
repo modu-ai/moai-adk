@@ -91,12 +91,16 @@ pub fn verdict(
     };
     hash_option("--head", req.head)?;
     hash_option("--base", req.base)?;
-    let pass = match req.verdict {
+    // The word is read without regard to case or surrounding blanks (`PASS`, `Fail`): it is the
+    // right word, and a lane that wrote it in capitals lost a call to the spelling alone
+    // (card C-608). The refusal below still quotes what was given.
+    let pass = match req.verdict.trim().to_ascii_lowercase().as_str() {
         "pass" => true,
         "fail" => false,
-        other => {
+        _ => {
             return Err(refused(format!(
-                "--verdict is `pass` or `fail`, not `{other}`"
+                "--verdict is `pass` or `fail`, not `{}`",
+                req.verdict
             )))
         }
     };
@@ -175,7 +179,8 @@ pub fn verdict(
         "action": "verdict", "project_id": id,
         "name": input::card_name(card), "card_id": card,
         "event": recorded.event_id, "written": recorded.written,
-        "head": req.head, "base": req.base, "verdict": req.verdict, "tier": req.tier,
+        "head": req.head, "base": req.base,
+        "verdict": if pass { "pass" } else { "fail" }, "tier": req.tier,
         "reviewer": reviewer,
         "events": u8::from(recorded.written), "writes": recorded.written,
     }))

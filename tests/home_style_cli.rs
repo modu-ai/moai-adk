@@ -739,7 +739,7 @@ fn a_second_folder_is_blocked_while_the_state_root_is_not_this_generations() {
     for t in targets {
         assert_eq!(t["action"], "blocked", "{t}");
         let d = t["detail"].as_str().unwrap();
-        assert!(d.contains("state") && d.contains("generation"), "{d}");
+        assert!(d.contains("env -u CLAUDE_CONFIG_DIR moai update"), "{d}");
     }
     let digest = in_b["result"]["plan_digest"].as_str().unwrap().to_string();
     let applied = folder_run(
@@ -763,6 +763,74 @@ fn a_second_folder_is_blocked_while_the_state_root_is_not_this_generations() {
     let in_a = folder_run(&home, None, &["home-style-plan", h, pkg]);
     assert_eq!(folder_action(&in_a["result"], "style_file"), "create");
     assert_eq!(folder_action(&in_a["result"], "setting"), "set");
+}
+
+/// SPEC-20261127-update-linked-profile-display AC-3 (REQ-5, REQ-6): a second folder blocked on a
+/// HOME of the earlier generation says which folder it is and both ways out in plain words, and a
+/// block for another reason keeps its own reason and next step.
+#[cfg(unix)]
+#[test]
+fn a_blocked_second_folder_names_the_way_out_without_internal_words() {
+    let (_t, home) = home();
+    let h = home.to_str().unwrap();
+    let pkg = package();
+    let pkg = pkg.to_str().unwrap();
+    fs::create_dir_all(home.join(moai_cli::HOME_STATE_DIR)).unwrap();
+    let second = home.join("profiles/b");
+    let planned = folder_run(&home, Some(&second), &["home-style-plan", h, pkg]);
+    let targets = planned["result"]["targets"].as_array().unwrap();
+    assert!(!targets.is_empty(), "{planned}");
+    let default_styles = home.join(".claude/output-styles");
+    for t in targets {
+        assert_eq!(t["action"], "blocked", "{t}");
+        let d = t["detail"].as_str().unwrap();
+        for inside in ["state root", "generation", "moved state folder"] {
+            assert!(!d.contains(inside), "{inside}: {d}");
+        }
+        assert!(
+            d.contains(second.to_str().unwrap()),
+            "names the folder: {d}"
+        );
+        assert!(d.contains("next:"), "{d}");
+        assert!(
+            d.contains("env -u CLAUDE_CONFIG_DIR moai update"),
+            "the way out without the variable: {d}"
+        );
+        assert!(
+            d.contains(&format!(
+                "link {} to {}",
+                second.join("output-styles").display(),
+                default_styles.display()
+            )),
+            "the way out by a link: {d}"
+        );
+    }
+
+    // A link that the rules refuse keeps its own reason and next step.
+    let (_t, home) = fresh();
+    assert!(moai_cli::home_root::adopt_new(&home, "test").unwrap());
+    let h = home.to_str().unwrap();
+    let profile = home.join("profiles/q");
+    fs::create_dir_all(&profile).unwrap();
+    std::os::unix::fs::symlink(
+        home.join("outside/no-such-folder"),
+        profile.join("output-styles"),
+    )
+    .unwrap();
+    let planned = folder_run(&home, Some(&profile), &["home-style-plan", h, pkg]);
+    let t = planned["result"]["targets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["kind"] == "style_file")
+        .unwrap();
+    assert_eq!(t["action"], "blocked", "{planned}");
+    let d = t["detail"].as_str().unwrap();
+    assert!(d.contains("next:"), "{d}");
+    assert!(
+        !d.contains("env -u CLAUDE_CONFIG_DIR"),
+        "a refused link is not a second folder: {d}"
+    );
 }
 
 /// The three operations, through the binary, against a temporary HOME passed as an argument.

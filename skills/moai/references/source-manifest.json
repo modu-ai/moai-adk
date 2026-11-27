@@ -312,12 +312,12 @@
       }
     },
     "references/internal/sdd.md": {
-      "sha256": "35ca3f57e78668c396fbee29c6d90e73ba49d2ab731f9e9cdf12baa8035d3272",
+      "sha256": "27156cafcf16e756cfa83bf9d70a8c0aa32fbe6124dbe367785553cdf94a3573",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-sdd",
         "adoption": "new",
-        "reason": "Written for SPEC-20261117-sdd-guidance (SDD rollout slice SDD-5; user decisions 2026-11-17: every repository change has a SPEC, minimal form by default, GEARS + IF…THEN, approval = the user's in-session selection with digest, one SPEC = one PR, SYNC writes and AUDIT checks, @cc: Agent Context Comments, preserve-then-change instead of DDD). The agent-facing SDD rules in one place, naming only `moai spec` actions this build has (checked with --help) and the card link as planned until it lands. Read by moai-docs (`reads:`) and named by chains/index.md and the PLAN, RUN, VERIFY, SYNC and AUDIT workflows. Item 11 added for SPEC-20261120-gates-start-in-observe (verify wave 2, user decision 2026-11-20): a new check that blocks starts in observe, the Result records the would-block count and false positives, and the switch to enforce is a recorded decision."
+        "reason": "Written for SPEC-20261117-sdd-guidance (SDD rollout slice SDD-5; user decisions 2026-11-17: every repository change has a SPEC, minimal form by default, GEARS + IF…THEN, approval = the user's in-session selection with digest, one SPEC = one PR, SYNC writes and AUDIT checks, @cc: Agent Context Comments, preserve-then-change instead of DDD). The agent-facing SDD rules in one place, naming only `moai spec` actions this build has (checked with --help) and the card link as planned until it lands. Read by moai-docs (`reads:`) and named by chains/index.md and the PLAN, RUN, VERIFY, SYNC and AUDIT workflows. Item 11 added for SPEC-20261120-gates-start-in-observe (verify wave 2, user decision 2026-11-20): a new check that blocks starts in observe, the Result records the would-block count and false positives, and the switch to enforce is a recorded decision. Item 3 states the one-shall and the failure-path rules on one line each, as the SPEC skeleton of `moai spec new` does (RSI review of spec check refusals, 2026-11-27)."
       }
     },
     "references/internal/security-checklist.md": {

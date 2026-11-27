@@ -227,6 +227,21 @@ pub fn link(
     spec: Option<&str>,
     by: Option<&str>,
 ) -> Result<Value> {
+    link_at(project, home, reference, spec, by, None)
+}
+
+/// [`link`] with the `--generation` the caller read (card C-608): given, the card's live
+/// reservation must be at it (`work::check_generation`, in the same write transaction) and
+/// nothing is written otherwise; left out, nothing is checked. The link stays unfenced: neither
+/// the holder nor the lease is asked.
+pub fn link_at(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    spec: Option<&str>,
+    by: Option<&str>,
+    generation: Option<i64>,
+) -> Result<Value> {
     let card_id =
         match input::parse_ref(reference).map_err(|e| format!("card spec refused: {e}"))? {
             CardRef::Id(n) => n,
@@ -261,6 +276,13 @@ pub fn link(
             let Some((_, from)) = kind_and_spec(tx, card_id)? else {
                 return Ok(Err(format!("card not found: there is no C-{card_id}")));
             };
+            if let Some(want) = generation {
+                if let Err(refused) =
+                    super::work::check_generation(tx, card_id, want, "linking a SPEC")
+                {
+                    return Ok(Err(refused));
+                }
+            }
             let rev = |tx: &Connection| {
                 tx.query_row("SELECT rev FROM card WHERE card_id = ?1", [card_id], |r| {
                     r.get::<_, i64>(0)
