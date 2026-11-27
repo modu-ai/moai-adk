@@ -1155,9 +1155,11 @@ fn ac4_the_link_folder_gets_moai_only_and_keeps_an_earlier_moai_cli_link() {
         eprintln!("not_run: this tar cannot write xz");
         return;
     }
-    // An earlier version folder of this HOME's state folder and a link into it.
+    // An earlier version folder of this HOME's state folder and a link into it. The link names
+    // the resolved state folder, the way the installer's own links do, so a script that tried
+    // to replace it would find it inside a version folder it placed.
     assert!(moai_cli::home_root::adopt_new(&fx.home, "test").unwrap());
-    let state = moai_cli::home_root::path(&fx.home);
+    let state = fs::canonicalize(moai_cli::home_root::path(&fx.home)).unwrap();
     let earlier_bin = state.join("versions/3.0.0/bin");
     fs::create_dir_all(&earlier_bin).unwrap();
     common::copy_executable(Path::new(CLI_FILE), &earlier_bin.join("moai-cli"));
@@ -1245,7 +1247,7 @@ fn ps1_installs_bin_moai_alone_and_stops_on_an_archive_without_it_when_pwsh_exis
         return;
     }
     assert!(moai_cli::home_root::adopt_new(&fx.home, "test").unwrap());
-    let state = moai_cli::home_root::path(&fx.home);
+    let state = fs::canonicalize(moai_cli::home_root::path(&fx.home)).unwrap();
     let earlier_bin = state.join("versions/3.0.0/bin");
     fs::create_dir_all(&earlier_bin).unwrap();
     common::copy_executable(Path::new(CLI_FILE), &earlier_bin.join("moai-cli"));
