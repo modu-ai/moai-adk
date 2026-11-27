@@ -618,12 +618,17 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
             Some("not run: the batch stopped before this head"),
         ));
     }
-    Ok(json!({
+    let mut answer = json!({
         "action": "land-batch", "branch": branch,
         "landed": landed_cards, "dropped": dropped, "not_run": not_run,
         "runs": runs, "checks_run": runs.len(), "stopped": stopped,
         "writes": !landed_cards.is_empty(),
-    }))
+    });
+    // RC1 observes a record that names another branch than the profile and refuses nothing.
+    if let Some(stale) = crate::card::guard::repoint::observation(project) {
+        answer["guard_record_stale"] = stale;
+    }
+    Ok(answer)
 }
 
 /// Whether landing `commit` on `tip` changes the branch (it is not inside the tip).
