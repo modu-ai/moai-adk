@@ -1419,11 +1419,11 @@ pub fn runner_in(dir: &Path) -> Runner {
 
 /// The earlier and the new state folder names, built at run time (`tests/state_folder_literal_scan.rs`
 /// counts them the same way).
-fn earlier_state_name() -> String {
+pub(crate) fn earlier_state_name() -> String {
     format!(".{}-{}", "moai", "cli")
 }
 
-fn new_state_name() -> String {
+pub(crate) fn new_state_name() -> String {
     format!(".{}", "moai")
 }
 
@@ -3875,6 +3875,94 @@ mod tests {
             .collect();
         let found = table_violations(&added, &tests, Some(&areas), Some(&allow), &moved);
         assert!(found.is_empty(), "{}", found.join("\n"));
+    }
+
+    /// The facts of a range that changes `changed` and adds `added`, with an allow list that holds
+    /// no row: what the step reads of a range, nothing else.
+    fn facts_for(changed: &[&str], added: &[&str], tests: Vec<TestFile>, moved: &[&str]) -> Facts {
+        Facts {
+            root: std::path::PathBuf::from("."),
+            base: "a".repeat(40),
+            head: "b".repeat(40),
+            changed: paths(changed),
+            present: paths(changed),
+            tests,
+            scan_list: None,
+            registry: None,
+            added: paths(added),
+            areas_text: None,
+            allow_text: Some("# none\n".to_string()),
+            unreadable: Vec::new(),
+            tracked: None,
+            moved: paths(moved),
+            stack: Stack::Rust,
+        }
+    }
+
+    /// C-431 (a), the shape of C-607 and C-460 on 2026-11-27: an existing test file that gains a
+    /// state folder name is named by the cheap step, before cargo, as a new file would be.
+    #[test]
+    fn a_changed_test_file_that_gains_a_state_folder_name_is_named_before_cargo() {
+        let text = format!("let p = \"{}/x\";", earlier_state_name());
+        let facts = facts_for(&["tests/zz_old.rs"], &[], vec![file("zz_old", &text)], &[]);
+        let step =
+            table_step(&facts).expect("a changed test file that breaks a table plans a step");
+        let lines = step.report.expect("an in-process report");
+        assert_eq!(lines.len(), 1, "{lines:?}");
+        assert!(
+            lines[0].starts_with("tests/zz_old.rs") && lines[0].contains("TempHome::state_dir"),
+            "{lines:?}"
+        );
+    }
+
+    /// C-431 (a), the shape of C-608: a module added alone to a moved area is no top-level file,
+    /// yet the allow list counts it by its longer path, so the step must run for it.
+    #[test]
+    fn a_module_added_alone_to_a_moved_area_plans_the_step() {
+        let text = format!("let p = \"{}/x\";", new_state_name());
+        let mut module = file("zz_new", &text);
+        module.area = Some("lane".to_string());
+        let path = "tests/lane/zz_new.rs";
+        let facts = facts_for(&[path], &[path], vec![module], &["lane"]);
+        let step = table_step(&facts).expect("a module added alone plans the step");
+        let lines = step.report.expect("an in-process report");
+        assert_eq!(lines.len(), 1, "{lines:?}");
+        assert!(lines[0].starts_with(path), "{lines:?}");
+    }
+
+    /// C-431 (a), the shape of C-460 and C-607: an existing test file that starts to read a
+    /// checked-in file is named by the scan list judge, with the line to add.
+    #[test]
+    fn a_changed_test_file_that_reads_a_checked_in_file_is_named_by_the_scan() {
+        let tests = vec![
+            file("zz_read", &rooted("fn t() { let _ = \"docs/a.md\"; }")),
+            file("repo_scans_table", EXEMPT_TEXT),
+        ];
+        let mut facts = facts_for(&["tests/zz_read.rs"], &[], tests, &[]);
+        facts.scan_list = Some(SCAN_LIST.to_string());
+        facts.tracked = Some(tracked());
+        let step = table_step(&facts).expect("a changed reader plans the step");
+        let lines = step.report.expect("an in-process report");
+        assert!(
+            lines
+                .iter()
+                .any(|l| l.starts_with("tests/zz_read.rs") && l.contains("docs/a.md")),
+            "{lines:?}"
+        );
+    }
+
+    /// C-431 (a): a changed test file that breaks nothing plans no step, so the plan, the log and
+    /// the summary of every such run stay as they were; an added one still plans it, with the
+    /// words it had.
+    #[test]
+    fn a_clean_changed_test_file_plans_no_step_and_an_added_one_keeps_its_words() {
+        let tests = vec![file("zz_clean", "fn t() {}")];
+        let changed = facts_for(&["tests/zz_clean.rs"], &[], tests.clone(), &[]);
+        assert!(table_step(&changed).is_none());
+        let added = facts_for(&["tests/zz_clean.rs"], &["tests/zz_clean.rs"], tests, &[]);
+        let step = table_step(&added).expect("an added test file plans the step");
+        assert_eq!(step.args[1], "1 added test file(s)");
+        assert_eq!(step.report, Some(Vec::new()));
     }
 
     /// REQ-9: the guidance says where a new test file registers and that the step stops the run.

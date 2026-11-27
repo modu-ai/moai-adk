@@ -836,6 +836,51 @@ mod tests {
         }
     }
 
+    /// C-431 (a): `check fast` names, before the ledger, what an existing test file that gains a
+    /// state folder name breaks, and a module added alone to a moved area, as `check affected` does
+    /// (the shapes of C-607, C-460 and C-608 on 2026-11-27).
+    #[test]
+    fn the_fast_table_step_reads_a_changed_file_and_a_module_added_alone() {
+        let dir = tempfile::tempdir().unwrap();
+        let old = crate::check_affected::earlier_state_name();
+        let new = crate::check_affected::new_state_name();
+        let mut modified = facts_of(
+            dir.path(),
+            vec![file("zz_old", None, &format!("let p = \"{old}/x\";"))],
+        );
+        modified.present = vec!["tests/zz_old.rs".to_string()];
+        modified.allow_text = Some("# none\n".to_string());
+        let lines = table_step(&modified)
+            .expect("a changed test file that breaks a table plans a step")
+            .report
+            .expect("an in-process report");
+        assert_eq!(lines.len(), 1, "{lines:?}");
+        assert!(lines[0].starts_with("tests/zz_old.rs"), "{lines:?}");
+        let mut nested = facts_of(
+            dir.path(),
+            vec![file(
+                "zz_new",
+                Some("lane"),
+                &format!("let p = \"{new}/x\";"),
+            )],
+        );
+        nested.present = vec!["tests/lane/zz_new.rs".to_string()];
+        nested.added = nested.present.clone();
+        nested.moved = vec!["lane".to_string()];
+        nested.allow_text = Some("# none\n".to_string());
+        let lines = table_step(&nested)
+            .expect("a module added alone plans the step")
+            .report
+            .expect("an in-process report");
+        assert_eq!(lines.len(), 1, "{lines:?}");
+        assert!(lines[0].starts_with("tests/lane/zz_new.rs"), "{lines:?}");
+        // A changed file that breaks nothing plans no step.
+        let mut clean = facts_of(dir.path(), vec![file("zz_clean", None, "fn t() {}")]);
+        clean.present = vec!["tests/zz_clean.rs".to_string()];
+        clean.allow_text = Some("# none\n".to_string());
+        assert!(table_step(&clean).is_none());
+    }
+
     /// AC-6: every name of the list is a real target, area module or library test here.
     #[test]
     fn the_ledger_names_resolve_in_this_repository() {
