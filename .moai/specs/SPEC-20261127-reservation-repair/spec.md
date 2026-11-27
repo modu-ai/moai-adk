@@ -84,4 +84,9 @@ approval: {by: user, at: 2026-11-27, basis: "레저 결정 노트 10712 (ref not
 
 ## Result
 
-초안이에요. 구현하지 않았어요. 사용자의 승인과 D-1~D-3 의 선택을 기다려요.
+구현했어요. `card take` 는 상대 `--worktree` 를 부른 폴더 기준으로 풀어 체크아웃 맨 위의 절대 경로로 적고, `card repair` 는 보유자가 살아 있는 예약의 브랜치나 워크트리를 `card.repair` 사건 한 건과 함께 고쳐요. 검증 명령 네 개를 적힌 그대로 돌려 모두 통과했어요(`cargo test --locked --test reservation_repair_cli <이름>`, 슬롯 안). 가드 뮤턴트는 여섯 개(상대 경로를 풀지 않음, 하위 폴더를 맨 위로 받음, git 의 브랜치 이름 검사 제거, 끝난 리스 허용, 사건 기록 제거, repair 의 절대 경로 요구 제거)를 하나씩 넣었고 모두 테스트가 잡았어요.
+
+- AC-1: met
+- AC-2: met
+- AC-3: met
+- AC-4: met
