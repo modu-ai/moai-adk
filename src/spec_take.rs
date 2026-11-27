@@ -32,7 +32,12 @@ pub const DEFAULT_REMOTE: &str = "origin";
 
 /// Checks `--card` before anything is written: a C-number of a card in this project's ledger,
 /// read only. Returns the HOME whose ledger [`crate::card::spec_link::link`] writes later.
-fn card_check(project: &Path, home: Option<&Path>, reference: &str) -> Result<PathBuf> {
+fn card_check(
+    project: &Path,
+    home: Option<&Path>,
+    reference: &str,
+    spec_id: &str,
+) -> Result<PathBuf> {
     use crate::card::input::{self, CardRef};
     use crate::ledger::{self, LedgerError};
     let card_id = match input::parse_ref(reference) {
@@ -55,7 +60,14 @@ fn card_check(project: &Path, home: Option<&Path>, reference: &str) -> Result<Pa
         other => refuse(format!("{other}; nothing was changed")),
     })?;
     match crate::card::spec_link::kind_and_spec(read.conn(), card_id) {
-        Ok(Some(_)) => Ok(home),
+        // The link that `take` writes last is refused by the same rule as `card spec`; asking it
+        // here keeps the refusal ahead of every branch and ledger write
+        // (SPEC-20261124-card-help-gates REQ-13).
+        Ok(Some(_)) => match crate::card::spec_link::link_conflict(read.conn(), card_id, spec_id) {
+            Ok(None) => Ok(home),
+            Ok(Some(why)) => Err(refuse(why)),
+            Err(e) => Err(refuse(format!("{e}; nothing was changed"))),
+        },
         Ok(None) => Err(refuse(format!(
             "there is no {}; nothing was changed",
             input::card_name(card_id)
@@ -267,7 +279,7 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
         .map_err(|_| refuse("the project is not in a git work tree; nothing was changed"))?;
     // The card is checked before any write, so a card refusal changes nothing.
     let card_home = match r.card {
-        Some(c) => Some(card_check(r.project, r.home, c)?),
+        Some(c) => Some(card_check(r.project, r.home, c, r.id)?),
         None => None,
     };
 

@@ -637,3 +637,212 @@ fn an_add_without_spec_is_unchanged() {
         0
     );
 }
+
+// ---- SPEC-20261124-card-help-gates (revision 2): one open card per SPEC on every path --------
+
+impl World {
+    /// `card ready C-n` by the leader.
+    fn ready(&self, n: i64) -> Output {
+        self.card(&["ready", &format!("C-{n}"), "--by", "leader"])
+    }
+
+    /// `card spec C-n <spec>` (or `--unlink` without a SPEC).
+    fn link(&self, n: i64, spec: Option<&str>) -> Output {
+        let name = format!("C-{n}");
+        match spec {
+            Some(spec) => self.card(&["spec", &name, spec, "--by", "leader"]),
+            None => self.card(&["spec", &name, "--unlink", "--by", "leader"]),
+        }
+    }
+
+    /// `card withdraw C-n`, which puts the card on `hold`.
+    fn withdraw(&self, n: i64) {
+        let out = self
+            .home
+            .command(&[
+                "card",
+                "withdraw",
+                &format!("C-{n}"),
+                "--reason",
+                "fixture",
+                "--by",
+                "leader",
+                self.p(),
+            ])
+            .output()
+            .expect("run moai");
+        ok(&out);
+    }
+
+    /// A link that an earlier build allowed, written as the ledger would hold it: a `card.spec`
+    /// event with no relation, made without the refusal of this revision.
+    fn legacy_link(&self, n: i64, spec: &str) {
+        let raw =
+            rusqlite::Connection::open(ledger::ledger_path(self.home.path(), "demo").unwrap())
+                .unwrap();
+        raw.execute(
+            "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+             VALUES (?1, unixepoch(), 'test', ?2, 'card.spec', ?3)",
+            rusqlite::params![
+                format!("card.spec:{n}:legacy:{spec}"),
+                n,
+                json!({"from": Value::Null, "to": spec}).to_string()
+            ],
+        )
+        .unwrap();
+    }
+
+    /// The `state` column of card `n`.
+    fn state(&self, n: i64) -> String {
+        let l = ledger::open_read_only(self.home.path(), "demo").unwrap();
+        l.conn()
+            .query_row("SELECT state FROM card WHERE card_id = ?1", [n], |r| {
+                r.get(0)
+            })
+            .unwrap()
+    }
+}
+
+/// The words every refusal of the open-card rule carries: the kind, the SPEC, the open card, and
+/// the two ways out the rule names.
+fn assert_open_card_refusal(out: &Output, spec: &str, open_card: &str, verb: &str) {
+    let (kind, message) = refusal(out);
+    assert_eq!(kind, "conflict", "{message}");
+    for word in [
+        verb,
+        "conflict in spec",
+        spec,
+        open_card,
+        "--follow-up",
+        "card criterion-add",
+    ] {
+        assert!(
+            message.contains(word),
+            "the refusal lacks {word}: {message}"
+        );
+    }
+}
+
+/// AC-10 (REQ-8): a `hold` card that names a SPEC without a relation does not come back to
+/// `ready` beside another open card of that SPEC. Nothing is written by the refusal.
+#[test]
+fn a_hold_card_does_not_become_ready_beside_an_open_card_of_its_spec() {
+    // C-1 is withdrawn, then C-2 takes the SPEC and stays open.
+    let setup = || {
+        let w = World::new();
+        let spec = w.spec("login-fix");
+        ok(&w.add(&spec, &[]));
+        w.withdraw(1);
+        ok(&w.add(&spec, &[]));
+        (w, spec)
+    };
+    let (w, spec) = setup();
+    let events = w.count("SELECT count(*) FROM event");
+    assert_open_card_refusal(&w.ready(1), &spec, "C-2", "card ready");
+    assert_eq!(w.state(1), "hold", "the refusal changed the card");
+    assert_eq!(w.count("SELECT count(*) FROM event"), events);
+    // The open card is done: the same call is accepted.
+    w.close(2);
+    assert_eq!(ok(&w.ready(1))["state"], json!("ready"));
+
+    // The open card is on hold instead: accepted as well.
+    let (w, _) = setup();
+    w.withdraw(2);
+    assert_eq!(ok(&w.ready(1))["state"], json!("ready"));
+
+    // A follow-up card on hold carries a relation and is never refused by this rule.
+    let w = World::new();
+    let spec = w.spec("login-fix");
+    ok(&w.add(&spec, &[]));
+    ok(&w.add(&spec, &["--follow-up"]));
+    w.withdraw(2);
+    assert_eq!(w.state(2), "hold");
+    assert_eq!(ok(&w.ready(2))["state"], json!("ready"));
+
+    // A hold card that names no SPEC is never refused by this rule.
+    let w = World::new();
+    let spec = w.spec("login-fix");
+    ok(&w.add(&spec, &[]));
+    ok(&w.card(&["add", "--title", "t", "--ac", "fixture"]));
+    w.withdraw(2);
+    assert_eq!(ok(&w.ready(2))["state"], json!("ready"));
+}
+
+/// AC-10 (REQ-8) and the leader's note on the refusal: a `draft` card is never refused, and two
+/// open cards that an earlier build left on one SPEC are not touched by the rule.
+#[test]
+fn a_draft_card_and_a_legacy_pair_of_open_cards_still_go_ready() {
+    let w = World::new();
+    let spec = w.spec("login-fix");
+    let other = w.spec("other-fix");
+    ok(&w.add(&spec, &[])); // C-1
+    ok(&w.add(&other, &[])); // C-2
+    w.legacy_link(2, &spec); // C-1 and C-2 are both open on one SPEC now
+    assert_eq!(ok(&w.ready(2))["state"], json!("ready"));
+    assert_eq!(ok(&w.ready(1))["state"], json!("ready"));
+}
+
+/// AC-11 (REQ-9): `card spec` does not add a second open card to a SPEC; the link of a `done` or
+/// `hold` card, a link to the SPEC the card already names, `--unlink` and a link to a SPEC with no
+/// open card are accepted. A refusal writes nothing.
+#[test]
+fn card_spec_does_not_add_a_second_open_card_to_a_spec() {
+    let w = World::new();
+    let spec = w.spec("login-fix");
+    let other = w.spec("other-fix");
+    ok(&w.add(&spec, &[])); // C-1, open on `spec`
+    for _ in 0..3 {
+        ok(&w.card(&["add", "--title", "t", "--ac", "fixture"])); // C-2, C-3, C-4: no SPEC
+    }
+    w.close(3);
+    w.withdraw(4);
+
+    let events = w.count("SELECT count(*) FROM event");
+    assert_open_card_refusal(&w.link(2, Some(&spec)), &spec, "C-1", "card spec");
+    assert_eq!(w.count("SELECT count(*) FROM event"), events);
+    assert_eq!(ok(&w.card(&["show", "C-2"]))["spec"], Value::Null);
+
+    // A done card and a hold card link to it, and neither one makes a second open card.
+    assert_eq!(ok(&w.link(3, Some(&spec)))["changed"], json!(true));
+    assert_eq!(ok(&w.link(4, Some(&spec)))["changed"], json!(true));
+    // The same SPEC again writes nothing.
+    assert_eq!(ok(&w.link(1, Some(&spec)))["changed"], json!(false));
+    // A SPEC with no open card takes an open card.
+    assert_eq!(ok(&w.link(2, Some(&other)))["changed"], json!(true));
+    // That card moves to `spec` only when `spec` has no other open card: it has C-1.
+    assert_open_card_refusal(&w.link(2, Some(&spec)), &spec, "C-1", "card spec");
+
+    // A pair that an earlier build left on one SPEC: `--unlink` and the same link still work.
+    w.legacy_link(2, &spec);
+    assert_eq!(ok(&w.link(2, Some(&spec)))["changed"], json!(false));
+    assert_eq!(ok(&w.link(2, None))["changed"], json!(true));
+}
+
+/// AC-12 (REQ-10): the help of `card ready` and `card spec` names the refusal and the way out, in
+/// words the refusal text carries.
+#[test]
+fn the_ready_and_spec_help_name_the_open_card_refusal() {
+    let w = World::new();
+    for verb in ["ready", "spec"] {
+        let out = w
+            .home
+            .command(&["card", verb, "--help"])
+            .output()
+            .expect("run moai");
+        let help = String::from_utf8_lossy(&out.stdout)
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
+        for word in [
+            "conflict in spec",
+            "another open card",
+            "--follow-up",
+            "card criterion-add",
+        ] {
+            assert!(
+                help.contains(word),
+                "`card {verb} --help` lacks {word}: {help}"
+            );
+        }
+    }
+}
