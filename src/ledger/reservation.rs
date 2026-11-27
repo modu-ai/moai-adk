@@ -104,6 +104,10 @@ pub enum ReserveError {
         holder: String,
         generation: i64,
     },
+    /// The card has a HOLD in force or a prerequisite that is not done, found inside the
+    /// reservation transaction by the gate of `card take` (the two sweeping entry points). The
+    /// text is the refusal `card take` also gives before it reserves, so both read the same.
+    HoldGate(String),
     /// The ledger itself failed (busy, unavailable, constraint ...).
     Ledger(LedgerError),
 }
@@ -116,6 +120,7 @@ impl ReserveError {
             ReserveError::CardNotFound(_) => "card_not_found",
             ReserveError::CardNotReady { .. } => "card_not_ready",
             ReserveError::AlreadyHeld { .. } => "already_held",
+            ReserveError::HoldGate(_) => "hold_gate",
             ReserveError::Ledger(e) => e.code(),
         }
     }
@@ -144,6 +149,7 @@ impl std::fmt::Display for ReserveError {
                 f,
                 "reservation conflict in card: already held by {holder:?} at generation {generation}"
             ),
+            ReserveError::HoldGate(why) => f.write_str(why),
             ReserveError::Ledger(e) => e.fmt(f),
         }
     }
@@ -665,6 +671,7 @@ pub fn reserve(
         worktree,
         branch,
         None,
+        false,
     )
 }
 
@@ -698,6 +705,7 @@ pub fn reserve_sweeping(
         worktree,
         branch,
         Some(grace_secs),
+        true,
     )
 }
 
@@ -718,7 +726,9 @@ pub fn reserve_own_scope(
     check_lease(lease_secs).map_err(ReserveError::InvalidInput)?;
     check_optional("worktree", worktree).map_err(ReserveError::InvalidInput)?;
     check_optional("branch", branch).map_err(ReserveError::InvalidInput)?;
-    reserve_in_tx(w, card_id, holder, None, lease_secs, worktree, branch, None)
+    reserve_in_tx(
+        w, card_id, holder, None, lease_secs, worktree, branch, None, false,
+    )
 }
 
 /// [`reserve_own_scope`] that sweeps first, as [`reserve_sweeping`] does.
@@ -744,12 +754,18 @@ pub fn reserve_own_scope_sweeping(
         worktree,
         branch,
         Some(grace_secs),
+        true,
     )
 }
 
 /// The transaction of [`reserve`] and [`reserve_own_scope`]: `scope` is the checked scope the
 /// caller gave, or `None` for the card's own, read here. With `sweep_grace_secs` an `active`
-/// card whose `held` lease ended at least that long ago is swept first, in this transaction.
+/// card whose `held` lease ended at least that long ago is swept first, in this transaction. With
+/// `gate` the HOLD and the unfinished prerequisites of the card are read here too, after the
+/// `ready` check and before any write, so a hold or a prerequisite that lands between the early
+/// check of `card take` and this transaction still refuses the take
+/// (SPEC-20261127-card-prereq-remove REQ-11). Only the two sweeping entry points, which `card
+/// take` uses, pass it; `adopt` and the plain entry points keep their behaviour.
 #[allow(clippy::too_many_arguments)]
 fn reserve_in_tx(
     w: &mut WriteLedger,
@@ -760,6 +776,7 @@ fn reserve_in_tx(
     worktree: Option<&str>,
     branch: Option<&str>,
     sweep_grace_secs: Option<i64>,
+    gate: bool,
 ) -> Result<Reservation, ReserveError> {
     w.with_write_tx(|tx, now| {
         let Some((mut state, generation)) = card_row(tx, card_id)? else {
@@ -823,6 +840,11 @@ fn reserve_in_tx(
                 state,
                 withdraw_reason,
             }));
+        }
+        if gate {
+            if let Some(why) = super::workflow::hold_gate_refusal(tx, card_id)? {
+                return Ok(Err(ReserveError::HoldGate(why)));
+            }
         }
         let next = generation + 1;
         tx.execute(

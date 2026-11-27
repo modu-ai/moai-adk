@@ -298,11 +298,13 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
     for gone in [".codex", ".agents", ".omp"] {
         assert!(!home.join(gone).exists(), "{gone} was made");
     }
-    // #2875: MoAI-Easy is Claude Code's default style.
-    assert!(home.join(".claude/output-styles/MoAI-Easy.md").is_file());
+    // #2875: MoAI-Style is Claude Code's default style (named MoAI-Easy before
+    // SPEC-20261127-output-style-moai-style).
+    assert!(home.join(".claude/output-styles/MoAI-Style.md").is_file());
+    assert!(!home.join(".claude/output-styles/MoAI-Easy.md").exists());
     let settings: serde_json::Value =
         serde_json::from_slice(&fs::read(home.join(".claude/settings.json")).unwrap()).unwrap();
-    assert_eq!(settings["outputStyle"], json!("MoAI-Easy"));
+    assert_eq!(settings["outputStyle"], json!("MoAI-Style"));
     // Every `references/…` path an installed agent names exists in the skill copy it reads.
     let mut checked = 0;
     for host in ["claude"] {
@@ -357,6 +359,95 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
         let full = result(&run(&exe, &home, &["update"]));
         assert_eq!(full["nothing_to_apply"], json!(true), "{op}: {full}");
     }
+}
+
+/// AC-9 (REQ-1, REQ-2, REQ-4, REQ-11, REQ-22) of SPEC-20261127-output-style-moai-style: `moai
+/// update` in a HOME an earlier build installed the style into (the old file, `outputStyle` of the
+/// earlier name) previews the move, the screen counts the retired file and the replaced value as
+/// changes, `--confirm` moves them, a second run has nothing left, and the revert command of the
+/// receipt gives the old file and the old value back. Everything runs in a temporary HOME with
+/// the cleared environment of `run`.
+#[test]
+fn ac9_update_moves_an_old_style_through_preview_confirm_and_revert() {
+    let (_t, home, exe, _) = setup();
+    let old = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/home-style/render-8.md"),
+    )
+    .unwrap();
+    let settings_before = "{\n  \"a\": 1,\n  \"outputStyle\": \"MoAI-Easy\"\n}\n";
+    let old_file = home.join(".claude/output-styles/MoAI-Easy.md");
+    let settings_file = home.join(".claude/settings.json");
+    fs::create_dir_all(old_file.parent().unwrap()).unwrap();
+    fs::write(&old_file, &old).unwrap();
+    fs::write(&settings_file, settings_before).unwrap();
+
+    let before = state(&home);
+    let p = result(&run(&exe, &home, &["update"]));
+    assert_eq!(state(&home), before, "a preview writes nothing");
+    let action = |p: &Value, kind: &str| -> String {
+        p["style"]["targets"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|t| t["kind"] == kind)
+            .map(|t| t["action"].as_str().unwrap().to_string())
+            .unwrap_or_default()
+    };
+    assert_eq!(action(&p, "style_file"), "create", "{p}");
+    assert_eq!(action(&p, "setting"), "replace", "{p}");
+    assert_eq!(action(&p, "old_style_file"), "retire", "{p}");
+
+    // The screen counts the retired file and the replaced value as changes, never as skipped.
+    let view = moai_cli::update_tux::View {
+        painter: moai_cli::ui::Painter {
+            color: false,
+            unicode: true,
+            lang: moai_cli::ui_text::Lang::En,
+        },
+        width: 100,
+        home: home.to_str().unwrap().into(),
+        project: None,
+    };
+    let screen = moai_cli::update_tux::question(&p, &view);
+    let line = screen
+        .lines()
+        .find(|l| l.contains("output style"))
+        .unwrap_or_else(|| panic!("no output style row: {screen}"));
+    assert!(!line.contains("skipped"), "{line}");
+    assert!(screen.contains("MoAI-Easy.md"), "{screen}");
+
+    let top = p["plan_digest"].as_str().unwrap();
+    let r = result(&run(&exe, &home, &["update", "--confirm", top]));
+    assert_eq!(r["style_result"]["state"], json!("applied"), "{r}");
+    assert!(!old_file.exists(), "the old file is moved away");
+    assert!(home.join(".claude/output-styles/MoAI-Style.md").is_file());
+    assert_eq!(
+        fs::read_to_string(&settings_file).unwrap(),
+        settings_before.replace("\"MoAI-Easy\"", "\"MoAI-Style\"")
+    );
+    let again = result(&run(&exe, &home, &["update"]));
+    assert_eq!(again["nothing_to_apply"], json!(true), "{again}");
+    assert_eq!(action(&again, "old_style_file"), "", "{again}");
+
+    // The receipt's revert command gives the old file and the old value back.
+    let id = r["style_result"]["receipt"].as_str().unwrap();
+    let h = home.to_str().unwrap();
+    let reverted = result(&run(
+        &exe,
+        &home,
+        &[
+            "home-style-revert",
+            h,
+            "--receipt",
+            id,
+            "--permission-reference",
+            "test-permission",
+        ],
+    ));
+    assert_eq!(reverted["state"], json!("reverted"), "{reverted}");
+    assert_eq!(fs::read_to_string(&old_file).unwrap(), old);
+    assert_eq!(fs::read_to_string(&settings_file).unwrap(), settings_before);
+    assert!(!home.join(".claude/output-styles/MoAI-Style.md").exists());
 }
 
 /// #2936 E1 (U1): the printed `revert_order` is the order that really takes the user layer back.

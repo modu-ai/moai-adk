@@ -151,7 +151,8 @@ Read `outputStyle` from the settings chain — `.claude/settings.local.json` (hi
 | Active output style | Audience tier | Reader |
 |---------------------|---------------|--------|
 | `MoAI` | `expert` | An engineer who knows the domain and wants the signal, fast |
-| `MoAI-Easy` | `basic` | Someone who codes occasionally; the jargon still costs them effort |
+| `MoAI-Style` | `basic` | Someone who codes occasionally; the jargon still costs them effort |
+| `MoAI-Easy` | `basic` | The earlier name of `MoAI-Style`, still active in sessions started before the rename |
 | `MoAI-Learn` | `learn` | Someone who wants to genuinely understand the concept, not just the outcome |
 | (any other / unresolvable) | `expert` | Safe default — never enrich unasked |
 
@@ -385,7 +386,7 @@ Turn the realtime notification channel integration pull request into an HTML rev
 ```
 Render the caching-layer design as an HTML report.
 ```
-With `MoAI-Easy` active, this resolves to the `basic` tier: each section opens with a plain-language lead, a mermaid flowchart shows the cache read/write path, and every key claim carries a worked example. With `MoAI` active, the same request resolves to `expert` and renders dense. The `.md` twin is the same lean artifact either way.
+With `MoAI-Style` active, this resolves to the `basic` tier: each section opens with a plain-language lead, a mermaid flowchart shows the cache read/write path, and every key claim carries a worked example. With `MoAI` active, the same request resolves to `expert` and renders dense. The `.md` twin is the same lean artifact either way.
 
 **Example 6: explicit tier override**
 ```
