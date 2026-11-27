@@ -186,20 +186,24 @@ parent: SPEC-20261121-flow-skeleton
 
 ## Result
 
-조각 A(미리보기, `moai secret-deny-plan`)의 결과예요. 코드 head `b4b985747e`, base `54d2491a5b`. 조각 B(적용)와 C(라우트 글)는 아직이에요. 확인 명령은 2026-11-26 에 적힌 그대로 실행했어요.
+조각 A(미리보기, `moai secret-deny-plan`)의 결과와 조각 B(적용, `moai secret-deny-apply`)의 결과예요. 조각 A 코드 head `b4b985747e`, base `54d2491a5b`; 조각 B 코드 head `9db99d27a4`, base `0d99977515`. 조각 C(라우트 글)는 아직이에요. 확인 명령은 2026-11-26 에 적힌 그대로 실행했어요.
 
 - AC-1: met — 종료 0, `preview_lists_rules_and_writes_nothing` 1 통과.
 - AC-2: met — 종료 0, `claudeignore_entries_are_picked_one_by_one` 1 통과. 픽스처는 메인 체크아웃의 `.claudeignore` 와 바이트까지 같아요(`cmp`).
 - AC-3: met — 종료 0, `matched_file_is_never_opened` 1 통과.
 - AC-4: met — 종료 0, `the_walk_is_bounded_and_stays_in_the_project` 1 통과.
-- AC-5: not_run — 조각 B.
-- AC-6: not_run — 조각 B.
-- AC-7: not_run — 조각 B.
-- AC-8: not_run — 조각 B.
+- AC-5: met — 종료 0, `key_rules_stay_after_every_negation` 1 통과.
+- AC-6: met — 종료 0, `apply_adds_rules_without_taking_ownership` 1 통과(영수증 `owned` 불변, 파일 지문 갱신, 백업 폴더의 원본, 뒤이은 `claude-settings-plan` 이 `unchanged`).
+- AC-7: met — 종료 0, `ignored_root_settings_refuses_the_write` 1 통과.
+- AC-8: met — 종료 0, `retiring_claudeignore_needs_the_second_pick` 1 통과.
 - AC-9: met — 종료 0, `preview_states_rule_forms_and_trust_behavior` 1 통과.
 - AC-10: not_run — 조각 C.
-- AC-11: not_run — 조각 A 의 영수증은 이 커밋 뒤에 받아 카드의 READY 노트에 적어요.
+- AC-11: not_run — 조각 B 의 체크 결과는 이 커밋 뒤에 받아 카드의 READY 노트에 적어요.
 
 SPEC 에 없던 안전장치 두 가지를 테스트와 함께 넣었어요: 링크로 바뀐 `.claudeignore` 는 읽지 않고(`a_linked_ignore_list_is_not_read`), 추적 파일을 물을 때 저장소가 설정한 `core.fsmonitor` 프로그램은 돌리지 않아요(`the_preview_runs_no_program_the_repository_configures`). 뮤턴트 9개는 모두 해당 테스트가 종료 101 로 잡았어요.
+
+조각 B 에서 SPEC 에 없던 정한 점(기본값, 카드 노트에 같은 내용): 고르기는 `--pick RULE` 반복이고 미리보기가 내는 규칙만 받아요. 퇴역(`--retire-claudeignore`)은 규칙을 하나 이상 고른 때만 되고, 마지막 단계의 이름 바꾸기(복사 후 삭제 아님)예요. 키 파일 규칙은 `Read(...)` 인자가 자격 증명 모양이면 모두 해당해요(`.claudeignore` 권장과 같은 판정이라 `Read(.env.production)` 도 해요). 영수증은 이미 있을 때만 파일 지문을 갱신하고 `owned` 는 그대로예요. 쓰기 검사(`settings_write`)의 관찰 줄은 알리고 기록할 뿐 거절하지 않아요. 같은 고르기를 다시 적용하면 쓰지 않고 `unchanged` 로 답해요. 퇴역 이동이 실패하면 규칙은 적용된 채 `partial apply` 오류로 말해요.
+
+뮤턴트 7개를 하나씩 넣어 해당 테스트가 종료 101 로 잡았어요(무시된 파일 거절 제거, 다이제스트 확인 제거, 퇴역 링크 거절 제거, 두 번째 선택 없이 퇴역, 순서 맞춤 제거, 키 규칙 판정을 정확 일치로 되돌림, 영수증 지문 미갱신). 마지막은 처음에 살아남아서 `apply_adds_rules_without_taking_ownership` 에 지문 단언을 더한 뒤 잡혔어요.
 
 한계: 이름 맞춤은 대소문자를 구분해요(규칙이 대소문자를 어떻게 보는지는 문서에서 확인하지 못했어요). 맞은 파일은 줄이지 않고 모두 내므로 큰 저장소에서는 답이 커져요. 실제 Claude Code 의 맞춤, Windows, Linux 는 not_run 이에요.
