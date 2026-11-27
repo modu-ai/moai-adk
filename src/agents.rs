@@ -881,7 +881,7 @@ fn narrowing(
     }
     let mut prefixes = vec![state.to_string()];
     if state == state_root::MOAI_DIR {
-        prefixes.push(crate::PROJECT_STATE_DIR.to_string());
+        prefixes.push(state_root::EARLIER_PROJECT_DIR.to_string());
     }
     let mut specs: Vec<String> = Vec::new();
     for prefix in &prefixes {
