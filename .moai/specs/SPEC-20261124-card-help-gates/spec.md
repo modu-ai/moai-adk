@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-card-help-gates
 title: "Card help and gate tests say exactly what the gates do, and they can fail"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-24
+approval:
+  by: user
+  at: 2026-11-27
+  basis: "리더 노트 10807 (USER-APPROVAL, 2026-11-27, 리더 세션의 질문 도구): 사용자가 직접 골랐어요 — \"둘 다 거절 (Recommended)\"(D-3 A), D-4 a(`card spec` 에 관계 옵션을 더하지 않아요), \"함수로 빼서 테스트 (Recommended)\"(D-5 a). 후속·분리 관계가 있는 카드, SPEC 없는 카드, 같은 SPEC 으로의 다시 연결, `--unlink`, 이미 한 SPEC 에 이어진 열린 카드 둘 이상은 거절하지 않아요."
+  digest: "sha256:0080e7f151e802b96cd076da8d7d0c48faae8684a784c37a214f42e07028ec09"
 ---
 
 # Card help and gate tests say exactly what the gates do, and they can fail
@@ -29,7 +34,7 @@ created: 2026-11-24
 ## Interview
 
 - Q1: 무엇이 필요한가요? → A: 카드 C-437 의 남은 기준(리더 지시, 2026-11-27): 기준 2 의 시계 반쪽, 기준 8, 기준 9. 리더는 기준 8 이 게이트 동작을 바꾸므로 새로 거절되는 것과 대가를 선택지로 적어 달라고 했어요.
-- Q2: 아래 Decisions 의 "승인 때 골라요" 항목(D-3, D-4, D-5)을 어떻게 고를까요? → A: (아직 답이 없어요. 사용자가 고른 뒤에 리더가 노트로 옮기면 이 줄에 옮겨 적어요.)
+- Q2: 아래 Decisions 의 "승인 때 골라요" 항목(D-3, D-4, D-5)을 어떻게 고를까요? → A: 사용자가 직접 골랐어요(2026-11-27, 리더 세션의 질문 도구, 원장 노트 10807): D-3 A "둘 다 거절 (Recommended)", D-4 a (`card spec` 에 관계 옵션을 더하지 않아요), D-5 a "함수로 빼서 테스트 (Recommended)". 세 가지 모두 초안의 기본값과 같아요.
 
 ## Non-goals
 
