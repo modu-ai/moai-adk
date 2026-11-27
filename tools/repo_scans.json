@@ -2463,6 +2463,7 @@
         "repo_scans_table",
         "retired_host_words",
         "retired_hosts_layer",
+        "review_names_floor",
         "style_banner_scan",
         "test_weakening",
         "worktree_cli",
@@ -2500,6 +2501,7 @@
         "tests/repo_scans_cli.rs",
         "tests/retired_host_words.rs",
         "tests/retired_hosts_layer.rs",
+        "tests/review_names_floor.rs",
         "tests/test_weakening.rs",
         "tests/worktree_cli.rs",
         "tests/style_banner_scan.rs",
@@ -2691,6 +2693,9 @@
           "prefix": "src/recovery.rs"
         },
         {
+          "prefix": "src/review_names.rs"
+        },
+        {
           "prefix": "src/session.rs"
         },
         {
@@ -2767,6 +2772,7 @@
         "repo_scans_cli",
         "repo_scans_table",
         "review_checklist_cli",
+        "review_names_floor",
         "search_atlas",
         "skill_text_citations",
         "style_banner_scan",
@@ -2786,6 +2792,7 @@
         "tests/protected_paths_one_list.rs",
         "tests/repo_scans_cli.rs",
         "tests/review_checklist_cli.rs",
+        "tests/review_names_floor.rs",
         "tests/search_atlas.rs",
         "tests/skill_text_citations.rs",
         "tests/style_banner_scan.rs",
