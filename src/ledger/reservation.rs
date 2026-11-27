@@ -185,8 +185,12 @@ pub enum FenceError {
     WrongHolder {
         held_by: String,
     },
-    /// The current reservation's lease ended at `lease_until` (DB clock `now`).
+    /// The current reservation's lease ended at `lease_until` (DB clock `now`). The caller is the
+    /// holder (the holder check comes first), so `card renew` of this card and generation keeps
+    /// the reservation (SPEC-20261127-waiting-card-lease REQ-4).
     LeaseExpired {
+        card_id: i64,
+        generation: i64,
         lease_until: i64,
         now: i64,
     },
@@ -254,9 +258,16 @@ impl std::fmt::Display for FenceError {
                 f,
                 "reservation conflict in card: the current reservation is held by {held_by:?}"
             ),
-            FenceError::LeaseExpired { lease_until, now } => write!(
+            FenceError::LeaseExpired {
+                card_id,
+                generation,
+                lease_until,
+                now,
+            } => write!(
                 f,
-                "reservation conflict in card: the lease ended at {lease_until} (now {now})"
+                "reservation conflict in card: the lease ended at {lease_until} (now {now}); \
+                 the holder keeps the card at this generation with `moai card renew C-{card_id} \
+                 --generation {generation}`, no reclaim needed"
             ),
             FenceError::CardInReview {
                 card_id,
@@ -913,6 +924,8 @@ fn evaluate(
     }
     if need_live && lease_ended(row.lease_until, now) {
         return Ok(Err(FenceError::LeaseExpired {
+            card_id,
+            generation: current,
             lease_until: row.lease_until,
             now,
         }));
@@ -2337,6 +2350,8 @@ mod tests {
             ),
             (
                 FenceError::LeaseExpired {
+                    card_id: 1,
+                    generation: 1,
                     lease_until: 1,
                     now: 2,
                 },
@@ -2372,6 +2387,8 @@ mod tests {
         }
         .is_recorded());
         assert!(FenceError::LeaseExpired {
+            card_id: 1,
+            generation: 1,
             lease_until: 1,
             now: 2
         }
