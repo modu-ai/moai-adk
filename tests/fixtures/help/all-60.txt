@@ -170,8 +170,8 @@ Update and move
                                    clone's worktrees
   worktree-move-apply              Move the previewed
                                    worktrees
-  update-plan                      Preview an update of
-                                   every host copy
+  update-plan                      Preview what update
+                                   writes to host copies
   update-apply                     Apply a previewed update
                                    host by host
   reports-move-plan                Preview moving the
