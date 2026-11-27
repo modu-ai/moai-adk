@@ -133,7 +133,7 @@ mod style_banner {
     const OLD_NAME: &str = "MoAI-Easy";
 
     /// Every file that may still hold the earlier name, each with the reason it keeps it.
-    const OLD_NAME_ALLOWED: [(&str, &str); 28] = [
+    const OLD_NAME_ALLOWED: [(&str, &str); 27] = [
         (
             "src/home_style.rs",
             "the move's source: the earlier file name and value `moai update` moves away from",
@@ -165,10 +165,6 @@ mod style_banner {
         ("tests/go_state_cli.rs", "Go generation fixture"),
         ("tests/go_state_preview_cli.rs", "Go generation fixture"),
         ("tests/go_project_real_run_cli.rs", "Go generation fixture"),
-        (
-            "tests/common/go_project_real_run.rs",
-            "Go generation fixture",
-        ),
         ("tests/project_update_plan_cli.rs", "Go generation fixture"),
         (
             "tests/style_banner_scan.rs",
@@ -246,9 +242,12 @@ mod style_banner {
         for dir in ["src", "tests", "skills", "templates", "tools"] {
             files(&root.join(dir), &mut all);
         }
+        // The Go generation helper is matched by prefix: spelling its full path in this file would
+        // make the Windows gate scan read this file as an includer of the helper.
         let by_prefix = [
             "tests/fixtures/statusline/golden/a05-pr-approved-effort.",
             "tests/fixtures/update_tux/preview-",
+            "tests/common/go_project_real_run.",
         ];
         let mut seen = std::collections::BTreeSet::new();
         for path in all {
