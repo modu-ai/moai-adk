@@ -651,6 +651,27 @@ fn work_is_picked_by_the_leading_word() {
     );
 }
 
+/// SPEC-20261127-waiting-card-lease REQ-3: the one sentence that tells a lane to renew its held
+/// card before it waits, and to renew rather than reclaim a lease of its own that ended. The WORK
+/// route and the lane rules carry it whole.
+const WORK_RENEW_SENTENCE: &str = "Before you wait for the leader's answer or for another card's landing, run `moai card renew <card> --generation <g> --lease-secs 86400`; when your own lease has already ended, run the same command instead of `moai card reclaim`, which counts against the three-reclaim limit.";
+
+#[test]
+fn work_renews_before_waiting() {
+    let work = read("workflows/work.md");
+    assert!(
+        work.contains(WORK_RENEW_SENTENCE),
+        "work.md lacks {WORK_RENEW_SENTENCE:?}"
+    );
+    let lane_rules =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/lane-rules.md"))
+            .expect("docs/lane-rules.md");
+    assert!(
+        section(&lane_rules, "Blocks and limits").contains(WORK_RENEW_SENTENCE),
+        "the lane rules (Blocks and limits) lack the renew sentence"
+    );
+}
+
 #[test]
 fn absorb_project_carries_the_setup_steps() {
     let project = read("workflows/project.md");
