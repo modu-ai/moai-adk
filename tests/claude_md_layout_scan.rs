@@ -316,6 +316,7 @@ const CLAUDE_RS: &str = "src/claude.rs";
 const UPDATE_RS: &str = "src/project_update.rs";
 const DECLINED: &str = "src/project_update/declined.rs";
 const GUIDE: &str = "src/project_update/guide.rs";
+const LEFTOVERS: &str = "src/project_update/leftovers.rs";
 const MERGE_APPLY: &str = "src/ops/agents_merge_apply.rs";
 const MERGE_PLAN: &str = "src/ops/agents_merge_plan.rs";
 const MERGE_REVERT: &str = "src/ops/agents_merge_revert.rs";
@@ -404,6 +405,8 @@ const EXCEPTIONS: &[Row] = &[
 
     row(DECLINED, r#"["AGENTS.md", "AGENTS.local.md"]"#, READ),
     row(DECLINED, "declining leaves AGENTS.md, AGENTS.local.md and the CLAUDE files as they are", ADVISE),
+
+    row(LEFTOVERS, r#"["CLAUDE.md", "AGENTS.md", "AGENTS.local.md"]"#, GUARD),
 
     row(GUIDE, "Moving your AGENTS.md text into the CLAUDE files", MOVE),
     row(GUIDE, "Move the text of your AGENTS.md and AGENTS.local.md files into the CLAUDE files.", MOVE),
