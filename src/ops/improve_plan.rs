@@ -277,15 +277,14 @@ fn path_gate(root: &Path, rel: &str) -> (Vec<Failure>, bool) {
         let Ok(meta) = std::fs::symlink_metadata(&cur) else {
             return bad("the target does not exist below the project folder");
         };
-        if meta.file_type().is_symlink() {
-            return bad("the target path goes through a symbolic link");
-        }
+        // The metadata of a link (`symlink_metadata`) is neither a file nor a folder, so a
+        // symbolic link anywhere on the path, the target included, fails one of these two checks.
         let last = i + 1 == parts.len();
         if last && !meta.is_file() {
-            return bad("the target is not a regular file");
+            return bad("the target is not a regular file (a link or a folder is refused)");
         }
         if !last && !meta.is_dir() {
-            return bad("the target path goes through something that is not a folder");
+            return bad("the target path goes through a link or something that is not a folder");
         }
     }
     (Vec::new(), true)
