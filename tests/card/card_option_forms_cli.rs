@@ -222,7 +222,12 @@ impl World {
                 .expect("run moai"),
         );
         let id = made["id"].as_str().unwrap().to_string();
-        let path = moai_cli::state_root::path(&self.project, "specs")
+        // The SPEC folder is `MOAI_DIR/specs` whatever the project's own state folder resolves
+        // to (`spec_doc::specs_dir` joins the same constant).
+        let path = self
+            .project
+            .join(moai_cli::state_root::MOAI_DIR)
+            .join("specs")
             .join(&id)
             .join("spec.md");
         fs::write(&path, filled(&fs::read_to_string(&path).unwrap())).unwrap();
