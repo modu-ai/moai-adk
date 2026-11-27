@@ -26,6 +26,7 @@ HEADS 는 `C-<n>`(카드의 가장 새 읽히는 READY head) 또는 `C-<n>=<40�
 | `trailers` | `trailers::check` 가 `<tip>..<head>` 에서 실패를 낸다 |
 | `spec` | 이름 붙은 SPEC 의 오류, head 에 spec.md 없음, `Moai-Spec` trailer 없음 |
 | `result_missing` | SPEC 의 AC 중 `## Result` 에 줄이 없는 것 |
+| `ac_unverified` | SPEC 의 AC 중 `verify:` 명령도 `manual:` 체크도 없는 것(`unknown:` 만 있는 것 포함). `card land` 가 거절하는 바로 그 경우(`spec_doc::unverified`)라서 READY 전에 말해요. `detail`: `spec`, `acs` |
 | `conflict` | tip 과 또는 앞선 head 와 병합하면 충돌한다. `detail.files`·`detail.with`. GitHub 가 돌리는 글자 병합으로 본다(복제본에 등록된 병합 드라이버를 덮는다) |
 
 **경고(`warnings[]`, SPEC-20261123-ready-mutant-line)**: 같은 모양 `{code, card, head, detail}` 이고 `ok`·`findings`·종료 코드를 바꾸지 않는다(관찰 단계, `warning_note`; `heads[].warnings` 는 개수). head 를 이름으로 가진 가장 새 READY 노트의 본문을 첫 줄 뒤부터 읽고, 줄은 `guard-mutant:` 로 시작할 때만(앞 공백과 `- ` 는 허용) 읽는다. 모양은 `guard-mutant: <시험> | <뺀·뒤집은 코드> | exit <n>`(n 은 그 시험이 뮤턴트에서 낸 종료 코드) 또는 `guard-mutant: none | <이유>`(새 지킴 시험이 없음)다.
