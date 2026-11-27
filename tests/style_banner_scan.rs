@@ -128,4 +128,196 @@ mod style_banner {
             assert!(text.contains(&beside), "{rel} does not spell `{beside}`");
         }
     }
+
+    /// The name the style carried before SPEC-20261127-output-style-moai-style.
+    const OLD_NAME: &str = "MoAI-Easy";
+
+    /// Every file that may still hold the earlier name, each with the reason it keeps it.
+    const OLD_NAME_ALLOWED: [(&str, &str); 29] = [
+        (
+            "src/home_style.rs",
+            "the move's source: the earlier file name and value `moai update` moves away from",
+        ),
+        (
+            "src/claude.rs",
+            "the Go generation wrote this name; read-only detection of what it left",
+        ),
+        (
+            "src/claude_settings_merge.rs",
+            "the Go generation wrote this name; read-only detection of what it left",
+        ),
+        (
+            "src/go_state.rs",
+            "the Go generation wrote this name; read-only detection of what it left",
+        ),
+        (
+            "tests/home_style_cli.rs",
+            "tests of the move: the earlier name is its source",
+        ),
+        (
+            "tests/home_style_ownership_cli.rs",
+            "tests of the move and of the earlier renders",
+        ),
+        (
+            "tests/update_user_layer_cli.rs",
+            "the `moai update` test of the move",
+        ),
+        ("tests/go_state_cli.rs", "Go generation fixture"),
+        ("tests/go_state_preview_cli.rs", "Go generation fixture"),
+        ("tests/go_project_real_run_cli.rs", "Go generation fixture"),
+        ("tests/project_update_plan_cli.rs", "Go generation fixture"),
+        (
+            "tests/project_update_go_residue_cli.rs",
+            "Go generation fixture: a project shaped like one the Go generation left, with its style file and `outputStyle`",
+        ),
+        (
+            "tests/worktree_place_cli.rs",
+            "a settings merge pin whose sample `outputStyle` is the value the Go generation wrote",
+        ),
+        (
+            "tests/style_banner_scan.rs",
+            "this scan, and the forbidden star banner",
+        ),
+        (
+            "tests/fixtures/home-style/render-1.md",
+            "an earlier render, pinned by its sha256",
+        ),
+        (
+            "tests/fixtures/home-style/render-2.md",
+            "an earlier render, pinned by its sha256",
+        ),
+        (
+            "tests/fixtures/home-style/render-3.md",
+            "an earlier render, pinned by its sha256",
+        ),
+        (
+            "tests/fixtures/home-style/render-4.md",
+            "an earlier render, pinned by its sha256",
+        ),
+        (
+            "tests/fixtures/home-style/render-5.md",
+            "an earlier render, pinned by its sha256",
+        ),
+        (
+            "tests/fixtures/home-style/render-6.md",
+            "an earlier render, pinned by its sha256",
+        ),
+        (
+            "tests/fixtures/home-style/render-7.md",
+            "an earlier render, pinned by its sha256",
+        ),
+        (
+            "tests/fixtures/home-style/render-8.md",
+            "the render before this change, pinned by its sha256",
+        ),
+        (
+            "tests/fixtures/atlas/source_snapshot.json",
+            "a snapshot of the Go generation detection source",
+        ),
+        (
+            "skills/moai-html-report/SKILL.md",
+            "the tier map keeps the earlier name for sessions started before the rename",
+        ),
+        (
+            "templates/bundle-packs/.claude/skills/moai-domain-html-report/SKILL.md",
+            "the same tier map in the bundle-pack copy",
+        ),
+        (
+            "templates/claude/output-styles/moai-easy.md",
+            "upstream adapted template, not renamed (D-9)",
+        ),
+        (
+            "templates/claude/output-styles/NOTICE.md",
+            "names the upstream adapted templates (D-9)",
+        ),
+        (
+            "tools/repo_scans.json",
+            "the forbidden banner wording `MoAI-Easy ★`",
+        ),
+        (
+            "tests/fixtures/statusline/stdin/a05-pr-approved-effort.json",
+            "a recorded Claude Code status line input and its goldens",
+        ),
+    ];
+
+    /// AC-12 (REQ-1, REQ-21): the earlier name stays only in the files of the list above; a
+    /// listed file that no longer holds it is a stale entry. The recorded status line goldens and
+    /// update screens are matched by prefix.
+    #[test]
+    fn ac12_the_old_style_name_stays_only_where_it_is_the_move_source_or_history() {
+        let root = Path::new(ROOT);
+        let mut all = Vec::new();
+        for dir in ["src", "tests", "skills", "templates", "tools"] {
+            files(&root.join(dir), &mut all);
+        }
+        // The Go generation helper is matched by prefix: spelling its full path in this file would
+        // make the Windows gate scan read this file as an includer of the helper.
+        let by_prefix = [
+            "tests/fixtures/statusline/golden/a05-pr-approved-effort.",
+            "tests/fixtures/update_tux/preview-",
+            "tests/common/go_project_real_run.",
+        ];
+        let mut seen = std::collections::BTreeSet::new();
+        for path in all {
+            let Ok(text) = fs::read_to_string(&path) else {
+                continue;
+            };
+            if text.contains(OLD_NAME) {
+                let rel = path
+                    .strip_prefix(root)
+                    .unwrap()
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                seen.insert(rel);
+            }
+        }
+        let listed: std::collections::BTreeSet<String> = OLD_NAME_ALLOWED
+            .iter()
+            .map(|(p, why)| {
+                assert!(!why.is_empty(), "{p} has no reason");
+                (*p).to_string()
+            })
+            .collect();
+        let unlisted: Vec<&String> = seen
+            .iter()
+            .filter(|p| !listed.contains(*p) && !by_prefix.iter().any(|b| p.starts_with(b)))
+            .collect();
+        assert!(
+            unlisted.is_empty(),
+            "the earlier style name `{OLD_NAME}` is in files not on the list:\n{}",
+            unlisted
+                .iter()
+                .map(|p| p.as_str())
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
+        let stale: Vec<&String> = listed.iter().filter(|p| !seen.contains(*p)).collect();
+        assert!(stale.is_empty(), "stale entries on the list: {stale:?}");
+        for prefix in by_prefix {
+            assert!(
+                seen.iter().any(|p| p.starts_with(prefix)),
+                "no file with the prefix {prefix}"
+            );
+        }
+    }
+
+    /// AC-13 (REQ-21): the tier map of the html-report skill and of its bundle-pack copy resolves
+    /// `MoAI-Style` to `basic` and keeps `MoAI-Easy` resolving to `basic` as the earlier name.
+    #[test]
+    fn ac13_the_html_report_tier_map_knows_the_new_and_the_earlier_style_name() {
+        for rel in [
+            "skills/moai-html-report/SKILL.md",
+            "templates/bundle-packs/.claude/skills/moai-domain-html-report/SKILL.md",
+        ] {
+            let text = fs::read_to_string(Path::new(ROOT).join(rel)).unwrap();
+            for name in ["MoAI-Style", "MoAI-Easy"] {
+                let row = format!("| `{name}` | `basic` |");
+                assert_eq!(text.matches(&row).count(), 1, "{rel}: one `{row}` row");
+            }
+            assert!(
+                text.contains("With `MoAI-Style` active, this resolves to the `basic` tier"),
+                "{rel}: the worked example names the new style"
+            );
+        }
+    }
 }

@@ -56,7 +56,7 @@ fn apply(project: &Path, home: &Path, desired: &Value, digest: &str) -> (Option<
 }
 
 fn desired() -> Value {
-    json!({"outputStyle": "MoAI-Easy",
+    json!({"outputStyle": "MoAI-Style",
            "statusLine": {"type": "command", "command": "python3 \"${CLAUDE_PROJECT_DIR}/.moai-cli/statusline.py\""}})
 }
 
@@ -92,7 +92,7 @@ fn plan_apply_then_replan_is_a_no_op() {
     let settings: Value =
         serde_json::from_slice(&fs::read(p.join(".claude/settings.json")).unwrap()).unwrap();
     assert_eq!(settings["model"], json!("user-choice"), "user key kept");
-    assert_eq!(settings["outputStyle"], json!("MoAI-Easy"));
+    assert_eq!(settings["outputStyle"], json!("MoAI-Style"));
     let receipt: Value = serde_json::from_slice(
         &fs::read(moai_cli::state_root::path(
             p,

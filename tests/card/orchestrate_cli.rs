@@ -7,6 +7,7 @@
 //! started: the host state is a fixture file in the shape of `claude agents --json`.
 #![cfg(unix)]
 
+// check-affected: when-changed src/card/work.rs
 use crate::common;
 
 use common::git::git;
@@ -124,9 +125,11 @@ impl World {
         fs::write(&file, serde_json::to_vec(&v).unwrap()).unwrap();
     }
 
-    fn sql(&self, sql: &str, params: impl rusqlite::Params) {
+    /// Runs one statement and answers the row id of the last insert of its connection.
+    fn sql(&self, sql: &str, params: impl rusqlite::Params) -> i64 {
         let w = ledger::open_write(self.home.path(), "demo").unwrap();
         w.conn().execute(sql, params).unwrap();
+        w.conn().last_insert_rowid()
     }
 
     /// A card with one open criterion; `kind` `research` needs no SPEC.
@@ -160,15 +163,17 @@ impl World {
         );
     }
 
-    fn note(&self, card: i64, author: &str, body: &str) {
+    /// Adds a local note and answers its id.
+    fn note(&self, card: i64, author: &str, body: &str) -> i64 {
         self.sql(
             "INSERT INTO card_note (card_id, kind, author, origin, body, created_at) \
              VALUES (?1, 'report', ?2, 'local', ?3, 1000)",
             rusqlite::params![card, author, body],
-        );
+        )
     }
 
-    fn verdict(&self, card: i64, head: &str, pass: bool, reviewer: &str) {
+    /// Adds a `card.verdict` event and answers its id.
+    fn verdict(&self, card: i64, head: &str, pass: bool, reviewer: &str) -> i64 {
         let n = self.events.get() + 1;
         self.events.set(n);
         let payload = json!({
@@ -184,7 +189,7 @@ impl World {
                 card,
                 payload.to_string()
             ],
-        );
+        )
     }
 
     fn ready_note(&self, card: i64, head: &str) {
@@ -197,12 +202,24 @@ impl World {
 
     /// A verdict as a card note, the shape the audit leaves: `AUDIT #<card> (x) head <head> base
     /// <base> — verdict: <word>` as the first line.
-    fn audit_note(&self, card: i64, author: &str, head: &str, word: &str) {
+    fn audit_note(&self, card: i64, author: &str, head: &str, word: &str) -> i64 {
+        self.note_opening_with("AUDIT", card, author, head, word)
+    }
+
+    /// The note of [`World::audit_note`] with `first` as the first word of its first line.
+    fn note_opening_with(
+        &self,
+        first: &str,
+        card: i64,
+        author: &str,
+        head: &str,
+        word: &str,
+    ) -> i64 {
         self.note(
             card,
             author,
-            &format!("AUDIT #{card} (x) head {head} base {BASE} — verdict: {word}\nread and ran"),
-        );
+            &format!("{first} #{card} (x) head {head} base {BASE} — verdict: {word}\nread and ran"),
+        )
     }
 
     /// An empty commit on the current branch; its full id.
@@ -273,7 +290,7 @@ fn lane<'a>(plan: &'a Value, name: &str) -> &'a Value {
 // ---- plan_ (AC-1: REQ-1, REQ-2, REQ-11) -------------------------------------------------------
 
 #[test]
-fn plan_prints_the_six_parts_and_writes_nothing() {
+fn plan_prints_the_seven_parts_and_writes_nothing() {
     let w = world();
     w.register(Some(S_LEADER), "leader", "leader");
     w.lane("agent-1", S_ONE);
@@ -285,6 +302,7 @@ fn plan_prints_the_six_parts_and_writes_nothing() {
         "lanes",
         "actions",
         "land_queue",
+        "superseded",
         "attention",
         "host",
     ] {
@@ -313,7 +331,7 @@ fn plan_of_a_project_without_a_ledger_is_empty_and_exits_zero() {
         .unwrap();
     let plan = result(&out);
     assert_eq!(plan["ledger"], json!("absent"));
-    for part in ["lanes", "actions", "land_queue", "attention"] {
+    for part in ["lanes", "actions", "land_queue", "superseded", "attention"] {
         assert_eq!(plan[part], json!([]), "{part}: {plan}");
     }
     assert_eq!(plan["writes"], json!(false));
@@ -875,10 +893,13 @@ fn judged_lines_of_another_shape_judge_nothing() {
         ],
         "{plan}"
     );
-    // Only the two other heads of C-3 are judged, and neither is the head C-3 handed back.
-    let queue = plan["land_queue"].as_array().unwrap();
-    let listed: Vec<(&str, &str, bool)> = queue
-        .iter()
+    // Only the two other heads of C-3 are judged, and neither is the head C-3 handed back: they
+    // are listed apart from the landing queue.
+    assert_eq!(plan["land_queue"], json!([]), "{plan}");
+    let mut listed: Vec<(&str, &str, bool)> = plan["superseded"]
+        .as_array()
+        .into_iter()
+        .flatten()
         .map(|q| {
             (
                 q["card"].as_str().unwrap(),
@@ -887,11 +908,49 @@ fn judged_lines_of_another_shape_judge_nothing() {
             )
         })
         .collect();
+    listed.sort_unstable();
     assert_eq!(
         listed,
-        vec![("C-3", HEAD_B, false), ("C-3", HEAD_D, false)],
+        vec![("C-3", HEAD_D, false), ("C-3", HEAD_B, false)],
         "{plan}"
     );
+}
+
+// SPEC-20261126-orchestrate-superseded-heads AC-2 (REQ-4)
+#[test]
+fn judged_a_lowercase_or_mixed_case_audit_line_judges_nothing() {
+    let w = world();
+    // C-1 and C-2: a replaced head and the current head, each judged only by a line that is a
+    // verdict in everything but the spelling of its first word.
+    for (card, first) in [(1, "audit"), (2, "Audit")] {
+        w.card(card, "research", "ready", "p1", &["docs/x.md"]);
+        w.reserve(card, 1, S_TWO, "released");
+        for head in [HEAD_A, HEAD_B] {
+            w.ready_note(card, head);
+            w.note_opening_with(first, card, "leader", head, "PASS");
+        }
+    }
+    // C-3, the control: the same line with the exact spelling judges its head.
+    w.card(3, "research", "ready", "p1", &["docs/x.md"]);
+    w.reserve(3, 1, S_TWO, "released");
+    w.ready_note(3, HEAD_C);
+    w.note_opening_with("AUDIT", 3, "leader", HEAD_C, "PASS");
+    let plan = w.plan();
+    assert_eq!(
+        audited(&plan),
+        vec![
+            ("C-1".to_string(), HEAD_B.to_string()),
+            ("C-2".to_string(), HEAD_B.to_string()),
+        ],
+        "{plan}"
+    );
+    assert_eq!(
+        heads_in(&plan, "land_queue"),
+        vec![("C-3".to_string(), HEAD_C.to_string())],
+        "{plan}"
+    );
+    // That the list is printed is pinned by the `superseded_` tests; here it names nothing.
+    assert!(heads_in(&plan, "superseded").is_empty(), "{plan}");
 }
 
 #[test]
@@ -932,6 +991,222 @@ fn judged_a_note_whose_reviewer_is_an_author_session_is_never_listed() {
     let plan = w.plan();
     assert!(audited(&plan).is_empty(), "{plan}");
     assert!(plan["land_queue"].as_array().unwrap().is_empty(), "{plan}");
+}
+
+// ---- superseded_ (SPEC-20261126-orchestrate-superseded-heads AC-1: REQ-1, REQ-2, REQ-3) -------
+
+/// The `(card, head)` pairs of the list `part`, sorted: no requirement orders `superseded`. A
+/// list that is not printed reads as empty.
+fn heads_in(plan: &Value, part: &str) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = plan[part]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|q| {
+            (
+                q["card"].as_str().unwrap().to_string(),
+                q["head"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect();
+    out.sort_unstable();
+    out
+}
+
+fn pairs(expected: &[(&str, &str)]) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = expected
+        .iter()
+        .map(|(card, head)| (card.to_string(), head.to_string()))
+        .collect();
+    out.sort_unstable();
+    out
+}
+
+/// The entry of `card` in the list `part`.
+fn entry_of<'a>(plan: &'a Value, part: &str, card: &str) -> &'a Value {
+    plan[part]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|q| q["card"] == json!(card))
+        .unwrap_or_else(|| panic!("no entry of {card} in {part}: {plan}"))
+}
+
+#[test]
+fn superseded_a_replaced_pass_head_leaves_the_queue_for_both_sources() {
+    let w = world();
+    // C-1 is judged by events, C-2 by notes. Each hands back a head that passes, then a newer
+    // head that passes in its turn.
+    for id in [1, 2] {
+        w.card(id, "research", "ready", "p1", &["docs/x.md"]);
+        w.reserve(id, 1, S_TWO, "released");
+    }
+    w.ready_note(1, HEAD_A);
+    let old_event = w.verdict(1, HEAD_A, true, S_AUDITOR);
+    w.ready_note(1, HEAD_B);
+    w.verdict(1, HEAD_B, true, S_AUDITOR);
+    w.ready_note(2, HEAD_C);
+    let old_note = w.audit_note(2, "leader", HEAD_C, "PASS");
+    w.ready_note(2, HEAD_D);
+    w.audit_note(2, "leader", HEAD_D, "PASS");
+    let before = w.home.snapshot();
+    let plan = w.plan();
+    assert_eq!(
+        heads_in(&plan, "land_queue"),
+        pairs(&[("C-1", HEAD_B), ("C-2", HEAD_D)]),
+        "only the current heads wait for their landing: {plan}"
+    );
+    assert_eq!(
+        heads_in(&plan, "superseded"),
+        pairs(&[("C-1", HEAD_A), ("C-2", HEAD_C)]),
+        "{plan}"
+    );
+    for (card, head) in [("C-1", HEAD_B), ("C-2", HEAD_D)] {
+        let entry = entry_of(&plan, "land_queue", card);
+        assert_eq!(entry["current"], json!(true), "{entry}");
+        assert_eq!(
+            entry["command"],
+            json!(format!("moai card land {card} --head {head} --by leader"))
+        );
+    }
+    let expected = [
+        json!({
+            "card": "C-1", "head": HEAD_A, "reviewer": S_AUDITOR, "source": "event",
+            "tier": 1, "event": old_event, "note": null, "current": false,
+        }),
+        json!({
+            "card": "C-2", "head": HEAD_C, "reviewer": "leader", "source": "note",
+            "tier": null, "event": null, "note": old_note, "current": false,
+        }),
+    ];
+    for want in expected {
+        let card = want["card"].as_str().unwrap();
+        let mut entry = entry_of(&plan, "superseded", card).clone();
+        let key = entry.as_object_mut().unwrap().remove("key");
+        assert!(
+            key.as_ref()
+                .and_then(Value::as_str)
+                .is_some_and(|k| !k.is_empty()),
+            "no key on the entry of {card}: {plan}"
+        );
+        // The whole of the rest of the entry: a `command` field would make it differ.
+        assert_eq!(entry, want, "{plan}");
+    }
+    let mut keys: Vec<&str> = ["land_queue", "superseded"]
+        .iter()
+        .flat_map(|part| plan[*part].as_array().unwrap())
+        .map(|q| q["key"].as_str().unwrap())
+        .collect();
+    keys.sort_unstable();
+    keys.dedup();
+    assert_eq!(keys.len(), 4, "keys are unique over both lists: {plan}");
+    assert_eq!(before, w.home.snapshot(), "the plan writes nothing");
+}
+
+#[test]
+fn superseded_without_a_hand_back_note_the_newest_judged_head_is_current() {
+    let w = world();
+    w.card(1, "research", "review", "p1", &["docs/a.md"]);
+    w.reserve(1, 1, S_TWO, "held_for_review");
+    w.verdict(1, HEAD_A, true, S_AUDITOR);
+    w.verdict(1, HEAD_B, true, S_AUDITOR);
+    w.card(2, "research", "review", "p1", &["docs/b.md"]);
+    w.reserve(2, 1, S_TWO, "held_for_review");
+    w.audit_note(2, "leader", HEAD_C, "PASS");
+    w.audit_note(2, "leader", HEAD_D, "PASS");
+    let plan = w.plan();
+    assert_eq!(
+        heads_in(&plan, "land_queue"),
+        pairs(&[("C-1", HEAD_B), ("C-2", HEAD_D)]),
+        "{plan}"
+    );
+    assert_eq!(
+        heads_in(&plan, "superseded"),
+        pairs(&[("C-1", HEAD_A), ("C-2", HEAD_C)]),
+        "{plan}"
+    );
+}
+
+#[test]
+fn superseded_a_replaced_head_that_does_not_qualify_is_in_neither_list() {
+    let w = world();
+    w.mflow_profile();
+    let inside = w.commit("inside");
+    git(&w.project, &["branch", "integ"]);
+    let outside = w.commit("outside");
+    // C-1 and C-2: the replaced head is judged `fail`, by an event and by a note; the current
+    // head passes.
+    for id in [1, 2] {
+        w.card(id, "research", "ready", "p1", &["docs/x.md"]);
+        w.reserve(id, 1, S_TWO, "released");
+        w.ready_note(id, HEAD_A);
+    }
+    w.verdict(1, HEAD_A, false, S_AUDITOR);
+    w.audit_note(2, "leader", HEAD_A, "FAIL");
+    w.ready_note(1, HEAD_B);
+    w.verdict(1, HEAD_B, true, S_AUDITOR);
+    w.ready_note(2, HEAD_B);
+    w.audit_note(2, "leader", HEAD_B, "PASS");
+    // C-3 and C-4: the replaced head passes only by the word of the card's own author session,
+    // in an event and in a note; the newer head is not judged yet.
+    for id in [3, 4] {
+        w.card(id, "research", "ready", "p1", &["docs/x.md"]);
+        w.reserve(id, 1, S_ONE, "released");
+        w.ready_note(id, HEAD_C);
+    }
+    w.verdict(3, HEAD_C, true, S_ONE);
+    w.audit_note(4, S_ONE, HEAD_C, "PASS");
+    w.ready_note(3, HEAD_D);
+    w.ready_note(4, HEAD_D);
+    // C-5: the replaced head is inside the integration tip, so it is landed already.
+    w.card(5, "research", "ready", "p1", &["docs/x.md"]);
+    w.reserve(5, 1, S_TWO, "released");
+    w.ready_note(5, &inside);
+    w.verdict(5, &inside, true, S_AUDITOR);
+    w.ready_note(5, &outside);
+    w.verdict(5, &outside, true, S_AUDITOR);
+    let plan = w.plan();
+    assert_eq!(
+        heads_in(&plan, "land_queue"),
+        pairs(&[("C-1", HEAD_B), ("C-2", HEAD_B), ("C-5", &outside)]),
+        "{plan}"
+    );
+    assert_eq!(plan["superseded"], json!([]), "{plan}");
+}
+
+#[test]
+fn superseded_is_empty_when_no_head_was_replaced() {
+    let w = world();
+    for id in [1, 2, 3] {
+        w.card(id, "research", "ready", "p1", &["docs/x.md"]);
+        w.reserve(id, 1, S_TWO, "released");
+    }
+    w.ready_note(1, HEAD_A);
+    w.verdict(1, HEAD_A, true, S_AUDITOR);
+    w.ready_note(2, HEAD_B);
+    w.audit_note(2, "leader", HEAD_B, "PASS");
+    w.ready_note(3, HEAD_C);
+    let plan = w.plan();
+    assert_eq!(
+        heads_in(&plan, "land_queue"),
+        pairs(&[("C-1", HEAD_A), ("C-2", HEAD_B)]),
+        "{plan}"
+    );
+    assert_eq!(plan["superseded"], json!([]), "{plan}");
+}
+
+#[test]
+fn superseded_is_empty_for_a_project_without_a_ledger() {
+    let home = TempHome::new();
+    let project = home.project("bare");
+    git(&project, &["init", "-q", "-b", "main"]);
+    let out = home
+        .command(&["card", "orchestrate", "plan", project.to_str().unwrap()])
+        .output()
+        .unwrap();
+    let plan = result(&out);
+    assert_eq!(plan["ledger"], json!("absent"));
+    assert_eq!(plan["superseded"], json!([]), "{plan}");
 }
 
 // ---- landed_ (AC-11: REQ-4, REQ-6, REQ-7) -----------------------------------------------------

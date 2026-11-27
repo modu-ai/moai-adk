@@ -5,6 +5,7 @@
 //! Every command runs against a temporary HOME and a temporary git project; the user's real
 //! state folder and registry are not read or written. Ledger rows are inserted with SQL so their
 //! author, state and order are exactly what a case needs. No `claude` or `orca` process starts.
+// check-affected: when-changed src/card/work.rs
 #![cfg(unix)]
 
 mod common;
@@ -137,28 +138,42 @@ impl World {
         let head = head_of(card);
         self.card(card, "ready");
         self.reserve_released(card, S_TWO);
+        self.hand_back(card, &head);
+        self.pass_event(card, &head);
+        head
+    }
+
+    /// A hand-back note of the card that names `head`.
+    fn hand_back(&self, card: i64, head: &str) {
         self.note(
             card,
             "agent-1",
             &format!("LANE-READY-INTEGRATION C-{card} head={head}\nbase={BASE}\nchecks passed"),
         );
+    }
+
+    /// A `pass` verdict event of another session on `head`; its event id.
+    fn pass_event(&self, card: i64, head: &str) -> i64 {
         let n = self.events.get() + 1;
         self.events.set(n);
         let payload = json!({
             "head": head, "base": BASE, "verdict": "pass", "tier": 1,
             "evidence": "read and ran", "receipt": null, "reviewer": S_AUDITOR,
         });
-        self.sql(
-            "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
-             VALUES (?1, 500, ?2, ?3, 'card.verdict', ?4)",
-            rusqlite::params![
-                format!("test-verdict-{n}"),
-                S_AUDITOR,
-                card,
-                payload.to_string()
-            ],
-        );
-        head
+        let w = ledger::open_write(self.home.path(), "demo").unwrap();
+        w.conn()
+            .execute(
+                "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+                 VALUES (?1, 500, ?2, ?3, 'card.verdict', ?4)",
+                rusqlite::params![
+                    format!("test-verdict-{n}"),
+                    S_AUDITOR,
+                    card,
+                    payload.to_string()
+                ],
+            )
+            .unwrap();
+        w.conn().last_insert_rowid()
     }
 
     /// A card in `ready` whose hand-back head carries a first-line `AUDIT … PASS` note.
@@ -257,7 +272,7 @@ fn shape_prints_the_parts_with_numbers_and_writes_nothing() {
     assert_eq!(brief["ledger"], json!("ready"));
     assert_eq!(
         brief["counts"],
-        json!({"queue": 2, "audit": 0, "blocked": 1, "decisions": 1}),
+        json!({"queue": 2, "audit": 0, "blocked": 1, "decisions": 1, "superseded": 0}),
         "{brief}"
     );
     let queue = items(&brief, "queue");
@@ -309,10 +324,50 @@ fn shape_a_project_without_a_ledger_is_empty_and_exits_zero() {
     }
     assert_eq!(
         brief["counts"],
-        json!({"queue": 0, "audit": 0, "blocked": 0, "decisions": 0})
+        json!({"queue": 0, "audit": 0, "blocked": 0, "decisions": 0, "superseded": 0})
     );
     assert_eq!(brief["writes"], json!(false));
     assert_eq!(before, home.snapshot());
+}
+
+// ---- superseded_ (SPEC-20261126-orchestrate-superseded-heads AC-3: REQ-5) ----------------------
+
+#[test]
+fn superseded_a_replaced_pass_head_is_counted_and_left_out_of_the_queue() {
+    let w = world();
+    w.integration_branch();
+    let replaced = w.audited_by_event(1);
+    // A newer hand-back head of the same card, judged `pass` in its turn.
+    let current = head_of(101);
+    w.hand_back(1, &current);
+    let event = w.pass_event(1, &current);
+    let brief = w.brief();
+    assert_eq!(
+        brief["queue"],
+        json!([{"card": "C-1", "head": current, "ref": format!("event:{event}")}]),
+        "only the current head is queued: {brief}"
+    );
+    assert_eq!(
+        brief["counts"],
+        json!({"queue": 1, "audit": 0, "blocked": 0, "decisions": 0, "superseded": 1}),
+        "{brief}"
+    );
+    assert_eq!(brief["omitted"]["queue"], json!(0), "{brief}");
+    assert!(!brief.to_string().contains(&replaced), "{brief}");
+}
+
+#[test]
+fn superseded_a_project_without_a_ledger_counts_zero() {
+    let home = TempHome::new();
+    let project = home.project("bare");
+    git(&project, &["init", "-q", "-b", "main"]);
+    let out = home
+        .command(&["leader", "brief", project.to_str().unwrap()])
+        .output()
+        .unwrap();
+    let brief = result(&out);
+    assert_eq!(brief["ledger"], json!("absent"));
+    assert_eq!(brief["counts"]["superseded"], json!(0), "{brief}");
 }
 
 // ---- size_ (AC-2: REQ-2) ----------------------------------------------------------------------
@@ -435,7 +490,7 @@ fn split_a_decision_is_told_from_a_block_and_answered_or_done_notes_vanish() {
     assert_eq!(blocked, ["C-1", "C-4"], "{brief}");
     assert_eq!(
         brief["counts"],
-        json!({"queue": 0, "audit": 0, "blocked": 2, "decisions": 2})
+        json!({"queue": 0, "audit": 0, "blocked": 2, "decisions": 2, "superseded": 0})
     );
 }
 

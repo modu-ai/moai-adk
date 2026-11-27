@@ -121,9 +121,9 @@ no external script.
 
 ## 6. Fonts: Noto Sans of the report's language
 
-User decision (2026-11-22): the artifact version uses the Noto Sans family of
-the report's language from Google Fonts, for body text and headings alike, and
-JetBrains Mono for code. The html file keeps Pretendard (`fonts.md`).
+The artifact version uses the Noto Sans family of the report's language from
+Google Fonts, for body text and headings alike, and JetBrains Mono for code. The
+html file keeps Pretendard (`fonts.md`).
 
 | Report language | Family | Google Fonts `family` parameter |
 |---|---|---|

@@ -91,8 +91,8 @@ pub const ITEMS: &[Item] = &[
     },
     Item {
         id: "instruction_files",
-        label_en: "Instruction files (AGENTS.md, rules)",
-        label_ko: "지침 파일(AGENTS.md, 규칙)",
+        label_en: "Instruction files (CLAUDE.md, CLAUDE.local.md, rules)",
+        label_ko: "지침 파일(CLAUDE.md, CLAUDE.local.md, 규칙)",
         default: DefaultSource::English,
         asked: true,
     },
@@ -210,6 +210,22 @@ pub fn render_lines(settings: &LanguageSettings, ui: &str, profile_rel: &str) ->
         "All other writing (instruction files, skills and rules, messages between agents, code comments, issue and PR records) is in English unless a line above says otherwise.\n"
     });
     out
+}
+
+/// The one imperative sentence that tells the reader to answer in the conversation language
+/// `conversation`, written in `ui` (`ko`, anything else reads as English); `None` for a code
+/// without a name (SPEC-20261120-reply-language-rule REQ-8). The Korean particle is always `로`
+/// because every Korean language name in [`CODES`] ends in a vowel, which a test pins.
+pub fn reply_sentence(conversation: &str, ui: &str) -> Option<String> {
+    if !is_code(conversation) {
+        return None;
+    }
+    let name = code_name(conversation, ui);
+    Some(if ui == "ko" {
+        format!("사용자에게는 {name}로 답하고 질문하세요.")
+    } else {
+        format!("Reply to the user and ask questions in {name}.")
+    })
 }
 
 /// The English name of a supported language code (`ko` → `Korean`), or `None` for any other
@@ -657,6 +673,48 @@ mod tests {
             .iter()
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect()
+    }
+
+    /// SPEC-20261120-reply-language-rule REQ-8: one imperative sentence per supported code in
+    /// both instruction languages; an unknown code gets none.
+    #[test]
+    fn reply_sentence_names_the_language_in_both_instruction_languages() {
+        assert_eq!(
+            reply_sentence("ko", "en").as_deref(),
+            Some("Reply to the user and ask questions in Korean.")
+        );
+        assert_eq!(
+            reply_sentence("ko", "ko").as_deref(),
+            Some("사용자에게는 한국어로 답하고 질문하세요.")
+        );
+        assert_eq!(
+            reply_sentence("ja", "ko").as_deref(),
+            Some("사용자에게는 일본어로 답하고 질문하세요.")
+        );
+        assert_eq!(
+            reply_sentence("zh", "en").as_deref(),
+            Some("Reply to the user and ask questions in Chinese.")
+        );
+        // Any other instruction language reads as English, like `code_name`.
+        assert_eq!(reply_sentence("en", "ja"), reply_sentence("en", "en"));
+        assert_eq!(reply_sentence("fr", "en"), None);
+        assert_eq!(reply_sentence("", "ko"), None);
+    }
+
+    /// REQ-8: the Korean sentence always uses the particle `로`, which holds only while every
+    /// Korean language name ends in a vowel; this pins that for the whole closed code list.
+    #[test]
+    fn reply_sentence_korean_names_end_in_a_vowel_for_every_code() {
+        for (code, _, ko) in CODES {
+            let last = ko.chars().next_back().expect("a name");
+            assert!(
+                "아어이오우으애에".contains(last),
+                "{code}: {ko} does not end in a vowel"
+            );
+            let sentence = reply_sentence(code, "ko").expect("a sentence");
+            assert_eq!(sentence, format!("사용자에게는 {ko}로 답하고 질문하세요."));
+            assert!(reply_sentence(code, "en").is_some());
+        }
     }
 
     /// The item ids are unique and every default resolves to an accepted code.

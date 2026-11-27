@@ -179,10 +179,23 @@ impl World {
         result_acs: &[u32],
         push: bool,
     ) -> String {
-        let path = format!(".moai/specs/{spec_id}/spec.md");
         let text = spec_text(spec_id, result_acs);
+        self.head_text(branch, from, files, spec_id, &text, push)
+    }
+
+    /// [`World::head`] with the text of the SPEC file given as it is.
+    fn head_text(
+        &self,
+        branch: &str,
+        from: &str,
+        files: &[(&str, &str)],
+        spec_id: &str,
+        text: &str,
+        push: bool,
+    ) -> String {
+        let path = format!(".moai/specs/{spec_id}/spec.md");
         let mut all: Vec<(&str, &str)> = files.to_vec();
-        all.push((&path, &text));
+        all.push((&path, text));
         self.head_raw(branch, from, &all, Some(spec_id), push)
     }
 
@@ -413,6 +426,50 @@ fn findings_of_all_heads_come_together_with_stable_codes() {
     assert_eq!(missing["detail"]["acs"], serde_json::json!(["AC-2"]));
     assert_eq!(missing["head"], c.as_str());
     assert_eq!(v["result"]["unreadable_verdict"], serde_json::json!([]));
+}
+
+/// C-609: a SPEC criterion with neither a `verify:` command nor a `manual:` check is what
+/// `card land` refuses (`no verify: command or manual: check for AC-14`, C-592); `bundle check`
+/// says it before READY as `ac_unverified`, with the SPEC and the criterion ids. A head whose
+/// criteria all carry a check has no such finding.
+#[test]
+fn a_criterion_with_no_verify_or_manual_is_reported_before_the_landing_refuses_it() {
+    let w = World::new();
+    // AC-1 keeps only `unknown:`: `spec check` passes it with a warning, the landing does not.
+    let text = spec_text(SPEC, &[1, 2]).replace(
+        "  manual: run it.\n",
+        "  unknown: no way to check it yet.\n",
+    );
+    assert!(text.contains("unknown: no way to check it yet."));
+    let open = w.head_text("spec/u", TIP, &[("notes/u.md", "u\n")], SPEC, &text, true);
+    // Another SPEC id, so that the two heads do not conflict on one file.
+    let clean = w.head(
+        "spec/k",
+        TIP,
+        &[("notes/k.md", "k\n")],
+        "SPEC-20261119-other",
+        &[1, 2],
+        true,
+    );
+    let (c1, c2) = (w.new_card(), w.new_card());
+    w.ready_note(&c1, &open);
+    w.ready_note(&c2, &clean);
+
+    let (v, _) = w.bundle(&["check", &c1, &c2]);
+    assert_eq!(
+        findings(&v),
+        vec![(c1.clone(), "ac_unverified".to_string())],
+        "{v}"
+    );
+    let found = v["result"]["findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["code"] == "ac_unverified")
+        .unwrap();
+    assert_eq!(found["detail"]["spec"], SPEC, "{v}");
+    assert_eq!(found["detail"]["acs"], serde_json::json!(["AC-1"]), "{v}");
+    assert_eq!(found["head"], open.as_str(), "{v}");
 }
 
 #[test]

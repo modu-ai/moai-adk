@@ -2499,6 +2499,61 @@ mod idle_limit {
         assert_eq!(r["status"], json!("idle_limit"), "{r}");
     }
 
+    /// SPEC-20261124-identity-home-arg AC-20 (REQ-23, REQ-31): under an environment HOME with a
+    /// symlinked state root the identity is refused, so the command answers and keeps no count.
+    /// The same read under a sound HOME keeps one.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_rest_lane_next_counts_nothing_under_a_linked_home() {
+        for linked in [true, false] {
+            let c = clone();
+            let tmp = TempDir::new().unwrap();
+            let home = std::fs::canonicalize(tmp.path()).unwrap();
+            if linked {
+                let elsewhere = home.join("elsewhere");
+                std::fs::create_dir(&elsewhere).unwrap();
+                // A Go generation marker makes the earlier state folder the state root; the link
+                // goes there and the state root is read back to prove it.
+                let go = home.join(moai_cli::home_root::MOAI_DIR);
+                std::fs::create_dir_all(&go).unwrap();
+                std::fs::write(
+                    go.join("user-assets.json"),
+                    br#"{"schema_version": 1, "files": {}}"#,
+                )
+                .unwrap();
+                let link = moai_cli::home_root::path(&home);
+                std::os::unix::fs::symlink(&elsewhere, &link).unwrap();
+                assert_eq!(moai_cli::home_root::path(&home), link);
+                assert!(std::fs::symlink_metadata(&link).unwrap().is_symlink());
+            }
+            let file = c.repo.join("snap.json");
+            std::fs::write(&file, nothing().to_string()).unwrap();
+            let out = Command::new(EXE)
+                .env("HOME", &home)
+                .args([
+                    "lane-next",
+                    "--lane",
+                    LANE,
+                    "--repo",
+                    "o/r",
+                    "--max-empty",
+                    "6",
+                ])
+                .arg("--snapshot")
+                .arg(&file)
+                .arg("--dir")
+                .arg(&c.repo)
+                .output()
+                .unwrap();
+            let v: Value = serde_json::from_slice(&out.stdout)
+                .unwrap_or_else(|_| panic!("{}", String::from_utf8_lossy(&out.stderr)));
+            assert_eq!(v["ok"], json!(true), "linked={linked}: {v}");
+            let r = &v["result"];
+            assert_eq!(r["writes"], json!(!linked), "linked={linked}: {r}");
+            assert_eq!(state_file(&c).is_file(), !linked, "linked={linked}: {r}");
+        }
+    }
+
     /// Reads 1 to 5 go on, read 6 is `idle_limit` with the `LANE-IDLE` line, and the count
     /// stays in a file under the clone's state folder.
     #[test]

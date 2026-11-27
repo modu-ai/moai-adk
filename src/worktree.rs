@@ -11,10 +11,13 @@
 //! file (`crate::home_workdir::ensure_place_ignored`) so the main tree's status does not change.
 //!
 //! Decided inputs: the default path is `<project>/.claude/worktrees/<project>-<issue>-<logical_key>`
-//! (SPEC-20261122-worktree-place, `crate::home_workdir`; before it `<HOME>/.moai/worktrees/…` and
-//! `<primary>/.moai-cli/worktrees/<issue>-<logical_key>`, where existing worktrees stay); any other path is accepted as given
-//! (REQ-06C-12). `git worktree add` creates the missing parents of the default path (D5). The branch prefix is an open HOLD, so it is a required
-//! input with no default.
+//! (SPEC-20261122-worktree-place, `crate::home_workdir`; existing worktrees in the earlier places
+//! stay where they are); any other path is accepted as given (REQ-06C-12). A path that is not
+//! directly in that place is reported, not refused: the plan and the apply answer `would_refuse`,
+//! and the apply that creates records one line (observe mode, D-10). A worktree builds in its own
+//! `target/`: nothing is made under HOME for it (REQ-5). `git worktree add` creates the missing
+//! parents of the default path (D5). The branch prefix is an open HOLD, so it is a required input
+//! with no default.
 //!
 //! Records: every 06-C command returns its record change as `record_update_request`. When
 //! the record came from the local journal (`--task`), the change is also committed through
@@ -451,13 +454,15 @@ fn valid_prefix(p: &str) -> bool {
 // @MX:UPGRADE: when the user decides the prefix and its relation to the 06-A suffix
 /// The plan for a claim's worktree (REQ-06C-01): no git change, byte-identical for equal input.
 /// Without an explicit `path` the worktree lands in the project's
-/// `.claude/worktrees/<project>-<issue>-<logical_key>`; `home` only feeds the build folder.
+/// `.claude/worktrees/<project>-<issue>-<logical_key>`; any other path that is not directly in
+/// that folder is named in `would_refuse`, outside the digested content. The plan names no build
+/// folder (`build_folder` is null), so HOME does not change it.
 pub fn plan(
     project: &Path,
     rec: &ClaimRecord,
     prefix: &str,
     path: Option<&Path>,
-    home: Option<&Path>,
+    _home: Option<&Path>,
 ) -> Result<Value> {
     if !valid_prefix(prefix) {
         return Err("invalid --branch-prefix: segments of [A-Za-z0-9._-] separated by /".into());
@@ -483,14 +488,6 @@ pub fn plan(
         }
     };
     refuse_in_build_folder(&path, "worktree path")?;
-    // The worktree's build folder under the shared build root (S8, the C-82 convention):
-    // named exactly as heavy-slot names it at runtime, through the same `folder_name`
-    // (the project prefix is part of that name for a worktree outside the default shape).
-    let build_folder = home.and_then(|h| {
-        crate::lane_env::folder_name(&primary.join(".git"), &path)
-            .ok()
-            .map(|n| crate::lane_env::build_folder(h, &n))
-    });
     let content = json!({
         "task_key": rec.task_key,
         "logical_key": rec.logical_key,
@@ -498,7 +495,8 @@ pub fn plan(
         "epoch": rec.epoch,
         "branch": branch,
         "path": path.to_string_lossy(),
-        "build_folder": build_folder.as_ref().map(|p| p.to_string_lossy().into_owned()),
+        // A worktree builds in its own `target/`; no separate build home is chosen (REQ-5).
+        "build_folder": Value::Null,
         // The name a session opens this worktree with: `claude --worktree <session_name>`.
         "session_name": path.file_name().map(|n| n.to_string_lossy().into_owned()),
         "base_sha": rec.base_revision,
@@ -509,6 +507,11 @@ pub fn plan(
     let mut out = content;
     out["plan_digest"] = json!(digest);
     out["writes"] = json!(false);
+    // REQ-2, observed: the path goes on as given and is named. It follows from `path` and
+    // `primary`, which the digest already covers.
+    if let Some(report) = crate::home_workdir::outside_place_report(&primary, &path) {
+        out["would_refuse"] = report;
+    }
     Ok(out)
 }
 
@@ -559,47 +562,10 @@ fn conflict(rec: &ClaimRecord, reason: &str, plan: &Value, existing: Vec<Value>)
     if let Some(next) = next {
         out["next"] = json!(next);
     }
+    if !plan["would_refuse"].is_null() {
+        out["would_refuse"] = plan["would_refuse"].clone();
+    }
     out
-}
-
-/// Creates `dir` and its missing parents under the HOME root — the build tree the lane's
-/// lane-env expects — with the private mode at every level it makes (S8: the whole tree is
-/// 0700, like lane_env's prepare). A link or a regular file in any occupied slot is an
-/// error naming that path; existing folders are left as they are.
-fn make_private_dir(dir: &Path) -> Result<()> {
-    // <HOME>/.moai/build/<name>: stop at the third ancestor (the HOME root), never touch
-    // anything outside the build tree.
-    let stop = dir.ancestors().nth(3).unwrap_or(dir);
-    let mut chain: Vec<PathBuf> = Vec::new();
-    let mut cur = Some(dir);
-    while let Some(p) = cur {
-        if p == stop {
-            break;
-        }
-        chain.push(p.to_path_buf());
-        cur = p.parent();
-    }
-    for p in chain.iter().rev() {
-        match fs::symlink_metadata(p) {
-            Ok(m) if m.file_type().is_symlink() => {
-                return Err(format!("{} is a link; it is not followed", p.display()));
-            }
-            Ok(m) if m.is_dir() => continue,
-            Ok(_) => {
-                return Err(format!(
-                    "{} is not a folder; it is not followed",
-                    p.display()
-                ))
-            }
-            Err(_) => {
-                let mut b = fs::DirBuilder::new();
-                #[cfg(unix)]
-                std::os::unix::fs::DirBuilderExt::mode(&mut b, 0o700);
-                b.create(p).map_err(|e| format!("{}: {e}", p.display()))?;
-            }
-        }
-    }
-    Ok(())
 }
 
 /// REQ-06C-02/03: create the worktree, or report the existing owner; the add is never forced.
@@ -695,6 +661,21 @@ pub fn apply(
             "worktree", "add", "--lock", "--reason", &reason, "-b", &branch, &target_s, &base,
         ],
     )?;
+    // REQ-2, observed: a creation outside the place records one line in the log of the
+    // repository's first worktree. A log that cannot be written is named and never undoes the
+    // creation.
+    let record_error = entries
+        .first()
+        .filter(|_| !p["would_refuse"].is_null())
+        .and_then(|primary| {
+            crate::hooks::append_receipt_line_in(
+                home,
+                Path::new(&primary.path),
+                crate::home_workdir::PLACE_LOG,
+                &crate::home_workdir::place_receipt("worktree-apply", &p["would_refuse"]),
+            )
+            .err()
+        });
     // REQ-10, REQ-11: a worktree made in the project's own folder must not show in the main
     // tree's status. The exclude line follows a successful add (a failed add changes nothing),
     // is written for the repository's first worktree whatever worktree or folder `project` is, and a
@@ -708,22 +689,6 @@ pub fn apply(
         })
         .and_then(|primary| crate::home_workdir::ensure_place_ignored(&primary).err());
     let id = identity(&target)?;
-    // The created worktree builds under the shared build root (S8, the C-82 convention).
-    // A creation failure is reported in the answer, never silent, and never fails the apply:
-    // the worktree itself already exists, so the lane keeps its claim and re-runs lane-env.
-    let build_folder_error = match p["build_folder"].as_str() {
-        Some(dir) => {
-            let dir = Path::new(dir);
-            match fs::symlink_metadata(dir) {
-                Ok(m) if m.file_type().is_symlink() => {
-                    Some(format!("{} is a link; it is not followed", dir.display()))
-                }
-                Ok(m) if m.is_dir() => None,
-                _ => make_private_dir(dir).err(),
-            }
-        }
-        None => None,
-    };
     // WT-5: warn when the project's worktrees hold more than the warning line. The size
     // walk is bounded; a partial total is a lower bound and says so.
     let measured = crate::worktree_report::project_bytes(project, CAPACITY_BUDGET);
@@ -752,8 +717,11 @@ pub fn apply(
         },
         "record_update_owner": RECORD_UPDATE_OWNER,
     });
-    if let Some(err) = build_folder_error {
-        out["build_folder_error"] = json!(err);
+    if !p["would_refuse"].is_null() {
+        out["would_refuse"] = p["would_refuse"].clone();
+    }
+    if let Some(err) = record_error {
+        out["would_refuse_record_error"] = json!(err);
     }
     if let Some(err) = place_exclude_error {
         out["place_exclude_error"] = json!(err);

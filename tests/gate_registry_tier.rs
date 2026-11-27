@@ -1157,6 +1157,7 @@ fn gate_input(files: &[&str], registry: Option<(Option<&str>, Option<&str>)>) ->
             old: old.map(String::from),
             new: new.map(String::from),
         }),
+        release_base: None,
     }
 }
 

@@ -651,6 +651,27 @@ fn work_is_picked_by_the_leading_word() {
     );
 }
 
+/// SPEC-20261127-waiting-card-lease REQ-3: the one sentence that tells a lane to renew its held
+/// card before it waits, and to renew rather than reclaim a lease of its own that ended. The WORK
+/// route and the lane rules carry it whole.
+const WORK_RENEW_SENTENCE: &str = "Before you wait for the leader's answer or for another card's landing, run `moai card renew <card> --generation <g> --lease-secs 86400`; when your own lease has already ended, run the same command instead of `moai card reclaim`, which counts against the three-reclaim limit.";
+
+#[test]
+fn work_renews_before_waiting() {
+    let work = read("workflows/work.md");
+    assert!(
+        work.contains(WORK_RENEW_SENTENCE),
+        "work.md lacks {WORK_RENEW_SENTENCE:?}"
+    );
+    let lane_rules =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/lane-rules.md"))
+            .expect("docs/lane-rules.md");
+    assert!(
+        section(&lane_rules, "Blocks and limits").contains(WORK_RENEW_SENTENCE),
+        "the lane rules (Blocks and limits) lack the renew sentence"
+    );
+}
+
 #[test]
 fn absorb_project_carries_the_setup_steps() {
     let project = read("workflows/project.md");
@@ -2412,8 +2433,10 @@ const SELF_CHECK: &str = "references/internal/self-check.md";
 
 /// The byte size of the flow reference on the tip that carries the pointer to the message table
 /// (SPEC-20261125-agent-team-session-names REQ-23: 8041 bytes before the pointer line, and
-/// `FLOW_REF_LIMIT` stays the budget); the restored meanings fit inside it.
-const FLOW_REF_TIP_BYTES: usize = 8121;
+/// `FLOW_REF_LIMIT` stays the budget); the restored meanings fit inside it. Raised to 8153 by
+/// SPEC-20261127-guard-repoint-followups, which added the `guard-repoint` bullet to "Landing" and
+/// trimmed other lines to keep `FLOW_REF_LIMIT`.
+const FLOW_REF_TIP_BYTES: usize = 8180;
 
 /// The first line of `text` that holds `marker`, a list item found by its first words so that a
 /// renumbered list does not break the pin.
@@ -2599,6 +2622,40 @@ fn land_scans_the_flow_names_the_scan_tests_and_the_pass_receipt_step() {
     assert!(
         flow.len() <= FLOW_REF_TIP_BYTES,
         "{FLOW_REF} is {} bytes, over {FLOW_REF_TIP_BYTES}",
+        flow.len()
+    );
+}
+
+/// SPEC-20261127-guard-repoint-followups AC-7 (REQ-7): the "Landing" section tells when to run
+/// `moai card guard-repoint` (the `guard_record_stale` answer field of a landing, which RC1 only
+/// reports), how (the preview, then `--apply` with `--plan-digest` and `--permission-reference`,
+/// `--revert`), who applies it, and that the old branch is unguarded afterwards; the section is
+/// found by its heading so a paragraph put elsewhere does not count.
+#[test]
+fn guard_repoint_is_told_in_the_landing_section() {
+    let flow = read(FLOW_REF);
+    let landing = flow
+        .split("\n## ")
+        .find(|part| part.starts_with("Landing\n"))
+        .unwrap_or_else(|| panic!("{FLOW_REF} has no `## Landing` section"));
+    for phrase in [
+        "moai card guard-repoint",
+        "guard_record_stale",
+        "--apply",
+        "--plan-digest",
+        "--permission-reference",
+        "--revert",
+        "the leader",
+        "unguarded",
+    ] {
+        assert!(
+            landing.contains(phrase),
+            "the Landing section of {FLOW_REF} lacks {phrase:?}"
+        );
+    }
+    assert!(
+        flow.len() <= FLOW_REF_LIMIT,
+        "{FLOW_REF} is {} bytes, over {FLOW_REF_LIMIT}",
         flow.len()
     );
 }
@@ -2934,4 +2991,47 @@ fn worktree_entry_other_files_point_to_work() {
             "{name} spells the create command again"
         );
     }
+}
+
+/// The words every lane text says about how files are written.
+const FILE_TOOLS_FIRST: &str = "tracked files and in-scope files with the host's file tools (Write, Edit) from the first write, never with a shell heredoc, `sed -i` or a redirect";
+
+/// SPEC-20261126-file-tools-first AC-1, AC-2: the implementation agent, the documentation agent,
+/// the shell guard reference and the lane rules each hold the file-tools line.
+#[test]
+fn file_tools_first_line_stands_in_the_four_lane_texts() {
+    let missing: Vec<&str> = [
+        "agents/impl.md",
+        "agents/docs.md",
+        "skills/moai/references/internal/shell-guards.md",
+        "docs/lane-rules.md",
+    ]
+    .into_iter()
+    .filter(|rel| !repo_text(rel).contains(FILE_TOOLS_FIRST))
+    .collect();
+    assert!(
+        missing.is_empty(),
+        "{missing:?} lack the line {FILE_TOOLS_FIRST:?}"
+    );
+}
+
+/// The words the rule texts say about how a mutant is run.
+const MUTANTS_WITHOUT_A_SCRIPT: &str = "Run each mutant without a script: change the code with Edit, run the test with one command, and change the code back with Edit; never use a script that holds `git apply`, `git checkout` or `sed -i`.";
+
+/// SPEC-20261126-file-tools-first AC-4, AC-5: the implementation agent, the shell guard
+/// reference and the lane rules each hold the no-script mutant line.
+#[test]
+fn mutants_without_a_script_line_stands_in_the_three_rule_texts() {
+    let missing: Vec<&str> = [
+        "agents/impl.md",
+        "skills/moai/references/internal/shell-guards.md",
+        "docs/lane-rules.md",
+    ]
+    .into_iter()
+    .filter(|rel| !repo_text(rel).contains(MUTANTS_WITHOUT_A_SCRIPT))
+    .collect();
+    assert!(
+        missing.is_empty(),
+        "{missing:?} lack the line {MUTANTS_WITHOUT_A_SCRIPT:?}"
+    );
 }

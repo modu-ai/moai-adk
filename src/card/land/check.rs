@@ -421,10 +421,10 @@ pub fn late_fail(conn: &Connection, card_id: i64, head: &str, after: i64) -> Res
 
 /// The authors of a range: the `Moai-Session` values of the commits that count as authored.
 #[derive(Debug, Default, PartialEq, Eq)]
-struct Authors {
-    sessions: Vec<String>,
+pub(crate) struct Authors {
+    pub(crate) sessions: Vec<String>,
     /// Whether any commit that counts as authored carries a session trailer.
-    any_trailer: bool,
+    pub(crate) any_trailer: bool,
 }
 
 /// One git command in `project`, through the program `MOAI_GIT_BIN` names and the environment
@@ -457,7 +457,7 @@ pub(crate) fn git_text(project: &Path, args: &[&str]) -> Result<String> {
 
 /// The commits of `base..head` that count as authored and their sessions. A merge commit counts
 /// as authored unless it is a clean join ([`is_clean_join`]).
-fn authors_of(project: &Path, base: &str, head: &str) -> Result<Authors> {
+pub(crate) fn authors_of(project: &Path, base: &str, head: &str) -> Result<Authors> {
     let range = format!("{base}..{head}");
     let log = git_text(project, &["log", "--format=%H%x1f%P%x1f%B%x1e", &range])?;
     let mut authors = Authors::default();

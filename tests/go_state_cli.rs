@@ -1188,7 +1188,8 @@ fn a_file_is_held_by_settings_only_if_those_settings_stay() {
             }
         }
         let folder_reason = action(&p, ".moai").1;
-        if folder_reason == FOLDER_HELD && settings_move {
+        // A hold by the local settings goes on to name the pick that rewrites them.
+        if folder_reason.starts_with(FOLDER_HELD) && settings_move {
             // Only the local settings can hold the folder then, and the preview names them.
             assert_eq!(
                 p["settings_move"]["still_holding"],
@@ -1298,14 +1299,16 @@ fn settings_that_reference_moai_keep_the_whole_folder() {
         fx.record(file, "user_created", &sha(text.as_bytes()));
         fx.manifest();
         let p = plan(&fx);
-        assert_eq!(
-            action(&p, ".moai"),
-            (
-                "leave",
-                "settings reference .moai/; the folder stays until they are cleaned (#2581)"
-            ),
-            "{file}"
-        );
+        // The local settings have a pick that rewrites them, and the reason names it; the
+        // shared settings have none (SPEC-20261126-go-local-settings-reference).
+        let pick = if file.ends_with("settings.local.json") {
+            "; `--rewrite-local-references` on go-state-plan and go-state-apply backs up \
+             .claude/settings.local.json and points it at the Go backup folder"
+        } else {
+            ""
+        };
+        let held = format!("{FOLDER_HELD}{pick}");
+        assert_eq!(action(&p, ".moai"), ("leave", held.as_str()), "{file}");
         assert_eq!(
             action(&p, ".moai/config/sections/a.yaml"),
             ("leave", "the .moai/ folder stays (see the .moai item)")
@@ -3346,4 +3349,249 @@ fn a_linked_entry_keeps_the_earlier_root_beside_kept_names() {
     let p = plan_picks(&fx, &[]);
     assert_eq!(moves(&p), 0, "{p}");
     assert!(action(&p, ".moai-cli").1.contains("link"), "{p}");
+}
+
+// ---- SPEC-20261126-go-state-restore-rule: what the apply restores outside the ten folders ----
+
+/// A Go project shaped like a real one: a template the manifest records and that is unchanged
+/// (`policies/core/a.md`), a recorded template the user edited, and user files the manifest
+/// does not record in folders outside the ten user-data folders.
+fn restore_rule_fixture() -> Fx {
+    let mut fx = Fx::new();
+    fx.deployed(".moai/policies/core/a.md", "# policy a\n");
+    fx.deployed(".moai/config/sections/b.yaml", "b: 1\n");
+    fx.write(".moai/config/sections/b.yaml", "b: 2 # edited\n");
+    fx.write(".moai/design/x.md", "# design x\n");
+    fx.write(".moai/decisions/user.md", "# a decision\n");
+    fx.write(".moai/specs/SPEC-1/spec.md", "# spec\n");
+    fx.manifest();
+    fx
+}
+
+fn restore_rows(plan: &Value) -> Vec<(String, String)> {
+    plan["restores"]
+        .as_array()
+        .unwrap_or_else(|| panic!("{plan}"))
+        .iter()
+        .map(|r| {
+            (
+                r["from"].as_str().unwrap().to_string(),
+                r["action"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect()
+}
+
+fn has_restore_row(plan: &Value, from: &str) -> bool {
+    restore_rows(plan).iter().any(|(f, _)| f == from)
+}
+
+/// AC-1 (REQ-1, REQ-2, REQ-5): a file the Go manifest does not record is restored wherever it
+/// lies, a file it records stays in the backup (unchanged or edited), and the ten folders keep
+/// restoring as before.
+#[test]
+fn restore_rule_lists_unrecorded_files_and_leaves_the_recorded_templates() {
+    let fx = restore_rule_fixture();
+    let p = plan(&fx);
+    assert_eq!(
+        restore_action(&p, ".moai-backup/design/x.md"),
+        "copy",
+        "{p}"
+    );
+    assert_eq!(
+        restore_action(&p, ".moai-backup/decisions/user.md"),
+        "copy",
+        "{p}"
+    );
+    assert_eq!(
+        restore_action(&p, ".moai-backup/specs/SPEC-1/spec.md"),
+        "copy",
+        "{p}"
+    );
+    assert!(
+        !has_restore_row(&p, ".moai-backup/policies/core/a.md"),
+        "a byte-proven Go template stays in the backup: {p}"
+    );
+    assert!(
+        !has_restore_row(&p, ".moai-backup/config/sections/b.yaml"),
+        "a recorded file the user edited stays in the backup: {p}"
+    );
+}
+
+/// AC-2 (REQ-3): the three Go markers and the backups folder are never restored, whether or
+/// not the manifest records them.
+#[test]
+fn restore_rule_skips_the_markers_and_the_backups_folder() {
+    let fx = restore_rule_fixture();
+    fx.write(".moai/config/config.yaml", "go: true\n");
+    fx.write(
+        ".moai/config/sections/system.yaml",
+        "moai:\n  version: v3\n",
+    );
+    fx.write(".moai/backups/old/note.md", "# an old backup note\n");
+    let p = plan(&fx);
+    for from in [
+        ".moai-backup/manifest.json",
+        ".moai-backup/config/config.yaml",
+        ".moai-backup/config/sections/system.yaml",
+        ".moai-backup/backups/old/note.md",
+    ] {
+        assert!(!has_restore_row(&p, from), "{from}: {p}");
+    }
+    assert_eq!(
+        restore_action(&p, ".moai-backup/design/x.md"),
+        "copy",
+        "{p}"
+    );
+}
+
+/// AC-2 (REQ-3): the Go tool's update lock is its own process lock; the update reports it as a
+/// fact and expects it to stay in the Go backup, so no restore row names it. A new apply leaves
+/// no `.moai/.update.lock` behind.
+#[test]
+fn restore_rule_skips_the_go_update_lock() {
+    let fx = restore_rule_fixture();
+    fx.write(".moai/.update.lock", "{\"pid\":1}\n");
+    let p = plan(&fx);
+    assert!(
+        !has_restore_row(&p, ".moai-backup/.update.lock"),
+        "the Go update lock is never restored: {p}"
+    );
+    assert_eq!(
+        restore_action(&p, ".moai-backup/design/x.md"),
+        "copy",
+        "{p}"
+    );
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert!(
+        !fx.root.join(".moai/.update.lock").exists(),
+        "the lock stays in the Go backup only"
+    );
+    assert!(fx.root.join(".moai-backup/.update.lock").is_file());
+}
+
+/// AC-3 (REQ-4): a row outside the ten folders is judged like one inside them: a secret name
+/// is never opened, a link is never followed, credential-looking content in a config-shaped
+/// file is refused, and an existing target is a conflict.
+#[test]
+fn restore_rule_judges_each_file_like_the_ten_folders() {
+    let fx = restore_rule_fixture();
+    fx.write(".moai/design/.env.local", "TOKEN=not-a-real-token\n");
+    fx.write(
+        ".moai/design/cfg.yaml",
+        "api_key: sk-live-0123456789abcdef\n",
+    );
+    symlink("x.md", fx.root.join(".moai/design/link.md")).unwrap();
+    fx.write(".moai-cli/decisions/user.md", "# mine, already here\n");
+    let p = plan(&fx);
+    assert_eq!(
+        restore_action(&p, ".moai-backup/design/.env.local"),
+        "excluded_secret",
+        "{p}"
+    );
+    assert_eq!(
+        restore_action(&p, ".moai-backup/design/cfg.yaml"),
+        "excluded_secret",
+        "{p}"
+    );
+    assert_eq!(
+        restore_action(&p, ".moai-backup/design/link.md"),
+        "leave_link",
+        "{p}"
+    );
+    assert_eq!(
+        restore_action(&p, ".moai-backup/decisions/user.md"),
+        "conflict",
+        "{p}"
+    );
+    let secret = p["restores"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["from"] == ".moai-backup/design/.env.local")
+        .unwrap();
+    assert_eq!(secret["sha256"], json!(""), "a secret name is never hashed");
+}
+
+/// AC-5 (REQ-6, REQ-8, REQ-9): the apply copies the file into the new `.moai/` and records it,
+/// the next preview has nothing left to copy, and the revert gives the Go tree back.
+#[test]
+fn restore_rule_apply_copies_the_file_and_the_revert_gives_the_go_tree_back() {
+    let fx = restore_rule_fixture();
+    let before = project_tree(&fx);
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".moai/design/x.md")).unwrap(),
+        "# design x\n"
+    );
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".moai/decisions/user.md")).unwrap(),
+        "# a decision\n"
+    );
+    assert!(
+        !fx.root.join(".moai/policies").exists(),
+        "a Go template is not restored"
+    );
+    assert!(fx.root.join(".moai-backup/policies/core/a.md").is_file());
+    assert!(fx.root.join(".moai-backup/design/x.md").is_file());
+    let (_, receipt) = receipt_of(&fx, &backup);
+    let restored = receipt["restored"].as_array().unwrap();
+    for (path, body) in [
+        (".moai/design/x.md", "# design x\n"),
+        (".moai/decisions/user.md", "# a decision\n"),
+    ] {
+        assert!(
+            restored
+                .iter()
+                .any(|r| r["path"] == path && r["sha256"] == sha(body.as_bytes())),
+            "{path} not in the receipt: {receipt}"
+        );
+    }
+    let again = plan(&fx);
+    assert_eq!(again["restores"], json!([]), "{again}");
+
+    let rp = revert_plan(&fx, &backup);
+    assert_eq!(rp["ok"], json!(true), "{rp}");
+    assert_eq!(
+        item_action(&rp, ".moai/design/x.md"),
+        json!("remove_restored")
+    );
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(project_tree(&fx), before);
+    assert!(!fx.root.join(".moai-backup").exists());
+    assert!(!rust_aside(&fx).join("design/x.md").exists());
+}
+
+/// AC-5 (REQ-7): a receipt that names a restored path under the backups folder or a Go marker
+/// is refused, whatever else it holds.
+#[test]
+fn restore_rule_a_forged_restored_path_is_refused() {
+    let fx = restore_rule_fixture();
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let (path, original) = receipt_of(&fx, &backup);
+    for forged in [
+        ".moai/backups/x/y.md",
+        ".moai/manifest.json",
+        ".moai/config/config.yaml",
+        ".moai/config/sections/system.yaml",
+    ] {
+        let mut receipt = original.clone();
+        receipt["restored"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({"path": forged, "sha256": sha(b"x")}));
+        fs::write(&path, receipt.to_string()).unwrap();
+        let rp = revert_plan(&fx, &backup);
+        assert_eq!(rp["ok"], json!(false), "{forged}: {rp}");
+    }
+    fs::write(&path, original.to_string()).unwrap();
+    let rp = revert_plan(&fx, &backup);
+    assert_eq!(rp["ok"], json!(true), "the unforged receipt reads: {rp}");
 }

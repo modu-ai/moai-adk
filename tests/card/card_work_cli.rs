@@ -1665,3 +1665,86 @@ fn the_reference_evidence_and_reason_pass_the_secret_screen() {
     ));
     assert_eq!(ok["action"], json!("note"), "{ok}");
 }
+
+/// `YYYY-MM-DDThh:mm:ssZ` of an epoch second.
+fn iso_of(epoch: i64) -> String {
+    let z = epoch.div_euclid(86_400) + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    let secs = epoch.rem_euclid(86_400);
+    format!(
+        "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}Z",
+        secs / 3_600,
+        secs % 3_600 / 60,
+        secs % 60
+    )
+}
+
+#[test]
+fn a_note_that_names_a_far_off_or_placeholder_time_warns_and_is_still_stored() {
+    let w = world(true);
+    let (card, _) = w.taken(S_A, "src/a/", 0);
+    let args = ["note", card.as_str(), "--kind", "comment"];
+    let note = |text: &str| result(&w.card_stdin(Some(S_A), &args, text.as_bytes()));
+    let warnings_of = |answer: &Value| -> Vec<String> {
+        answer["warnings"]
+            .as_array()
+            .unwrap_or_else(|| panic!("no warnings array: {answer}"))
+            .iter()
+            .map(|s| s.as_str().unwrap().to_string())
+            .collect()
+    };
+
+    // The server clock is the note's own `created_at`.
+    let plain = note("no time here");
+    assert_eq!(plain["warnings"], json!([]), "{plain}");
+    let now = plain["created_at"].as_i64().unwrap();
+
+    // A time a couple of minutes from the clock is not a problem.
+    let near = format!("done at {}", iso_of(now - 120));
+    assert_eq!(warnings_of(&note(&near)), Vec::<String>::new());
+
+    // A KST time written with a Z (nine hours ahead) and an old time are called out.
+    let kst = format!("finished {}", iso_of(now + 9 * 3_600));
+    let warnings = warnings_of(&note(&kst));
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert!(
+        warnings[0].contains("ahead of the server clock"),
+        "{warnings:?}"
+    );
+    let old = "LEADER 2020-01-01T00:00:00Z decided";
+    let warnings = warnings_of(&note(old));
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert!(
+        warnings[0].contains("behind the server clock"),
+        "{warnings:?}"
+    );
+
+    // An x placeholder and an impossible time are called out.
+    let placeholder = "report 2026-11-20T11:6xZ";
+    let warnings = warnings_of(&note(placeholder));
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert!(warnings[0].contains("x placeholder"), "{warnings:?}");
+    let impossible = "at 2026-13-40T25:61:00Z";
+    let warnings = warnings_of(&note(impossible));
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert!(warnings[0].contains("not a real time"), "{warnings:?}");
+
+    // Every note is stored, warned or not.
+    let show = result(&w.card(None, &["show", &card]));
+    let bodies: Vec<&str> = show["notes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|n| n["body"].as_str().unwrap())
+        .collect();
+    for text in [near.as_str(), kst.as_str(), old, placeholder, impossible] {
+        assert!(bodies.contains(&text), "{text} was not stored: {bodies:?}");
+    }
+}

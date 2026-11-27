@@ -507,7 +507,7 @@ fn refused(why: impl std::fmt::Display) -> String {
 }
 
 /// A reference that names a person's yes: short, printable, with no whitespace or control.
-fn reference_ok(r: &str) -> bool {
+pub(crate) fn reference_ok(r: &str) -> bool {
     (1..=80).contains(&r.chars().count())
         && r.chars()
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | ':' | '/' | '-'))

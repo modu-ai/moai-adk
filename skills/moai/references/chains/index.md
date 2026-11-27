@@ -28,6 +28,7 @@ Rules for every chain:
 - Whoever wrote a change runs `internal/self-check` before asking for an audit or opening a pull request. RUN reads `internal/build-slots` for builds, slots and cleanup, `internal/shell-guards` when a shell guard or a hook refuses a command, and `internal/web-pages` before it reads a web page.
 - Every commit for a SPEC carries the identity trailers of `internal/commit-trailers`, and every audit verdict names its auditor's session the same way.
 - In a user project, RUN takes the check commands, the AC-to-test tracing and the dependency existence check from `internal/quality`.
+- A change that removes, moves or overwrites files, folders, worktrees, branches or records the user owns is written by `moai-impl` and checked by `moai-audit` against `internal/destructive-ops`; a change that compares counts across two sources, sets a size or count limit or uses a new option of an external tool is checked against items 8 and 9 of `internal/boundary-checks`.
 - `moai-research` fans out: the parent may start several at once, each on one question, and merges their answers with the sources and read times they report.
 - A choice the request did not make is sorted with `internal/decide` before anyone is asked.
 - A question about how a stateful part behaves, why a pipeline is slow, what of an old part to keep or what a refactor could break is looked at with `internal/lenses`, which reports and changes no code.

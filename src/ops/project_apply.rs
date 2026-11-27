@@ -20,6 +20,11 @@ pub const OPERATION: &str = "project.apply";
 const PLAN_ONLY_KEY: &str = "work_flow_remote";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
+    // SPEC-20261126-no-state-folder-writes REQ-1: refused before the plan is read, so nothing
+    // is written and a plan of any age gets the same next step.
+    if let Some(line) = moai_cli::launcher_init::state_write_stop(&args.project) {
+        return Err(format!("{line}; refused, nothing written"));
+    }
     // SPEC-20261124-moai-project-interview REQ-11/12: only that key is dropped; any other
     // unknown key still fails the typed `Plan` below as invalid typed JSON input.
     let mut input = super::super::plan_input::<serde_json::Value>()?;

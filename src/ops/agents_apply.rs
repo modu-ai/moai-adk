@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-/// Write a previewed AGENTS.md managed section
+/// Write a previewed CLAUDE.md managed section
 #[derive(clap::Args)]
 pub struct Args {
     project: PathBuf,

@@ -12,7 +12,9 @@ mod common;
 use common::CleanEnv;
 
 use moai_cli::model_effort_questions::tool_question;
-use moai_cli::update_models::{installed_tools, report, settings_path, stage_with};
+use moai_cli::update_models::{
+    installed_tools, installed_tools_with, report, settings_path, stage_with,
+};
 use serde_json::{json, Value};
 use std::fs;
 use std::io::{BufReader, Cursor, Read};
@@ -212,7 +214,8 @@ fn a_typed_glm_key_is_vaulted_and_appears_nowhere_else() {
         "the result names no key: {result}"
     );
     let scope =
-        moai_cli::model_effort_questions::glm_key_scope(&std::env::current_dir().unwrap(), &h.path)
+        moai_cli::key_vault::project_scope_in(&std::env::current_dir().unwrap(), Some(&h.path))
+            .unwrap()
             .expect("the tests run inside a git work tree");
     assert_eq!(
         moai_cli::key_vault::read_entry(&h.path, &scope, "glm")
@@ -574,6 +577,64 @@ fn the_installed_tools_follow_the_home_folders() {
         ["claude"],
         "a `.codex` folder is no installed tool"
     );
+}
+
+/// The environment of the account that runs the host: only the Claude Code variable, as a map.
+fn config_dir_env(value: Option<&Path>) -> impl Fn(&str) -> Option<std::ffi::OsString> {
+    let value = value.map(|p| p.as_os_str().to_os_string());
+    move |name: &str| {
+        if name == "CLAUDE_CONFIG_DIR" {
+            value.clone()
+        } else {
+            None
+        }
+    }
+}
+
+// SPEC-20261126-install-docs-match-code (AC-5, REQ-9): the tool search follows the folder the
+// host home resolver gives, `CLAUDE_CONFIG_DIR` first.
+#[test]
+fn the_installed_tools_follow_the_claude_config_dir() {
+    let h = home();
+    let moved = h.path.join("moved-claude");
+    fs::create_dir_all(&moved).unwrap();
+    // The variable relocates the folder: no `~/.claude`, yet Claude Code is installed there.
+    assert_eq!(
+        installed_tools_with(&h.path, Some(&h.path), config_dir_env(Some(&moved))),
+        ["claude"],
+        "the folder CLAUDE_CONFIG_DIR names counts as the Claude Code folder"
+    );
+    // The variable unset and no `~/.claude`: nothing is installed.
+    assert!(
+        installed_tools_with(&h.path, Some(&h.path), config_dir_env(None)).is_empty(),
+        "no variable and no `.claude` folder finds nothing"
+    );
+    // Only `~/.claude`, the variable unset: the default folder.
+    fs::remove_dir_all(&moved).unwrap();
+    fs::create_dir_all(h.path.join(".claude")).unwrap();
+    assert_eq!(
+        installed_tools_with(&h.path, Some(&h.path), config_dir_env(None)),
+        ["claude"],
+        "with the variable unset the HOME's `.claude` folder counts"
+    );
+}
+
+#[test]
+fn the_installed_tools_fall_back_to_the_home_folder_when_the_variable_is_refused() {
+    let h = home();
+    fs::create_dir_all(h.path.join(".claude")).unwrap();
+    // A relative value and an empty value are the two the resolver refuses.
+    for refused in ["moved-claude", ""] {
+        assert_eq!(
+            installed_tools_with(
+                &h.path,
+                Some(&h.path),
+                config_dir_env(Some(Path::new(refused)))
+            ),
+            ["claude"],
+            "a refused variable ({refused:?}) leaves the HOME's `.claude` folder as the answer"
+        );
+    }
 }
 
 // The command: a run without a terminal asks nothing and reports the values.

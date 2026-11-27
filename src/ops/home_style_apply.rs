@@ -1,10 +1,10 @@
-//! `home-style-apply` (#2875): apply a previewed MoAI-Easy output style.
+//! `home-style-apply` (#2875): apply a previewed MoAI-Style output style.
 
 use std::path::PathBuf;
 
 /// Write a previewed output style into HOME
 ///
-/// Apply a previewed MoAI-Easy output style (#2875): the style file, the `outputStyle` key and
+/// Apply a previewed MoAI-Style output style (#2875): the style file, the `outputStyle` key and
 /// the managed block change only as previewed, with a receipt holding the before bytes. The
 /// digest must match a fresh preview.
 #[derive(clap::Args)]

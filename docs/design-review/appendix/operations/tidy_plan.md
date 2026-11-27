@@ -9,5 +9,6 @@ operation `tidy.plan` · 코드 `src/ops/tidy_plan.rs`, `src/tidy/plan.rs` · SP
 - 종류가 임계값 하나라도 넘으면 `reports` 는 나이 규칙(`archive_after_days`, 기본 90일 초과)에 닿는 파일을 오래된 순으로 `archive`(`reports_age`)하고 나머지는 `keep`(`not_old_enough`)한다. 모든 임계값 아래면 아무것도 내지 않고 `keep`(`under_threshold`)한다.
 - `worktrees`·`build`·`evidence`·`receipts` 의 항목은 이 조각에서 `keep` 이다. 임계값을 넘으면 `proof_pending`, 아니면 `under_threshold`. git 증명(병합·랜딩, 조각 4)이 있어야 후보가 된다.
 - `logs` 는 쓰는 쪽을 몰라서(부모 D-10) 폴더 하나가 `keep`(`unknown`)이다. 다른 제품, 알 수 없는 항목, 보호 항목은 나열만 하고 `keep` 이다.
-- `digest`: `archive`·`delete` 항목의 `path·action·rule·bytes·newest` 줄의 sha256. 변하지 않은 폴더는 같은 값이고 후보가 바뀌면 달라진다. 조각 3 이 같은 값을 확인 토큰으로 쓴다.
+- 옛 Go 도구의 이름 중 `releases`·`db`·`backups`·`user-assets.json` 은 `keep`(`go_run_data_kept`)이다(SPEC-20261126-home-tidy-apply D-3): `cleanup-apply` 도 이 자료를 보관하지 않는다.
+- `digest`: `archive`·`delete` 항목의 `path·action·rule·bytes·newest` 줄의 sha256. 변하지 않은 폴더는 같은 값이고 후보가 바뀌면 달라진다. `tidy-apply --confirm` 이 같은 값을 확인 토큰으로 쓴다.
 - `memory_index`: `tidy-inventory` 와 같은 줄. 어느 파일이든 80% 를 넘으면 `memory_tidy` 가 붙는다: 세 묶음(`rules_to_instructions`·`retired_items`·`merges`), 사용자가 Claude 세션에서 돌릴 문구(`run_in_claude_session`), 그리고 참고 줄 `purge_reference`(`claude purge --all`, `never_run: true`). moai 는 `MEMORY.md` 를 고치지 않고 `claude purge` 를 실행하지 않는다.

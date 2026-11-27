@@ -1059,3 +1059,62 @@ fn tip_a_branch_that_keeps_moving_ends_the_batch_at_the_cap() {
     }
     assert_ne!(w.integ(), before);
 }
+
+/// SPEC-20261127-guard-repoint-followups AC-3 (REQ-3): the guard record names `integ` and the
+/// profile names the existing branch `other`. `card land-batch` lands both audited heads on the
+/// recorded branch as it did before, drops none, moves nothing else and carries
+/// `guard_record_stale` once, at the top of its answer (not in each landed entry).
+#[test]
+fn guard_record_stale_batch_lands_both_heads_and_reports_the_record_once() {
+    let w = World::new();
+    git(&w.project, &["update-ref", "refs/heads/other", &w.c0]);
+    let moai_dir = w.project.join(".git/moai");
+    fs::create_dir_all(&moai_dir).unwrap();
+    fs::write(moai_dir.join("integration-branch"), "refs/heads/integ\n").unwrap();
+    *w.profile.borrow_mut() = String::from_utf8_lossy(PROFILE)
+        .replace(
+            "\"integration_branch\": \"integ\"",
+            "\"integration_branch\": \"other\"",
+        )
+        .into_bytes();
+    let cards = w.two();
+    let check = w.script("check.sh", CHECK);
+    let r = result(&w.batch(&pairs(&cards), &check));
+    // Everything the batch did before this SPEC.
+    assert_eq!(
+        names(&r["landed"]),
+        cards.iter().map(|(c, _)| c.clone()).collect::<Vec<_>>(),
+        "{r}"
+    );
+    assert!(r["dropped"].as_array().unwrap().is_empty(), "{r}");
+    assert!(r["not_run"].as_array().unwrap().is_empty(), "{r}");
+    assert!(r["stopped"].is_null(), "{r}");
+    for (card, head) in &cards {
+        assert!(w.is_ancestor(head, &w.integ()), "{head}");
+        assert_eq!(w.state(card), "done", "{card}");
+    }
+    assert_eq!(
+        git(&w.project, &["rev-parse", "refs/heads/other"]),
+        w.c0,
+        "the profile's branch is not the one that moves"
+    );
+    assert_eq!(
+        fs::read(moai_dir.join("integration-branch")).unwrap(),
+        b"refs/heads/integ\n".to_vec(),
+        "a landing never writes the record"
+    );
+    // The observation: one field, at the top, with the record and the profile's branch.
+    let stale = &r["guard_record_stale"];
+    assert!(stale.is_object(), "guard_record_stale is missing: {r}");
+    assert_eq!(stale["record"], json!("integ"), "{r}");
+    assert_eq!(stale["profile_branch"], json!("other"), "{r}");
+    assert_eq!(stale["worktree"], json!("primary"), "{r}");
+    assert_eq!(stale["would_refuse"], json!(true), "{r}");
+    assert_eq!(stale["repoint"], json!("moai card guard-repoint"), "{r}");
+    assert!(stale.get("note").is_none(), "{r}");
+    assert_eq!(
+        r.to_string().matches("\"guard_record_stale\"").count(),
+        1,
+        "the field appears once in the whole answer: {r}"
+    );
+}

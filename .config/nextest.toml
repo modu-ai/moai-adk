@@ -38,3 +38,11 @@ command = { command-line = 'tools/test_home_guard.sh', relative-to = 'workspace-
 platform = { host = 'cfg(unix)' }
 filter = 'all()' # home-guard-filter
 run-wrapper = 'home-guard'
+
+# The HOME reader list reports its differences from a passing run by default
+# (SPEC-20261124-home-env-readers REQ-18); nextest hides that output without this.
+# Keep this block last: tests/test_home_guard.rs drops an override block up to its `test-group`
+# line, so a block without one must end the file.
+[[profile.default.overrides]]
+filter = 'binary(home_env_readers)'
+success-output = "immediate"

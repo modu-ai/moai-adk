@@ -625,3 +625,107 @@ fn card_branch_ac4_read_does_not_fan_out_one_fact() {
         assert!(read_md.contains(phrase), "read.md lacks {phrase:?}");
     }
 }
+
+/// The lines of `text` that hold every one of `needles`.
+fn lines_with<'a>(text: &'a str, needles: &[&str]) -> Vec<&'a str> {
+    text.lines()
+        .filter(|l| needles.iter().all(|n| l.contains(n)))
+        .collect()
+}
+
+/// C-607 criterion 1: the SPEC that `moai spec new` writes names, in its Requirements section,
+/// the one-`shall` rule and the failure-path rule on one line each, so an author learns them
+/// before `moai spec check` refuses the file. The file is written by the real command, minimal and
+/// full.
+#[test]
+fn a_new_spec_names_the_one_shall_and_failure_path_rules_in_its_requirements() {
+    let home = tempfile::tempdir().unwrap();
+    let project = home.path().join("proj");
+    // The state folder of the fresh project comes from the resolver, as the command finds it.
+    let state = moai_cli::state_root::path(&project, "");
+    fs::create_dir_all(&state).unwrap();
+    fs::write(
+        state.join("moai.json"),
+        moai_cli::state_root::marker_bytes("test", &[]),
+    )
+    .unwrap();
+    for (slug, minimal) in [("rules-full", false), ("rules-minimal", true)] {
+        let mut args = vec![
+            "spec",
+            "new",
+            slug,
+            "--title",
+            "Rules",
+            "--date",
+            "2026-11-27",
+        ];
+        if minimal {
+            args.push("--minimal");
+        }
+        let out = Command::new(common::MOAI_BIN)
+            .clean_env()
+            .env("HOME", home.path())
+            .args(&args)
+            .arg("--project")
+            .arg(&project)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{slug}: {}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+        let written = fs::read_to_string(moai_cli::state_root::path(
+            &project,
+            &format!("specs/SPEC-20261127-{slug}/spec.md"),
+        ))
+        .unwrap();
+        let from = written.find("## Requirements").expect("Requirements");
+        let section = &written[from..];
+        let section = &section[..section.find("## Acceptance").expect("Acceptance")];
+        let one_shall = lines_with(section, &["exactly one `shall`", "req_gears"]);
+        assert_eq!(
+            one_shall.len(),
+            1,
+            "{slug}: the one-shall rule is not on one line of Requirements:\n{section}"
+        );
+        let failure = lines_with(
+            section,
+            &["IF", "THEN", "failure: none", "req_failure_path"],
+        );
+        assert_eq!(
+            failure.len(),
+            1,
+            "{slug}: the failure-path rule is not on one line of Requirements:\n{section}"
+        );
+        // Both sit inside one multi-line HTML comment, so the author's requirement lines stay
+        // the only `REQ-` lines. The comment is not one line `<!-- … -->`: `moai spec check`
+        // reads such a line as template text still to fill and refuses it once the SPEC is
+        // approved, and the opening line `<!--` ends without `>`, so it is no such text.
+        let open = section.find("<!--\n").expect("the rules open a comment");
+        let close = open + section[open..].find("\n-->").expect("the comment closes");
+        for line in one_shall.iter().chain(failure.iter()) {
+            let at = section.find(line).unwrap();
+            assert!(
+                open < at && at < close,
+                "{slug}: not inside the comment: {line}"
+            );
+            assert!(
+                !line.contains(['<', '>']),
+                "{slug}: reads as template text: {line}"
+            );
+        }
+    }
+}
+
+/// C-607 criterion 2: `sdd.md` states each rule on a line of its own, with the `moai spec check`
+/// code that refuses it.
+#[test]
+fn the_sdd_reference_states_each_check_rule_on_one_line() {
+    let text = sdd();
+    let one_shall = lines_with(&text, &["exactly one `shall`", "req_gears"]);
+    assert_eq!(one_shall.len(), 1, "one-shall rule lines: {one_shall:?}");
+    let failure = lines_with(&text, &["· failure: none", "req_failure_path"]);
+    assert_eq!(failure.len(), 1, "failure-path rule lines: {failure:?}");
+    assert_ne!(one_shall[0], failure[0], "both rules share a line");
+}

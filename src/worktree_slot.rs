@@ -18,6 +18,11 @@
 //! least [`MIN_FREE_PERCENT`] of the disk free (from `df -P -k`, which, unlike `du`, sees the
 //! blocks clones share). The 300 GB cap on `.claude/worktrees` is reported `measured: false`:
 //! `du` counts every clone in full, so it waits for the cleanup slice (SPEC D-4).
+//!
+//! An added slot leaves `.claude/worktrees` listed in the repository's local exclude file unless
+//! git already ignores it (SPEC-20261122-worktree-place REQ-10, D-15). A linked `.claude` or
+//! `.claude/worktrees` is answered as `would_refuse` and the call goes on; a call that adds a
+//! slot records one line (observe mode, REQ-23).
 
 use crate::identity::scrub_git_env;
 use crate::worktree_report::{parse_worktree_list, WorktreeEntry};
@@ -430,6 +435,11 @@ pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value>
     };
     let needs_warm = seed.is_some() && fs::symlink_metadata(path.join("target")).is_err();
     let mut commit = Value::Null;
+    // REQ-23, observed: a linked `.claude` or `.claude/worktrees` is named and nothing changes
+    // for it; the slot already refused a link at its own folder above.
+    let would_refuse = crate::home_workdir::linked_place_report(&primary);
+    let mut record_error = None;
+    let mut place_exclude_error = None;
     if present && needs_warm {
         // A warm copy takes disk like an added slot does, so it meets the same floor.
         let free = free_percent(&primary)?;
@@ -469,6 +479,18 @@ pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value>
         let path_arg = path.to_string_lossy().to_string();
         git(&primary, &["worktree", "add", "--detach", &path_arg, &sha])?;
         commit = json!(sha);
+        // The slot exists now, whatever the warming below does: record the observed report
+        // (REQ-23) and keep the main tree's status clean (REQ-10, REQ-11). Neither failure
+        // undoes the slot; the answer names it.
+        record_error = would_refuse.as_ref().and_then(|report| {
+            crate::hooks::append_receipt_line(
+                &primary,
+                crate::home_workdir::PLACE_LOG,
+                &crate::home_workdir::place_receipt("worktree-slot ensure", report),
+            )
+            .err()
+        });
+        place_exclude_error = crate::home_workdir::ensure_place_ignored(&primary).err();
     }
     // A slot's own `target/` (a warm build, or one its checkout tracks) is never copied into.
     let warmed = match seed {
@@ -479,10 +501,20 @@ pub fn ensure(project: &Path, name: &str, at: &str, caps: Caps) -> Result<Value>
             })?,
         _ => "none",
     };
-    Ok(json!({
+    let mut out = json!({
         "slot": name, "path": rel, "at": commit, "added": !present, "present": present,
         "warmed": warmed, "cleaned": cleaned,
-    }))
+    });
+    if let Some(report) = would_refuse {
+        out["would_refuse"] = report;
+    }
+    if let Some(err) = record_error {
+        out["would_refuse_record_error"] = json!(err);
+    }
+    if let Some(err) = place_exclude_error {
+        out["place_exclude_error"] = json!(err);
+    }
+    Ok(out)
 }
 
 #[cfg(test)]

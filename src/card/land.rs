@@ -753,6 +753,10 @@ fn land_inner(
         "worktree_follow": worktree_follow,
         "cleanup_outbox": outbox,
     });
+    // RC1 observes a record that names another branch than the profile and refuses nothing.
+    if let Some(stale) = guard::repoint::observation(project) {
+        answer["guard_record_stale"] = stale;
+    }
     if let Some(verdict) = &relied {
         answer["verdict"] = verdict.clone();
         if let Some(after) = verdict["event"].as_i64() {
