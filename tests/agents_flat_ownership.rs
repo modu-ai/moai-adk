@@ -627,8 +627,9 @@ fn the_difference_stops_at_eighty_lines_and_counts_the_rest() {
 }
 
 /// A host whose agents folder is a link is never written through, and the apply says so: the
-/// result is `blocked` with the host and the reason, so the end screen cannot read it as done.
-/// A clean apply carries no `blocked` key.
+/// result keeps its state `unchanged` (the earlier layout pins that) and names the host and the
+/// reason in `blocked` and `reason`, so the end screen cannot read it as done. A clean apply
+/// carries no `blocked` key.
 #[cfg(unix)]
 #[test]
 fn an_apply_names_a_blocked_host_and_writes_nothing_through_the_link() {
@@ -641,7 +642,7 @@ fn an_apply_names_a_blocked_host_and_writes_nothing_through_the_link() {
     let plan = fx.plan();
     assert_eq!(plan.hosts[0].preflight, "blocked", "{:?}", plan.hosts[0]);
     let v = fx.apply(&plan, &[]);
-    assert_eq!(v["state"], "blocked", "{v}");
+    assert_eq!(v["state"], "unchanged", "{v}");
     assert_eq!(v["written"], serde_json::json!([]), "{v}");
     assert_eq!(v["blocked"][0]["host"], "claude", "{v}");
     let reason = v["blocked"][0]["reason"].as_str().unwrap_or_default();

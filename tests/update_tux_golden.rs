@@ -846,7 +846,7 @@ fn the_applied_screen_shows_a_blocked_agents_host_as_partial() {
     let reason = "claude: the agents folder is a link";
     let mut blocked = fixture("applied");
     blocked["agents_result"] = serde_json::json!({
-        "state": "blocked",
+        "state": "unchanged",
         "written": [],
         "reason": reason,
         "blocked": [{"host": "claude", "reason": "the agents folder is a link"}],

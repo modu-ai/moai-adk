@@ -768,8 +768,8 @@ pub fn apply_with_choices(
 }
 
 /// Adds the blocked hosts (`host`, `reason`) to an apply result, with no key when none is blocked.
-/// A result that wrote nothing becomes `blocked` with a one-line `reason`, so no screen reads it as
-/// done; a result that wrote something for another host is `partial`.
+/// A one-line `reason` names each host and why, so a screen can say it. The `state` stays what the
+/// writes made it: the earlier layout answers `unchanged` for a blocked folder and pins that.
 fn name_blocked(v: &mut serde_json::Value, blocked: &[(&str, &str)]) {
     if blocked.is_empty() {
         return;
@@ -784,11 +784,6 @@ fn name_blocked(v: &mut serde_json::Value, blocked: &[(&str, &str)]) {
         .collect::<Vec<_>>()
         .join("; ")
         .into();
-    v["state"] = if v["state"] == "unchanged" {
-        "blocked".into()
-    } else {
-        "partial".into()
-    };
 }
 
 /// Whether the apply writes anything for this file: a nested create or update, or the removal
