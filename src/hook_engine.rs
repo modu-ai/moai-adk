@@ -699,9 +699,13 @@ fn tool_preflight_deny(
         let project_dir = std::env::var_os("CLAUDE_PROJECT_DIR")
             .filter(|v| !v.is_empty())
             .map(std::path::PathBuf::from);
-        if let Some(reason) =
-            crate::hook_bash_boundary::session_cd(input, project_dir.as_deref(), cwd)
-        {
+        let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
+        if let Some(reason) = crate::hook_bash_boundary::session_cd(
+            input,
+            project_dir.as_deref(),
+            home.as_deref(),
+            cwd,
+        ) {
             *fixed_reason = Some(reason);
             return Verdict::Deny(reason.to_string());
         }
