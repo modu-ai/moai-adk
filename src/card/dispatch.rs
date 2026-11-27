@@ -59,7 +59,7 @@ pub fn check_receiver(to: &str) -> Result<()> {
 }
 
 /// The card's number; a host number (`#12`) needs a lookup, so the writing actions refuse it.
-fn card_id(action: &str, reference: &str) -> Result<i64> {
+pub(super) fn card_id(action: &str, reference: &str) -> Result<i64> {
     match input::parse_ref(reference).map_err(|e| format!("card {action} refused: {e}"))? {
         CardRef::Id(n) => Ok(n),
         CardRef::SourceNumber(_) => Err(format!(
@@ -828,7 +828,7 @@ pub fn handoff(
 /// check `card note` uses; `card export` writes it out). The text is never repeated. The
 /// text is kept without its leading and trailing blanks; a line separator (U+2028, U+2029) or a
 /// control character anywhere in what was typed is refused.
-fn checked_reason(action: &str, reason: &str) -> Result<String> {
+pub(super) fn checked_reason(action: &str, reason: &str) -> Result<String> {
     let kept = reason.trim();
     if kept.is_empty()
         || kept.chars().count() > reservation::MAX_REASON_LEN

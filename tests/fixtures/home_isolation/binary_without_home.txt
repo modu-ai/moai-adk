@@ -43,7 +43,6 @@ tests/git_env_scrub.rs
 tests/go_state_cli.rs
 tests/index_cli.rs
 tests/lane_handoff_cli.rs
-tests/lane_next_cli.rs
 tests/parity_cli.rs
 tests/plan_admission.rs
 tests/profile_apply_engine.rs

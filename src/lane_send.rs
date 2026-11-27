@@ -28,6 +28,8 @@ pub const MAX_HANDLE_CHARS: usize = 128;
 pub const DEFAULT_TIMEOUT_SECS: u64 = 15;
 /// Most bytes read from one `orca` output stream.
 const OUTPUT_LIMIT: u64 = 1 << 20;
+/// [`OUTPUT_LIMIT`] as the reasons name it.
+const OUTPUT_LIMIT_TEXT: &str = "1 MiB";
 
 /// The least time the output of a finished `orca` call is waited for after the time limit.
 const OUTPUT_GRACE: Duration = Duration::from_millis(250);
@@ -220,6 +222,9 @@ struct Called {
     code: Option<i32>,
     stdout: String,
     stderr: String,
+    /// The program printed more than [`OUTPUT_LIMIT`] bytes to standard output; `stdout` holds
+    /// the first [`OUTPUT_LIMIT`] of them.
+    stdout_cut: bool,
 }
 
 impl ProcessOrca {
@@ -240,9 +245,13 @@ impl ProcessOrca {
             std::thread::spawn(move || {
                 let mut bytes = Vec::new();
                 if let Some(s) = stream {
-                    let _ = s.take(OUTPUT_LIMIT).read_to_end(&mut bytes);
+                    // One byte more than the limit tells a cut stream from one that is exactly as
+                    // long as the limit.
+                    let _ = s.take(OUTPUT_LIMIT + 1).read_to_end(&mut bytes);
                 }
-                let _ = send.send(String::from_utf8_lossy(&bytes).into_owned());
+                let cut = bytes.len() as u64 > OUTPUT_LIMIT;
+                bytes.truncate(OUTPUT_LIMIT as usize);
+                let _ = send.send((String::from_utf8_lossy(&bytes).into_owned(), cut));
             });
             receive
         };
@@ -282,10 +291,10 @@ impl ProcessOrca {
         // The program has exited; its output gets what is left of the same time limit, and at
         // least a short grace so that a call that ended just in time is still read whole.
         let until = (started + self.timeout).max(Instant::now() + OUTPUT_GRACE);
-        let wait = |receive: std::sync::mpsc::Receiver<String>| {
+        let wait = |receive: std::sync::mpsc::Receiver<(String, bool)>| {
             receive.recv_timeout(until.saturating_duration_since(Instant::now()))
         };
-        let (Ok(stdout), Ok(stderr)) = (wait(out), wait(err)) else {
+        let (Ok((stdout, stdout_cut)), Ok((stderr, _))) = (wait(out), wait(err)) else {
             return Err(format!(
                 "did not finish its output within {} seconds: `{shown}`",
                 self.timeout.as_secs()
@@ -295,6 +304,7 @@ impl ProcessOrca {
             code: status.code(),
             stdout,
             stderr,
+            stdout_cut,
         })
     }
 }
@@ -333,6 +343,13 @@ impl ProcessOrca {
 impl Orca for ProcessOrca {
     fn list(&self) -> Result<String, String> {
         let called = self.call(&["terminal", "list", "--json"])?;
+        // A list longer than the output limit is cut, and a cut list is no list; the program may
+        // also have died of the closed pipe, so this is told before its exit code is read (D-7).
+        if called.stdout_cut {
+            return Err(format!(
+                "`orca terminal list` printed more than {OUTPUT_LIMIT_TEXT}: the list is too large to read"
+            ));
+        }
         match called.code {
             Some(0) => Ok(called.stdout),
             code => Err(format!(

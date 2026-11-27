@@ -3,6 +3,7 @@
 
 use std::io::Read;
 use std::path::PathBuf;
+use std::time::{Duration, Instant};
 
 /// Read a lane's screen into a state
 ///
@@ -23,7 +24,11 @@ use std::path::PathBuf;
 /// `unreachable` and the scan goes on; a list Orca reports as cut short is said so (`n of m`).
 /// The reset time comes from the screen text only, so `--scan` cannot be combined with `--home`.
 /// Runs `orca` (`MOAI_ORCA_BIN` overrides the program, `MOAI_ORCA_TIMEOUT_SECS` the 15 second
-/// limit per call); exits non-zero when the list cannot be read.
+/// limit per call); exits non-zero when the list cannot be read. The whole scan stops after
+/// `--max-seconds` (120 by default): the terminals it did not read are `unreachable` and name
+/// the cap, and the last read may run up to one second past it. `--max-terminals` makes a list
+/// with more terminals fail before any screen is read. A list that `orca` prints longer than
+/// 1 MiB fails and names that size.
 #[derive(clap::Args)]
 pub struct Args {
     /// The lane's HOME, to read its usage record for the reset time of a usage limit.
@@ -32,12 +37,21 @@ pub struct Args {
     /// Scan every terminal `orca terminal list` reports instead of reading one screen.
     #[arg(long, conflicts_with = "home")]
     scan: bool,
+    /// With `--scan`: stop reading screens after this many seconds in all (1 to 3600, default 120).
+    #[arg(long, requires = "scan", value_parser = clap::value_parser!(u64).range(1..=3600))]
+    max_seconds: Option<u64>,
+    /// With `--scan`: fail, reading no screen, when the list holds more terminals than this.
+    #[arg(long, requires = "scan", value_parser = clap::value_parser!(u64).range(1..))]
+    max_terminals: Option<u64>,
     /// The time to take as now, `YYYY-MM-DDTHH:MM:SSZ` (default: the clock).
     #[arg(long)]
     now: Option<String>,
 }
 
 pub const OPERATION: &str = "lane.screen";
+
+/// Seconds one `--scan` may take in all unless `--max-seconds` says otherwise.
+const DEFAULT_MAX_SECONDS: u64 = 120;
 
 /// Standard input is read up to this many bytes; a screen is a few kilobytes.
 const INPUT_LIMIT: usize = 65_536;
@@ -61,8 +75,32 @@ fn scan(args: &Args) -> Result<serde_json::Value, String> {
 
     let now = clock(args.now.as_deref())?;
     let orca = ProcessOrca::from_env();
+    let seconds = args.max_seconds.unwrap_or(DEFAULT_MAX_SECONDS);
+    let deadline = Instant::now() + Duration::from_secs(seconds);
+    let limits = screen::ScanLimits {
+        deadline: Some((deadline, seconds)),
+        max_terminals: args
+            .max_terminals
+            .map(|n| usize::try_from(n).unwrap_or(usize::MAX)),
+    };
     let list = orca.list().map_err(|d| screen::list_error(&d))?;
-    screen::scan(&list, &mut |handle| read_checked(&orca, handle), now)
+    // Each read gets what is left of the total time, rounded up to a whole second and never
+    // more than the limit of one call.
+    let one_call = orca.timeout.as_secs().max(1);
+    screen::scan(
+        &list,
+        &mut |handle| {
+            let left = deadline.saturating_duration_since(Instant::now());
+            let secs = (left.as_secs_f64().ceil() as u64).clamp(1, one_call);
+            let bounded = ProcessOrca {
+                program: orca.program.clone(),
+                timeout: Duration::from_secs(secs),
+            };
+            read_checked(&bounded, handle)
+        },
+        now,
+        &limits,
+    )
 }
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
