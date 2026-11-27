@@ -236,6 +236,31 @@ fn a_question_row_ending_in_a_choice_shape_is_never_working_or_idle() {
     }
 }
 
+/// The choices are not at the short end of the question row: a long tail after the question mark
+/// (the flattened real permission question), a pair before the question, a pair in the middle of
+/// a long sentence. The tip refused all of these through its word list (leader decision 10737).
+#[test]
+fn a_question_row_with_a_pair_of_alternatives_anywhere_is_never_working_or_idle() {
+    for row in [
+        "Do you want to proceed? Yes, and don't ask again / No, tell Claude what to do differently",
+        "Yes/No: do you want to proceed?",
+        "Do you want to delete the build folder now yes/no please confirm it",
+        "Do you want to delete the build folder now (Yes | No) please confirm it",
+        "Are you sure you want to overwrite the whole build folder Allow/Deny",
+    ] {
+        for (kind, screen) in [
+            ("working", working_with(vec![row])),
+            ("idle", idle_with(&[row])),
+        ] {
+            let state = state_of(&screen);
+            assert!(
+                state == "permission_prompt" || state == "unknown",
+                "{kind} screen, row {row:?}: expected permission_prompt or unknown, got {state}"
+            );
+        }
+    }
+}
+
 /// The guard of the repair: a question whose own words hold no choice shape, and plain prose after
 /// it (REQ-7), still let a send through.
 #[test]
@@ -245,6 +270,8 @@ fn a_question_row_without_a_choice_shape_still_reads_working_or_idle() {
         "Would you like me to commit or push?",
         "Do you want to continue? no changes yet",
         "Do you want to continue? yes, go ahead",
+        "Do you want me to edit src/main.rs?",
+        "Do you want me to run the build and then the tests?",
     ] {
         let working = state_of(&working_with(vec![row]));
         assert_eq!(working, "working", "working screen, row {row:?}");
@@ -409,6 +436,9 @@ fn lane_send_refuses_a_question_row_ending_in_a_choice_shape_and_sends_nothing()
     for row in [
         "Do you want to proceed? Yes/No",
         "Do you want to delete the build folder? [Yes] [No]",
+        "Do you want to proceed? Yes, and don't ask again / No, tell Claude what to do differently",
+        "Yes/No: do you want to proceed?",
+        "Do you want to delete the build folder now yes/no please confirm it",
     ] {
         let screens = [
             ("working", format!("{}{row}\n", working_screen_text())),
