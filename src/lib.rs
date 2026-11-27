@@ -204,6 +204,7 @@ pub mod worktree_gc;
 pub mod worktree_include;
 pub mod worktree_install_plan;
 pub mod worktree_move;
+pub mod worktree_new;
 pub mod worktree_report;
 pub mod worktree_slot;
 pub use agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest};
