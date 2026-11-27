@@ -2,13 +2,13 @@
 id: SPEC-20261124-card-help-gates
 title: "Card help and gate tests say exactly what the gates do, and they can fail"
 status: approved
-revision: 2
+revision: 3
 created: 2026-11-24
 approval:
   by: user
   at: 2026-11-27
-  basis: "리더 노트 10807 (USER-APPROVAL, 2026-11-27, 리더 세션의 질문 도구): 사용자가 직접 골랐어요 — \"둘 다 거절 (Recommended)\"(D-3 A), D-4 a(`card spec` 에 관계 옵션을 더하지 않아요), \"함수로 빼서 테스트 (Recommended)\"(D-5 a). 후속·분리 관계가 있는 카드, SPEC 없는 카드, 같은 SPEC 으로의 다시 연결, `--unlink`, 이미 한 SPEC 에 이어진 열린 카드 둘 이상은 거절하지 않아요."
-  digest: "sha256:0080e7f151e802b96cd076da8d7d0c48faae8684a784c37a214f42e07028ec09"
+  basis: "리더 노트 10807 (USER-APPROVAL, 2026-11-27, 리더 세션의 질문 도구): 사용자가 직접 골랐어요 — \"둘 다 거절 (Recommended)\"(D-3 A), D-4 a(`card spec` 에 관계 옵션을 더하지 않아요), \"함수로 빼서 테스트 (Recommended)\"(D-5 a). 후속·분리 관계가 있는 카드, SPEC 없는 카드, 같은 SPEC 으로의 다시 연결, `--unlink`, 이미 한 SPEC 에 이어진 열린 카드 둘 이상은 거절하지 않아요. 개정 3 은 리더 노트 10831 (USER-APPROVAL, 2026-11-27, 리더 세션의 질문 도구): 사용자가 직접 골랐어요 — \"같이 막되 먼저 검사 (Recommended)\". `spec take --card` 도 같은 규칙으로, 브랜치와 다른 상태를 바꾸기 전에 검사해 아무것도 쓰지 않고 거절해요(REQ-13, AC-16). 다른 요구는 바꾸지 않아요."
+  digest: "sha256:d7e7bbb326f44a3eba4e27b06cea20fcfaca7be0c46951e11847974081feedc1"
 ---
 
 # Card help and gate tests say exactly what the gates do, and they can fail
@@ -35,6 +35,7 @@ approval:
 
 - Q1: 무엇이 필요한가요? → A: 카드 C-437 의 남은 기준(리더 지시, 2026-11-27): 기준 2 의 시계 반쪽, 기준 8, 기준 9. 리더는 기준 8 이 게이트 동작을 바꾸므로 새로 거절되는 것과 대가를 선택지로 적어 달라고 했어요.
 - Q2: 아래 Decisions 의 "승인 때 골라요" 항목(D-3, D-4, D-5)을 어떻게 고를까요? → A: 사용자가 직접 골랐어요(2026-11-27, 리더 세션의 질문 도구, 원장 노트 10807): D-3 A "둘 다 거절 (Recommended)", D-4 a (`card spec` 에 관계 옵션을 더하지 않아요), D-5 a "함수로 빼서 테스트 (Recommended)". 세 가지 모두 초안의 기본값과 같아요.
+- Q3: 리뷰(원장 노트 10820, N1)가 세 번째 길을 찾았어요: `moai spec take <SPEC> --card C-n` 도 같은 `spec_link::link` 를 불러서 브랜치를 바꾸고 base 를 기록한 뒤에 "the card was not linked" 로 끝나요. 같이 막을까요? → A: 사용자가 직접 골랐어요(2026-11-27, 리더 세션의 질문 도구, 원장 노트 10831): "같이 막되 먼저 검사 (Recommended)". 같은 규칙으로 거절하되 브랜치와 다른 상태를 바꾸기 전에 검사해 아무것도 쓰지 않고 거절해요(REQ-13, AC-16). 다른 요구는 바꾸지 않아요.
 
 ## Non-goals
 
@@ -57,6 +58,7 @@ approval:
 - REQ-10: The `card ready` help and the `card spec` help shall each say the refusal of REQ-8 or REQ-9 and the way out, in words that match the refusal text.
 - REQ-11: The decision of whether a reclaim is the takeover of an ended lease shall be one function that takes the reservation status, the lease end and the clock reading (`Result<i64>`), so that a test can pass an unreadable clock.
 - REQ-12: Each guard-mutant line of a READY note of this card shall come from a run of exactly one mutant, with its own log file that names the mutant and ends with the exit code.
+- REQ-13: IF `moai spec take <SPEC> --card <card>` names a card that `card spec` would refuse to link to that SPEC under REQ-9, THEN `spec take` shall refuse with the same `conflict in spec` text before it creates or switches a branch, records a base or writes the ledger, and write nothing. A card that already names the SPEC, a `done` or `hold` card, and a SPEC with no other open card are never refused by this rule.
 
 ## Acceptance
 
@@ -74,7 +76,8 @@ approval:
 - AC-12 (REQ-10): 공백을 접어 읽은 `card ready --help` 와 `card spec --help` 가 거절과 빠져나갈 길을 말하고, 그 문장을 지우면 테스트가 실패해요 · verify: `cargo nextest run --offline --locked --test card -E 'test(the_ready_and_spec_help_name_the_open_card_refusal)'`
 - AC-13 (REQ-6, REQ-11): `dispatch.rs` 안 단위 테스트가 `held` + 읽히는 시계 + 끝난 임대는 느슨한 문, `held_for_review`·`expired_candidate` 상태, 읽히지 않는 시계(`Err`), 끝나지 않은 임대는 각각 엄격한 문을 낸다는 것을 고정하고, 기존 `card_reclaim_early_cli` 테스트가 고치지 않고 통과해요 · verify: `cargo nextest run --offline --locked --lib -E 'test(the_takeover_gate_choice_follows_status_clock_and_lease)'` 와 `cargo nextest run --offline --locked --test card_reclaim_early_cli`
 - AC-14 (REQ-12): READY 노트의 `guard-mutant:` 줄마다 `target/card-help-gates-2/mut-<이름>.log` 가 하나씩 있고 모두 `exit=100` 으로 끝나요. 뮤턴트 하나를 되돌리기 전에 다음 뮤턴트를 적용하지 않아요 · verify: `grep -L 'exit=100' target/card-help-gates-2/mut-*.log` 가 아무것도 내지 않고, `ls target/card-help-gates-2/mut-*.log | wc -l` 가 READY 의 `guard-mutant:` 줄 수와 같아요
-- AC-15 (REQ-8..REQ-12): 조각 2 의 `src` diff 는 Scope 의 조각 2 쓰기 목록 안에만 있어요 · verify: `git diff --stat <base>..<head> -- src`
+- AC-15 (REQ-8..REQ-13): 조각 2 의 `src` diff 는 Scope 의 조각 2 쓰기 목록 안에만 있어요 · verify: `git diff --stat <base>..<head> -- src`
+- AC-16 (REQ-13): 임시 HOME 의 임시 장부와 임시 git 저장소에서 열린 카드가 있는 SPEC 에 아직 이어지지 않은 열린 카드로 `spec take <SPEC> --card C-n` 을 하면 `conflict in spec` 으로 거절되고(열린 카드 이름이 문장에 있어요), 거절 뒤 현재 브랜치, 브랜치 목록, `branch.<이름>.moai-base` 설정, 작업 트리 상태, 레저 이벤트 수가 그대로예요. 같은 SPEC 에 이미 이어진 카드, `done`·`hold` 카드, 다른 열린 카드가 없는 SPEC 은 받아들여져요 · verify: `cargo nextest run --offline --locked --test spec_take_cli -E 'test(spec_take_card_does_not_add_a_second_open_card_to_a_spec)'`
 
 ## Scope
 
@@ -83,6 +86,7 @@ approval:
 
 조각 2(이 개정이 승인되면 `card scope` 로 더해요):
 - write: `.moai/specs/SPEC-20261124-card-help-gates/spec.md`, `src/card/dispatch.rs`(`ready` 한 함수와 `takeover_gates` 의 판정 한 곳, 그리고 그 파일 안 `mod tests`), `src/card/spec_link.rs`(`link` 와 거절 문장 도우미), `src/ops/card.rs`(공유 파일: `card line-lease` 로 `ready`·`spec` 도움말 줄만 빌려요), `tests/fixtures/help/*.txt`(공유 파일: 도움말 골든이 바뀌면 `card line-lease` 로만), `docs/design-review/appendix/operations/card.md`(공유 파일: 거절 한 줄, `card line-lease` 로만), `tests/card/card_withdraw_cli.rs`, `tests/card/card_spec_cli.rs`, `tests/card/card_add_spec_cli.rs`, `tests/card/card_reclaim_early_cli.rs`(읽기와 새 테스트 추가만)
+- 개정 3 이 더하는 쓰기(REQ-13): `src/spec_take.rs`(`card_check` 에 같은 규칙의 사전 검사, 읽기 전용), `src/card/spec_link.rs`(`link` 와 사전 검사가 함께 쓰는 판정 한 곳), `tests/spec_take_cli.rs`(새 테스트 추가만), 그리고 `tests/card/card_spec_cli.rs` 의 `spec_show_lists_the_linked_cards_of_this_machine_as_local` 준비 한 줄 복구(리뷰 노트 10820 N3)
 - read-only: `src/card/ready_receipt.rs`, `src/ledger/reservation.rs`
 - forbidden: 실제 HOME 과 실제 장부(임시 HOME 만), 네트워크, `CLAUDE.md`, `card reclaim` 의 동작 변경, 이미 열린 카드가 둘인 기존 장부 데이터의 수정, 새 테스트 파일, 셸 스크립트와 Python
 
