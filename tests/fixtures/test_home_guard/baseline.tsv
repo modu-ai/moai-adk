@@ -1,7 +1,8 @@
 # Tests that read the decoy user-assets.json of tools/test_home_guard.sh without choosing a HOME.
-# Why: each one calls identity::identity (src/identity.rs, env HOME), which opens that file through
-# home_state::home_go_markers. Under the wrapper that HOME is an empty temporary folder, so no real
-# folder is read; the root fix is a separate change (identity takes HOME as an argument).
+# Why: each one opens that file through home_state::home_go_markers, for example through
+# identity::identity_in with the environment HOME (src/identity.rs; `identity::identity` is gone).
+# Under the wrapper that HOME is an empty temporary folder, so no real folder is read. A line is
+# removed only when an observe run shows its test no longer touches the decoy.
 # Source: one observe run of the whole suite, head 57bcc17de2, nextest 0.9.152, 7320 tests run; the 389
 # touching tests, one line each (SPEC-20261123-test-home-isolation D-5).
 # This file only shrinks: tests/test_home_guard.rs caps its length and checks every name.
@@ -283,11 +284,6 @@ moai_cli	leader_round::tests::the_end_condition_is_met_with_no_pr_and_no_startab
 moai_cli	leader_round::tests::the_round_names_close_and_handoff_candidates_the_gate_and_the_end
 moai_cli	leader_round::tests::without_a_snapshot_the_round_is_not_run
 moai_cli	ui_text::tests::the_profile_is_read_from_the_project_that_holds_the_folder
-moai_cli	update::routing_recheck_tests::routing_recheck_reads_the_hosts_the_apply_gate_gives_for_a_profile_row
-moai_cli	update::user_layer_tests::a_package_that_differs_from_the_staged_one_is_refused
-moai_cli	update::user_layer_tests::a_skill_copy_that_did_not_apply_gets_no_agents_and_no_section
-moai_cli	update::user_layer_tests::the_summary_shows_cleanup_only_when_something_is_archived
-moai_cli	update::user_layer_tests::the_update_plan_carries_the_style_notice_and_prints_it_as_a_notice
 product_cli	agents_apply_refuses_symlinked_parents_and_recovers_from_partial_apply
 product_cli	agents_generation_is_idempotent_and_preserves_user_body
 product_cli	agents_local_file_is_opt_in_and_never_rewritten
