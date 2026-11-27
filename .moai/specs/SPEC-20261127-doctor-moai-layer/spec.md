@@ -1,18 +1,24 @@
 ---
 id: SPEC-20261127-doctor-moai-layer
 title: "moai doctor: moai layer diagnostics"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-27
+approval:
+  by: user
+  at: 2026-11-27
+  basis: "리더 결정 노트 10830 (USER-APPROVAL C-338 SPEC-20261127-doctor-moai-layer revision 1, 2026-11-27): 사용자가 직접 골랐어요(리더 세션의 질문 도구), \"기본값으로 승인 (Recommended)\"; 선택지 설명 \"세 기본값(D-2, D-3, D-5)으로 승인해요. 요구가 15개라 크기 경고가 있지만 한 SPEC으로 가고 점검 항목 순서대로 구현해요. kenan이 테스트부터 시작해요.\"; D-8 은 리더 판단으로 한 SPEC; 승인 범위는 이 SPEC revision 1 의 요구·기준·결정 전부이고, tools/repo_scans.json 을 고쳐 tier 2 가 되어도 이 승인이 그 SPEC 승인이며 전체 리뷰를 받아요; 리더가 노트에 적었고 레인은 그 노트를 옮겨 적었어요(레인은 자기 승인을 기록하지 않았어요)"
+  digest: "sha256:e367fe850f08dfe193d41cf5c3260ecf8af4cccc3acedc82c8163fd9ded4e3ec"
 ---
 
 # moai doctor: moai layer diagnostics
 
 ## Interview
 
-- Q1: 로그인 만료 확인에 `claude auth status` 를 실행해도 되나요? → A: 아직 묻지 않았어요(D-2). 공식 문서는 이 명령을 읽기 전용이라고 쓰지 않고, 변경 기록에는 토큰 갱신·잠금·로그아웃 수정이 있어요. 기본값은 실행하지 않고 옵션으로만 둬요.
-- Q2: 스킬 로드 확인과 상태줄 가짜 입력 실행을 이번 조각에 넣을까요? → A: 아직 묻지 않았어요(D-3). 둘 다 사용자의 명령이나 실제 세션을 실행하는 일이라 기본 점검에서 빼고 뒤 조각으로 미뤄요.
-- Q3: 최소 버전 표에서 카드 본문과 달라진 값(Windows 세션 간 메시지, `--discard-unpushed`)을 어떻게 쓸까요? → A: 아직 묻지 않았어요(D-5). 조사에서 읽은 값을 쓰고 확인하지 못한 칸은 `unverified` 로 둬요.
+- Q1: 로그인 만료 확인에 `claude auth status` 를 실행해도 되나요? → A: "기본값으로 승인 (Recommended)"(사용자의 선택, 2026-11-27, 리더 세션의 질문 도구; 리더 결정 노트 10830). 선택지의 설명은 `claude auth status` 를 `--auth-status` 옵션을 줄 때만 실행한다는 기본값(D-2)이에요. 이유: 공식 문서는 이 명령을 읽기 전용이라고 쓰지 않고, 변경 기록에는 토큰 갱신·잠금·로그아웃 수정이 있어요. 다른 선택지(항상 확인, 릴리즈 뒤로 미룸)는 고르지 않았어요.
+- Q2: 스킬 로드 확인과 상태줄 가짜 입력 실행을 이번 조각에 넣을까요? → A: 같은 선택(노트 10830)의 기본값 D-3: 스킬 로드·상태줄 시험·업데이트 안내는 뒤 조각이에요. 둘 다 사용자의 명령이나 실제 세션을 실행하는 일이라 기본 점검에서 빼요.
+- Q3: 최소 버전 표에서 카드 본문과 달라진 값(Windows 세션 간 메시지, `--discard-unpushed`)을 어떻게 쓸까요? → A: 같은 선택(노트 10830)의 기본값 D-5: 조사에서 읽은 값을 쓰고 확인하지 못한 칸은 `unverified` 로 둬요.
+- Q4: 요구가 15개라 크기 경고가 있어요, 나눌까요? → A: 리더 판단(노트 10830, D-8): 한 SPEC 으로 가고 점검 항목 순서대로 구현해요. 크기 경고는 받아들여요.
 
 ## Intent
 
@@ -95,13 +101,13 @@ moai 가 도는 환경에서 "왜 moai 가 안 도는지"를 사용자가 스스
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | `moai doctor` is one new read-only command; each check is a separate `id` so a later slice adds checks without changing the others | 카드 본문(moai 층만, 나머지는 Claude Code 점검으로 안내) | 명령을 지우면 돼요 |
-| D-2 | (사용자 결정 필요, 기본값: 실행하지 않음) `claude auth status` 는 `--auth-status` 옵션을 줄 때만 한 번 실행해요 | 공식 문서는 읽기 전용이라 쓰지 않았고, 변경 기록에 토큰 갱신·잠금·로그아웃 수정이 있어요(2.1.318 의 `loginExpiresAt` 도 이 명령에서만 나와요) | 기본 실행으로 바꿀 수 있어요 |
-| D-3 | 스킬 로드 확인(`system/init`)과 상태줄 가짜 입력 실행은 이번 조각 밖(뒤 조각 후보)이고, `FUNCTION_HOOKS` 와 업데이트 명령은 출처를 읽기 전에는 넣지 않아요 | 실행과 비용이 있고, 출처가 `unverified` 예요 | 뒤 조각으로 더해요 |
+| D-2 | (사용자 선택 2026-11-27, 노트 10830: 기본값 승인 — 실행하지 않음) `claude auth status` 는 `--auth-status` 옵션을 줄 때만 한 번 실행해요 | 공식 문서는 읽기 전용이라 쓰지 않았고, 변경 기록에 토큰 갱신·잠금·로그아웃 수정이 있어요(2.1.318 의 `loginExpiresAt` 도 이 명령에서만 나와요) | 기본 실행으로 바꿀 수 있어요 |
+| D-3 | (사용자 선택 2026-11-27, 노트 10830: 기본값 승인) 스킬 로드 확인(`system/init`)과 상태줄 가짜 입력 실행은 이번 조각 밖(뒤 조각 후보)이고, `FUNCTION_HOOKS` 와 업데이트 명령은 출처를 읽기 전에는 넣지 않아요 | 실행과 비용이 있고, 출처가 `unverified` 예요 | 뒤 조각으로 더해요 |
 | D-4 | `claude-doctor`(AGENTS.md 예측)는 그대로 두고 `moai doctor` 의 `pointers` 에서 이름만 알려요 | 두 명령의 역할이 달라요(프로젝트 파일 예측 / 환경 진단) | 합치려면 뒤 SPEC 이 필요해요 |
-| D-5 | 최소 버전 표는 조사에서 `verified` 로 읽은 행만 판정에 쓰고, 달라진 값은 읽은 값을 써요: Windows 세션 간 메시지는 변경 기록 2.1.239(공식 가용성 문서는 2.1.234 라고 써서 둘이 달라요 — 높은 쪽을 쓰고 두 줄을 근거에 남겨요), `--discard-unpushed` 는 변경 기록에서 못 찾아 `unverified`(판정 안 함) | 조사 4번(2026-11-27, 변경 기록 2.1.332 까지) | 행 값은 데이터라 고치면 돼요 |
+| D-5 | (사용자 선택 2026-11-27, 노트 10830: 기본값 승인) 최소 버전 표는 조사에서 `verified` 로 읽은 행만 판정에 쓰고, 달라진 값은 읽은 값을 써요: Windows 세션 간 메시지는 변경 기록 2.1.239(공식 가용성 문서는 2.1.234 라고 써서 둘이 달라요 — 높은 쪽을 쓰고 두 줄을 근거에 남겨요), `--discard-unpushed` 는 변경 기록에서 못 찾아 `unverified`(판정 안 함) | 조사 4번(2026-11-27, 변경 기록 2.1.332 까지) | 행 값은 데이터라 고치면 돼요 |
 | D-6 | `allowManagedModsOnly` 는 최상위 키가 아니라 관리 설정의 `pluginConfigs["cc-plugin-sec-default@builtin"].options` 아래 옵션으로 읽어요 | `plugins/mods/admin.md`(조사 2번) 가 그렇게 말하고, 카드 본문의 이름과 달라요 | 문서가 바뀌면 데이터로 고쳐요 |
 | D-7 | 읽을 수 없는 소스(MDM 도메인, 레지스트리, 서버 관리, `policyHelper`, `--settings`)는 추측하지 않고 `unknown` 으로 이름을 밝혀요 | 문서가 읽기 방법을 주지 않거나, 읽으려면 코드를 실행해야 해요 | 읽는 방법이 생기면 더해요 |
-| D-8 | (리더 판단 필요, 기본값: 한 SPEC) 요구가 15개라 `spec check` 가 12개 넘음 경고를 내요; 한 SPEC 으로 가되 점검마다 `id` 가 따로라 순서대로 구현하고, 나누려면 A(REQ-1~8: 골격·버전·로그인·API 키)와 B(REQ-9~15: 관리 잠금·수신 값·능력 표·pointers·비밀·테스트)를 `parent` 로 이어요 | 경고가 말하는 크기 기준이에요 | `parent` 로 나눠요 |
+| D-8 | (리더 판단, 노트 10830: 한 SPEC) 요구가 15개라 `spec check` 가 12개 넘음 경고를 내요; 한 SPEC 으로 가되 점검마다 `id` 가 따로라 순서대로 구현하고, 나누려면 A(REQ-1~8: 골격·버전·로그인·API 키)와 B(REQ-9~15: 관리 잠금·수신 값·능력 표·pointers·비밀·테스트)를 `parent` 로 이어요 | 경고가 말하는 크기 기준이에요 | `parent` 로 나눠요 |
 
 ## Evidence
 
