@@ -421,8 +421,9 @@ fn unread_trailer_detail(key: &str, line: usize) -> String {
     )
 }
 
-/// Parses `git log --format=%x1e%H%x1f<specs>%x1f<sessions>%x1f<verified>%x1f<subject>%x1f<body>`
-/// records (records separated by `\x1e`, trailer values by `\x03`).
+/// Parses `git log --format=%x1e%H%x1f<specs>%x1f<sessions>%x1f<verified>%x1f<subject>%x1f<body>%x1f<cloud sessions>`
+/// records: seven fields, the last the `Claude-Session` values (records separated by `\x1e`,
+/// trailer values by `\x03`).
 pub fn parse_log(text: &str) -> Vec<CommitTrailers> {
     let split = |s: &str| -> Vec<String> {
         s.split('\x03')

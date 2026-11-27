@@ -585,6 +585,10 @@ const STATE_SECRETS: [&str; 35] = [
     "**/.streamlit/secrets.toml",
 ];
 
+/// The `.gitignore` line for the folders an update sets aside (`.moai.rust-<UTC>/`): the last
+/// line of the managed block, spelled the same in every project.
+const RUST_SET_ASIDE_GLOB: &str = ".moai.rust-*/";
+
 /// How many `now visible:` lines the plan shows before it counts the rest.
 const VISIBLE_NOTE_CAP: usize = 20;
 
@@ -625,6 +629,10 @@ fn render_ignore(root: &Path, list_local: bool, keep_earlier: bool, allow: &[Str
     for pattern in STATE_SECRETS {
         body.push_str(&format!("{state}/{pattern}\n"));
     }
+    // The update's set-aside folders (`.moai.rust-<UTC>/`) sit beside the state folder; the
+    // line is the block's last one and is written as it reads, whatever the state folder is.
+    body.push_str(RUST_SET_ASIDE_GLOB);
+    body.push('\n');
     format!("{begin}\n{body}{end}\n")
 }
 
