@@ -1716,7 +1716,7 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "doctor",
-        "Claude Code 설정에서 moai 층만 읽기 전용으로 진단해요: 설정 폴더, Claude Code 버전과 moai 가 쓰는 기능의 최소 버전, 로그인 출처, 로그인을 덮는 API 키. 변수 이름과 상태만 보이고 값은 나오지 않아요. Claude Code 자체의 점검(`claude doctor`, `/status`)은 대신 하지 않고 알려 주기만 해요.",
+        "Claude Code 설정에서 moai 층만 읽기 전용으로 진단해요: 설정 폴더, Claude Code 버전과 moai 가 쓰는 기능의 최소 버전, 로그인 출처, 로그인을 덮는 API 키, 관리 설정의 잠금, 세션 간 메시지 수신 값, 호스트별 기능 표. 변수 이름과 상태만 보이고 값은 나오지 않아요. Claude Code 자체의 점검(`claude doctor`, `/status`)은 대신 하지 않고 알려 주기만 해요.",
     ),
     (
         "install-inspect",
@@ -1794,6 +1794,16 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "doctor",
         "auth_status",
         "`claude auth status` 를 한 번 더 돌려 로그인 방식·설정 폴더·만료만 남겨요",
+    ),
+    (
+        "doctor",
+        "table",
+        "호스트별 기능 표 전체를 함께 보여요: 칸마다 값, 문서 쪽, 줄, 읽은 때",
+    ),
+    (
+        "doctor",
+        "managed_dir",
+        "관리 설정 파일을 플랫폼 기본 폴더 대신 이 폴더에서 읽어요",
     ),
     (
         "cc|glm",
