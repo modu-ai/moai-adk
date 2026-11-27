@@ -51,6 +51,7 @@ mod card_scope_widen_cli;
 mod card_scope_widen_followup_cli;
 mod card_secret_followups;
 mod card_show_notes_cli;
+mod card_small_cli_gaps_cli;
 mod card_spec_cli;
 mod card_stale_cli;
 mod card_submit_cli;

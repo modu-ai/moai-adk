@@ -1,10 +1,10 @@
-//! `home-style-plan` (#2875): preview of the MoAI-Easy output style in HOME; writes nothing.
+//! `home-style-plan` (#2875): preview of the MoAI-Style output style in HOME; writes nothing.
 
 use std::path::PathBuf;
 
-/// Preview the MoAI-Easy output style in HOME
+/// Preview the MoAI-Style output style in HOME
 ///
-/// Preview the MoAI-Easy output style in HOME (#2875): Claude Code's style file and default
+/// Preview the MoAI-Style output style in HOME (#2875): Claude Code's style file and default
 /// `outputStyle`, each create, merge, set, unchanged, conflict, skipped or blocked, and the
 /// hosts not written with the reason. Writes nothing.
 #[derive(clap::Args)]

@@ -44,6 +44,12 @@ pub struct Args {
     /// is given.
     #[arg(long, conflicts_with_all = ["instance", "release", "show", "mode", "name", "liveness_of", "continue_session"])]
     names: bool,
+    /// Read-only (C-314): list every entry of this clone's registry (name, `held` or `ended`,
+    /// lease end, mode, host session, whether a launcher holds the name's lock) without a name;
+    /// the `instance` of an entry is not printed, `--show` gives it for one name. Writes nothing
+    /// and makes no folder; reads the clone of the current folder unless PROJECT is given.
+    #[arg(long, conflicts_with_all = ["instance", "release", "show", "mode", "name", "liveness_of", "lane_check", "names", "continue_session"])]
+    list: bool,
     /// The `instance` a previous registration of this session returned; absent on the first.
     #[arg(long)]
     instance: Option<String>,
@@ -128,6 +134,10 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         answer["action"] = serde_json::json!("session.lane_check");
         answer["writes"] = serde_json::json!(false);
         return Ok(answer);
+    }
+    if args.list {
+        let project = args.project.clone().unwrap_or_else(|| PathBuf::from("."));
+        return moai_cli::lane_registry::list(&project, now);
     }
     if args.names {
         let project = args.project.clone().unwrap_or_else(|| PathBuf::from("."));

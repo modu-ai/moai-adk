@@ -1,0 +1,58 @@
+[
+ {
+  "id": "ko-test",
+  "language": "ko",
+  "translationese": "시험을 돌려서 확인했어요",
+  "polished": "테스트를 돌려서 확인했어요",
+  "source": "ledger C-592 note 10530, user decision 1 (2026-11-27): 시험 is replaced by 테스트"
+ },
+ {
+  "id": "ko-branch",
+  "language": "ko",
+  "translationese": "새 가지를 만들었어요",
+  "polished": "새 브랜치를 만들었어요",
+  "source": "ledger C-592 note 10530, user decision 1: 가지 (meaning a git branch) is replaced by 브랜치"
+ },
+ {
+  "id": "ko-mutant",
+  "language": "ko",
+  "translationese": "변이를 걸어서 테스트가 깨지는지 봤어요",
+  "polished": "뮤턴트를 걸어서 테스트가 깨지는지 봤어요",
+  "source": "ledger C-592 note 10530, user decision 1: 변이 is replaced by 뮤턴트"
+ },
+ {
+  "id": "ko-worktree",
+  "language": "ko",
+  "translationese": "작업나무에서 작업해요",
+  "polished": "워크트리에서 작업해요",
+  "source": "ledger C-592 note 10530, user decision 1: 작업나무 is replaced by 워크트리"
+ },
+ {
+  "id": "ko-merge",
+  "language": "ko",
+  "translationese": "브랜치를 병합했어요",
+  "polished": "브랜치를 머지했어요",
+  "source": "ledger C-592 note 10530, user decision 1: 병합 and 합치기 are replaced by 머지"
+ },
+ {
+  "id": "ko-land",
+  "language": "ko",
+  "translationese": "리뷰를 마치고 착지시켰어요",
+  "polished": "리뷰를 마치고 랜딩했어요",
+  "source": "ledger C-592 note 10530, user decision 1: 착지 is replaced by 랜딩"
+ },
+ {
+  "id": "ko-receipt",
+  "language": "ko",
+  "translationese": "영수증을 붙였어요",
+  "polished": "체크 결과를 붙였어요",
+  "source": "ledger C-592 note 10530, user decision 1: 영수증 (a receipt) is replaced by 체크 결과"
+ },
+ {
+  "id": "ko-particle",
+  "language": "ko",
+  "translationese": "tip 을 확인했어요",
+  "polished": "tip을 확인했어요",
+  "source": "ledger C-592 note 10530, user decision 3: a particle is attached to a Latin word, as in tip을"
+ }
+]
