@@ -543,7 +543,7 @@ fn ac10_the_style_text_holds_a_principle_and_a_polish_step_and_no_word_list() {
     }
 }
 
-/// AC-11 (REQ-20): the translationese pairs live in `.moai/evals/style/` (README, `cases.json`,
+/// AC-11 (REQ-20): the translationese pairs live in the style folder of the evals (README, `cases.json`,
 /// `controls.json`), every Korean pair has a source note, no other language has a pair, and
 /// nothing of it is in the skill package or its manifest.
 #[test]
