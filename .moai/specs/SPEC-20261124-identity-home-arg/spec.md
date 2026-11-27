@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-identity-home-arg
 title: "identity takes the HOME as an argument: identity_in, the claim group, then every remaining caller, and the identity adapter removed"
-status: draft
+status: approved
 revision: 6
 created: 2026-11-24
+approval:
+  by: user
+  at: 2026-11-27
+  basis: "리더 결정 노트 10791 (카드 C-409, 2026-11-27): 사용자가 리더 세션의 질문 도구로 직접 골랐어요, '확인, 랜딩 (Recommended)'. 개정 6 조각 2b(head 9e5f1f3e29, dana tier 2 전체 리뷰 PASS 노트 10788)의 승인이에요. 위임으로 낸 노트 10231 의 승인을 그대로 인정한다는 선택이에요."
+  digest: "sha256:58a2893eed9f0d48685e3b41a21c46146921b3eed46f7883797bf9aef76cf82e"
 ---
 
 # identity takes the HOME as an argument: identity_in, the claim group, then every remaining caller, and the identity adapter removed
