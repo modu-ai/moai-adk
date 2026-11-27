@@ -393,6 +393,10 @@ fn the_status_line_cache_is_not_a_leftover_but_other_new_files_still_are() {
         format!("target/\n{dir}/*\n*.log\n"),
     )
     .unwrap();
+    // What the fixture itself put in the state folder (its `project.yaml`) is staged before the
+    // reservation, so it is no ignored or untracked path whatever second it was made in; the
+    // expected list below holds only what this test creates after the reservation.
+    git_ok(&w.project, &["add", "-f", "--", dir]);
     let card = w.new_card();
     let _lane = w.take(&card);
     // The status line cache: written by the host, never by a lane.
