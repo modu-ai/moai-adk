@@ -905,18 +905,21 @@ pub struct HoldInfo {
     pub at: i64,
 }
 
+/// The query that reads the newest hold event of a card (`?1` is the card id). It is a constant so
+/// a test can ask SQLite for its plan: the lookup must go through the `event_card_kind` index and
+/// not read the whole `event` table (SPEC-20261127-card-prereq-remove REQ-12).
+pub const HOLD_READ_SQL: &str = "SELECT kind, payload, at FROM event \
+     WHERE card_id = ?1 AND kind IN ('card.hold', 'card.unhold') \
+     ORDER BY event_id DESC LIMIT 1";
+
 /// The HOLD in force on a card, or `None` when its newest hold event is a `card.unhold` or it has
 /// none. Only the two event kinds are read: free text in a note or a body never counts, and no
 /// code but [`unhold`] writes a `card.unhold`.
 pub fn current_hold(conn: &Connection, card_id: i64) -> rusqlite::Result<Option<HoldInfo>> {
     let newest: Option<(String, String, i64)> = conn
-        .query_row(
-            "SELECT kind, payload, at FROM event \
-             WHERE card_id = ?1 AND kind IN ('card.hold', 'card.unhold') \
-             ORDER BY event_id DESC LIMIT 1",
-            [card_id],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
-        )
+        .query_row(HOLD_READ_SQL, [card_id], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+        })
         .optional()?;
     Ok(newest.and_then(|(kind, payload, at)| {
         if kind != "card.hold" {
