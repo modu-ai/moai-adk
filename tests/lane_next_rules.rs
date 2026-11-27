@@ -125,7 +125,7 @@ const COMMAND_FORM_SENTENCES: [&str; 7] = [
     "Put SQL and any long or multi-line text in a file made with the host's file tool and give the command that file's path.",
     "On a SPEC branch write the SPEC file before any other file, because the preflight refuses the rest until the SPEC exists.",
     "Search file contents with the shell's `grep`, not with a tool the host does not list.",
-    "A refusal names the form that failed, not the task: write the same effect once as a plain command, and when that is refused too, report the block with the exact command instead of trying another spelling.",
+    "When a guard or hook refuses a call, read `internal/shell-guards` before the next try: it separates a refusal of the form, which one plain split command answers, from a refusal of the effect, which is reported as it stands and never redone through another command, tool or path.",
 ];
 
 /// The bullets of the `Command forms` section of `docs/lane-rules.md`: the repository's reason
@@ -136,7 +136,7 @@ const COMMAND_FORM_BULLETS: [&str; 6] = [
     "- Files for long text.",
     "- SPEC file first.",
     "- Shell search.",
-    "- A refusal is a fact about the form, not the card:",
+    "- A refusal: `skills/moai/references/internal/shell-guards.md` separates",
 ];
 
 /// The text from the heading `heading` up to the next `## ` heading.
@@ -207,6 +207,15 @@ fn lane_rules_name_the_reason_behind_each_command_form() {
     assert!(
         section.lines().filter(|l| !l.is_empty()).count() <= 10,
         "the Command forms section grew past ten lines:\n{section}"
+    );
+    // The refusal bullet and the last sentence of `work.md` point at the reference that holds the
+    // rule; the pointer must not dangle, and the rule is the one that never redoes a refused
+    // effect through another path.
+    let guards = fs::read_to_string(root.join("skills/moai/references/internal/shell-guards.md"))
+        .expect("the reference the refusal bullet names");
+    assert!(
+        guards.contains("never reach the same effect by another path"),
+        "shell-guards.md lost the rule the lane texts point at"
     );
     for guard in ["worktree guard", "boundary hook", "SPEC-branch preflight"] {
         assert!(

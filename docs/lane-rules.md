@@ -63,7 +63,7 @@ The host's worktree guard, the boundary hook and the SPEC-branch preflight read 
 - Files for long text. SQL and any long or multi-line text go in a file made with Write or Edit, and the command names that file.
 - SPEC file first. On a `spec/<slug>-<yyyymmdd>` branch the SPEC-branch preflight refuses every file outside `.moai/specs/` until the branch's SPEC exists.
 - Shell search. Search file contents with the shell's `grep`; a tool the host does not list answers `No such tool available`.
-- A refusal is a fact about the form, not the card: write it once as a plain command; a refusal of the plain form is a block to report (Blocks and limits), never a reason to try another spelling or another tool for the same effect.
+- A refusal: `skills/moai/references/internal/shell-guards.md` separates a refusal of the form, which one plain split command answers, from a refusal of the effect, which is a block to report (Blocks and limits) and never redone through another command, tool or path.
 
 ## Dangerous path
 
