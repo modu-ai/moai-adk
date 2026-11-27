@@ -190,7 +190,7 @@ fn sub_agents_run_mutants_and_checks_in_the_foreground() {
     let missing = lacking(
         &agent,
         &[
-            "Run each mutant in the foreground",
+            "Run every mutant and check in the foreground",
             "Never end your turn while a mutant or a check still runs",
             "report it as `not_run` with the reason and leave no mutant edit in the tree",
             "No mutant edit is left in the tree",
