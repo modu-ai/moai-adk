@@ -158,6 +158,13 @@ pub fn ready(project: &Path, home: &Path, reference: &str, by: Option<&str>) -> 
             if let Some(why) = no_criteria_refusal(tx, "ready", card_id)? {
                 return Ok(Err(why));
             }
+            // A withdrawn or folded card left its SPEC room for another open card; reviving it
+            // without a relation must not make a second one (SPEC-20261124-card-help-gates REQ-8).
+            if from == "hold" {
+                if let Some(why) = spec_link::ready_conflict(tx, card_id)? {
+                    return Ok(Err(why));
+                }
+            }
             tx.execute(
                 "UPDATE card SET state = 'ready', updated_at = ?2 WHERE card_id = ?1",
                 params![card_id, now],

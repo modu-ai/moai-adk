@@ -222,7 +222,10 @@ enum Action {
     ///
     /// Writes the ledger. A `draft` (or `hold`) card becomes `ready`, with one `card.ready` event.
     /// A card with no `open` or `met` criterion is refused and the answer names `card criterion-add`:
-    /// such a card could never be closed. The ledger must already exist.
+    /// such a card could never be closed. A `hold` card that names a SPEC without a relation is
+    /// refused with `conflict in spec` while that SPEC has another open card (a card that is
+    /// neither `done` nor `hold`): add a new card with `card add --spec <SPEC> --follow-up`, or add
+    /// the work to the open card with `card criterion-add`. The ledger must already exist.
     Ready {
         /// `C-12`.
         card: String,
@@ -567,7 +570,11 @@ enum Action {
     /// `.moai/specs` and pass `moai spec check` without an error; it is only read, and it never
     /// names the card: the link lives in this machine's ledger. `card next` and `card take` then
     /// print the SPEC's status and warn while a card that changes the repository (any kind but
-    /// `research` and `audit`) has no approved SPEC. The same link again writes nothing.
+    /// `research` and `audit`) has no approved SPEC. The same link again writes nothing. Linking a
+    /// card that is neither `done` nor `hold` to a SPEC that has another open card is refused with
+    /// `conflict in spec`; `--unlink` and the link of a `done` or `hold` card are not. Add a new
+    /// card with `card add --spec <SPEC> --follow-up`, or add the work to the open card with `card
+    /// criterion-add`.
     Spec {
         /// `C-12`.
         card: String,

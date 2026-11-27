@@ -158,6 +158,24 @@ impl World {
     fn raw(&self) -> rusqlite::Connection {
         rusqlite::Connection::open(ledger::ledger_path(self.home.path(), "demo").unwrap()).unwrap()
     }
+
+    /// A link that an earlier build allowed and `card spec` refuses now (a second open card on
+    /// one SPEC), written as the ledger would hold it: a `card.spec` event with no relation.
+    /// `card` is the card's name.
+    fn legacy_link(&self, card: &str, spec: &str) {
+        let n: i64 = card.trim_start_matches("C-").parse().unwrap();
+        self.raw()
+            .execute(
+                "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+                 VALUES (?1, unixepoch(), 'test', ?2, 'card.spec', ?3)",
+                rusqlite::params![
+                    format!("card.spec:{n}:legacy:{spec}"),
+                    n,
+                    json!({"from": Value::Null, "to": spec}).to_string()
+                ],
+            )
+            .unwrap();
+    }
 }
 
 /// A template's text with every `<…>` placeholder filled with the word `filled`.
@@ -456,8 +474,8 @@ fn spec_show_lists_the_linked_cards_of_this_machine_as_local() {
     let two = w.ready_card("fix", "src/b");
     let three = w.ready_card("fix", "src/c");
     ok(&w.card(&["spec", &one, &login]));
-    ok(&w.card(&["spec", &two, &login]));
-    ok(&w.card(&["spec", &three, &login]));
+    // Two open cards on one SPEC: a pair an earlier build allowed, which `card spec` refuses now.
+    w.legacy_link(&two, &login);
     ok(&w.card(&["spec", &three, &other]));
 
     let shown = ok(&w.run(&["spec", "show", &login, "--project", w.p()]));
@@ -704,11 +722,16 @@ fn an_approval_counts_only_while_its_spec_has_no_error() {
 #[test]
 fn research_and_audit_cards_are_not_warned_about_an_unapproved_spec() {
     let w = World::new();
-    let spec = w.draft_spec("login-fix");
     let research = w.ready_card("research", "notes/a");
     let audit = w.ready_card("audit", "notes/b");
     let fix = w.ready_card("fix", "src/c");
-    for card in [&research, &audit, &fix] {
+    // Each open card names a draft SPEC of its own: one SPEC holds one open card.
+    for (card, slug) in [
+        (&research, "notes-a"),
+        (&audit, "notes-b"),
+        (&fix, "login-fix"),
+    ] {
+        let spec = w.draft_spec(slug);
         ok(&w.card(&["spec", card, &spec]));
     }
     let next = ok(&w.run(&["card", "next", w.p()]));
