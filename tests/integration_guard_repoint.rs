@@ -1107,3 +1107,160 @@ fn ac7_the_operations_documents_name_the_repoint_the_receipt_folder_and_the_with
         "git_hooks_apply.md does not say the installer and the seed never rewrite the record"
     );
 }
+
+// ---- disagrees (SPEC-20261127-guard-repoint-followups AC-6) ----------------------------------
+//
+// These tests call the library function `moai_cli::card::guard::repoint::disagrees`, the one
+// read-only comparison of the record and the profile's integration branch that works in a primary
+// and in a linked worktree. The function does not exist before REQ-6 lands, so this file does not
+// compile until it does.
+
+use moai_cli::card::guard::repoint::{self, Staleness};
+
+/// The answer of `disagrees` for the fixture's stale record: the record `main` and the profile's
+/// branch `NeXT`, both without `refs/heads/`.
+fn main_vs_next() -> Staleness {
+    Staleness {
+        record: STALE_REF.trim_start_matches("refs/heads/").to_string(),
+        profile_branch: BRANCH.to_string(),
+    }
+}
+
+/// AC-6: a stale record answers the record and the profile's branch in the primary worktree, the
+/// same answer `stale()` gives there, and the call writes nothing.
+#[test]
+fn disagrees_a_stale_record_in_the_primary_worktree_answers_the_record_and_the_profile_branch() {
+    let fx = Fx::stale();
+    let before = fx.snapshot();
+    assert_eq!(repoint::disagrees(&fx.repo), Some(main_vs_next()));
+    assert_eq!(
+        repoint::disagrees(&fx.repo),
+        repoint::stale(&fx.repo),
+        "in the primary worktree both answer alike"
+    );
+    assert_eq!(fx.snapshot(), before, "the comparison writes nothing");
+    assert_eq!(fs::read(fx.record()).unwrap(), STALE);
+}
+
+/// AC-6: in a linked worktree the same stale record is answered too, with the record the common
+/// git folder holds and the branch the linked worktree's profile names, while `stale()` still
+/// answers `None` there.
+#[test]
+fn disagrees_a_stale_record_in_a_linked_worktree_answers_it_and_stale_stays_none() {
+    let fx = Fx::stale();
+    let linked = fx.linked();
+    let before = fx.snapshot();
+    assert_eq!(repoint::disagrees(&linked), Some(main_vs_next()));
+    assert_eq!(
+        repoint::stale(&linked),
+        None,
+        "stale() keeps its answer in a linked worktree"
+    );
+    assert_eq!(fx.snapshot(), before, "the comparison writes nothing");
+    assert_eq!(fs::read(fx.record()).unwrap(), STALE);
+}
+
+/// AC-6: a linked worktree is compared with its own checkout's profile: a record that equals the
+/// primary worktree's profile still differs from a linked profile that names another branch, and
+/// a linked profile that names the record's branch makes the primary worktree's profile the one
+/// that differs.
+#[test]
+fn disagrees_in_a_linked_worktree_compares_the_record_with_that_checkouts_own_profile() {
+    let fx = Fx::new(Some(BRANCH));
+    fx.write_record(REWRITTEN);
+    let linked = fx.linked();
+    assert_eq!(repoint::disagrees(&fx.repo), None, "primary: equal");
+    assert_eq!(repoint::disagrees(&linked), None, "linked: equal");
+    fx.write_profile(&linked, Some("Other"));
+    assert_eq!(
+        repoint::disagrees(&linked),
+        Some(Staleness {
+            record: BRANCH.to_string(),
+            profile_branch: "Other".to_string(),
+        }),
+        "the linked profile names another branch than the record"
+    );
+    assert_eq!(
+        repoint::disagrees(&fx.repo),
+        None,
+        "the primary worktree's own profile still equals the record"
+    );
+    fx.write_profile(&linked, Some("main"));
+    fx.write_record(STALE);
+    assert_eq!(
+        repoint::disagrees(&linked),
+        None,
+        "a linked profile that names the record's branch agrees with it"
+    );
+    assert_eq!(
+        repoint::disagrees(&fx.repo),
+        Some(main_vs_next()),
+        "the primary worktree's profile names another branch than the record"
+    );
+}
+
+/// AC-6: no record answers nothing, in the primary and in a linked worktree, and the call seeds
+/// none.
+#[test]
+fn disagrees_nothing_for_no_record() {
+    let fx = Fx::new(Some(BRANCH));
+    let linked = fx.linked();
+    let before = fx.snapshot();
+    assert_eq!(repoint::disagrees(&fx.repo), None);
+    assert_eq!(repoint::disagrees(&linked), None);
+    assert!(!fx.record().exists(), "the comparison seeds no record");
+    assert_eq!(fx.snapshot(), before);
+}
+
+/// AC-6: a record equal to the profile's ref answers nothing, in the primary and in a linked
+/// worktree.
+#[test]
+fn disagrees_nothing_for_an_equal_record() {
+    let fx = Fx::new(Some(BRANCH));
+    fx.write_record(REWRITTEN);
+    let linked = fx.linked();
+    assert_eq!(repoint::disagrees(&fx.repo), None);
+    assert_eq!(repoint::disagrees(&linked), None);
+}
+
+/// AC-6: a record that does not start with `refs/heads/` (or names no branch after it) is
+/// unreadable and answers nothing, in the primary and in a linked worktree.
+#[test]
+fn disagrees_nothing_for_an_unreadable_record() {
+    let fx = Fx::new(Some(BRANCH));
+    let linked = fx.linked();
+    for bytes in [
+        &b"main\n"[..],
+        b"refs/tags/v1\n",
+        b"refs/heads/\n",
+        b"\n",
+        b"",
+    ] {
+        fx.write_record(bytes);
+        assert_eq!(
+            repoint::disagrees(&fx.repo),
+            None,
+            "primary, record {:?}",
+            String::from_utf8_lossy(bytes)
+        );
+        assert_eq!(
+            repoint::disagrees(&linked),
+            None,
+            "linked, record {:?}",
+            String::from_utf8_lossy(bytes)
+        );
+    }
+}
+
+/// AC-6: a profile that names no integration branch answers nothing, in the primary and in a
+/// linked worktree, even with a record in place.
+#[test]
+fn disagrees_nothing_for_a_profile_without_a_branch() {
+    let fx = Fx::new(None);
+    fx.write_record(STALE);
+    let linked = fx.linked();
+    fx.write_profile(&fx.repo, None);
+    fx.write_profile(&linked, None);
+    assert_eq!(repoint::disagrees(&fx.repo), None);
+    assert_eq!(repoint::disagrees(&linked), None);
+}

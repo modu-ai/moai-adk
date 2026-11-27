@@ -2433,8 +2433,10 @@ const SELF_CHECK: &str = "references/internal/self-check.md";
 
 /// The byte size of the flow reference on the tip that carries the pointer to the message table
 /// (SPEC-20261125-agent-team-session-names REQ-23: 8041 bytes before the pointer line, and
-/// `FLOW_REF_LIMIT` stays the budget); the restored meanings fit inside it.
-const FLOW_REF_TIP_BYTES: usize = 8121;
+/// `FLOW_REF_LIMIT` stays the budget); the restored meanings fit inside it. Raised to 8153 by
+/// SPEC-20261127-guard-repoint-followups, which added the `guard-repoint` bullet to "Landing" and
+/// trimmed other lines to keep `FLOW_REF_LIMIT`.
+const FLOW_REF_TIP_BYTES: usize = 8180;
 
 /// The first line of `text` that holds `marker`, a list item found by its first words so that a
 /// renumbered list does not break the pin.
@@ -2620,6 +2622,40 @@ fn land_scans_the_flow_names_the_scan_tests_and_the_pass_receipt_step() {
     assert!(
         flow.len() <= FLOW_REF_TIP_BYTES,
         "{FLOW_REF} is {} bytes, over {FLOW_REF_TIP_BYTES}",
+        flow.len()
+    );
+}
+
+/// SPEC-20261127-guard-repoint-followups AC-7 (REQ-7): the "Landing" section tells when to run
+/// `moai card guard-repoint` (the `guard_record_stale` answer field of a landing, which RC1 only
+/// reports), how (the preview, then `--apply` with `--plan-digest` and `--permission-reference`,
+/// `--revert`), who applies it, and that the old branch is unguarded afterwards; the section is
+/// found by its heading so a paragraph put elsewhere does not count.
+#[test]
+fn guard_repoint_is_told_in_the_landing_section() {
+    let flow = read(FLOW_REF);
+    let landing = flow
+        .split("\n## ")
+        .find(|part| part.starts_with("Landing\n"))
+        .unwrap_or_else(|| panic!("{FLOW_REF} has no `## Landing` section"));
+    for phrase in [
+        "moai card guard-repoint",
+        "guard_record_stale",
+        "--apply",
+        "--plan-digest",
+        "--permission-reference",
+        "--revert",
+        "the leader",
+        "unguarded",
+    ] {
+        assert!(
+            landing.contains(phrase),
+            "the Landing section of {FLOW_REF} lacks {phrase:?}"
+        );
+    }
+    assert!(
+        flow.len() <= FLOW_REF_LIMIT,
+        "{FLOW_REF} is {} bytes, over {FLOW_REF_LIMIT}",
         flow.len()
     );
 }

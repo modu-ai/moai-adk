@@ -369,6 +369,29 @@ fn the_block_ignores_local_and_keeps_tools_and_evals() {
     }
 }
 
+/// SPEC-20261127-update-leftovers-action REQ-23 (AC-12): the block ends with the glob
+/// `.moai.rust-*/`, written as is, so the folders the update sets aside stay out of git. A folder
+/// whose name the glob does not match is left alone.
+#[test]
+fn the_block_ignores_the_rust_set_aside_folders() {
+    let fx = Fx::new(None);
+    fx.apply_ok("none");
+    let text = fx.ignore();
+    for rel in [
+        ".moai.rust-20261101T000000Z/x",
+        ".moai.rust-20261101T000000Z/nested/y",
+    ] {
+        assert!(fx.ignored(rel), "{rel} is not ignored:\n{text}");
+    }
+    let begin = text.find(BEGIN).expect("block begin");
+    let end = text.find(END).expect("block end");
+    let last = text[begin..end].lines().rfind(|l| !l.is_empty()).unwrap();
+    assert_eq!(last, ".moai.rust-*/", "the block's last line:\n{text}");
+    for rel in [".moai-other/x", ".moai.rust/x"] {
+        assert!(!fx.ignored(rel), "{rel} is ignored:\n{text}");
+    }
+}
+
 /// SPEC-20261120-moai-layout REQ-11: credential and `.env` files stay out of git anywhere under
 /// the state folder, in the folders the block allows too, and the lines come after the allow-list.
 #[test]
@@ -1073,7 +1096,7 @@ fn the_plan_shows_the_new_block_line_by_line_and_writes_nothing() {
     assert_eq!(row["action"], "create", "{row}");
     let detail = row["detail"].as_str().unwrap();
     for line in [
-        "managed block lines: 50 added, 0 removed",
+        "managed block lines: 51 added, 0 removed",
         "+ CLAUDE.local.md",
         "+ .moai-cli/receipts/",
         "+ .moai-cli/*",
@@ -1083,6 +1106,7 @@ fn the_plan_shows_the_new_block_line_by_line_and_writes_nothing() {
         "+ !.moai-cli/specs/",
         "+ !.moai-cli/tools/",
         "+ !.moai-cli/evals/",
+        "+ .moai.rust-*/",
     ] {
         assert!(detail.lines().any(|l| l == line), "{line:?} in:\n{detail}");
     }
@@ -1577,13 +1601,14 @@ fn the_plan_shows_the_lines_added_to_a_gitignore_without_a_block() {
     assert_eq!(row["action"], "append", "{row}");
     let detail = row["detail"].as_str().unwrap();
     for line in [
-        "managed block lines: 50 added, 0 removed",
+        "managed block lines: 51 added, 0 removed",
         "+ CLAUDE.local.md",
         "+ .moai-cli/*",
         "+ .moai-cli/local/",
         "+ !.moai-cli/specs/",
         "+ !.moai-cli/tools/",
         "+ !.moai-cli/evals/",
+        "+ .moai.rust-*/",
     ] {
         assert!(detail.lines().any(|l| l == line), "{line:?} in:\n{detail}");
     }
