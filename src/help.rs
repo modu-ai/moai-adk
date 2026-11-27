@@ -170,6 +170,7 @@ pub const GROUPS: &[Group] = &[
             ("worktree-report", true),
             ("optimize-plan", true),
             ("baseline-inventory", true),
+            ("improve-signals", false),
         ],
     },
     Group {
@@ -474,6 +475,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("worktree-report", &["worktree-report ."]),
     ("optimize-plan", &["optimize-plan --integration-ref origin/main ."]),
     ("baseline-inventory", &["baseline-inventory ."]),
+    ("improve-signals", &["improve-signals ."]),
     ("claim-acquire", &["claim-acquire . < request.json"]),
     ("claim-verify", &["claim-verify . < request.json"]),
     (

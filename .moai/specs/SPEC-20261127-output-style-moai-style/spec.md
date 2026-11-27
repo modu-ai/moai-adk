@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261127-output-style-moai-style
 title: "설치되는 출력 스타일 이름을 MoAI-Style 로 바꾸고, 영어가 아닌 언어의 AI 번역투를 원칙과 윤문 단계로 잡음"
-status: draft
-revision: 1
+status: approved
+revision: 2
 created: 2026-11-27
+approval:
+  by: user
+  at: 2026-11-27
+  basis: "리더 노트 10754 (USER-APPROVAL, 2026-11-27, 리더 세션의 질문 도구): 사용자가 직접 골랐어요 — \"manual 체크 한 줄 추가 (Recommended)\". 승인 범위는 AC-14 줄에 manual: 체크를 더하는 것과 같은 뜻의 D-10·R-6 낱말뿐이고 AC-14 는 met 로 적지 않아요. 개정 1 의 승인은 노트 10577 이에요."
+  digest: "sha256:0873c930c1863d67b56f87619c844adb6f96dcddd66441093e69160b5cc50a81"
 ---
 
 # 설치되는 출력 스타일 이름을 MoAI-Style 로 바꾸고, 영어가 아닌 언어의 AI 번역투를 원칙과 윤문 단계로 잡음
@@ -76,7 +81,7 @@ created: 2026-11-27
 - AC-11 (REQ-20): `.moai/evals/style/` 에 README, 번역투→윤문 쌍(`cases.json`), 대조군(`controls.json`)이 있고, 한국어 쌍마다 출처 노트가 있고, 확인 안 된 언어의 쌍은 없고, 스킬 패키지와 manifest 에 들어가지 않아요. 1 passed · verify: `cargo test --locked --test home_style_ownership_cli ac11_ -- --nocapture`
 - AC-12 (REQ-1, REQ-21): 옛 이름 `MoAI-Easy` 는 위 Non-goals 의 허용 목록에 있는 파일에만 나타나요(허용 목록은 테스트 안에 파일과 이유로 적어요). 1 passed · verify: `cargo test --locked --test style_banner_scan ac12_ -- --nocapture`
 - AC-13 (REQ-21): html-report 스킬과 bundle-pack 사본의 계층 표가 `MoAI-Style` → `basic` 이고 `MoAI-Easy` 도 `basic` 으로 남아 있어요. 1 passed · verify: `cargo test --locked --test style_banner_scan ac13_ -- --nocapture`
-- AC-14 (REQ-15, REQ-16): 번역투 문장을 담은 요청에 대해 한국어 답이 평가 픽스처의 기대대로 윤문되어 나와요 · unknown: 모델을 실제로 돌리는 평가 실행기가 아직 없어요. 사람이나 모델 채점으로 픽스처를 한 번 읽어 확인하는 일은 후속 카드예요.
+- AC-14 (REQ-15, REQ-16): 번역투 문장을 담은 요청에 대해 한국어 답이 평가 픽스처의 기대대로 윤문되어 나와요 · manual: 평가 픽스처의 요청을 실제 세션에 넣어 답을 한 번 읽고 기대와 비교해요. 모델을 실제로 돌리는 평가 실행기가 아직 없어서 리더가 릴리즈 전에 돌려 결과를 보여 주고 닫아요.
 - AC-15 (REQ-1…REQ-14): 이웃 테스트가 그대로 통과해요 · verify: `cargo test --locked --test host_home_cli` 와 `cargo test --locked --test update_linked_config_files` 와 `cargo test --locked --test home_style_cli`
 - AC-16 (REQ-1…REQ-22): SPEC 검사를 통과해요 · verify: `moai spec check SPEC-20261127-output-style-moai-style`
 
@@ -118,7 +123,7 @@ created: 2026-11-27
 - R-3: 실행 중인 세션과 다른 도구가 `MoAI-Easy` 를 이름으로 읽어요. 옛 이름 줄을 일부러 남겨요 (Q7, REQ-21).
 - R-4: 대상이 하나 늘어서 미리보기 JSON 의 모양과 `update_tux` 줄이 달라져요. 옛 파일이 없으면 대상이 없으므로 새 설치의 미리보기는 이름만 달라요 (REQ-14).
 - R-5: C-460 이 같은 파일(`src/home_style.rs` 의 `record_name`, `update_tux` 의 스타일 줄)을 바꿔요. 랜딩 순서와 머지는 리더가 정해요.
-- R-6: 원칙 문장은 영어로 쓴 본문이 모델에게 주는 지시예요. 모델이 원칙을 따르는지는 테스트가 아니라 평가 실행이 보여 주고, 그 실행기가 아직 없어요 (AC-14 unknown).
+- R-6: 원칙 문장은 영어로 쓴 본문이 모델에게 주는 지시예요. 모델이 원칙을 따르는지는 테스트가 아니라 평가 실행이 보여 주고, 그 실행기가 아직 없어요 (AC-14 manual 체크).
 - R-7: 일본어·중국어에서 원칙이 맞게 동작하는지는 확인하지 않았어요. 원칙은 언어를 가리지 않게 썼고 예시 단어를 넣지 않았어요.
 - R-8: 이 변경이 랜딩되고 나서 사용자의 첫 `moai update` 가 사용자 HOME 을 처음 옮겨요. 미리보기를 먼저 보여 주고 `--confirm` 은 사용자의 확인 뒤예요.
 
@@ -135,7 +140,7 @@ created: 2026-11-27
 | D-7 | 스타일 본문에 단어표를 넣지 않고 번역투 쌍은 평가 픽스처에만 | 사용자 지시(노트 10532) | 없음 |
 | D-8 | 평가 픽스처는 한국어 쌍만, 출처 노트를 붙여 | 확인 안 된 일본어·중국어 예를 넣지 않음 | 쌍 추가 |
 | D-9 | 상류 템플릿 세 파일은 그대로 (Q5 의 기본값) | NOTICE 와 Go 세대 감지 | 후속 카드 |
-| D-10 | 모델이 원칙을 따르는지는 AC-14 `unknown` 으로 두고 met 로 적지 않음 | 평가 실행기 없음 | 실행기가 생기면 verify 추가 |
+| D-10 | 모델이 원칙을 따르는지는 AC-14 `manual:` 체크로 두고 met 로 적지 않음 | 평가 실행기 없음 | 실행기가 생기면 verify 추가 |
 | D-11 | 새 행동 단어는 `retire`(옛 파일)와 `replace`(설정 값)이고, 화면의 `change_mark` 와 `tally` 가 변경으로 세요 | `update_tux` 가 아는 단어에 `replace` 가 이미 있음 | 단어 제거 |
 
 ## Result
@@ -159,9 +164,9 @@ AC 의 확인 명령을 적힌 그대로 돌렸어요. head `fba09ac274bce281e25
 - AC-11: met — `home_style_ownership_cli ac11_` 1 통과
 - AC-12: met — `style_banner_scan ac12_` 1 통과
 - AC-13: met — `style_banner_scan ac13_` 1 통과
-- AC-14: unknown — 모델을 실제로 돌리는 평가 실행기가 없어요. 픽스처를 읽어 확인하는 일은 후속 카드예요.
+- AC-14: not_run — 모델을 실제로 돌리는 평가 실행기가 없어요. 개정 2 가 이 줄에 `manual:` 체크(평가 픽스처의 요청을 실제 세션에 넣어 답을 한 번 읽고 기대와 비교)를 더했고, 리더가 릴리즈 전에 돌려 결과를 보여 주고 닫아요. met 로 적지 않아요.
 - AC-15: met — `host_home_cli` 12, `update_linked_config_files` 9, `home_style_cli` 39 통과
-- AC-16: met — `moai spec check` 오류 0, 경고 3(AC-14 unknown, 요구 12개 초과, 카드 번호 안내)
+- AC-16: met — `moai spec check` 오류 0, 경고 2(요구 12개 초과, 카드 번호 안내; 개정 2 에서 AC-14 의 unknown 경고가 `manual:` 체크로 사라졌어요)
 
 가드 뮤턴트 5개를 Edit 로 하나씩 넣었어요. 새 소유 검사 제거(`ac4_`), 정확한 이름 조건 완화(`ac5_`), 새 파일이 안 써질 때 옛 파일을 남기는 가드 제거(`ac7_`), 옛 되돌리기 기록의 기본 경로를 새 이름으로(`ac6_`)는 테스트가 실패해서 잡혔어요. 이름 조건 완화는 계획 단계에서 텍스트 교체를 미리 해 보는 검사가 같은 값을 따로 거절해서 단독으로는 통과했고(깊이 방어), 두 겹을 함께 지우면 `ac5_` 가 실패해요. 되돌리기에서 옛 경로에 사용자가 둔 파일이 있어도 건너뛰는 가드는 어떤 테스트도 잡지 못해서 테스트 `revert_never_overwrites_a_file_put_at_the_old_style_path_since_the_apply` 를 더했고 뮤턴트가 그 테스트에서 실패해요.
 
