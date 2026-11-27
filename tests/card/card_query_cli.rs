@@ -125,6 +125,7 @@ impl World {
                 evidence: EVIDENCE,
                 receipt,
                 reviewer,
+                open: &[],
             },
         )
         .unwrap()
