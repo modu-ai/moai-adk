@@ -1860,3 +1860,99 @@ fn reclaim_limit_refuses_the_fourth_reclaim_and_writes_nothing() {
         "the refusal leaves every row as it was"
     );
 }
+
+// ---- the hold and prerequisite gate inside the reservation transaction -------------------------
+// (SPEC-20261127-card-prereq-remove REQ-11)
+
+/// A ready card that waits for an unfinished card, with its own write scope stored.
+fn card_waiting_for_another(w: &mut WriteLedger) -> i64 {
+    let waits = ready_card(w);
+    let first = ready_card(w);
+    own_scope(w, waits);
+    workflow::add_prerequisite(w, waits, first, "test", None).unwrap();
+    waits
+}
+
+/// A ready card with a `card.hold` in force and its own write scope stored.
+fn card_on_hold(w: &mut WriteLedger) -> i64 {
+    let held = ready_card(w);
+    own_scope(w, held);
+    workflow::hold(w, held, "money", "the budget is not approved", "test", None).unwrap();
+    held
+}
+
+/// Stores the card's own write scope, the one `reserve_own_scope` reads.
+fn own_scope(w: &mut WriteLedger, card: i64) {
+    sql(
+        w,
+        &format!("UPDATE card SET write_scope = '[\"zone{card}/\"]' WHERE card_id = {card}"),
+    );
+}
+
+#[test]
+fn prereq_ac4_the_sweeping_reservations_refuse_a_hold_and_an_open_prerequisite_writing_nothing() {
+    let (home, mut w) = setup();
+    let waits = card_waiting_for_another(&mut w);
+    let held = card_on_hold(&mut w);
+    let before = dump(reader(&home).conn());
+
+    let sweeping = |w: &mut WriteLedger, card: i64| {
+        reservation::reserve_sweeping(w, card, "agent", &zone(card), 3600, None, None, 0)
+    };
+    let own_sweeping = |w: &mut WriteLedger, card: i64| {
+        reservation::reserve_own_scope_sweeping(w, card, "agent", 3600, None, None, 0)
+    };
+    for refused in [sweeping(&mut w, waits), own_sweeping(&mut w, waits)] {
+        let words = refused.unwrap_err().to_string();
+        assert!(words.starts_with("card take refused: "), "{words}");
+        assert!(words.contains("waits for"), "{words}");
+        assert!(words.ends_with("nothing was taken"), "{words}");
+    }
+    for refused in [sweeping(&mut w, held), own_sweeping(&mut w, held)] {
+        let words = refused.unwrap_err().to_string();
+        assert!(words.starts_with("card take refused: "), "{words}");
+        assert!(words.contains("is on HOLD (money)"), "{words}");
+        assert!(words.ends_with("nothing was taken"), "{words}");
+    }
+
+    assert_eq!(
+        dump(reader(&home).conn()),
+        before,
+        "a gate refusal writes no reservation, no state change and no event"
+    );
+}
+
+#[test]
+fn prereq_ac4_the_sweeping_reservations_still_take_a_free_card_a_lifted_hold_and_a_done_prerequisite(
+) {
+    let (_home, mut w) = setup();
+    let free = ready_card(&mut w);
+    let lifted = card_on_hold(&mut w);
+    workflow::unhold(&mut w, lifted, "decided", "test", None).unwrap();
+    let after_done = card_waiting_for_another(&mut w);
+    // The first card of `card_waiting_for_another` is the one numbered just before it.
+    sql(
+        &mut w,
+        &format!(
+            "DROP TRIGGER IF EXISTS card_state_transition; \
+             DROP TRIGGER IF EXISTS card_done_guard; \
+             UPDATE card SET state = 'done', closed_at = unixepoch() WHERE card_id = {}",
+            after_done + 1
+        ),
+    );
+    for card in [free, lifted, after_done] {
+        reservation::reserve_sweeping(&mut w, card, "agent", &zone(card), 3600, None, None, 0)
+            .unwrap_or_else(|e| panic!("C-{card} must be taken: {e}"));
+    }
+}
+
+#[test]
+fn prereq_ac4_reserve_and_reserve_own_scope_keep_their_behaviour() {
+    // The plain entry points have no gate: a card with a hold or an open prerequisite is reserved
+    // as before. The early check of `card take` is the gate on the path that wants it.
+    let (_home, mut w) = setup();
+    let waits = card_waiting_for_another(&mut w);
+    let held = card_on_hold(&mut w);
+    take(&mut w, waits, "agent", &zone(waits)).unwrap();
+    reservation::reserve_own_scope(&mut w, held, "agent", 3600, None, None).unwrap();
+}

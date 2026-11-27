@@ -1,8 +1,9 @@
 ---
 id: SPEC-20261126-leader-slot-front
 title: "heavy slot: 확인된 리더의 넓은 검사는 대기 줄 맨 앞에 서요"
-status: draft
+status: approved
 revision: 1
+approval: {by: user, at: 2026-11-27, basis: "사용자가 직접 골랐어요(리더 세션의 질문 도구, 레저 노트 10697) 선택지 '승인 (Recommended)' — 개정 1을 글 그대로 사용자 승인으로 확정하고, 이 노트가 노트 9818(DELEGATED-APPROVAL)을 사용자 확인으로 바꿔요. 본문 digest 는 리뷰 노트 10696 이 노트 9818 과 같다고 확인한 b03b8b1d", digest: "sha256:be0a89041fa5364251f13f5d91b9d0b62a9231eb4de9c8206954bdbd00e83bc6"}
 created: 2026-11-26
 ---
 
