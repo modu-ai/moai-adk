@@ -234,7 +234,7 @@ Update and move
                                    section into HOME
   home-routing-revert              Undo one routing section
                                    apply
-  home-style-plan                  Preview the MoAI-Easy
+  home-style-plan                  Preview the MoAI-Style
                                    output style in HOME
   home-style-apply                 Write a previewed output
                                    style into HOME

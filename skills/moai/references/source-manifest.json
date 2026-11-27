@@ -132,12 +132,12 @@
       }
     },
     "references/home/output-style.md": {
-      "sha256": "cd6919930dc6773efed3b175252fc4fdcf61e4b219caa6b070f9c17e59e28bc1",
+      "sha256": "7bc69e135f1b4206c5b3ae173e4e1608ccaa5c746cc35b3df12c2d4cf90f4db8",
       "origin": {
         "kind": "design-spec",
         "template_id": "home-output-style",
         "adoption": "new",
-        "reason": "Written for rc.2 #2875 (#2871 I3, user instruction #1975 6872023826): the one MoAI-Easy style source, the same items as the moai-easy block of the user's ~/.claude/CLAUDE.md, in English per the instruction-file language rule. src/home_style.rs renders it per host: ~/.claude/output-styles/MoAI-Easy.md with frontmatter."
+        "reason": "Written for rc.2 #2875 (#2871 I3, user instruction #1975 6872023826): the one MoAI-Style source, the same items as the moai-easy block of the user's ~/.claude/CLAUDE.md, in English per the instruction-file language rule. src/home_style.rs renders it per host: ~/.claude/output-styles/MoAI-Style.md with frontmatter."
       }
     },
     "references/home/routing.md": {
