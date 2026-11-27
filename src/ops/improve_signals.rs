@@ -458,7 +458,9 @@ mod tests {
         std::os::unix::fs::symlink(&target, &link).unwrap();
         let err = read_improve_notes(&link).err().expect("a link is refused");
         assert!(err.contains("symbolic link"), "{err}");
-        let err = read_improve_notes(dir.path()).err().expect("a folder is refused");
+        let err = read_improve_notes(dir.path())
+            .err()
+            .expect("a folder is refused");
         assert!(err.contains("not a regular file"), "{err}");
         assert!(read_improve_notes(&dir.path().join("none.jsonl"))
             .unwrap()

@@ -12,7 +12,7 @@
 # targets. A word may be listed before any file uses it.
 
 [areas]
-card = ["card", "claim", "ledger", "queue", "dispatch", "startable", "board", "journal", "handoff", "recurring", "close", "goal", "decision", "trailer", "verified", "commit", "forge", "labels", "github", "gitlab", "import", "release", "followup", "orchestrate"]
+card = ["card", "claim", "ledger", "queue", "dispatch", "startable", "board", "journal", "handoff", "recurring", "close", "goal", "decision", "trailer", "verified", "commit", "forge", "labels", "github", "gitlab", "import", "release", "followup", "orchestrate", "improve"]
 update = ["update", "integration", "install", "migrate", "migration", "generation", "versioning", "switch", "models", "model", "retired", "removed", "self", "freshness", "baseline", "go"]
 home = ["home", "build", "hygiene", "worktree", "heavy", "process", "path", "exe", "fake", "binary", "bin", "archive", "recovery", "revert", "state", "apply", "star", "desktop"]
 project = ["project", "profile", "language", "placeholder", "gitignore", "skeleton", "agents", "agent", "claude", "codex", "omp", "orca", "host", "hook", "hooks", "script", "secret", "key", "scope", "herdr", "optional", "settings"]

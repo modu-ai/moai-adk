@@ -2,8 +2,9 @@
 //! a project, grouped into classes with a count, read from the card ledger and the project's
 //! `improve/notes.jsonl` without writing anything.
 //!
-//! Every command runs against a temporary HOME; the real `~/.moai` is not read or written. The
-//! notes are inserted with SQL so their kind, author and time are exactly what a case needs.
+//! Every command runs against a temporary HOME; the user's real home state is not read or
+//! written. The notes are inserted with SQL so their kind, author and time are exactly what a
+//! case needs.
 //! Acceptance AC-1 to AC-6 of the SPEC are these tests (the two limits of AC-7 are unit tests of
 //! the command's own file).
 #![cfg(unix)]
