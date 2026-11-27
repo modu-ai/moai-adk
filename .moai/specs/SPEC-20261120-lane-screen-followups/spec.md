@@ -2,7 +2,7 @@
 id: SPEC-20261120-lane-screen-followups
 title: "lane-screen follow-ups — other choice shapes, scan time cap, list size, reason visibility"
 status: approved
-revision: 1
+revision: 2
 created: 2026-11-20
 parent: SPEC-20261119-lane-screen-scan
 approval:
@@ -61,7 +61,7 @@ RED 시험(새 시험 파일, 가짜 orca)을 붙이고, 구현은 같은 카드
 - AC-3 (REQ-4, REQ-5): 목록이 상한보다 크면 크기를 적은 사유로 실패 · 긴 경로 터미널의 시간 초과 줄에서 사유가 잘리지 않음.
   verify: `cargo test --locked --offline --test lane_screen_followups_cli scan_followups`
 - AC-4 (REQ-6, REQ-7): 한 표 시험 — N2 일곱 모양(아는 질문 아래)은 permission_prompt 또는 unknown, 재감사의 12가지 거절은 그대로 거절, 질문 아래 선택 모양이 아닌 줄(상태줄 산문)은 working·idle 로 풀림.
-  verify: `cargo test --locked --offline --test lane_screen_followups_cli n2_shapes_under_a_known_question_are_never_working n1_table_keeps_the_twelve_refusals_and_frees_plain_prose`
+  verify: `cargo test --locked --offline --test lane_screen_followups_cli -- n2_shapes_under_a_known_question_are_never_working n1_table_keeps_the_twelve_refusals_and_frees_plain_prose`
 
 ## Scope
 
@@ -135,7 +135,7 @@ RED 커밋 7d0926fe03(`moai tdd red`: 두 확인 모두 test-failure, 종료 101
 - AC-1: met. `cargo test --locked --offline --test lane_screen_followups_cli` 종료 0, 9 passed. `[1] Yes`·`1: Yes`·`a. Yes`·`Overwrite? (y/N/a)` 는 working 아래에서 permission_prompt 나 unknown 이고 lane-send 는 종료 1 에 orca send 호출 0회예요.
 - AC-2: met. `cargo test --locked --offline --test lane_screen_followups_cli scan_followups` 종료 0, 4 passed(시간 상한: 안 읽은 터미널이 unreachable 이고 이유에 `--max-seconds 1`).
 - AC-3: met. 같은 명령(4 passed): 터미널 수 상한은 크기 3 과 `--max-terminals` 를 적고 화면을 읽지 않으며, 출력이 1 MiB 를 넘으면 "1 MiB" 를 적고(D-7) "is not an Orca answer" 가 아니고, 긴 경로 시험은 가드로 통과해요.
-- AC-4: met. 적힌 verify 명령은 그대로 돌리면 `error: unexpected argument 'n1_table_…' found` 로 종료 1 이에요(cargo 가 테스트 이름을 하나만 받아요, 2026-11-27 슬롯에서 확인). 같은 뜻의 `cargo test --locked --offline --test lane_screen_followups_cli -- n2_shapes_under_a_known_question_are_never_working n1_table_keeps_the_twelve_refusals_and_frees_plain_prose` 는 2 passed 예요. AC 글은 승인 범위라서 고치지 않았고 리더에게 승인 개정(verify 줄 하나)을 요청했어요.
+- AC-4: met. 적힌 verify 명령은 그대로 돌리면 `error: unexpected argument 'n1_table_…' found` 로 종료 1 이에요(cargo 가 테스트 이름을 하나만 받아요, 2026-11-27 슬롯에서 확인). 같은 뜻의 `cargo test --locked --offline --test lane_screen_followups_cli -- n2_shapes_under_a_known_question_are_never_working n1_table_keeps_the_twelve_refusals_and_frees_plain_prose` 는 2 passed 예요. AC 글은 승인 범위라서 레인이 고치지 않았고 리더에게 승인 개정을 요청했어요. 사용자가 개정 2(verify 줄 한 줄을 `--` 꼴로)를 직접 승인했고(원장 노트 10710) 그 줄만 바꿨어요: 이제 적힌 그대로 돌려도 2 passed 예요(개정 2 헤드의 실행은 아래 노트).
 
 범위·규칙의 어긋남과 선택(읽는 사람이 알아야 할 것):
 
