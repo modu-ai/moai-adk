@@ -2186,9 +2186,11 @@ fn claude_folders_notice(home: &Path) -> Option<serde_json::Value> {
 
 /// The guard answer the git-hook plan and both apply sites of `moai update` share, so the preview's
 /// token is the one the apply accepts (SPEC-20261126-guard-record-repoint REQ-7, REQ-8, D-2): the
-/// guard hook is offered when the guard can act in `cwd` and withheld while the record is stale.
+/// guard hook is offered when the guard can act in `cwd` and withheld while the record is stale,
+/// in a linked worktree as in the primary one (SPEC-20261127-guard-repoint-followups REQ-5; the
+/// notice of [`repoint_notice`] stays primary-only).
 fn guard_answer(cwd: &Path) -> bool {
-    crate::card::guard::can_act(cwd) && crate::card::guard::repoint::stale(cwd).is_none()
+    crate::card::guard::can_act(cwd) && crate::card::guard::repoint::disagrees(cwd).is_none()
 }
 
 /// The confirmed git-hook apply of `moai update`, given the preview's guard answer, followed by

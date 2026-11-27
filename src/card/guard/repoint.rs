@@ -74,6 +74,42 @@ pub fn stale(project: &Path) -> Option<Staleness> {
     }
 }
 
+/// The record and the profile's integration branch of `project`'s checkout when they differ, in a
+/// primary and in a linked worktree alike (the profile is the one of that checkout). Read only.
+/// No record, an unreadable record or profile, a profile with no branch and a current record all
+/// answer `None`. Unlike [`stale`] this never looks at the worktree kind.
+pub fn disagrees(project: &Path) -> Option<Staleness> {
+    let common = common_dir_of(project).ok()?;
+    match compare(project, common) {
+        Ok(Probe::Stale(plan)) => Some(Staleness {
+            record: short(&plan.record),
+            profile_branch: short(&plan.target),
+        }),
+        _ => None,
+    }
+}
+
+/// What `card land`, `land-batch` and `land-sync` add to their answer as `guard_record_stale`
+/// when [`disagrees`] finds a difference: the record, the profile branch, the worktree kind, that
+/// a later release would refuse the landing, and the command that re-points the record. A linked
+/// worktree also gets the sentence that the command has to run from the primary checkout.
+pub fn observation(project: &Path) -> Option<Value> {
+    let found = disagrees(project)?;
+    let primary = is_primary_worktree(project);
+    let mut field = json!({
+        "record": found.record,
+        "profile_branch": found.profile_branch,
+        "worktree": if primary { "primary" } else { "linked" },
+        "would_refuse": true,
+        "repoint": "moai card guard-repoint",
+    });
+    if !primary {
+        field["note"] =
+            json!("guard-repoint refuses in a linked worktree: run it from the primary checkout");
+    }
+    Some(field)
+}
+
 /// `card guard-repoint`: see the module comment.
 pub fn repoint(project: &Path, req: &RepointRequest<'_>) -> Result<Value> {
     match (req.apply, req.revert) {
@@ -128,6 +164,11 @@ fn probe(project: &Path) -> Result<Probe> {
     if !is_primary_worktree(project) {
         return Ok(Probe::Linked);
     }
+    compare(project, common)
+}
+
+/// The record against the profile's integration branch, whatever the worktree kind.
+fn compare(project: &Path, common: PathBuf) -> Result<Probe> {
     let bytes = match fs::read(common.join(RECORD_FILE)) {
         Ok(bytes) => bytes,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Probe::NoRecord),
