@@ -115,6 +115,8 @@ approval:
 
 바뀐 다른 핀(이 카드 범위의 테스트 파일 안): 블록 줄 수 `51 added`→`57 added` 둘, 팀 파일 목록과 SPEC 테스트의 평평한 `workflows/run.md`·`decisions/D-1.md`를 새 모양(`workflows/run/SKILL.md`, `decisions/D-1.jsonl`)으로.
 
+범위 밖 변경(승인된 Scope 글에 없는 경로, 리더 결정 10756·10758): 소스 스캔 테스트(REQ-7)가 `src/`를 읽어서 `tests/gitignore_block_cli.rs`가 읽기 표의 "읽는 테스트"가 됐어요. ① `tools/repo_scans.json`에 `reads-gitignore-block-cli` always 스캔 하나를 줄 리스로 더했어요(규칙 파일 이 테스트와 `tests/repo_scans_table.rs`, scope `src/`와 `.moai/evals/audit/cases-tuning.json`). ② `tests/repo_scans_table.rs`에 `FILE_READ_EXEMPT` 줄 하나(`tests/gitignore_block_cli.rs`와 임시 프로젝트용 이름 여덟 개에만). ③ `tests/fixtures/state_folder_literals/allow.tsv`의 두 행: `tests/gitignore_block_cli.rs` 226/81→272/92(이 카드가 새 테스트에 적은 글자), `tests/repo_scans_table.rs` 0/18→4/20(면제 줄이 적는 이름). 스캔 scope와 규칙은 느슨해진 데가 없어요.
+
 SPEC에 없던 한 가지: 사용자가 쓴 규칙이 이미 `manifests/x.json` 같은 모양을 무시하면 그 폴더의 다시 허용하는 줄을 빼요(블록은 사용자 규칙의 효과를 바꾸지 않는다는 기존 약속, B1). 이를 `a_user_rule_keeps_its_effect_and_the_preview_names_it`가 고정해요. `src/project_update.rs`는 건드리지 않았어요.
 
 guard-mutant: the_block_allows_only_the_paths_rust_writes_under_manifests_workflows_decisions | the `<state>/<folder>/*` ignore line of `render_ignore` | exit 100

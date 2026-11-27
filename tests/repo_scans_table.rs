@@ -760,6 +760,20 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         "names of files in the temporary project it builds (a planted link target, the launch text)",
     ),
     (
+        "tests/gitignore_block_cli.rs",
+        &[
+            ".moai-cli/manifests",
+            ".moai-cli/manifests/generation.json",
+            ".moai-cli/manifests/profile-baseline.json",
+            ".moai-cli/project.yaml",
+            ".moai/project.yaml",
+            ".moai/specs",
+            "CLAUDE.md",
+            "skills/moai/workflows",
+        ],
+        "names of files in the temporary projects it builds; its one read of the checkout is the source scan, covered by the reads-gitignore-block-cli scan",
+    ),
+    (
         "tests/ops_table_gen_cli.rs",
         &["src/main.rs", "src/lib.rs"],
         "the shared file names it looks for in the research table text",

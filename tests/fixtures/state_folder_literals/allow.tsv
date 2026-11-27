@@ -112,7 +112,7 @@ tests/generation_ref_slash.rs	2	0
 tests/git_hooks_cli.rs	0	1
 tests/github_inventory_collect.py	1	0
 tests/github_inventory_test.py	1	0
-tests/gitignore_block_cli.rs	226	81
+tests/gitignore_block_cli.rs	272	92
 tests/go_hooks_migrate.rs	2	1
 tests/go_project_real_run_cli.rs	1	6
 tests/go_settings_cli.rs	10	43
@@ -202,7 +202,7 @@ tests/project_update_plan_cli.rs	12	72
 tests/project_worktree_move_choice.rs	0	3
 tests/recovery_cli.rs	1	3
 tests/repo_claude_md.rs	2	9
-tests/repo_scans_table.rs	0	18
+tests/repo_scans_table.rs	4	20
 tests/report_rules_core.rs	0	1
 tests/reports_move_cli.rs	72	13
 tests/retired_hosts_layer.rs	5	0
