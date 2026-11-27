@@ -258,10 +258,12 @@ fn choice_shaped(row: &str) -> bool {
 }
 
 /// Whether `text` holds a pair of alternatives: a `/` or `|` between two alphabetic words, with or
-/// without spaces (`yes/no`, `Allow | Deny`, `again / No`). A token that has a dot, a colon or a
-/// second slash in it is a path or a link, not a pair (`src/main.rs`, `https://host/x`). It is a
-/// shape, not a word list: `and/or` and `src/lib` read as pairs too, which costs a refusal on a
-/// question row only.
+/// without spaces (`yes/no`, `Allow | Deny`, `again / No`). Every part of a token must be only
+/// letters, so a token with a dot, a colon, a digit or an underscore in a part, or with an empty
+/// part, is a path or a link and no pair (`src/main.rs`, `https://host/x`). A path of plain folder
+/// names is all letters and reads as a pair, however many slashes it has (`src/lib`,
+/// `crates/core/src`). It is a shape, not a word list: `and/or` reads as a pair too. The cost is a
+/// refusal on a question row only.
 fn slash_pair(text: &str) -> bool {
     let tokens: Vec<&str> = text.split_whitespace().collect();
     let edge = |c: char| !c.is_alphanumeric();
@@ -288,15 +290,38 @@ fn slash_pair(text: &str) -> bool {
         })
 }
 
+/// Whether `text` holds the one word pair the shape rule cannot see (REQ-6, user decision 2026-11-27,
+/// ledger note 10779): a yes word and a no word joined by `or`, as `yes or no` or `y or n`, in any
+/// case and either order, with punctuation round the words allowed (`(yes, or no)`). Nothing else
+/// is read by its words: `commit or push`, `yes or maybe` and `yes to one or no to two` are plain
+/// text, because `… now yes or no please confirm it` has the same shape as `commit or push?`.
+fn yes_no_or(text: &str) -> bool {
+    let words: Vec<String> = text
+        .split_whitespace()
+        .map(|w| {
+            w.trim_matches(|c: char| !c.is_alphanumeric())
+                .to_lowercase()
+        })
+        .collect();
+    words.windows(3).any(|w| {
+        w[1] == "or"
+            && matches!(
+                (w[0].as_str(), w[2].as_str()),
+                ("yes", "no") | ("no", "yes") | ("y", "n") | ("n", "y")
+            )
+    })
+}
+
 /// Whether a question row carries its own choices: a bracket question (`Overwrite? (y/N/a)`), a
 /// pair of alternatives anywhere in it (`Yes/No: do you want to proceed?`, `… now yes/no please
-/// confirm it`, `… ? Yes, and don't ask again / No, tell Claude`), or a choice shape in the tail
-/// after a question mark (`Do you want to proceed? Yes/No`, `… ? [Yes] [No]`, `… ? yes or no`).
-/// The question's own words are never read as a shape (`Would you like me to commit or push?` is
-/// a plain question), so only the text after a `?` counts for the shapes. A row with no question
-/// mark (`are you sure Yes/No`) is read from each of its last three words on.
+/// confirm it`, `… ? Yes, and don't ask again / No, tell Claude`), a yes word and a no word joined
+/// by `or` anywhere in it ([`yes_no_or`]), or a choice shape in the tail after a question mark
+/// (`Do you want to proceed? Yes/No`, `… ? [Yes] [No]`, `… ? yes or no`). The question's own words
+/// are never read as a shape (`Would you like me to commit or push?` is a plain question), so only
+/// the text after a `?` counts for the shapes. A row with no question mark (`are you sure Yes/No`)
+/// is read from each of its last three words on.
 fn question_row_shaped(row: &str) -> bool {
-    if bracket_question(row) || slash_pair(row) {
+    if bracket_question(row) || slash_pair(row) || yes_no_or(row) {
         return true;
     }
     if row.contains('?') {
@@ -465,7 +490,8 @@ pub fn classify(rows: &[String]) -> Seen {
     // way it does not know, or in other words): Enter may pick the first choice, so the lane is
     // not `working` or `idle` whatever its footer says (leader R-N1, note 3256). The choices
     // are there when the question row carries them (`question_row_shaped`: a pair of alternatives
-    // anywhere in it, leader decision 10737, or a choice shape in the tail after its question
+    // anywhere in it, leader decision 10737, a yes word and a no word joined by `or`, user
+    // decision 10779, or a choice shape in the tail after its question
     // mark, R-B1, note 3433: `proceed? (yes/no)` is one row, and review note 10724: `Do you want
     // to proceed? Yes/No`), when a choice-shaped row (`choice_shaped`: a
     // bracket question, a button or list entry, a split of short words) is below it, when two or
@@ -1370,6 +1396,69 @@ mod tests {
         assert_eq!(screen(&["yes", "All done.", q]).state, State::Working);
         // Numbered rows ABOVE the question do not count.
         assert_eq!(screen(&["1. a", "2. b", q]).state, State::Working);
+    }
+
+    #[test]
+    fn a_yes_no_pair_joined_by_or_is_read_by_its_words() {
+        // A yes word and a no word joined by `or`: any case, either order, punctuation allowed.
+        for text in [
+            "yes or no",
+            "Yes or No",
+            "no or yes",
+            "y or n",
+            "N OR Y",
+            "now (yes, or no) please",
+            "Is that yes or no?",
+            "answer: yes or no.",
+        ] {
+            assert!(yes_no_or(text), "{text:?} is a yes/no pair");
+        }
+        // Nothing else is read by its words: another `or` pair, a yes or a no beside a word that
+        // is not its opposite, the two words with no `or` between them, a word that only holds one
+        // of them, and an `or` that joins a longer phrase.
+        for text in [
+            "commit or push",
+            "keep the old file or replace it",
+            "yes or maybe",
+            "later or no",
+            "yes and no",
+            "yes, no",
+            "y or no",
+            "yesterday or nothing",
+            "yes to one or no to two",
+            "yes",
+            "or",
+            "",
+        ] {
+            assert!(!yes_no_or(text), "{text:?} is no yes/no pair");
+        }
+        // On a question row it refuses; the same row without the pair does not.
+        assert!(question_row_shaped(
+            "Do you want to delete the build folder now yes or no please confirm it"
+        ));
+        assert!(!question_row_shaped(
+            "Do you want to delete the build folder now or keep it please confirm it"
+        ));
+    }
+
+    #[test]
+    fn a_path_of_plain_folder_names_reads_as_a_pair_of_alternatives() {
+        // The shape rule cannot tell a path of folder names from `and/or`: every part is only
+        // letters, however many slashes there are. It costs a refusal on a question row.
+        for text in ["src/lib", "crates/core/src", "and/or", "Allow|Deny"] {
+            assert!(slash_pair(text), "{text:?} reads as a pair");
+        }
+        // A part with a dot, a colon, a digit or an underscore, or an empty part, is no pair.
+        for text in [
+            "src/main.rs",
+            "https://example.com/docs/x",
+            "docs/v2/api",
+            "my_dir/lib",
+            "src//lib",
+            "plain words only",
+        ] {
+            assert!(!slash_pair(text), "{text:?} is no pair");
+        }
     }
 
     #[test]
