@@ -1,12 +1,18 @@
-//! SPEC-20261122-output-style-moai-easy: the shipped MoAI-Easy text names only Claude Code, and
+//! SPEC-20261122-output-style-moai-easy: the shipped style text (named MoAI-Easy then, MoAI-Style
+//! since SPEC-20261127-output-style-moai-style) names only Claude Code, and
 //! the installer takes a style file that equals the current render or an earlier shipped render
 //! as MoAI's own while a real user edit stays a conflict. Against a temporary HOME only.
 //!
 //! The earlier renders are kept as fixtures (`tests/fixtures/home-style/render-1.md` to
-//! `render-7.md`), rebuilt from the commits of the text history; their sha256 are the ones of
+//! `render-8.md`), rebuilt from the commits of the text history; their sha256 are the ones of
 //! the SPEC decision D-4, for the fifth of SPEC-20261123-progress-board-flow-icons, for the
-//! sixth of SPEC-20261122-statusline-limits-left (the one icon set) and for the seventh, the
-//! text before SPEC-20261124-card-flow-icons (D-8 there).
+//! sixth of SPEC-20261122-statusline-limits-left (the one icon set), for the seventh, the
+//! text before SPEC-20261124-card-flow-icons (D-8 there), and for the eighth, the text before
+//! SPEC-20261127-output-style-moai-style (the last one named MoAI-Easy).
+//!
+//! `ac10_` and `ac11_` below belong to SPEC-20261127-output-style-moai-style: the shipped text
+//! holds a language-independent wording principle and a polish step and no word list, and the
+//! translationese pairs live in an eval fixture outside the skill package.
 
 mod common;
 use moai_cli::home_style::{apply, plan, render_style_file, revert, Plan, SOURCE};
@@ -14,7 +20,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const PERM: &str = "test-permission";
-const STYLE: &str = ".claude/output-styles/MoAI-Easy.md";
+const STYLE: &str = ".claude/output-styles/MoAI-Style.md";
 /// The record of what MoAI last wrote, below the state folder the resolver names for this HOME
 /// (never a folder name written out here).
 fn record_file(home: &Path) -> PathBuf {
@@ -22,7 +28,7 @@ fn record_file(home: &Path) -> PathBuf {
         .join("home-style")
         .join("claude.json")
 }
-const RENDERS: [&str; 7] = [
+const RENDERS: [&str; 8] = [
     "render-1.md",
     "render-2.md",
     "render-3.md",
@@ -30,6 +36,7 @@ const RENDERS: [&str; 7] = [
     "render-5.md",
     "render-6.md",
     "render-7.md",
+    "render-8.md",
 ];
 
 fn package() -> PathBuf {
@@ -254,7 +261,7 @@ fn the_rendered_description_has_no_double_quote_and_names_the_banner() {
 /// The sha256 of the earlier renders, kept in the SPEC (D-4), match the fixtures.
 #[test]
 fn the_fixtures_are_the_earlier_renders_of_the_spec() {
-    let want: [&str; 7] = [
+    let want: [&str; 8] = [
         "93e53607dd194da86abfbe7ea993303fff1d17af1a1a1ae6868788938ed785d2",
         "d4e1851a65eb0ed21d16de888925dc6ae8a7bcebcae45973e1b8cce884d75e67",
         "690c534220f9bb1614e27d608e56306da973e2fe7b53e2bc1a4d42d7d2b9c65e",
@@ -262,6 +269,7 @@ fn the_fixtures_are_the_earlier_renders_of_the_spec() {
         "80e189d27dd7be365724bbba2f38f1eddb3c0e96801da4caf82535ce80181a65",
         "5f6b5fd1d93f3b0a4553ba74df113bba99bb018ca819120e1a25926fe242d006",
         "8468a4c95c48ab62975d13bac3041e60a393b2ba368f36c09544ef96df810847",
+        "0c66f9d0662a8a2d6bb7aa73f6e2c623c33d43d27fe800abc51a230ae35389f3",
     ];
     assert_eq!(want.len(), RENDERS.len());
     for (name, sha) in RENDERS.iter().zip(want) {
@@ -277,7 +285,7 @@ fn the_fixtures_are_the_earlier_renders_of_the_spec() {
 /// frontmatter makes this test fail until the outgoing render is appended to
 /// `EARLIER_RENDERS` and this constant names the new one (AC-7, REQ-8).
 const CURRENT_RENDER_SHA256: &str =
-    "0c66f9d0662a8a2d6bb7aa73f6e2c623c33d43d27fe800abc51a230ae35389f3";
+    "0fe1ffc214757da192091abf5954c02db7fc139ff35e7a0a06450c946640f935";
 
 /// AC-7 (REQ-8): the list holds 64 hex digits each, all different, equal to the fixtures in
 /// order, and never the current render, which is pinned here.
@@ -393,7 +401,7 @@ fn a_real_user_edit_stays_a_conflict_on_every_known_text() {
     }
     // A text that is none of them, with no record, is a conflict too.
     let (_t, home) = temp_home();
-    write(&home, STYLE, "---\nname: MoAI-Easy\n---\n\nmy own style\n");
+    write(&home, STYLE, "---\nname: MoAI-Style\n---\n\nmy own style\n");
     let p = plan(&home, &package()).unwrap();
     assert_eq!(style_action(&p), "conflict");
 }
@@ -470,9 +478,104 @@ fn the_style_is_never_written_below_a_project_folder() {
 
 fn home_like_project() -> (tempfile::TempDir, PathBuf) {
     let (t, path) = temp_home();
-    write(&path, ".claude/output-styles/MoAI-Easy.md", "project own\n");
+    write(
+        &path,
+        ".claude/output-styles/MoAI-Style.md",
+        "project own\n",
+    );
     write(&path, ".claude/settings.json", "{}\n");
     (t, path)
+}
+
+/// A character of the Hangul, kana or CJK ideograph blocks: text in a language other than English.
+fn is_native_script(c: char) -> bool {
+    matches!(
+        c as u32,
+        0x1100..=0x11FF | 0x3040..=0x30FF | 0x3130..=0x318F | 0x3400..=0x4DBF | 0x4E00..=0x9FFF | 0xAC00..=0xD7A3
+    )
+}
+
+fn eval_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join(".moai/evals/style")
+}
+
+fn eval_json(name: &str) -> serde_json::Value {
+    serde_json::from_str(&fs::read_to_string(eval_root().join(name)).unwrap()).unwrap()
+}
+
+/// AC-10 (REQ-15, REQ-16, REQ-17, REQ-18, REQ-19): the shipped text states one wording principle
+/// for every language other than English and a polish step, keeps identifiers, commands, paths and
+/// protocol lines as written, glosses a term only for a reader who may not know it without coining
+/// a word, and holds no word list: no earlier gloss rule, no per-language example words (the
+/// only text of another language is the name of the Korean register), none of the eval pairs.
+#[test]
+fn ac10_the_style_text_holds_a_principle_and_a_polish_step_and_no_word_list() {
+    let s = src();
+    for needle in [
+        "write the standard wording that working developers of that language and region actually use for software work",
+        "never a dictionary rendering of the English word",
+        "Polish before sending",
+        "reread the reply as a developer who speaks that language",
+        "English word order",
+        "an awkward passive",
+        "a particle or spacing that breaks the orthography of that language",
+        "Keep code, commands, paths, identifiers and protocol lines exactly as written",
+        "only when the reader may not know it",
+        "never coin a native word",
+    ] {
+        assert!(s.contains(needle), "{needle}");
+    }
+    for gone in [
+        "plain word (English term)",
+        "Plain words first",
+        "Translate the labels",
+    ] {
+        assert!(!s.contains(gone), "{gone} is still there");
+    }
+    let rest = s.replace("해요체", "");
+    if let Some(c) = rest.chars().find(|c| is_native_script(*c)) {
+        panic!("a word of another language in the style text: {c}");
+    }
+    // None of the eval pairs' translationese is in the text.
+    for case in eval_json("cases.json").as_array().unwrap() {
+        let bad = case["translationese"].as_str().unwrap();
+        assert!(!s.contains(bad), "{bad}");
+    }
+}
+
+/// AC-11 (REQ-20): the translationese pairs live in `.moai/evals/style/` (README, `cases.json`,
+/// `controls.json`), every Korean pair has a source note, no other language has a pair, and
+/// nothing of it is in the skill package or its manifest.
+#[test]
+fn ac11_the_translationese_pairs_live_in_an_eval_fixture_outside_the_package() {
+    let readme = fs::read_to_string(eval_root().join("README.md")).unwrap();
+    assert!(readme.contains("cases.json") && readme.contains("controls.json"));
+    let cases = eval_json("cases.json");
+    let cases = cases.as_array().unwrap();
+    assert!(!cases.is_empty());
+    let mut ids = std::collections::BTreeSet::new();
+    for c in cases {
+        let text = |key: &str| c[key].as_str().filter(|s| !s.trim().is_empty());
+        let id = text("id").unwrap_or_else(|| panic!("a case has no id: {c}"));
+        assert!(ids.insert(id.to_string()), "{id} is used twice");
+        // Only a language whose wording a native speaker or an official source confirmed.
+        assert_eq!(text("language"), Some("ko"), "{id}");
+        let (bad, good) = (text("translationese").unwrap(), text("polished").unwrap());
+        assert_ne!(bad, good, "{id}");
+        assert!(text("source").is_some(), "{id} has no source note");
+    }
+    let controls = eval_json("controls.json");
+    let controls = controls.as_array().unwrap();
+    assert!(!controls.is_empty());
+    for c in controls {
+        assert!(c["id"].as_str().is_some_and(|s| !s.is_empty()), "{c}");
+        assert!(c["text"].as_str().is_some_and(|s| !s.is_empty()), "{c}");
+        assert!(c["why"].as_str().is_some_and(|s| !s.is_empty()), "{c}");
+    }
+    // Outside the skill package and its manifest.
+    assert!(!package().join("evals").exists());
+    let manifest = fs::read_to_string(package().join("references/source-manifest.json")).unwrap();
+    assert!(!manifest.contains("evals/style") && !manifest.contains("cases.json"));
 }
 
 fn tree(root: &Path) -> Vec<(String, String)> {

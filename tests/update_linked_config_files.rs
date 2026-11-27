@@ -174,7 +174,7 @@ fn a_config_file_linked_into_the_default_folder_is_planned_and_written_there() {
     orca_layout(&f);
     let profile = f.profile();
     let settings = f.default_dir().join("settings.json");
-    let style = f.default_dir().join("output-styles/MoAI-Easy.md");
+    let style = f.default_dir().join("output-styles/MoAI-Style.md");
     let p = plan(&f, Some(&profile));
     assert_eq!(action(&p, "style_file"), "create", "{p}");
     assert_eq!(action(&p, "setting"), "set", "{p}");
@@ -192,7 +192,7 @@ fn a_config_file_linked_into_the_default_folder_is_planned_and_written_there() {
     assert!(ok, "{applied}");
     assert_eq!(applied["result"]["state"], "applied", "{applied}");
     let now: Value = serde_json::from_slice(&fs::read(&settings).unwrap()).unwrap();
-    assert_eq!(now, json!({"a": 1, "outputStyle": "MoAI-Easy"}));
+    assert_eq!(now, json!({"a": 1, "outputStyle": "MoAI-Style"}));
     assert!(style.is_file());
     assert!(is_link_to(&profile.join("settings.json"), &settings));
     assert!(is_link_to(
@@ -365,7 +365,7 @@ fn a_relative_link_into_the_default_folder_is_followed_and_stays_relative() {
     let (ok, applied) = apply(&f, Some(&f.profile()), &p);
     assert!(ok, "{applied}");
     let now: Value = serde_json::from_slice(&fs::read(&settings).unwrap()).unwrap();
-    assert_eq!(now, json!({"a": 1, "outputStyle": "MoAI-Easy"}));
+    assert_eq!(now, json!({"a": 1, "outputStyle": "MoAI-Style"}));
     assert_eq!(
         fs::read_link(f.profile().join("settings.json")).unwrap(),
         relative,
@@ -453,7 +453,7 @@ fn a_revert_skips_a_linked_file_whose_link_changed_and_names_a_file() {
     );
     let still: Value = serde_json::from_slice(&fs::read(&settings).unwrap()).unwrap();
     assert_eq!(
-        still["outputStyle"], "MoAI-Easy",
+        still["outputStyle"], "MoAI-Style",
         "the setting was not reverted"
     );
     assert!(
@@ -487,7 +487,7 @@ fn a_link_changed_after_the_plan_is_refused_at_write_time() {
         fs::read_to_string(f.outside().join("settings.json")).unwrap(),
         "{\"keep\": 1}\n"
     );
-    assert!(!f.default_dir().join("output-styles/MoAI-Easy.md").exists());
+    assert!(!f.default_dir().join("output-styles/MoAI-Style.md").exists());
 }
 
 /// The default folder's `settings.json` is read by the default folder's Claude Code too: it is
@@ -507,8 +507,8 @@ fn a_linked_setting_waits_for_a_style_file_in_the_default_folder() {
     let (ok, a) = apply(&f, Some(&f.profile()), &p);
     assert!(ok, "{a}");
     assert_eq!(fs::read_to_string(&settings).unwrap(), "{\"a\": 1}\n");
-    assert!(f.profile().join("output-styles/MoAI-Easy.md").is_file());
-    assert!(!f.default_dir().join("output-styles/MoAI-Easy.md").exists());
+    assert!(f.profile().join("output-styles/MoAI-Style.md").is_file());
+    assert!(!f.default_dir().join("output-styles/MoAI-Style.md").exists());
 }
 
 /// A blocked style target names the file, the reason and one next step, in its detail and in a
