@@ -28,6 +28,8 @@ pub mod declined;
 pub mod guide;
 /// What earlier generations leave behind, each with an archive action or a keep reason.
 pub mod leftovers;
+/// The archive apply of the leftovers and its revert.
+pub mod leftovers_archive;
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -2041,7 +2043,32 @@ fn agents_local_merge_step(root: &Path, shown: &str) -> Result<Step> {
 /// the generation step's instruction file is a second receipt (`agents_receipt`) that its own undo does
 /// not cover. Run in this order the project is back to its start bytes (what the steps added —
 /// receipts and `.moai.rust-<UTC>/` — stays). Each id is printed by the apply result of its step.
-fn undo_order() -> Value {
+///
+/// While a leftovers archive receipt that is not `reverted` exists under the state folder, the
+/// order begins with the leftovers revert (SPEC-20261127-update-leftovers-action REQ-22): an
+/// archived Go update lock must be back in the Go backup folder before `go-state-revert` reads
+/// that folder's digest. With no such receipt the rows are exactly the ones below.
+fn undo_order(root: &Path) -> Value {
+    let mut order = undo_order_rows();
+    if leftovers_archive::open_receipt_exists(root) {
+        if let Some(steps) = order["steps"].as_array_mut() {
+            steps.insert(0, leftovers_undo_row());
+        }
+    }
+    order
+}
+
+/// The first row of the undo order while a leftovers archive is not reverted.
+fn leftovers_undo_row() -> Value {
+    json!({"step": "leftovers", "commands": [
+        format!(
+            "moai {} <PROJECT> --receipt <receipt of the leftovers step> --permission-reference <reference>",
+            leftovers_archive::REVERT_OPERATION
+        ),
+    ], "note": "only while a leftovers apply is not reverted; it puts the archived leftovers back from their backup (a lock archived out of the Go backup folder must be back before go-state-revert reads that folder) and leaves an item as a conflict when its place is taken"})
+}
+
+fn undo_order_rows() -> Value {
     json!({
         "rule": "undo the step applied last first; every command needs its own permission reference",
         "steps": [
@@ -2240,7 +2267,7 @@ pub fn plan(project: &Path) -> Result<Value> {
             phase("merge", MERGE_REASON, &merge),
         ],
         "all_unchanged": all_unchanged,
-        "undo_order": undo_order(),
+        "undo_order": undo_order(&root),
         "ask": ask,
         "chain": chain,
         "finish": finish,
