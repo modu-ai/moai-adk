@@ -575,6 +575,9 @@ fn spec_take_card_does_not_add_a_second_open_card_to_a_spec() {
     // A SPEC with no open card takes the open card.
     let (w, _) = setup();
     let other = w.draft_spec("other-fix");
+    // `spec take` stops for a change outside the SPEC's own folder: commit the first SPEC.
+    w.git(&["add", "-A"]);
+    w.commit("specs");
     let r = ok(&w.take(&other, &["--card", "C-2"], &[]));
     assert_eq!(r["card"]["changed"], true, "{r}");
 }
