@@ -2935,3 +2935,46 @@ fn worktree_entry_other_files_point_to_work() {
         );
     }
 }
+
+/// The words every lane text says about how files are written.
+const FILE_TOOLS_FIRST: &str = "tracked files and in-scope files with the host's file tools (Write, Edit) from the first write, never with a shell heredoc, `sed -i` or a redirect";
+
+/// SPEC-20261126-file-tools-first AC-1, AC-2: the implementation agent, the documentation agent,
+/// the shell guard reference and the lane rules each hold the file-tools line.
+#[test]
+fn file_tools_first_line_stands_in_the_four_lane_texts() {
+    let missing: Vec<&str> = [
+        "agents/impl.md",
+        "agents/docs.md",
+        "skills/moai/references/internal/shell-guards.md",
+        "docs/lane-rules.md",
+    ]
+    .into_iter()
+    .filter(|rel| !repo_text(rel).contains(FILE_TOOLS_FIRST))
+    .collect();
+    assert!(
+        missing.is_empty(),
+        "{missing:?} lack the line {FILE_TOOLS_FIRST:?}"
+    );
+}
+
+/// The words the rule texts say about how a mutant is run.
+const MUTANTS_WITHOUT_A_SCRIPT: &str = "Run each mutant without a script: change the code with Edit, run the test with one command, and change the code back with Edit; never use a script that holds `git apply`, `git checkout` or `sed -i`.";
+
+/// SPEC-20261126-file-tools-first AC-4, AC-5: the implementation agent, the shell guard
+/// reference and the lane rules each hold the no-script mutant line.
+#[test]
+fn mutants_without_a_script_line_stands_in_the_three_rule_texts() {
+    let missing: Vec<&str> = [
+        "agents/impl.md",
+        "skills/moai/references/internal/shell-guards.md",
+        "docs/lane-rules.md",
+    ]
+    .into_iter()
+    .filter(|rel| !repo_text(rel).contains(MUTANTS_WITHOUT_A_SCRIPT))
+    .collect();
+    assert!(
+        missing.is_empty(),
+        "{missing:?} lack the line {MUTANTS_WITHOUT_A_SCRIPT:?}"
+    );
+}

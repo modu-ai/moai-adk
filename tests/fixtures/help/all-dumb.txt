@@ -30,8 +30,8 @@ Project
   card-summary-apply      Post a card's summary to its issue, once
   ledger-recover-plan     Preview recovering a damaged project ledger
   ledger-recover-apply    Recover the previewed project ledger
-  agents-plan             Preview the AGENTS.md managed section
-  agents-apply            Write a previewed AGENTS.md managed section
+  agents-plan             Preview the CLAUDE.md managed section
+  agents-apply            Write a previewed CLAUDE.md managed section
   generation-plan         Preview the project's generated agent and skill files
   generation-apply        Write previewed generated agent and skill files
   github-plan             Preview the project's GitHub templates
@@ -40,6 +40,8 @@ Project
   labels-apply            Sync previewed GitHub labels
   claude-settings-plan    Preview the managed Claude Code settings keys
   claude-settings-apply   Write previewed Claude Code settings keys
+  secret-deny-plan        Preview Read deny rules for the project's key files
+  secret-deny-apply       Add the picked Read deny rules to the project settings
   hooks-plan              Preview the MoAI hook set for one host
   hooks-apply             Write a previewed hook set
   hooks-revert            Undo the hook set one update applied
@@ -89,6 +91,8 @@ Update and move
   cleanup-revert          Undo one HOME cleanup
   tidy-inventory          List every entry of the home moai folder with its class
   tidy-plan               Preview the tidy of the home moai folder
+  tidy-apply              Archive or delete the picked items of the tidy plan
+  tidy-restore            Put the files of a tidy archive back
   recovery-plan           Preview recovering hosts an update left pending
   recovery-apply          Revert one update's changes on pending hosts
   apply-recover           Revert the files one apply published
@@ -119,7 +123,7 @@ Keys
   keys-revert             Undo the keys one update imported
   models-revert           Undo the model settings one update saved
 Diagnose
-  claude-doctor           Check that Claude Code reads AGENTS.md
+  claude-doctor           Check that Claude Code reads your own AGENTS.md
   install-inspect         Show the installed MoAI binaries
   identity                Show where a path sits in its clone
   worktree-report         Report the space worktrees use
@@ -258,21 +262,22 @@ Internal
 Options:
       --color <WHEN>       Color on a terminal: auto, always (even with NO_COLOR or TERM=dumb) or
                            never; put it before the command
-  -l, --leader             Start the coordination window: session `<project name>-leader`, the
+  -l, --leader             Start the coordination window: session `leader-<project name>`, the
                            permission bypass (`--dangerously-skip-permissions`) unless
                            `--permissions` is given, and the first input `/moai leader`
-  -a, --agent              Start a lane: session `<project name>-agent-<english name>` (a name
-                           chosen at random among the free names of the launcher's list), the
-                           permission bypass unless `--permissions` is given, and the first input
-                           `/moai agent`
-      --name <NAME>        Session name (none by default; `-l` names it `<project name>-leader`,
-                           `-a` takes a name chosen at random among the free `<project
-                           name>-agent-<english name>`; with a role flag this name replaces those)
+  -a, --agent              Start a lane: session `agent-<english name>` (a name chosen at random
+                           among the names of the launcher's list that no other session on this
+                           machine holds), the permission bypass unless `--permissions` is given,
+                           and the first input `/moai agent`
+      --name <NAME>        Session name (none by default; `-l` names it `leader-<project name>`,
+                           `-a` takes a name chosen at random among the free `agent-<english name>`;
+                           with a role flag this name replaces those and is held on this machine the
+                           same way)
       --model <MODEL>      Main model (default `opus`)
       --effort <EFFORT>    Effort (default `medium` on `cc`, `high` on `glm`)
-      --advisor <ADVISOR>  Advisor model on Claude hosts (fable|opus|sonnet or a full claude-* id).
-                           None by default; the user setting `launcher.advisor` can turn it on. May
-                           bill to usage credits
+      --advisor [<MODEL>]  Advisor model on Claude hosts (fable|opus|sonnet or a full claude-* id);
+                           `opus` when the model is left out. None by default, also with `-a`; the
+                           user setting `launcher.advisor` can turn it on. May bill to usage credits
       --no-advisor         Pass no `--advisor` even when the user setting `launcher.advisor` turns
                            it on
       --permissions        Keep permission prompts: no permission flag at all (Claude hosts), so the

@@ -850,10 +850,34 @@ fn ac8_links_under_home_are_not_followed() {
         let r = fx.hook("session-context", &fx.input("startup"));
         assert_eq!(r.stderr.lines().count(), 1, "{what}: {:?}", r.stderr);
         assert_eq!(context_of(&r), BRANCH_ONLY, "{what}");
-        // A bad input does not write a receipt behind the link.
+        // A bad input does not write a receipt behind the link, and the call is denied all the
+        // same (SPEC-20261126-hook-unreadable-input REQ-1, REQ-5).
         let r = fx.hook("bash-boundary", b"not json");
         assert_eq!(r.code, Some(0), "{what}");
-        assert_eq!(r.stdout, "", "{what}");
+        assert_eq!(
+            r.stdout.lines().count(),
+            1,
+            "{what}: no deny object on one line of stdout, got {:?}",
+            r.stdout
+        );
+        let v: Value = serde_json::from_str(r.stdout.trim_end()).unwrap();
+        let reason = v["hookSpecificOutput"]["permissionDecisionReason"]
+            .as_str()
+            .unwrap_or_default()
+            .to_owned();
+        assert!(
+            reason.starts_with("moai-boundary/unreadable:"),
+            "{what}: {reason:?}"
+        );
+        assert_eq!(
+            v,
+            serde_json::json!({"hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": reason,
+            }}),
+            "{what}"
+        );
         assert_eq!(r.stderr.lines().count(), 1, "{what}: {:?}", r.stderr);
         assert_eq!(before, snapshot(&target_home), "{what}: the target changed");
     }

@@ -4,7 +4,7 @@
 
 `/moai leader` sets a mode and is not a command: text after it is never run, and the window says in one line, in the user's conversation language, that instructions come as a message. Before any other action run `pwd` and `moai session-register --names`: its `project` and `leader` say which project this folder belongs to and what this window is called. When the folder is not the project the user or the ledger names, say `another repository` in one line, in the user's conversation language, and stop: the window takes and writes nothing.
 
-A window whose name does not already end with `-leader` (it was not started with `moai cc -l`) gives the user the one line `/rename <project name>-leader` once, in the user's conversation language, with `<project name>` the `project` that `--names` printed, and reads its own name from the first line of `ListAgents` before it goes on. If that name is not the wanted one after the user's reply, or the user gives none, go on under the name the window has, address the lanes and be addressed by the short id, and write one ledger note that says so.
+A window whose name does not already start with `leader-` (it was not started with `moai cc -l`) gives the user the one line `/rename leader-<project name>` once, in the user's conversation language, with `<project name>` the `project` that `--names` printed, and reads its own name from the first line of `ListAgents` before it goes on. If that name is not the wanted one after the user's reply, or the user gives none, go on under the name the window has, address the lanes and be addressed by the short id, and write one ledger note that says so.
 
 ## Input
 

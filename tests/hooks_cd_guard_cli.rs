@@ -219,7 +219,12 @@ fn a_worktree_session_cd_is_denied() {
                 .unwrap_or_else(|| panic!("allowed in {mode}: {command:?}"));
             assert!(reason.starts_with(PREFIX), "{command:?}: {reason}");
             assert_eq!(reason.lines().count(), 1, "one line: {reason}");
-            for way in ["absolute path", "git -C", "object id", "( cd"] {
+            for way in [
+                "absolute path",
+                "--manifest-path",
+                "plain single",
+                "object id",
+            ] {
                 assert!(reason.contains(way), "{way} not named: {reason}");
             }
         }
@@ -242,6 +247,32 @@ fn a_worktree_session_cd_is_denied() {
         reason.is_some_and(|r| r.starts_with(PREFIX)),
         "an untracked profile"
     );
+}
+
+/// SPEC-less card C-583: the refusal never recommends a form the lane rules forbid. A subshell
+/// `( cd <path> && … )`, `git -C`, a bare `cd <path>`, `pushd` and `popd` must not come back into
+/// the text, in either permission mode and for every way of moving the session folder.
+#[test]
+fn the_session_cd_refusal_recommends_no_cd_form() {
+    const FORBIDDEN: [&str; 7] = ["( cd", "(cd", "cd <", "cd ..", "git -c", "pushd", "popd"];
+    let w = World::new(true, true);
+    for mode in MODES {
+        for command in MOVES {
+            let reason = w
+                .call(&w.own, command, mode, None)
+                .unwrap_or_else(|| panic!("allowed in {mode}: {command:?}"));
+            let text = reason
+                .strip_prefix(PREFIX)
+                .unwrap_or_else(|| panic!("prefix: {reason}"))
+                .to_ascii_lowercase();
+            for form in FORBIDDEN {
+                assert!(
+                    !text.contains(form),
+                    "{command:?}: the refusal recommends {form:?}: {reason}"
+                );
+            }
+        }
+    }
 }
 
 /// AC-2 (REQ-2, REQ-3): letters in a string, a comment or a here-document, a subshell, a

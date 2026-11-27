@@ -51,8 +51,9 @@ fn mode_agent_lists_every_host_guard_refusal_with_its_accepted_shape() {
             "| `must target its own worktree`",
             "| `sets HOME, injecting git configuration`",
             // The accepted shapes.
-            "One plain `git -C <absolute worktree path> <subcommand>` per command",
-            "run as `zsh <absolute script path>`",
+            // SPEC-20261126-file-tools-first REQ-5: split as the refusal names, one git command
+            // per line, and never a script file that holds git.
+            "Do what the refusal names: split the line into plain, separate commands, one `git` command per line, run from the worktree. Never put git into a script file: a script runs git where the guard cannot read it.",
             "<absolute literal path>` — no variable, `~`, `..` or relative path",
             "`git -C <own worktree> show <ref>:<path>`",
             "`GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_SYSTEM=/dev/null`",
@@ -60,6 +61,24 @@ fn mode_agent_lists_every_host_guard_refusal_with_its_accepted_shape() {
             "a refusal of the effect itself, such as a write in another worktree or the real HOME, stays a refusal",
         ],
     );
+    // The old advice to put git into a script file is gone from both texts that gave it.
+    let safety = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/references/internal/git-safety.md"),
+    )
+    .unwrap();
+    says(
+        &safety,
+        "git-safety.md",
+        &["split such work into plain, separate commands as the refusal names, one git command per line, and never put git into a script file."],
+    );
+    for (file, text) in [("shell-guards.md", &run), ("git-safety.md", &safety)] {
+        for old in [
+            "run as `zsh <absolute script path>`",
+            "put such work in a script file",
+        ] {
+            assert!(!text.contains(old), "{file} still says `{old}`");
+        }
+    }
 }
 
 /// D4: a refused call does not stop the other calls of the same response, so a push, a comment

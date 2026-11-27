@@ -603,7 +603,14 @@ fn claude_diff(
 
 /// Collects the read-only baseline for `project`. Returns
 /// `{schema_version, collected_at, baseline, inventory, claude_diff, checksums}`.
-pub fn inventory(project: &Path, go_commit: Option<&str>, go_repo: Option<&Path>) -> Result<Value> {
+/// The HOME entries are looked up under `home`, which the caller reads; without one they are
+/// `null` (SPEC-20261124-home-env-readers REQ-15).
+pub fn inventory(
+    project: &Path,
+    home: Option<&Path>,
+    go_commit: Option<&str>,
+    go_repo: Option<&Path>,
+) -> Result<Value> {
     let collected_at = utc_now();
     let top = text(git_ok(project, &["rev-parse", "--show-toplevel"])?)?;
     let root = fs::canonicalize(top.trim()).map_err(|_| "project root unavailable")?;
@@ -616,13 +623,10 @@ pub fn inventory(project: &Path, go_commit: Option<&str>, go_repo: Option<&Path>
     let branch = text(git_ok(&root, &["branch", "--show-current"])?)?
         .trim()
         .to_string();
-    let home = std::env::var_os("HOME").map(PathBuf::from);
     let home_rows: Vec<Value> = HOME_ENTRIES
         .iter()
         .map(|e| {
-            let exists = home
-                .as_ref()
-                .map(|h| fs::symlink_metadata(h.join(e)).is_ok());
+            let exists = home.map(|h| fs::symlink_metadata(h.join(e)).is_ok());
             json!({"path": format!("~/{e}"), "exists": exists})
         })
         .collect();

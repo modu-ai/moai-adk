@@ -822,6 +822,45 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Reads the ledger only. Answer many cards, the live reservations and notes by number in one call
+    ///
+    /// Reads the ledger only. Pick at least one of `--card`, `--reservations` and `--note`; the
+    /// answer is one JSON object with a `cards`, `reservations` and `notes` list for each asked
+    /// for. `--card C-12,C-13` (at most 50, `#n` is refused) gives each card's `head` (the head of
+    /// its newest hand-back note while that note belongs to its present work, else null), its
+    /// newest `verdict` on any head, its `head_verdict` (the newest verdict on that head), the
+    /// count of its criteria by status and its open criteria; `--notes N` (0 to 20, needs
+    /// `--card`) adds the headers of its newest N notes with the first line cut to 200
+    /// characters. A card with a verdict row that does not read has no verdict and counts it as
+    /// `verdicts_unreadable`. `--reservations` lists every reservation that holds a card (held,
+    /// expired candidate or held for review) by card, with its session, worktree, branch and
+    /// whether its lease has ended. `--note 10436,10437` (at most 10) gives each note whole. A
+    /// card or a note that does not exist refuses the call and nothing partial is printed. Text is
+    /// shown as stored, as `card show` does. `card land` still decides what may land.
+    Query {
+        /// Cards, each `C-12`, comma separated.
+        #[arg(
+            long = "card",
+            value_delimiter = ',',
+            required_unless_present_any = ["reservations", "note"]
+        )]
+        card: Vec<String>,
+        /// List every reservation that holds a card.
+        #[arg(long)]
+        reservations: bool,
+        /// Note numbers to show whole, comma separated.
+        #[arg(long = "note", value_delimiter = ',', value_name = "ID")]
+        note: Vec<i64>,
+        /// Also show the headers of the newest N notes of each card, 0 to 20 (needs `--card`).
+        #[arg(long, requires = "card", allow_negative_numbers = true)]
+        notes: Option<i64>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Reads the ledger only. The coordination window's plan of one round
     ///
     /// Reads the ledger only. `moai card orchestrate plan` prints what one round of the
@@ -1403,6 +1442,34 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the git folder only with `--apply` or `--revert`. Show a stale guard record and re-point it
+    ///
+    /// The guard record is the file `moai/integration-branch` in the common git folder. After the
+    /// profile's integration branch changes it still names the old branch, so the new branch is
+    /// not guarded. The plain view writes nothing: it answers `state` (`stale`, `current`,
+    /// `no_record`, `no_profile_branch` or `linked_worktree`) and, for `stale`, a plan digest and
+    /// the exact `--apply` command. `--apply` needs `--plan-digest` and `--permission-reference`
+    /// naming the user's yes: it rewrites the record under a lock, writes a receipt under
+    /// `moai/record-repoint/` and answers the receipt, its stamp and the `--revert` command.
+    /// `--revert <stamp>` restores the old bytes only while the record still equals the receipt's
+    /// new bytes. The old branch is not guarded after the re-point; the preview says so.
+    GuardRepoint {
+        /// Make the re-point; needs `--plan-digest` and `--permission-reference`.
+        #[arg(long, conflicts_with = "revert")]
+        apply: bool,
+        /// Put the old record back from the receipt of this stamp; needs `--permission-reference`.
+        #[arg(long)]
+        revert: Option<String>,
+        /// The `plan_digest` of the preview of the same record.
+        #[arg(long)]
+        plan_digest: Option<String>,
+        /// The reference of the user's yes (1 to 80 letters, digits or . _ : / -).
+        #[arg(long)]
+        permission_reference: Option<String>,
+        /// The project folder (its profile holds the integration branch).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+    },
     /// Writes the git folder only. Guard the integration branch (run by git, never typed)
     ///
     /// Run by the `reference-transaction` hook, never by hand: git runs it with the state of a
@@ -1889,6 +1956,23 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             leader,
             home,
         } => moai_cli::card::inbox::inbox(&project, &resolve_home(home)?, leader.as_deref()),
+        Action::Query {
+            card,
+            reservations,
+            note,
+            notes,
+            project,
+            home,
+        } => moai_cli::card::query::query(
+            &project,
+            &resolve_home(home)?,
+            &moai_cli::card::query::QueryRequest {
+                cards: &card,
+                reservations,
+                note_ids: &note,
+                notes,
+            },
+        ),
         Action::Orchestrate {
             action:
                 OrchestrateAction::Plan {
@@ -2293,6 +2377,21 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 plan_digest: plan_digest.as_deref(),
                 permission_reference: permission_reference.as_deref(),
                 by: by.as_deref(),
+            },
+        ),
+        Action::GuardRepoint {
+            apply,
+            revert,
+            plan_digest,
+            permission_reference,
+            project,
+        } => moai_cli::card::guard::repoint::repoint(
+            &project,
+            &moai_cli::card::guard::repoint::RepointRequest {
+                apply,
+                revert: revert.as_deref(),
+                plan_digest: plan_digest.as_deref(),
+                permission_reference: permission_reference.as_deref(),
             },
         ),
         Action::Guard { state } => {

@@ -9,12 +9,14 @@ use std::path::PathBuf;
 /// recomputed from the same inputs has the same `plan_digest`. Each move re-checks processes
 /// and open files, runs `git worktree move` (never `--force`), then checks git lists it at the
 /// new path with the same HEAD and branch (`git worktree repair` once if not). Each moved
-/// worktree comes with the command that moves it back.
+/// worktree comes with the command that moves it back. A move into the project's
+/// `.claude/worktrees` leaves that folder listed in the local exclude file.
 #[derive(clap::Args)]
 pub struct Args {
     /// Any checkout of the repository (the primary one or a worktree).
     project: PathBuf,
-    /// The same `--root` the preview read (default as in the preview).
+    /// The same `--root` the preview read (default as in the preview: the primary checkout's
+    /// `.claude/worktrees`).
     #[arg(long)]
     root: Option<PathBuf>,
     /// The same observations file the preview read.

@@ -417,6 +417,108 @@ fn the_block_ignores_credential_and_env_files_even_in_tools_and_evals() {
     }
 }
 
+/// SPEC-20261120-moai-layout REQ-19 (AC-21): git ignores each researched secret file name under
+/// the state folder, in the folders the block allows too. Neighbour names stay visible, a pattern
+/// that carries a folder leaves the bare file name alone, and the lines come after the allow-list.
+#[test]
+fn the_block_ignores_the_researched_secret_names() {
+    // (REQ-19 pattern, one file name it has to keep out of git), in REQ-19 order.
+    const SECRETS: [(&str, &str); 30] = [
+        (".git-credentials", ".git-credentials"),
+        (".netrc", ".netrc"),
+        ("_netrc", "_netrc"),
+        (".pgpass", ".pgpass"),
+        ("pgpass.conf", "pgpass.conf"),
+        (".pypirc", ".pypirc"),
+        (".credentials.json", ".credentials.json"),
+        ("credentials.tfrc.json", "credentials.tfrc.json"),
+        (
+            "application_default_credentials.json",
+            "application_default_credentials.json",
+        ),
+        ("credentials.toml", "credentials.toml"),
+        (".vault-token", ".vault-token"),
+        (".mylogin.cnf", ".mylogin.cnf"),
+        ("master.key", "master.key"),
+        ("keystore.properties", "keystore.properties"),
+        ("id_rsa", "id_rsa"),
+        ("id_dsa", "id_dsa"),
+        ("id_ecdsa", "id_ecdsa"),
+        ("id_ecdsa_sk", "id_ecdsa_sk"),
+        ("id_ed25519", "id_ed25519"),
+        ("id_ed25519_sk", "id_ed25519_sk"),
+        ("id_mldsa44_ed25519", "id_mldsa44_ed25519"),
+        ("*.ppk", "deploy.ppk"),
+        ("*.tfstate", "terraform.tfstate"),
+        ("*.tfstate.*", "terraform.tfstate.backup"),
+        (".dev.vars", ".dev.vars"),
+        (".dev.vars.*", ".dev.vars.staging"),
+        (".aws/credentials", ".aws/credentials"),
+        (".cargo/credentials", ".cargo/credentials"),
+        (".gem/credentials", ".gem/credentials"),
+        (".streamlit/secrets.toml", ".streamlit/secrets.toml"),
+    ];
+    let fx = Fx::new(None);
+    fx.apply_ok("none");
+    let text = fx.ignore();
+    let state = moai_cli::state_root::dir(&fx.root);
+    // The state folder's `*` line already ignores a file directly in it, so only a file below an
+    // allowed folder shows that its own line works.
+    for (_, name) in SECRETS {
+        for folder in ["", "tools/", "tools/deep/er/", "evals/", "evals/sub/"] {
+            let rel = format!("{state}/{folder}{name}");
+            put(&fx, &rel, "x");
+            assert!(fx.ignored(&rel), "{rel} is not ignored:\n{text}");
+        }
+    }
+    // AC-21's neighbours, and `secrets.toml`, the bare name of a pattern that carries a folder
+    // (`credentials` is the bare name of the other three).
+    for name in [
+        "id_rsa.pub",
+        "deploy.pem",
+        "server.key",
+        "credentials",
+        "secrets.yaml",
+        ".npmrc",
+        "cert.p12",
+        "prod.tfvars",
+        "config.json",
+        "secrets.toml",
+    ] {
+        for folder in ["tools/", "tools/deep/er/", "evals/sub/"] {
+            let rel = format!("{state}/{folder}{name}");
+            put(&fx, &rel, "x");
+            assert!(!fx.ignored(&rel), "{rel} is ignored:\n{text}");
+        }
+    }
+    // The block's secret lines are the five of REQ-11 and then REQ-19's, no more and no fewer.
+    let prefix = format!("{state}/**/");
+    let expected: Vec<String> = [
+        "credentials.yaml",
+        "credentials.json",
+        "*.credentials",
+        ".env",
+        ".env.*",
+    ]
+    .into_iter()
+    .chain(SECRETS.map(|(pattern, _)| pattern))
+    .map(|pattern| format!("{prefix}{pattern}"))
+    .collect();
+    let lines: Vec<&str> = text.lines().collect();
+    let secret_lines: Vec<&str> = lines
+        .iter()
+        .copied()
+        .filter(|l| l.starts_with(&prefix))
+        .collect();
+    assert_eq!(secret_lines, expected, "{text}");
+    let last_allow = lines.iter().rposition(|l| l.starts_with('!')).unwrap();
+    let first_secret = lines.iter().position(|l| l.starts_with(&prefix)).unwrap();
+    assert!(
+        first_secret > last_allow,
+        "a secret line comes before an allow line:\n{text}"
+    );
+}
+
 /// The project as an earlier version left it: the block without the layout rule's lines (the
 /// `local/` line, the `tools/` and `evals/` allow lines and the credential lines), recorded as the
 /// block this tool wrote. Returns the earlier block text and the full block it grows into.
@@ -446,8 +548,9 @@ fn with_earlier_block(fx: &Fx) -> (String, String) {
     (old, full)
 }
 
-/// SPEC-20261120-moai-layout REQ-4, REQ-8: a block written before the layout rule gets its eight
-/// new lines as a `merge` in the plan, and the file is not written until the plan is applied.
+/// SPEC-20261120-moai-layout REQ-4, REQ-8: a block written before the layout rule gets its
+/// thirty-eight new lines as a `merge` in the plan, and the file is not written until the plan is
+/// applied.
 #[test]
 fn an_earlier_block_is_shown_as_changed_and_left_until_applied() {
     let fx = Fx::new(None);
@@ -458,7 +561,7 @@ fn an_earlier_block_is_shown_as_changed_and_left_until_applied() {
     assert_eq!(row["action"], "merge", "{row}");
     let detail = row["detail"].as_str().unwrap();
     for line in [
-        "managed block lines: 8 added, 0 removed",
+        "managed block lines: 38 added, 0 removed",
         "+ .moai-cli/local/",
         "+ !.moai-cli/tools/",
         "+ !.moai-cli/evals/",
@@ -970,7 +1073,7 @@ fn the_plan_shows_the_new_block_line_by_line_and_writes_nothing() {
     assert_eq!(row["action"], "create", "{row}");
     let detail = row["detail"].as_str().unwrap();
     for line in [
-        "managed block lines: 20 added, 0 removed",
+        "managed block lines: 50 added, 0 removed",
         "+ CLAUDE.local.md",
         "+ .moai-cli/receipts/",
         "+ .moai-cli/*",
@@ -1474,7 +1577,7 @@ fn the_plan_shows_the_lines_added_to_a_gitignore_without_a_block() {
     assert_eq!(row["action"], "append", "{row}");
     let detail = row["detail"].as_str().unwrap();
     for line in [
-        "managed block lines: 20 added, 0 removed",
+        "managed block lines: 50 added, 0 removed",
         "+ CLAUDE.local.md",
         "+ .moai-cli/*",
         "+ .moai-cli/local/",

@@ -507,6 +507,139 @@ fn ac2_a_profile_with_no_branch_writes_no_record() {
     assert!(!fx.record().exists());
 }
 
+// ---- core.hooksPath -------------------------------------------------------------------------
+
+/// The names and bytes of the files of one flat folder.
+fn files_of(dir: &Path) -> Vec<(String, Vec<u8>)> {
+    let mut out: Vec<(String, Vec<u8>)> = fs::read_dir(dir)
+        .unwrap()
+        .map(|e| {
+            let e = e.unwrap();
+            let name = e.file_name().to_string_lossy().into_owned();
+            (name, fs::read(e.path()).unwrap())
+        })
+        .collect();
+    out.sort();
+    out
+}
+
+fn assert_not_active(applied: &Value, folder: &Path) {
+    let guard = &applied["guard"];
+    assert_eq!(guard["record"], "not_active", "{applied}");
+    assert_eq!(
+        guard["hooks_path"].as_str(),
+        Some(folder.to_str().unwrap()),
+        "{applied}"
+    );
+    assert_eq!(guard["branch"], BRANCH, "{applied}");
+    let why = guard["why"].as_str().unwrap();
+    assert!(why.contains("core.hooksPath"), "{applied}");
+    assert_eq!(why.lines().count(), 1, "{applied}");
+}
+
+/// With `core.hooksPath` naming another folder git runs nothing from `.git/hooks`: the apply
+/// says `not_active` with the folder git reads, both when it writes the record and when the record
+/// is already there, and writes nothing into that folder.
+#[test]
+fn a_hooks_path_elsewhere_answers_not_active_and_writes_nothing_there() {
+    let fx = Fx::new(Some(BRANCH));
+    let theirs = fx.dir.path().join("their-hooks");
+    fs::create_dir_all(&theirs).unwrap();
+    fs::write(theirs.join("pre-commit"), "#!/bin/sh\nexit 0\n").unwrap();
+    let theirs = fs::canonicalize(theirs).unwrap();
+    fx.git(
+        &fx.repo,
+        &["config", "core.hooksPath", theirs.to_str().unwrap()],
+    );
+    let before = files_of(&theirs);
+
+    let applied = fx.install();
+    assert_not_active(&applied, &theirs);
+    assert_eq!(
+        fs::read_to_string(fx.record()).unwrap(),
+        format!("refs/heads/{BRANCH}\n")
+    );
+
+    fs::remove_file(fx.hooks().join("reference-transaction")).unwrap();
+    // The retire folder of an apply is named by the second of the clock.
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+    assert_not_active(&fx.install(), &theirs);
+    assert_eq!(files_of(&theirs), before);
+}
+
+/// A relative `core.hooksPath` is a folder of the worktree; the apply names it and does not make
+/// it.
+#[test]
+fn a_relative_hooks_path_answers_not_active_and_makes_no_folder() {
+    let fx = Fx::new(Some(BRANCH));
+    fx.git(&fx.repo, &["config", "core.hooksPath", ".husky"]);
+    let folder = fs::canonicalize(&fx.repo).unwrap().join(".husky");
+    let applied = fx.install();
+    let named = applied["guard"]["hooks_path"].as_str().unwrap().to_owned();
+    assert_eq!(applied["guard"]["record"], "not_active", "{applied}");
+    assert!(Path::new(&named).ends_with("r/.husky"), "{named}");
+    assert!(!folder.exists(), "the folder of the setting is not made");
+}
+
+/// The folder is named absolute also when the command is given the project as `.`, the default.
+#[test]
+fn the_named_folder_is_absolute_when_the_project_is_the_dot() {
+    let fx = Fx::new(Some(BRANCH));
+    fx.git(&fx.repo, &["config", "core.hooksPath", ".husky"]);
+    let (code, plan) = fx.moai(&fx.repo, None, &["git-hooks-plan", "."]);
+    assert_eq!(code, 0, "{plan}");
+    let token = plan["result"]["confirm_token"].as_str().expect("a token");
+    let (code, applied) = fx.moai(
+        &fx.repo,
+        None,
+        &["git-hooks-apply", ".", "--confirm-git-hooks", token],
+    );
+    assert_eq!(code, 0, "{applied}");
+    let guard = &applied["result"]["guard"];
+    assert_eq!(guard["record"], "not_active", "{applied}");
+    let named = Path::new(guard["hooks_path"].as_str().unwrap());
+    assert!(named.is_absolute(), "{applied}");
+    assert!(named.ends_with("r/.husky"), "{applied}");
+}
+
+/// The setting of the user's global git configuration counts the same.
+#[test]
+fn a_global_hooks_path_answers_not_active() {
+    let fx = Fx::new(Some(BRANCH));
+    let theirs = fx.dir.path().join("global-hooks");
+    fs::create_dir_all(&theirs).unwrap();
+    let theirs = fs::canonicalize(theirs).unwrap();
+    fs::write(
+        fx.home.path().join(".gitconfig"),
+        format!("[core]\n\thooksPath = {}\n", theirs.display()),
+    )
+    .unwrap();
+    assert_not_active(&fx.install(), &theirs);
+    assert!(files_of(&theirs).is_empty());
+}
+
+/// A `core.hooksPath` that names `.git/hooks` itself, written relative or absolute, changes
+/// nothing: `written`, then `present`.
+#[test]
+fn a_hooks_path_naming_the_default_folder_stays_written() {
+    for absolute in [false, true] {
+        let fx = Fx::new(Some(BRANCH));
+        let value = if absolute {
+            fx.hooks().to_str().unwrap().to_owned()
+        } else {
+            ".git/hooks".to_owned()
+        };
+        fx.git(&fx.repo, &["config", "core.hooksPath", &value]);
+        let applied = fx.install();
+        assert_eq!(applied["guard"]["record"], "written", "{value}: {applied}");
+        assert!(applied["guard"]["hooks_path"].is_null(), "{applied}");
+        fs::remove_file(fx.hooks().join("reference-transaction")).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        let again = fx.install();
+        assert_eq!(again["guard"]["record"], "present", "{value}: {again}");
+    }
+}
+
 // ---- AC-3 -----------------------------------------------------------------------------------
 
 impl Fx {
@@ -665,7 +798,13 @@ fn ac7_the_operations_documents_name_the_third_hook_the_record_the_line_and_the_
         assert!(text.contains("reference-transaction"));
     }
     assert!(plan.contains("is not guarded"), "the session-start line");
-    for word in ["written", "present", "not_written"] {
+    for word in [
+        "written",
+        "present",
+        "not_written",
+        "not_active",
+        "hooks_path",
+    ] {
         assert!(apply.contains(word), "{word}");
     }
     assert!(apply.contains("moai/integration-branch"));

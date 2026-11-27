@@ -233,6 +233,11 @@ fn walk_files(root: &Path, out: &mut Vec<PathBuf>, depth: usize) -> Result<()> {
             continue; // links are skipped, never followed (read-only scan)
         }
         if meta.is_dir() {
+            // `.claude/worktrees` holds other checkouts, not this tree
+            // (SPEC-20261122-worktree-place D-13). A worktree scanned as the root is read.
+            if path.ends_with(".claude/worktrees") {
+                continue;
+            }
             walk_files(&path, out, depth + 1)?;
         } else if meta.is_file() && meta.len() <= FILE_LIMIT {
             out.push(path);

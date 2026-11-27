@@ -345,8 +345,7 @@ pub fn doctor(project: &Path) -> Result<Value> {
             );
             // Proposals only (REQ-02B-05): nothing is applied.
             out["suggestions"] = json!([
-                "add an `@AGENTS.md` import to the CLAUDE.md you keep",
-                "set Project instructions to claude-md-and-agents-md in /config or user settings",
+                "move the text of your AGENTS.md into CLAUDE.md (for a file of this project, /moai update offers the pick `move`)",
             ]);
         }
         "claude-md" if !importing.is_empty() => {
@@ -1357,6 +1356,31 @@ fn worktree_sessions(ignored: &str) -> &'static str {
     }
 }
 
+/// `(settings_ignored, worktree_sessions)` of the root `.claude/settings.json` of `root`: the two
+/// facts a plan answer carries about whether the file reaches sessions started in a linked worktree.
+pub(crate) fn settings_reach(root: &Path) -> (&'static str, &'static str) {
+    // Same answer as `settings_ignored`, but a repository's own fsmonitor program never runs for
+    // it: the secret deny preview starts no program the repository configures.
+    let mut cmd = Command::new("git");
+    cmd.args(["--no-optional-locks", "-c", "core.fsmonitor=false", "-C"])
+        .arg(root)
+        .args(["check-ignore", "-q", "--", SETTINGS_FILE]);
+    crate::identity::scrub_git_env(&mut cmd);
+    let status = cmd
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    let ignored = match status.ok().and_then(|s| s.code()) {
+        Some(0) => "ignored",
+        Some(1) => "not_ignored",
+        _ => "unknown",
+    };
+    (ignored, worktree_sessions(ignored))
+}
+
 /// Previews setting `desired` (managed keys only) in `PROJECT/.claude/settings.json`. Never
 /// writes. The returned `plan_digest` binds the current file, the receipt and the result.
 /// `settings_ignored` and `worktree_sessions` report whether the file reaches sessions started
@@ -1680,6 +1704,241 @@ fn apply_of(
     Ok(out)
 }
 
+/// One planned addition to `permissions.deny` of the root project settings file. It never goes
+/// through the three-way plan of the managed keys: the file's `permissions` stays the user's, so
+/// the receipt's `owned` list is neither read for this key nor changed by it.
+pub(crate) struct DenyPlan {
+    /// Binds the file, the receipt, the new bytes and the caller's `bind` bytes.
+    pub(crate) digest: String,
+    pub(crate) before_deny: Vec<String>,
+    pub(crate) final_deny: Vec<String>,
+    pub(crate) ignored: &'static str,
+    pub(crate) sessions: &'static str,
+    /// What the write would be refused for once the write checks enforce; report only.
+    pub(crate) observed: Vec<Value>,
+    state: SettingsState,
+    /// The new settings bytes; `None` when the list stays as it is.
+    after: Option<Vec<u8>>,
+}
+
+/// What [`deny_add_apply`] did.
+pub(crate) struct DenyApplied {
+    pub(crate) final_deny: Vec<String>,
+    pub(crate) written: bool,
+    pub(crate) created: bool,
+    pub(crate) ignored: &'static str,
+    pub(crate) sessions: &'static str,
+    /// The folder that keeps the replaced original: absolute and relative to the project.
+    pub(crate) backup: Option<(PathBuf, String)>,
+    pub(crate) receipt_refreshed: bool,
+    pub(crate) settings_sha256_before: Option<String>,
+    pub(crate) settings_sha256_after: Option<String>,
+    pub(crate) observed: Vec<Value>,
+    pub(crate) unrecorded: bool,
+}
+
+fn check_deny_rules(rules: &[String]) -> Result<()> {
+    if rules.len() > PERMISSION_RULES_MAX {
+        return Err(format!(
+            "permissions.deny must be at most {PERMISSION_RULES_MAX} rules; nothing written"
+        ));
+    }
+    let ok = |s: &String| {
+        !s.trim().is_empty()
+            && s.chars().count() <= PERMISSION_RULE_CHARS_MAX
+            && !s.chars().any(char::is_control)
+    };
+    if rules.iter().all(ok) {
+        Ok(())
+    } else {
+        Err(format!(
+            "permissions.deny rules must be non-empty one-line strings of at most {PERMISSION_RULE_CHARS_MAX} characters; nothing written"
+        ))
+    }
+}
+
+/// The `permissions.deny` list the file holds now; only that array is judged.
+fn deny_rules_of(current: &Map<String, Value>) -> Result<Vec<String>> {
+    let Some(permissions) = current.get("permissions") else {
+        return Ok(Vec::new());
+    };
+    let Value::Object(permissions) = permissions else {
+        return Err("permissions must be an object; nothing written".into());
+    };
+    let Some(deny) = permissions.get("deny") else {
+        return Ok(Vec::new());
+    };
+    let Value::Array(rules) = deny else {
+        return Err("permissions.deny must be an array of rules; nothing written".into());
+    };
+    let rules: Vec<String> = rules
+        .iter()
+        .map(|rule| rule.as_str().map(str::to_string))
+        .collect::<Option<_>>()
+        .ok_or_else(|| {
+            format!(
+                "permissions.deny rules must be non-empty one-line strings of at most {PERMISSION_RULE_CHARS_MAX} characters; nothing written"
+            )
+        })?;
+    check_deny_rules(&rules)?;
+    Ok(rules)
+}
+
+/// Plans the new `permissions.deny` list of `PROJECT/.claude/settings.json` that `extend` makes of
+/// the list the file holds now; every other key and permission entry stays as it is. Never
+/// writes. `bind` is bound into the digest next to the file, the receipt and the new bytes, so a
+/// digest made for other picks, another file state or another receipt is never accepted. The file
+/// is refused when it is a link, sits behind a linked `.claude` or state folder, is no JSON object
+/// or is too large; an absent file is planned as created.
+pub(crate) fn deny_add_plan(
+    project: &Path,
+    extend: &dyn Fn(&[String]) -> Vec<String>,
+    bind: &[u8],
+) -> Result<DenyPlan> {
+    let state = settings_state_with(project, &Map::new(), SettingsScope::Project, false)?;
+    let before_deny = deny_rules_of(&state.current)?;
+    let final_deny = extend(&before_deny);
+    check_deny_rules(&final_deny)?;
+    let after = (final_deny != before_deny).then(|| {
+        let mut candidate = state.current.clone();
+        let permissions = candidate
+            .entry("permissions")
+            .or_insert_with(|| Value::Object(Map::new()));
+        if let Value::Object(map) = permissions {
+            map.insert("deny".into(), json!(final_deny));
+        }
+        let mut bytes = serde_json::to_vec_pretty(&candidate).expect("JSON object");
+        bytes.push(b'\n');
+        bytes
+    });
+    if after
+        .as_ref()
+        .is_some_and(|b| b.len() as u64 > SETTINGS_LIMIT)
+    {
+        return Err("rendered settings exceed the 256 KiB limit; refused".into());
+    }
+    let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
+    let (ignored, sessions) = settings_reach(&root);
+    let observed = crate::settings_write::entries(
+        SETTINGS_FILE,
+        state.before.as_deref(),
+        &state.current,
+        after.as_deref(),
+    );
+    let bound = serde_json::to_vec(&(
+        "secret-deny",
+        state.before.as_deref().map(crate::digest),
+        state.receipt_before.as_deref().map(crate::digest),
+        after.as_deref().map(crate::digest),
+        crate::digest(bind),
+    ))
+    .expect("plan tuple");
+    Ok(DenyPlan {
+        digest: crate::digest(&bound),
+        before_deny,
+        final_deny,
+        ignored,
+        sessions,
+        observed,
+        state,
+        after,
+    })
+}
+
+/// Applies a plan of [`deny_add_plan`]: re-plans against the files now and writes nothing unless
+/// the digest is the same. A file git ignores is refused before anything is kept or written.
+/// Then the replaced original is kept in a new backup folder, the receipt (only when one exists)
+/// records the intended file state as `pending`, the settings file is replaced atomically and the
+/// receipt takes the new file state with its `owned` list as it was.
+pub(crate) fn deny_add_apply(
+    project: &Path,
+    permission: &str,
+    plan_digest: &str,
+    extend: &dyn Fn(&[String]) -> Vec<String>,
+    bind: &[u8],
+) -> Result<DenyApplied> {
+    // Authorization stays with the host; the reference is caller metadata, not a verifier.
+    if !crate::contract::permission_reference_ok(permission) {
+        return Err("permission reference required".into());
+    }
+    let plan = deny_add_plan(project, extend, bind)?;
+    let file = SETTINGS_FILE;
+    if plan.ignored == "ignored" {
+        return Err(format!(
+            "git ignores {file}, so these rules would not reach sessions started in a worktree; track {file} (take it out of the ignore rules and add it to git), preview again and apply; nothing written"
+        ));
+    }
+    if plan.digest != plan_digest {
+        return Err("stale or altered plan; re-preview required".into());
+    }
+    let s = &plan.state;
+    let mut out = DenyApplied {
+        final_deny: plan.final_deny.clone(),
+        written: false,
+        created: false,
+        ignored: plan.ignored,
+        sessions: plan.sessions,
+        backup: None,
+        receipt_refreshed: false,
+        settings_sha256_before: s.before.as_deref().map(crate::digest),
+        settings_sha256_after: s.before.as_deref().map(crate::digest),
+        observed: Vec::new(),
+        unrecorded: false,
+    };
+    let Some(after) = plan.after.as_deref() else {
+        return Ok(out);
+    };
+    if s.before.is_some() {
+        out.backup = Some(keep_settings_original(
+            project,
+            SettingsScope::Project,
+            s.before.as_deref(),
+        )?);
+    }
+    let after_sha = crate::digest(after);
+    let mut receipt_now = s.receipt_before.clone();
+    let refresh = receipt_now.is_some();
+    if refresh {
+        let pending = receipt_bytes(
+            file,
+            &s.owned,
+            out.settings_sha256_before.as_deref(),
+            Some((&s.owned, &after_sha)),
+        );
+        crate::agents::write_replace(&s.receipt, receipt_now.as_deref(), &pending)?;
+        receipt_now = Some(pending);
+    }
+    crate::agents::write_replace(&s.settings, s.before.as_deref(), after)?;
+    let receipt_written = if refresh {
+        let receipt = receipt_bytes(file, &s.owned, Some(&after_sha), None);
+        crate::agents::write_replace(&s.receipt, receipt_now.as_deref(), &receipt)
+    } else {
+        Ok(())
+    };
+    out.written = true;
+    out.created = s.before.is_none();
+    out.settings_sha256_after = Some(after_sha);
+    out.receipt_refreshed = refresh && receipt_written.is_ok();
+    // One line for an apply that changed the file; a line that cannot be appended fails nothing.
+    out.unrecorded = crate::settings_write::record(project, file, &plan.observed).is_err();
+    out.observed = plan.observed.clone();
+    if let Err(e) = receipt_written {
+        let rel = crate::state_root::rel(project, SETTINGS_RECEIPT);
+        return Err(format!(
+            "partial apply: applied [{file}]; failed at {rel}: {e}"
+        ));
+    }
+    Ok(out)
+}
+
+/// Makes the folder that keeps what an apply moves out of the project (a new
+/// `settings-backups/<UTC>-project/` folder, as for a replaced settings original): absolute path
+/// and path relative to the project.
+pub(crate) fn backup_folder_of(project: &Path) -> Result<(PathBuf, String)> {
+    let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
+    backup_folder(&root, SettingsScope::Project)
+}
+
 /// Puts a `.gitignore` holding `*` in the backup root (once; an existing regular file is left
 /// as it is), so no kept original under it is ever offered to git.
 fn keep_out_of_git(backups: &Path) -> Result<()> {
@@ -1720,10 +1979,34 @@ pub(crate) fn keep_original(
     scope: SettingsScope,
     before: Option<&[u8]>,
 ) -> Result<String> {
+    keep_settings_original(project, scope, before).map(|(_, rel)| rel)
+}
+
+/// [`keep_original`] that also answers the new folder's absolute path, for a caller that keeps
+/// one more file in the same folder.
+fn keep_settings_original(
+    project: &Path,
+    scope: SettingsScope,
+    before: Option<&[u8]>,
+) -> Result<(PathBuf, String)> {
     let before = before.ok_or("no settings file to keep; nothing applied")?;
     let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
-    let backups = crate::state_root::path(&root, SETTINGS_BACKUPS);
-    refuse_symlink_dir(&crate::state_root::path(&root, ""))?;
+    let (dir, rel) = backup_folder(&root, scope)?;
+    keep_file(
+        &dir,
+        settings_name(scope),
+        before,
+        file_mode(&root.join(scope.file())),
+    )?;
+    Ok((dir, rel))
+}
+
+/// Makes the new, exclusively created, owner-only `<state>/settings-backups/<UTC>-<scope>/`
+/// folder (and the backup root with its `*` ignore file when they are not there yet) for the
+/// canonical project folder `root`. Answers its absolute path and its path relative to the project.
+fn backup_folder(root: &Path, scope: SettingsScope) -> Result<(PathBuf, String)> {
+    let backups = crate::state_root::path(root, SETTINGS_BACKUPS);
+    refuse_symlink_dir(&crate::state_root::path(root, ""))?;
     refuse_symlink_dir(&backups)?;
     fs::create_dir_all(&backups).map_err(|e| {
         format!(
@@ -1742,26 +2025,56 @@ pub(crate) fn keep_original(
     keep_out_of_git(&backups)?;
     let stamp = crate::update::compact_stamp();
     let dir = crate::update::create_backup_dir(&backups, &stamp, scope.name())?;
-    let kept = dir.join(settings_name(scope));
-    let mut options = fs::OpenOptions::new();
-    options.write(true).create_new(true);
     #[cfg(unix)]
     {
-        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        use std::os::unix::fs::PermissionsExt;
         fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).map_err(|e| {
             format!(
                 "making {} owner-only failed ({e}); nothing applied",
                 dir.display()
             )
         })?;
-        let mode = fs::symlink_metadata(root.join(scope.file()))
+    }
+    let name = dir
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or("backup folder name unavailable")?;
+    let rel = crate::state_root::rel(root, &format!("{SETTINGS_BACKUPS}/{name}"));
+    Ok((dir, rel))
+}
+
+/// The permission bits of `path` when it is there, else owner-only; a kept copy never becomes more
+/// readable than the file it copies.
+fn file_mode(path: &Path) -> u32 {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::symlink_metadata(path)
             .map(|m| m.permissions().mode() & 0o777)
-            .unwrap_or(0o600);
+            .unwrap_or(0o600)
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+        0o600
+    }
+}
+
+/// Keeps `bytes` as the new file `name` in the backup folder `dir` and reads them back.
+fn keep_file(dir: &Path, name: &str, bytes: &[u8], mode: u32) -> Result<()> {
+    let kept = dir.join(name);
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
         options.mode(mode);
     }
+    #[cfg(not(unix))]
+    let _ = mode;
     let written = options.open(&kept).and_then(|mut f| {
         use std::io::Write;
-        f.write_all(before)?;
+        f.write_all(bytes)?;
         f.sync_all()
     });
     if let Err(e) = written {
@@ -1770,20 +2083,13 @@ pub(crate) fn keep_original(
             kept.display()
         ));
     }
-    if fs::read(&kept).ok().as_deref() != Some(before) {
+    if fs::read(&kept).ok().as_deref() != Some(bytes) {
         return Err(format!(
             "the kept original in {} does not match; nothing applied",
             kept.display()
         ));
     }
-    let name = dir
-        .file_name()
-        .and_then(|n| n.to_str())
-        .ok_or("backup folder name unavailable")?;
-    Ok(crate::state_root::rel(
-        &root,
-        &format!("{SETTINGS_BACKUPS}/{name}"),
-    ))
+    Ok(())
 }
 
 /// Claude-only frontmatter fields a projection may add, with the values each accepts.

@@ -845,7 +845,9 @@ fn key_temp_home(tag: &str) -> KeyHome {
 /// `scope_here` would read the process HOME).
 fn glm_scope(home: &Path) -> moai_cli::key_vault::Scope {
     let cwd = std::env::current_dir().unwrap();
-    model_effort_questions::glm_key_scope(&cwd, home).expect("the tests run inside a git work tree")
+    moai_cli::key_vault::project_scope_in(&cwd, Some(home))
+        .unwrap()
+        .expect("the tests run inside a git work tree")
 }
 
 #[test]

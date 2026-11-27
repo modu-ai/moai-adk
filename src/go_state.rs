@@ -125,8 +125,9 @@ fn mirror_file_limit() -> u64 {
 }
 
 /// #2936 O6: a name that holds secrets by convention. Such an entry under `.claude/` or
-/// `.agents/` is never read, hashed, copied or moved; the preview only counts it.
-fn secret_name(name: &str) -> bool {
+/// `.agents/` is never read, hashed, copied or moved; the preview only counts it. The home tidy
+/// operations protect by the same rule (`tidy::rules::class_of_name`).
+pub(crate) fn secret_name(name: &str) -> bool {
     crate::home_state::is_secret(name) || crate::worktree_include::secret_name(name)
 }
 
@@ -179,7 +180,8 @@ const STATE_ENTRIES: [&str; 18] = [
     "workflows",
 ];
 /// Root instruction files that move into the backup's `root-files/` with the Go folder (#2936
-/// O4); the install step writes new ones. `CLAUDE.local.md` is the user's and stays.
+/// O4); the install step writes a new `CLAUDE.md`, and the CLAUDE files take the place of the
+/// older two. `CLAUDE.local.md` is the user's and stays.
 const ROOT_FILES: [&str; 3] = ["CLAUDE.md", "AGENTS.md", "AGENTS.local.md"];
 /// The folder of an apply's backup area that takes the earlier entries the user picked for
 /// `--set-aside`.
@@ -315,7 +317,8 @@ pub struct GoStatePlan {
     /// #2696: the earlier root's entries, each `move` (into `.moai/`) or `leave`.
     pub state_moves: Vec<StateMove>,
     /// #2696, #2936 O4: `CLAUDE.md`, `AGENTS.md` and `AGENTS.local.md`, moved into the backup
-    /// (`move`: gone from the project root until the install step writes a new one) or left
+    /// (`move`: gone from the project root; the install step writes a new `CLAUDE.md`, and the
+    /// older files are not written again) or left
     /// (`leave`), and `.claude/settings.local.json`, copied (`copy`, the original stays).
     pub root_files: Vec<RootFile>,
     /// #2696: the Go folder's top-level entries; all of them stay in the backup.
@@ -341,6 +344,12 @@ pub struct GoStatePlan {
     /// previews as before. Preview-only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub backup_ignore: Option<BackupIgnore>,
+    /// SPEC-20261126-tracked-state-move: set when the earlier root's state would move into a
+    /// `.moai/` that is absent or holds only the SPECs and the local folder, and git ignores
+    /// where a tracked file or the marker would go, or cannot say. The apply stops before it
+    /// writes anything. Omitted otherwise. Preview-only: the apply judges again.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ignored_tracked: Option<IgnoredTracked>,
     /// #2936 O6, Q6: secret-named entries under `.claude/`, `.agents/` and `.codex/`; only counted,
     /// never listed, read or moved.
     pub secrets: u64,
@@ -432,6 +441,34 @@ pub struct BackupIgnore {
     /// [`IGNORE_EXAMPLES`]. Empty for `unknown`.
     pub examples: Vec<String>,
     pub reason: String,
+}
+
+/// SPEC-20261126-tracked-state-move: tracked files of the earlier root would leave version
+/// control with the move. Paths and `.gitignore` rules only: never a file's content.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct IgnoredTracked {
+    /// `ignored` (git ignores a destination) or `unknown` (git could not say; the check stops
+    /// closed).
+    pub state: &'static str,
+    /// The tracked files whose destination git ignores, at most [`IGNORED_FILES`]. Empty for
+    /// `unknown`, and when only the marker is hidden.
+    pub files: Vec<HiddenFile>,
+    /// How many tracked files have an ignored destination, the named ones included.
+    pub total: usize,
+    /// The rule that hides the marker, when git ignores it.
+    pub marker: Option<String>,
+    pub reason: String,
+}
+
+/// One tracked file the move would put where git ignores it.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct HiddenFile {
+    /// The tracked file, relative to the project.
+    pub file: String,
+    /// Where the move would put it.
+    pub to: String,
+    /// `<source>:<line>:<pattern>` of the rule that hides `to`.
+    pub rule: String,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -2302,9 +2339,9 @@ fn kept_names_in(moai: &Path) -> Vec<String> {
 }
 
 /// Whether the `.moai/` a state move would reuse holds anything beyond the SPECs and the
-/// machine's local folder, so that `.gitignore` is asked about the targets. The local folder is
-/// not counted: a flaky record makes it, and a record changes no answer of the plan. An
-/// unreadable folder is asked.
+/// machine's local folder, so that [`kept_git_checks`] judges the move; otherwise
+/// [`ignored_tracked`] does. The local folder is not counted: a flaky record makes it, and a
+/// record changes no answer of the plan. An unreadable folder counts as holding more.
 fn holds_more_than_specs_and_local(moai: &Path) -> bool {
     fs::read_dir(moai)
         .map(|rd| {
@@ -2414,6 +2451,26 @@ fn read_bounded_file(path: &Path) -> Option<Vec<u8>> {
     ((bytes.len() as u64) <= FILE_LIMIT).then_some(bytes)
 }
 
+/// Why a root instruction file moves into the backup (SPEC-20261122-claude-md-text-and-ignore
+/// REQ-13). `CLAUDE.md` is written again by the install step; an older file is not: the CLAUDE
+/// file of its kind takes its place and the moved copy stays in the backup.
+fn moved_reason(name: &str, no_go_proof: bool) -> String {
+    let lead = if no_go_proof {
+        "no Go proof; moves to the backup as D-M1 says (O4)"
+    } else {
+        "moves to the backup"
+    };
+    let instead = match name {
+        "AGENTS.md" => "CLAUDE.md",
+        "AGENTS.local.md" => "CLAUDE.local.md",
+        _ => return format!("{lead}; the install step writes a new one"),
+    };
+    format!(
+        "{lead}; {instead} takes its place, {name} is not written again, and the moved copy \
+         stays in the backup"
+    )
+}
+
 /// The root instruction files (#2936 O4, D-M1): each moves into the backup's `root-files/`
 /// with the Go folder, its Go proof shown (`manifest`, a Go curator `marker`, or `none`). A
 /// link stays and is never followed; this generation's file (its managed section) stays; one
@@ -2471,6 +2528,7 @@ fn plan_root_files(project: &Path, recorded: &HashMap<String, Entry>) -> Vec<Roo
         } else {
             "none"
         };
+        let moved = moved_reason(name, proof == "none");
         let (action, reason, class) = if rec.is_some_and(|e| e.provenance == "user_created") {
             ("leave", "user_created: the user's own file", "user_data")
         } else if rust && proof != "none" {
@@ -2485,19 +2543,8 @@ fn plan_root_files(project: &Path, recorded: &HashMap<String, Entry>) -> Vec<Roo
                 "this generation's file (managed section); it stays",
                 "rust",
             )
-        } else if proof == "none" {
-            (
-                "move",
-                "no Go proof; moves to the backup as D-M1 says (O4); the install step writes a \
-                 new one",
-                "instructions",
-            )
         } else {
-            (
-                "move",
-                "moves to the backup; the install step writes a new one",
-                "instructions",
-            )
+            ("move", moved.as_str(), "instructions")
         };
         out.push(row(name, digest(&bytes), action, reason, class, proof));
     }
@@ -3487,6 +3534,7 @@ pub fn plan_picked(project: &Path, picks: &[String], rewrite_local: bool) -> Res
     // #2696 C4a: a project whose only state is the earlier `.moai-cli/` (verdict `none`, no
     // `.moai` of any kind) is offered the same move into a new `.moai/`, without a Go folder.
     let mut items = items;
+    let mut hidden = None;
     let legacy_moves = if state.generation == "none" {
         let (mut moves, mut block) = plan_state_moves(&project, picks)?;
         // A `.moai/` that holds the team's kept names (beyond the SPECs alone): the tracked
@@ -3500,6 +3548,10 @@ pub fn plan_picked(project: &Path, picks: &[String], rewrite_local: bool) -> Res
             if let Some(why) = ignored {
                 block.get_or_insert(why);
             }
+        } else if block.is_none() {
+            // An absent `.moai/`, or one with only the SPECs and the local folder: the moves
+            // stay in the preview and the user decides (SPEC-20261126-tracked-state-move).
+            hidden = ignored_tracked(&project, &moves);
         }
         let any = moves
             .iter()
@@ -3727,6 +3779,7 @@ pub fn plan_picked(project: &Path, picks: &[String], rewrite_local: bool) -> Res
         settings_move,
         local_references,
         backup_ignore,
+        ignored_tracked: hidden,
         secrets,
         warnings,
         plan_digest: String::new(),
@@ -3866,6 +3919,7 @@ fn bound_of(plan: &GoStatePlan) -> Result<Bound> {
         settings_move: _,
         local_references: _,
         backup_ignore: _,
+        ignored_tracked: _,
         secrets: _,
         warnings: _,
         plan_digest: _,
@@ -4328,6 +4382,8 @@ const EXAMPLE_STAMP: &str = "19700101T000000Z";
 const IGNORE_EXAMPLES: usize = 3;
 /// Paths per `git check-ignore` call, so a long move list never reaches the argument limit.
 const IGNORE_BATCH: usize = 64;
+/// How many hidden tracked files an [`IgnoredTracked`] names (decision D-5).
+const IGNORED_FILES: usize = 20;
 
 /// What git says of a set of backup paths.
 #[derive(Debug, PartialEq, Eq)]
@@ -4435,6 +4491,165 @@ fn ignored_by_git(project: &Path, paths: &[String]) -> IgnoreVerdict {
     } else {
         IgnoreVerdict::Offered(offered)
     }
+}
+
+/// SPEC-20261126-tracked-state-move REQ-1, REQ-3: the git check of a move into a `.moai/` that
+/// is absent or holds only the SPECs and the local folder. `None` when the move may be offered:
+/// every destination is allowed, no moving entry holds a tracked file, or the project is in no
+/// git work tree. Git being unable to answer is `unknown`: the check stops closed. Reads only.
+fn ignored_tracked(project: &Path, moves: &[StateMove]) -> Option<IgnoredTracked> {
+    let moving: Vec<&StateMove> = moves.iter().filter(|m| m.action == "move").collect();
+    if moving.is_empty() {
+        return None;
+    }
+    hidden_by_move(project, &moving).unwrap_or_else(|why| {
+        Some(IgnoredTracked {
+            state: "unknown",
+            files: Vec::new(),
+            total: 0,
+            marker: None,
+            reason: format!(
+                "git could not say whether the move would put tracked state where it is ignored \
+                 ({why}); nothing moves until it can; then preview again"
+            ),
+        })
+    })
+}
+
+/// Each tracked file under a moving entry is asked of `git check-ignore` at the path it would
+/// get, and so is the marker when there is such a file. An error is git failing to answer.
+fn hidden_by_move(project: &Path, moving: &[&StateMove]) -> Result<Option<IgnoredTracked>> {
+    let no_git = |_: std::io::Error| "git could not be run".to_string();
+    match git_in(project, &["rev-parse", "--is-inside-work-tree"], &[]) {
+        Ok(o) if o.status.success() => match String::from_utf8_lossy(&o.stdout).trim() {
+            "true" => {}
+            // A bare repository or the inside of `.git`: no work tree holds these files.
+            "false" => return Ok(None),
+            _ => return Err("git gave an unexpected answer".into()),
+        },
+        Ok(o) => {
+            let why = crate::identity::failure_summary(&o.stderr);
+            return if why.starts_with(crate::identity::NOT_A_REPOSITORY) {
+                Ok(None)
+            } else {
+                Err(why)
+            };
+        }
+        // Without a git program, a folder with no `.git` here or above is in no work tree all
+        // the same.
+        Err(e) => {
+            let in_work_tree = project
+                .ancestors()
+                .any(|dir| fs::symlink_metadata(dir.join(".git")).is_ok());
+            return if in_work_tree {
+                Err(no_git(e))
+            } else {
+                Ok(None)
+            };
+        }
+    }
+    let out = git_in(project, &["ls-files", "-z", "--", LEGACY_ROOT], &[]).map_err(no_git)?;
+    if !out.status.success() {
+        return Err(format!(
+            "git could not list the tracked files: {}",
+            crate::identity::failure_summary(&out.stderr)
+        ));
+    }
+    let listed = String::from_utf8(out.stdout)
+        .map_err(|_| "git listed a file name that is not UTF-8".to_string())?;
+    // Each tracked file under a moving entry, with the path the move would give it.
+    let files: Vec<(&str, String)> = listed
+        .split('\0')
+        .filter_map(|file| {
+            moving.iter().find_map(|m| {
+                let rest = file.strip_prefix(m.from.as_str())?;
+                (rest.is_empty() || rest.starts_with('/'))
+                    .then(|| (file, format!("{}{rest}", m.to)))
+            })
+        })
+        .collect();
+    if files.is_empty() {
+        return Ok(None);
+    }
+    let marker = format!("{MOAI_DIR}/{}", crate::state_root::RUST_MARKER);
+    let mut paths: Vec<String> = files.iter().map(|(_, to)| to.clone()).collect();
+    paths.push(marker.clone());
+    let mut rules = Vec::with_capacity(paths.len());
+    for batch in paths.chunks(IGNORE_BATCH) {
+        let out = git_in(
+            project,
+            &["check-ignore", "--no-index", "-v", "-n", "--"],
+            batch,
+        )
+        .map_err(no_git)?;
+        // 0: some path is ignored, 1: none is; anything else is git failing.
+        if !matches!(out.status.code(), Some(0 | 1)) {
+            return Err(format!(
+                "git could not judge the destinations: {}",
+                crate::identity::failure_summary(&out.stderr)
+            ));
+        }
+        let text = String::from_utf8_lossy(&out.stdout);
+        let lines: Vec<&str> = text.lines().collect();
+        if lines.len() != batch.len() {
+            return Err("git answered for a different number of destinations".into());
+        }
+        for line in lines {
+            if check_ignore_line(line).is_none() {
+                return Err("git gave an unexpected answer".into());
+            }
+            rules.push(ignoring_rule(line));
+        }
+    }
+    let marker_rule = rules.pop().flatten();
+    let mut hidden: Vec<HiddenFile> = files
+        .into_iter()
+        .zip(rules)
+        .filter_map(|((file, to), rule)| {
+            rule.map(|rule| HiddenFile {
+                file: file.to_string(),
+                to,
+                rule,
+            })
+        })
+        .collect();
+    let total = hidden.len();
+    if total == 0 && marker_rule.is_none() {
+        return Ok(None);
+    }
+    hidden.truncate(IGNORED_FILES);
+    let mut found = Vec::new();
+    if total > 0 {
+        let named: Vec<String> = hidden
+            .iter()
+            .map(|h| format!("{} -> {} (rule `{}`)", h.file, h.to, h.rule))
+            .collect();
+        let cut = if total > hidden.len() {
+            format!("; the first {} are named", hidden.len())
+        } else {
+            String::new()
+        };
+        found.push(format!(
+            "{total} tracked file(s) would move where git ignores them: {}{cut}",
+            named.join(", ")
+        ));
+    }
+    if let Some(rule) = &marker_rule {
+        found.push(format!(
+            "the marker {marker} the team keeps in git is ignored by the rule `{rule}`"
+        ));
+    }
+    Ok(Some(IgnoredTracked {
+        state: "ignored",
+        files: hidden,
+        total,
+        marker: marker_rule,
+        reason: format!(
+            "{}; nothing moves until the rules allow these paths (a `!` line) or git stops \
+             tracking the files under {LEGACY_ROOT}/; then preview again",
+            found.join("; ")
+        ),
+    }))
 }
 
 /// #2936 S-AGENTS-STAY U1: whether the `<base>/backups/.gitignore` that is already there keeps
@@ -5063,6 +5278,15 @@ fn apply_legacy_move(
     mut receipt: Receipt,
     stamp: &str,
 ) -> Result<Receipt> {
+    // @cc:careful keep this before the first folder and the receipt: `fresh` judged the
+    // destinations again, and a refusal leaves every file and folder as it was
+    // (SPEC-20261126-tracked-state-move REQ-4, REQ-5).
+    if let Some(found) = &fresh.ignored_tracked {
+        return Err(format!(
+            "tracked state would leave version control; refused: {}; nothing written",
+            found.reason
+        ));
+    }
     let area = format!("{MOAI_DIR}/backups/{stamp}");
     receipt.legacy_move = true;
     // A C4a receipt carries no Go backup; one that also names a Go backup fails the
@@ -6044,6 +6268,7 @@ mod tests {
             settings_move: None,
             local_references: None,
             backup_ignore: None,
+            ignored_tracked: None,
             secrets: 0,
             warnings: vec!["w".into()],
             plan_digest: String::new(),

@@ -388,7 +388,7 @@
    },
    {
     "host": "cursor",
-    "reason": "Cursor CLI has no user-level instruction file (rules live in the app); the project AGENTS.md carries it"
+    "reason": "Cursor CLI has no user-level instruction file (rules live in the app); not written"
    }
   ],
   "plan_digest": "sha256:93b942792d384ce962fde69cd7f0f259d52cc2426f07bf6b265ccfaddf49e92d"
@@ -425,7 +425,7 @@
    },
    {
     "host": "cursor",
-    "reason": "Cursor CLI has no user-level instruction file (rules live in the app); the project AGENTS.md carries it"
+    "reason": "Cursor CLI has no user-level instruction file (rules live in the app); not written"
    }
   ],
   "plan_digest": "sha256:df7d590ce7cdc081d1804e8d93522f2cd645567e3eb2fc804ec8049c4e7c1ee8"

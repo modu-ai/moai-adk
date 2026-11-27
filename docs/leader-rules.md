@@ -7,6 +7,7 @@ The detail behind the "Leader rules" section of `CLAUDE.md`. The leader is the s
 Evidence, not status labels:
 
 - The cards: `moai card list`, `moai card next`, `moai card inbox` (the lane notes that wait for the leader) and `moai card show` for the reservation, notes and criteria.
+- Many cards, the reservations or single notes: `moai card query` (reads only, one JSON answer). `--card C-n,C-m` gives each card's head, newest verdict, head verdict and open criteria, and `--notes N` adds the headers of its newest notes. `--reservations` lists every reservation that holds a card, one with an ended lease included, with its session and worktree. `--note <id>` gives the whole text of a note. The leader reads the ledger through the `moai card` commands and never opens the ledger file itself.
 - `ListAgents`: who is live, busy or idle, and duplicate names.
 - Each lane worktree's `git status --short`, and the lane's last reported command and exit code.
 - Stage changes come from the ledger and git (reservation, branch, landed head), never from a lane message or an idle notice alone.

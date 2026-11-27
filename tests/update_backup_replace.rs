@@ -1303,3 +1303,432 @@ fn a_no_write_apply_never_rewrites_an_own_failed_receipt() {
         "the failed receipt is not rewritten"
     );
 }
+
+// ---- SPEC-20261126-keep-restore-backup: an ordinary apply keeps the restore offer ----
+
+fn put_file(dir: &Path, rel: &str, body: &str) {
+    let p = dir.join(rel);
+    fs::create_dir_all(p.parent().unwrap()).unwrap();
+    fs::write(p, body).unwrap();
+}
+
+/// A plan and an apply of it by the copy, with no confirmation token.
+fn ordinary_apply(exe: &Path, home: &Path, pkg: &Path) -> (Value, Value) {
+    let p = plan_by(exe, home, pkg);
+    let r = apply_by(exe, home, pkg, &p, None);
+    (p, r)
+}
+
+/// The Claude host's plan rows the apply writes, as (path, action), in write order.
+fn plan_writes(plan: &Value) -> Vec<(String, String)> {
+    host(plan, "claude")["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| f["action"] == json!("create") || f["action"] == json!("update"))
+        .map(|f| {
+            (
+                f["path"].as_str().unwrap().to_string(),
+                f["action"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect()
+}
+
+fn plan_row<'a>(plan: &'a Value, path: &str) -> &'a Value {
+    host(plan, "claude")["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["path"] == json!(path))
+        .unwrap_or_else(|| panic!("no plan row for {path}: {plan}"))
+}
+
+/// The receipt entries as (path, action), in receipt order.
+fn entry_rows(receipt: &Value) -> Vec<(String, String)> {
+    receipt["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| {
+            (
+                e["path"].as_str().unwrap().to_string(),
+                e["action"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect()
+}
+
+/// The receipt holds no backup and lists the writes of `plan` only, and no restore row is shown.
+fn assert_writes_only_and_no_offer(exe: &Path, home: &Path, plan: &Value) {
+    let receipt = read_receipt(home, &id_of(exe));
+    assert_eq!(receipt["status"], json!("committed"), "{receipt}");
+    assert!(receipt["backup"].is_null(), "no backup: {receipt}");
+    let writes = plan_writes(plan);
+    assert!(!writes.is_empty(), "the apply under test writes: {plan}");
+    assert_eq!(
+        entry_rows(&receipt),
+        writes,
+        "entries are the writes: {receipt}"
+    );
+    let rp = recovery_plan_by(exe, home);
+    assert!(
+        host(&rp, "claude")["restore_backup"].is_null(),
+        "no restore row: {rp}"
+    );
+}
+
+/// The restore is offered, the receipt carries the replace receipt's backup, and its entries are
+/// the writes of `plan` followed by one for every other installed file. Returns the recovery plan.
+fn assert_offer_covers_root(exe: &Path, home: &Path, replaced: &Value, plan: &Value) -> Value {
+    let rp = recovery_plan_by(exe, home);
+    let offer = &host(&rp, "claude")["restore_backup"];
+    assert_eq!(
+        offer["action"],
+        json!("restore_backup"),
+        "the restore of the original folder is still offered: {rp}"
+    );
+    assert_eq!(offer["original_at"], json!("backup"), "{rp}");
+
+    let receipt = read_receipt(home, &id_of(exe));
+    assert_eq!(receipt["status"], json!("committed"), "{receipt}");
+    assert_eq!(receipt["operation"], json!("update.apply"), "{receipt}");
+    assert_eq!(receipt["backup"], replaced["backup"], "{receipt}");
+
+    let writes = plan_writes(plan);
+    let rows = entry_rows(&receipt);
+    assert!(rows.len() >= writes.len(), "{receipt}");
+    assert_eq!(
+        rows[..writes.len()],
+        writes[..],
+        "writes come first, in write order: {receipt}"
+    );
+
+    let owned: BTreeMap<&str, &Value> = receipt["owned"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|o| (o["path"].as_str().unwrap(), &o["sha256"]))
+        .collect();
+    let entries = receipt["entries"].as_array().unwrap();
+    for e in &entries[writes.len()..] {
+        let path = e["path"].as_str().unwrap();
+        let digest = owned
+            .get(path)
+            .unwrap_or_else(|| panic!("{path} is not owned: {receipt}"));
+        assert_eq!(e["action"], json!("unchanged"), "{e}");
+        assert_eq!(&e["before_sha256"], *digest, "{e}");
+        assert_eq!(&e["after_sha256"], *digest, "{e}");
+        assert_eq!(e["published"], json!(false), "{e}");
+        assert_eq!(e["error"], Value::Null, "{e}");
+    }
+
+    let installed = snapshot(&home.join(ROOTS[0].1));
+    let mut listed: Vec<&str> = entries
+        .iter()
+        .map(|e| e["path"].as_str().unwrap())
+        .collect();
+    listed.sort_unstable();
+    assert_eq!(
+        listed,
+        installed.keys().map(String::as_str).collect::<Vec<_>>(),
+        "one entry for each installed file: {receipt}"
+    );
+    for e in entries {
+        let (bytes, _) = &installed[e["path"].as_str().unwrap()];
+        assert_eq!(
+            e["after_sha256"],
+            json!(format!("sha256:{}", sha256_hex(bytes))),
+            "{e}"
+        );
+    }
+    rp
+}
+
+/// Recovery puts the original folder back, bytes and modes, and keeps what was installed in
+/// `<backup>/replaced`.
+fn assert_restores_original(
+    exe: &Path,
+    home: &Path,
+    rp: &Value,
+    original: &BTreeMap<String, (Vec<u8>, u32)>,
+) {
+    let root = home.join(ROOTS[0].1);
+    let installed = snapshot(&root);
+    let r = recovery_apply_by(exe, home, rp);
+    assert_eq!(r["status"], json!("success"), "{r}");
+    assert_eq!(host(&r, "claude")["backup_restored"], json!(true), "{r}");
+    assert_eq!(
+        host(&r, "claude")["receipt_status"],
+        json!("recovered"),
+        "{r}"
+    );
+    assert_eq!(&snapshot(&root), original, "original restored");
+    let dir = backup_of(home, "claude");
+    assert_eq!(
+        snapshot(&dir.join("replaced")),
+        installed,
+        "the installed package is kept"
+    );
+    assert!(dir.join("RESTORED.json").is_file());
+    let receipt = read_receipt(home, &id_of(exe));
+    assert_eq!(receipt["status"], json!("recovered"), "{receipt}");
+}
+
+// SPEC-20261126-keep-restore-backup AC-1
+#[test]
+fn keep_restore_an_ordinary_apply_keeps_the_backup_that_recovery_restores() {
+    let f = fixture();
+    let original = originals(&f);
+    let a = put_build(&f.home, "a");
+    replace_by(&a, &f.home, &f.stage);
+    let replaced = restorable_receipt(&a, &f.home);
+
+    put_file(&f.stage, "workflows/update.md", "# UPDATE\nrust v2\n");
+    put_file(&f.stage, "references/new.md", "new v2\n");
+    let (p, r) = ordinary_apply(&a, &f.home, &f.stage);
+    assert_eq!(host(&r, "claude")["status"], json!("applied"), "{r}");
+    assert_offer_covers_root(&a, &f.home, &replaced, &p);
+
+    put_file(&f.stage, "workflows/update.md", "# UPDATE\nrust v3\n");
+    let (p, r) = ordinary_apply(&a, &f.home, &f.stage);
+    assert_eq!(host(&r, "claude")["status"], json!("applied"), "{r}");
+    let rp = assert_offer_covers_root(&a, &f.home, &replaced, &p);
+
+    assert_package_installed(&f.home.join(ROOTS[0].1), &f.stage);
+    assert_restores_original(&a, &f.home, &rp, &original[0]);
+}
+
+// SPEC-20261126-keep-restore-backup AC-2
+#[test]
+fn keep_restore_adds_nothing_without_an_earlier_backup() {
+    let f = fixture();
+    // With the unmanaged folder out of the way, nothing is ever replaced.
+    fs::rename(f.home.join(ROOTS[0].1), f.home.join("go-skill-aside")).unwrap();
+    let a = put_build(&f.home, "a");
+
+    let (p, r) = ordinary_apply(&a, &f.home, &f.stage);
+    assert_eq!(host(&r, "claude")["status"], json!("applied"), "{r}");
+    assert_writes_only_and_no_offer(&a, &f.home, &p);
+
+    put_file(&f.stage, "workflows/update.md", "# UPDATE\nrust v2\n");
+    let (p, r) = ordinary_apply(&a, &f.home, &f.stage);
+    assert_eq!(host(&r, "claude")["status"], json!("applied"), "{r}");
+    assert_writes_only_and_no_offer(&a, &f.home, &p);
+    assert!(backups(&f.home).is_empty());
+}
+
+// SPEC-20261126-keep-restore-backup AC-3
+#[test]
+fn keep_restore_covers_a_baseline_move() {
+    let f = fixture();
+    let original = originals(&f);
+    let a = put_build(&f.home, "a");
+    replace_by(&a, &f.home, &f.stage);
+    let replaced = restorable_receipt(&a, &f.home);
+
+    // The package and the installed file change to the same bytes: only the baseline moves.
+    let moved = "# UPDATE\nalready in place\n";
+    put_file(&f.stage, "workflows/update.md", moved);
+    put_file(&f.home.join(ROOTS[0].1), "workflows/update.md", moved);
+    let (p, r) = ordinary_apply(&a, &f.home, &f.stage);
+    let row = plan_row(&p, "workflows/update.md");
+    assert_eq!(row["action"], json!("unchanged"), "{p}");
+    assert_ne!(row["baseline_sha256"], row["current_sha256"], "{p}");
+    assert!(plan_writes(&p).is_empty(), "{p}");
+    assert_eq!(host(&r, "claude")["status"], json!("unchanged"), "{r}");
+    assert_eq!(
+        host(&r, "claude")["receipt_status"],
+        json!("committed"),
+        "{r}"
+    );
+
+    let rp = assert_offer_covers_root(&a, &f.home, &replaced, &p);
+    assert_restores_original(&a, &f.home, &rp, &original[0]);
+}
+
+// SPEC-20261126-keep-restore-backup AC-4
+#[test]
+fn keep_restore_is_blocked_by_a_kept_user_edit() {
+    let f = fixture();
+    let original = originals(&f);
+    let a = put_build(&f.home, "a");
+    replace_by(&a, &f.home, &f.stage);
+
+    let root = f.home.join(ROOTS[0].1);
+    // Edited where the package did not change (kept), edited where it did (conflict), and one
+    // new package file so that the apply writes.
+    put_file(&root, "references/routes.json", "{\"routes\":\"mine\"}\n");
+    put_file(&root, "workflows/update.md", "user edit\n");
+    put_file(&f.stage, "workflows/update.md", "# UPDATE\nrust v2\n");
+    put_file(&f.stage, "references/new.md", "new v2\n");
+    let (p, r) = ordinary_apply(&a, &f.home, &f.stage);
+    for (path, action) in [
+        ("references/routes.json", "preserved"),
+        ("workflows/update.md", "conflict"),
+        ("references/new.md", "create"),
+    ] {
+        assert_eq!(plan_row(&p, path)["action"], json!(action), "{p}");
+    }
+    assert_eq!(host(&r, "claude")["status"], json!("applied"), "{r}");
+
+    let rp = recovery_plan_by(&a, &f.home);
+    let offer = &host(&rp, "claude")["restore_backup"];
+    assert_eq!(offer["action"], json!("none"), "{rp}");
+    assert_eq!(offer["reason"], json!("user_changed"), "{rp}");
+
+    let installed = snapshot(&root);
+    let dir = backup_of(&f.home, "claude");
+    assert_eq!(snapshot(&dir.join("moai")), original[0]);
+    let out = recovery_apply_by(&a, &f.home, &rp);
+    assert_eq!(out["status"], json!("partial"), "{out}");
+    assert_eq!(snapshot(&root), installed, "installed folder unchanged");
+    assert_eq!(snapshot(&dir.join("moai")), original[0], "backup unchanged");
+    assert!(!dir.join("RESTORED.json").exists());
+}
+
+// SPEC-20261126-keep-restore-backup AC-5
+#[test]
+fn keep_restore_leaves_a_failed_apply_to_per_file_recovery() {
+    let f = fixture();
+    let a = put_build(&f.home, "a");
+    replace_by(&a, &f.home, &f.stage);
+    restorable_receipt(&a, &f.home);
+
+    let root = f.home.join(ROOTS[0].1);
+    let skill_before = fs::read(root.join("SKILL.md")).unwrap();
+    put_file(
+        &f.stage,
+        "SKILL.md",
+        "---\nname: moai\ndescription: fixture package\n---\n# MoAI\nrust v2\n",
+    );
+    put_file(&f.stage, "workflows/new.md", "# NEW\n");
+    // A plain file where the folder was: the apply fails after SKILL.md.
+    fs::remove_dir_all(root.join("workflows")).unwrap();
+    fs::write(root.join("workflows"), "not a directory\n").unwrap();
+    let (p, r) = ordinary_apply(&a, &f.home, &f.stage);
+    assert_eq!(host(&r, "claude")["status"], json!("failed"), "{r}");
+    assert_eq!(
+        host(&r, "claude")["receipt_status"],
+        json!("pending"),
+        "{r}"
+    );
+
+    let writes = plan_writes(&p);
+    assert_eq!(writes[0].0, "SKILL.md", "{p}");
+    assert!(writes.iter().any(|w| w.0 == "workflows/new.md"), "{p}");
+    let receipt = read_receipt(&f.home, &id_of(&a));
+    assert_eq!(receipt["status"], json!("pending"), "{receipt}");
+    assert_eq!(receipt["operation"], json!("update.apply"), "{receipt}");
+    assert!(receipt["backup"].is_null(), "no backup: {receipt}");
+    assert_eq!(
+        entry_rows(&receipt),
+        writes,
+        "entries are the writes: {receipt}"
+    );
+    assert_eq!(receipt["entries"][0]["published"], json!(true), "{receipt}");
+
+    let rp = recovery_plan_by(&a, &f.home);
+    let h = host(&rp, "claude");
+    assert_eq!(h["receipt_status"], json!("pending"), "{rp}");
+    assert!(h["restore_backup"].is_null(), "no restore row: {rp}");
+    let files = h["files"].as_array().unwrap();
+    let listed: Vec<&str> = files.iter().map(|x| x["path"].as_str().unwrap()).collect();
+    assert_eq!(
+        listed,
+        writes.iter().map(|w| w.0.as_str()).collect::<Vec<_>>(),
+        "{rp}"
+    );
+    let row = |path: &str| files.iter().find(|x| x["path"] == json!(path)).unwrap();
+    assert_eq!(row("SKILL.md")["class"], json!("matches_after"), "{rp}");
+    assert_eq!(row("SKILL.md")["action"], json!("restore"), "{rp}");
+    assert_eq!(
+        row("workflows/new.md")["reason"],
+        json!("not_a_regular_file"),
+        "{rp}"
+    );
+    let out = recovery_apply_by(&a, &f.home, &rp);
+    assert_eq!(out["status"], json!("partial"), "{out}");
+    assert_eq!(fs::read(root.join("SKILL.md")).unwrap(), skill_before);
+}
+
+// SPEC-20261126-keep-restore-backup AC-6
+#[test]
+fn keep_restore_is_not_taken_from_another_installation() {
+    let f = fixture();
+    let a = put_build(&f.home, "a");
+    let b = put_build(&f.home, "b");
+    replace_by(&a, &f.home, &f.stage);
+    restorable_receipt(&a, &f.home);
+    let bytes = fs::read(receipt_file(&f.home, &id_of(&a))).unwrap();
+
+    put_file(&f.stage, "workflows/update.md", "# UPDATE\nrust v2\n");
+    let (p, r) = ordinary_apply(&b, &f.home, &f.stage);
+    assert!(
+        host(&p, "claude")["receipt_from"]
+            .as_str()
+            .is_some_and(|from| from.contains(&id_of(&a))),
+        "the replacing build's receipt is the baseline: {p}"
+    );
+    assert_eq!(host(&r, "claude")["status"], json!("applied"), "{r}");
+    assert_writes_only_and_no_offer(&b, &f.home, &p);
+    assert_eq!(
+        fs::read(receipt_file(&f.home, &id_of(&a))).unwrap(),
+        bytes,
+        "the other installation's receipt is untouched"
+    );
+}
+
+// SPEC-20261126-keep-restore-backup AC-7
+#[test]
+fn keep_restore_never_carries_a_used_backup() {
+    let f = fixture();
+    let a = put_build(&f.home, "a");
+    replace_by(&a, &f.home, &f.stage);
+    restorable_receipt(&a, &f.home);
+    let rp = recovery_plan_by(&a, &f.home);
+    let restored = recovery_apply_by(&a, &f.home, &rp);
+    assert_eq!(restored["status"], json!("success"), "{restored}");
+    let used = read_receipt(&f.home, &id_of(&a));
+    assert_eq!(used["status"], json!("recovered"), "{used}");
+    assert!(used["backup"].is_object(), "{used}");
+
+    // The restored folder is unmanaged again; out of the way, the apply installs the package.
+    fs::rename(f.home.join(ROOTS[0].1), f.home.join("go-skill-aside")).unwrap();
+    let (p, r) = ordinary_apply(&a, &f.home, &f.stage);
+    assert_eq!(host(&r, "claude")["status"], json!("applied"), "{r}");
+    assert_writes_only_and_no_offer(&a, &f.home, &p);
+}
+
+// SPEC-20261126-keep-restore-backup AC-10
+#[test]
+fn keep_restore_covers_what_another_build_wrote() {
+    let f = fixture();
+    let original = originals(&f);
+    let a = put_build(&f.home, "a");
+    let b = put_build(&f.home, "b");
+    replace_by(&a, &f.home, &f.stage);
+    let replaced = restorable_receipt(&a, &f.home);
+
+    let theirs = f._tmp.path().join("stage-b");
+    write_pkg(&theirs);
+    put_file(&theirs, "workflows/update.md", "# UPDATE\nfrom b\n");
+    put_file(&theirs, "references/new.md", "added by b\n");
+    let (_, r) = ordinary_apply(&b, &f.home, &theirs);
+    assert_eq!(host(&r, "claude")["status"], json!("applied"), "{r}");
+    sleep(Duration::from_millis(1100));
+
+    let (p, r) = ordinary_apply(&a, &f.home, &f.stage);
+    assert!(
+        host(&p, "claude")["receipt_from"]
+            .as_str()
+            .is_some_and(|from| from.contains(&id_of(&b))),
+        "the other build's receipt is the baseline: {p}"
+    );
+    assert_eq!(host(&r, "claude")["status"], json!("applied"), "{r}");
+
+    let rp = assert_offer_covers_root(&a, &f.home, &replaced, &p);
+    assert_restores_original(&a, &f.home, &rp, &original[0]);
+    let kept = backup_of(&f.home, "claude").join("replaced/references/new.md");
+    assert_eq!(fs::read_to_string(kept).unwrap(), "added by b\n");
+}

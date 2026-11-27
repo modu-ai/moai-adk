@@ -13,6 +13,7 @@
 //! Every case uses a temporary project, an empty temporary HOME and one fake Rust launcher at
 //! `HOME/.moai-cli/path/moai-cli`; nothing outside the temporary folders is read or written.
 
+// check-affected: every-source-change
 #![cfg(unix)]
 
 mod common;
