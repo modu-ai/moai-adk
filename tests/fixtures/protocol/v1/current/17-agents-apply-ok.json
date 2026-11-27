@@ -37,8 +37,8 @@
         "expected_sha256": null,
         "section_id": "moai-local",
         "baseline_sha256": null,
-        "rendered_sha256": "sha256:27553182c91d554240e570c42a43801dca0e188b2e9c127e4c35f0c0c7fdc46d",
-        "detail": "managed block lines: 50 added, 0 removed\n+ .moai/receipts/\n+ .moai/*\n+ .moai/local/\n+ !.moai/project.yaml\n+ !.moai/moai-cli.json\n+ !.moai/moai.json\n+ !.moai/manifests/\n+ !.moai/workflows/\n+ !.moai/config/\n+ !.moai/decisions/\n+ !.moai/docs/\n+ !.moai/specs/\n+ !.moai/tools/\n+ !.moai/evals/\n+ .moai/**/credentials.yaml\n+ .moai/**/credentials.json\n+ .moai/**/*.credentials\n+ .moai/**/.env\n+ .moai/**/.env.*\n+ .moai/**/.git-credentials\n+ .moai/**/.netrc\n+ .moai/**/_netrc\n+ .moai/**/.pgpass\n+ .moai/**/pgpass.conf\n+ .moai/**/.pypirc\n+ .moai/**/.credentials.json\n+ .moai/**/credentials.tfrc.json\n+ .moai/**/application_default_credentials.json\n+ .moai/**/credentials.toml\n+ .moai/**/.vault-token\n+ .moai/**/.mylogin.cnf\n+ .moai/**/master.key\n+ .moai/**/keystore.properties\n+ .moai/**/id_rsa\n+ .moai/**/id_dsa\n+ .moai/**/id_ecdsa\n+ .moai/**/id_ecdsa_sk\n+ .moai/**/id_ed25519\n+ .moai/**/id_ed25519_sk\n+ .moai/**/id_mldsa44_ed25519\n+ .moai/**/*.ppk\n+ .moai/**/*.tfstate\n+ .moai/**/*.tfstate.*\n+ .moai/**/.dev.vars\n+ .moai/**/.dev.vars.*\n+ .moai/**/.aws/credentials\n+ .moai/**/.cargo/credentials\n+ .moai/**/.gem/credentials\n+ .moai/**/.streamlit/secrets.toml\n+ .moai.rust-*/"
+        "rendered_sha256": "sha256:861746f9343ba8625fd8a11430b287d2fcdc61f87bf53af3c29f8b2a4e6ad930",
+        "detail": "managed block lines: 56 added, 0 removed\n+ .moai/receipts/\n+ .moai/*\n+ .moai/local/\n+ !.moai/project.yaml\n+ !.moai/moai-cli.json\n+ !.moai/moai.json\n+ !.moai/manifests/\n+ .moai/manifests/*\n+ !.moai/manifests/*.json\n+ !.moai/workflows/\n+ .moai/workflows/*\n+ !.moai/workflows/*/\n+ !.moai/config/\n+ !.moai/decisions/\n+ .moai/decisions/*\n+ !.moai/decisions/*.jsonl\n+ !.moai/docs/\n+ !.moai/specs/\n+ !.moai/tools/\n+ !.moai/evals/\n+ .moai/**/credentials.yaml\n+ .moai/**/credentials.json\n+ .moai/**/*.credentials\n+ .moai/**/.env\n+ .moai/**/.env.*\n+ .moai/**/.git-credentials\n+ .moai/**/.netrc\n+ .moai/**/_netrc\n+ .moai/**/.pgpass\n+ .moai/**/pgpass.conf\n+ .moai/**/.pypirc\n+ .moai/**/.credentials.json\n+ .moai/**/credentials.tfrc.json\n+ .moai/**/application_default_credentials.json\n+ .moai/**/credentials.toml\n+ .moai/**/.vault-token\n+ .moai/**/.mylogin.cnf\n+ .moai/**/master.key\n+ .moai/**/keystore.properties\n+ .moai/**/id_rsa\n+ .moai/**/id_dsa\n+ .moai/**/id_ecdsa\n+ .moai/**/id_ecdsa_sk\n+ .moai/**/id_ed25519\n+ .moai/**/id_ed25519_sk\n+ .moai/**/id_mldsa44_ed25519\n+ .moai/**/*.ppk\n+ .moai/**/*.tfstate\n+ .moai/**/*.tfstate.*\n+ .moai/**/.dev.vars\n+ .moai/**/.dev.vars.*\n+ .moai/**/.aws/credentials\n+ .moai/**/.cargo/credentials\n+ .moai/**/.gem/credentials\n+ .moai/**/.streamlit/secrets.toml\n+ .moai.rust-*/"
       },
       {
         "path": ".moai/manifests/generation.json",
@@ -69,7 +69,7 @@
         ".moai/manifests/generation.json"
       ],
       "files_created": true,
-      "manifest_sha256": "sha256:54f6664b1cce845d9ff19ada1236e8037e360a956621076179404535312ed83c",
+      "manifest_sha256": "sha256:7c20cf8a510d2dccdf100367168e30e778099fd81eb7d26837dcaf163aa25429",
       "host_loaded": false,
       "execution_verified": false,
       "host_notes": []

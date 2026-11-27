@@ -883,6 +883,19 @@ pub const KEPT: [&str; 11] = [
     "evals/",
 ];
 
+/// The kept folders whose content the managed `.gitignore` block does not allow whole
+/// (SPEC-20261127-state-kept-narrowing): per folder, the one pattern (relative to the folder) that
+/// is allowed back after the block ignores what is directly inside it. `manifests/` holds the
+/// `.json` files Rust writes, `workflows/` the generated sub-folders (a flat file there is an
+/// earlier generation's) and `decisions/` the `.jsonl` run logs. Only the block reads this list:
+/// [`KEPT`] stays the list of first-level names that [`is_kept`], the classifier and go-state read,
+/// and every name here is also in it.
+pub const KEPT_NARROW: [(&str, &str); 3] = [
+    ("manifests", "*.json"),
+    ("workflows", "*/"),
+    ("decisions", "*.jsonl"),
+];
+
 /// The kinds of machine output the folder holds today. Each lives under `local/`, which git
 /// ignores, so a new worktree does not carry a copy of it. The list names what exists; a kind
 /// that is not in [`KEPT`] is local to the machine whether or not it is listed here.
@@ -1973,6 +1986,39 @@ mod tests {
         assert!(c.legacy_root);
         assert_eq!(c.to_json()["legacy_root"], json!(crate::PROJECT_STATE_DIR));
         assert_eq!(verdict(|_| {}).to_json()["legacy_root"], Value::Null);
+    }
+
+    /// SPEC-20261127-state-kept-narrowing AC-1: the narrow list is a second list; every folder in
+    /// it is a kept first-level name, the first-level names are the same eleven as before, and the
+    /// readers of the names (`is_kept`) answer the same for every name, kept or not.
+    #[test]
+    fn the_narrow_allow_list_leaves_the_first_level_names_alone() {
+        assert_eq!(
+            KEPT_NARROW,
+            [
+                ("manifests", "*.json"),
+                ("workflows", "*/"),
+                ("decisions", "*.jsonl")
+            ]
+        );
+        for (folder, pattern) in KEPT_NARROW {
+            assert!(KEPT.contains(&format!("{folder}/").as_str()), "{folder}");
+            assert!(is_kept(folder), "{folder}");
+            assert!(
+                !pattern.is_empty() && !pattern.starts_with('/'),
+                "{pattern}"
+            );
+        }
+        assert_eq!(KEPT.len(), 11);
+        for name in KEPT {
+            assert!(
+                is_kept(name) && is_kept(name.trim_end_matches('/')),
+                "{name}"
+            );
+        }
+        for name in ["receipts", "local", "manifests-x", "config.yaml", ""] {
+            assert!(!is_kept(name), "{name}");
+        }
     }
 
     /// The layout rule: eleven kinds the team keeps in git, everything else under `local/`.
