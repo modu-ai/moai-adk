@@ -272,10 +272,10 @@ const CLAIM_REVIEW: (&str, &str, &str) = (
 );
 
 /// Every pairing of a verdict word with a reservation word: the two names mix freely.
-fn pairings() -> Vec<(
-    (&'static str, &'static str),
-    (&'static str, &'static str, &'static str),
-)> {
+type Names = (&'static str, &'static str);
+type Words = (&'static str, &'static str, &'static str);
+
+fn pairings() -> Vec<(Names, Words)> {
     vec![
         (AUDIT, CLAIM_AUDIT),
         (REVIEW, CLAIM_REVIEW),
