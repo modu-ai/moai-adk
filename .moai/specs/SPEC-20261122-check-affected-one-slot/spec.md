@@ -78,3 +78,5 @@ created: 2026-11-22
 ## Result
 
 (status draft — written when the slices land)
+
+- REQ-4 예외 한 줄: 등록된 리더 세션의 `check affected --full` 은 도착 순서 대신 줄 맨 앞에 서요(`SPEC-20261126-leader-slot-front`). 다른 호출은 이 SPEC 의 도착 순서 그대로예요.

@@ -1802,6 +1802,7 @@
       "test_targets": [
         "codex_question_tool",
         "git_hooks_cli",
+        "home_style_ownership_cli",
         "ops_table_gen_cli",
         "product_cli",
         "profile_apply_engine",
@@ -1826,6 +1827,7 @@
         "tests/card/card_guard_cli.rs",
         "tests/codex_question_tool.rs",
         "tests/git_hooks_cli.rs",
+        "tests/home_style_ownership_cli.rs",
         "tests/ops_table_gen_cli.rs",
         "tests/product_cli.rs",
         "tests/profile_apply_engine.rs",
@@ -1849,6 +1851,9 @@
         },
         {
           "prefix": ".moai-cli/project.yaml"
+        },
+        {
+          "prefix": ".moai/evals/style"
         },
         {
           "prefix": ".moai/project.yaml"
@@ -1904,6 +1909,7 @@
         "claude_python_adapter_removed",
         "docs_installer_paths",
         "e2e_temp_home_cli",
+        "home_style_ownership_cli",
         "host_small_fixes_cli",
         "lane_completion_handshake",
         "lane_next_rules",
@@ -1948,6 +1954,7 @@
         "tests/claude_python_adapter_removed.rs",
         "tests/docs_installer_paths.rs",
         "tests/e2e_temp_home_cli.rs",
+        "tests/home_style_ownership_cli.rs",
         "tests/card/followup_per_spec_rules.rs",
         "tests/host_small_fixes_cli.rs",
         "tests/lane_completion_handshake.rs",
@@ -2428,6 +2435,7 @@
         "repo_scans_table",
         "retired_host_words",
         "retired_hosts_layer",
+        "style_banner_scan",
         "test_weakening",
         "worktree_cli",
         "worktree_place_cli"
@@ -2466,6 +2474,7 @@
         "tests/retired_hosts_layer.rs",
         "tests/test_weakening.rs",
         "tests/worktree_cli.rs",
+        "tests/style_banner_scan.rs",
         "tests/worktree_place_cli.rs",
         "tests/repo_scans_table.rs"
       ],
@@ -2502,6 +2511,9 @@
         },
         {
           "prefix": "src/claude.rs"
+        },
+        {
+          "prefix": "src/claude_settings_merge.rs"
         },
         {
           "prefix": "src/code_refs.rs"
@@ -2550,6 +2562,9 @@
         },
         {
           "prefix": "src/handoff.rs"
+        },
+        {
+          "prefix": "src/home_style.rs"
         },
         {
           "prefix": "src/heavy_slot.rs"
@@ -2726,6 +2741,7 @@
         "review_checklist_cli",
         "search_atlas",
         "skill_text_citations",
+        "style_banner_scan",
         "test_home_guard",
         "test_weakening"
       ],
@@ -2744,6 +2760,7 @@
         "tests/review_checklist_cli.rs",
         "tests/search_atlas.rs",
         "tests/skill_text_citations.rs",
+        "tests/style_banner_scan.rs",
         "tests/test_home_guard.rs",
         "tests/test_weakening.rs",
         "tests/repo_scans_table.rs"
