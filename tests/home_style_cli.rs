@@ -1617,6 +1617,30 @@ fn ac3_the_revert_gives_back_the_old_file_the_value_and_the_record() {
     );
 }
 
+/// AC-3 (REQ-9), found by a guard mutant: the revert never writes over a file that is now at the
+/// old path. The user's file stays as it is and the target is skipped as
+/// `user_changed_since_apply`; the other targets still revert.
+#[test]
+fn ac3_a_file_put_at_the_old_path_since_the_apply_is_never_overwritten_by_the_revert() {
+    let (_t, home) = home_with_old(OLD_SETTINGS);
+    let p = plan(&home, &package()).unwrap();
+    let id = apply(&home, &package(), &p.plan_digest, PERM).unwrap()["receipt"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(!home.join(OLD_STYLE).exists());
+    fs::write(home.join(OLD_STYLE), "my own style\n").unwrap();
+    let r = revert(&home, &id, PERM).unwrap();
+    let skipped = skipped_of(&r, "claude:old_style_file");
+    assert_eq!(skipped.len(), 1, "{r}");
+    assert_eq!(skipped[0]["reason"], "user_changed_since_apply");
+    assert_eq!(
+        fs::read_to_string(home.join(OLD_STYLE)).unwrap(),
+        "my own style\n"
+    );
+    assert!(reverted(&r, "claude:style_file"), "{r}");
+}
+
 /// AC-4 (REQ-5, REQ-6, REQ-7): an old file the user edited is a `conflict`; it and `outputStyle`
 /// stay byte for byte, the new file is still written, and a notice names the old file and says
 /// how to choose the style.
