@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261127-installed-binary-name-moai
 title: "설치되는 실행 파일 이름을 moai 하나로: 새 설치는 bin/moai-cli 를 만들지 않고, 이미 있는 moai-cli 는 읽기만 해요"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-27
 parent: SPEC-20261121-moai-name
+approval:
+  by: user
+  at: 2026-11-27
+  basis: "리더 노트 10780 (USER-APPROVAL, 2026-11-27, 리더 세션의 질문 도구): 사용자가 직접 골랐어요 — \"승인, 호환 링크 없음 (Recommended)\". D-1 (a)와 나머지 기본값(Q2 아니요, Q3 건드리지 않음, D-4 상대 링크, D-6 보고하고 멈춤, Q5 그대로)을 승인하고 부모 SPEC-20261121-moai-name 의 조각 5 를 이 SPEC 이 대신하는 것도 승인했어요. 이미 있는 moai-cli 를 지우는 일은 승인에 없어요."
+  digest: "sha256:cbab784d5f855f933fefd0ccbaacbd573190c9651d8af3fa01f4fc86000b9eaa"
 ---
 
 # 설치되는 실행 파일 이름을 moai 하나로: 새 설치는 bin/moai-cli 를 만들지 않고, 이미 있는 moai-cli 는 읽기만 해요
@@ -70,9 +75,8 @@ parent: SPEC-20261121-moai-name
 
 ## Scope
 
-- write (이 초안, 지금): `.moai/specs/SPEC-20261127-installed-binary-name-moai/**`.
-- write (승인 뒤 구현): 위 폴더, `src/bin_names.rs`, `src/install.rs`(`identity_exe` 한 곳), `src/update.rs`(영수증 찾기 두 곳), `src/update/switch.rs`, `install/install.sh`, `install/install.ps1`, `install/README.md`, `skills/moai/SKILL.md`, `tests/bin_names_cli.rs`, `tests/install_cli.rs`, `tests/update_switch_cli.rs`, 새 테스트 `tests/update_installed_version_by_name.rs` 와 `tests/shipped_text_never_runs_moai_cli.rs`.
-- line lease (공유 파일, `card line-lease` 로 줄만): `src/help.rs`(`bin-names-plan` 행), `tests/fixtures/help/all.txt`·`all-60.txt`·`all-80.txt`·`all-dumb.txt`(골든은 `MOAI_HELP_GOLDEN_WRITE=1` 로 다시 만듦), `tests/areas.toml`(새 테스트 첫 낱말), `tools/repo_scans.json`(새 스캔 테스트 등록), `skills/moai/references/source-manifest.json`(스킬 파일 해시), `docs/design-review/appendix/operations/bin_names.md`(문서 한 줄 이름).
+- write: `.moai/specs/SPEC-20261127-installed-binary-name-moai/**`, `src/bin_names.rs`, `src/install.rs`, `src/update.rs`, `src/update/switch.rs`, `install/install.sh`, `install/install.ps1`, `install/README.md`, `skills/moai/SKILL.md`, `tests/bin_names_cli.rs`, `tests/install_cli.rs`, `tests/update_switch_cli.rs`, `tests/update_installed_version_by_name.rs`, `tests/shipped_text_never_runs_moai_cli.rs` (코드와 테스트는 승인 뒤 구현이고 초안 단계에서 쓰는 것은 SPEC 폴더뿐이에요; install.rs 는 identity_exe 한 곳, update.rs 는 영수증 찾기 두 곳이에요)
+- line lease (shared files, one `moai card line-lease` edit each): `src/help.rs` (`bin-names-plan` 행), `tests/fixtures/help/all.txt`, `tests/fixtures/help/all-60.txt`, `tests/fixtures/help/all-80.txt`, `tests/fixtures/help/all-dumb.txt` (골든은 `MOAI_HELP_GOLDEN_WRITE=1` 로 다시 만듦), `tests/areas.toml` (새 테스트 첫 낱말), `tools/repo_scans.json` (새 스캔 테스트 등록), `skills/moai/references/source-manifest.json` (스킬 파일 해시), `docs/design-review/appendix/operations/bin_names.md` (문서 한 줄 이름)
 - read-only: `src/home_install.rs`, `src/hook_legacy.rs`, `src/status_line.rs`, `Cargo.toml`, `.github/workflows/release.yml`, `dist-workspace.toml`, `.moai/specs/SPEC-20261121-moai-name/spec.md`, `.moai/specs/SPEC-20261127-launcher-bin-layout/spec.md`.
 - forbidden: 실제 HOME 과 그 아래 모든 폴더(상태 폴더 둘과 Claude 폴더), 다른 프로젝트, 네트워크 호출(설치 스크립트 테스트는 `file://` 만), 릴리스·태그·푸시, 아카이브 이름과 빌드 타깃 이름, `CLAUDE.md`.
 
@@ -85,6 +89,7 @@ parent: SPEC-20261121-moai-name
 - Q5: 영수증의 `product: "moai-cli"` 문자열은 바꾸나요? → A: 기본값은 그대로(비목표). 스키마를 올려 두 값을 읽게 하는 일은 별도 SPEC 이에요.
 - Q6: 스킬의 "`moai --version` 이 Rust 서명이 아니면 `moai-cli` 를 써라" 문장은? → A: 대체 실행 파일이 없어져요. 기본값은 "다른 `moai` 가 PATH 앞에 있다고 보고하고 멈춘다"(D-6).
 - Q7: 아카이브에 `moai` 가 들어 있나요? → A: `release.yml` 이 두 바이너리를 모두 만들었다고 검사하고 `Cargo.toml` 이 두 `[[bin]]` 을 둬서 들어 있다고 읽혀요. 실제 릴리스 아카이브는 아직 없어서 직접 열어 보지 못했어요(unverified). 그래서 REQ-1 이 `moai-cli` 만 든 아카이브도 받아요.
+- Q8: 이 초안을 승인하나요, 호환 링크는 어떻게 하나요, 부모 조각 5 를 이 SPEC 이 대신해도 되나요? → A: 사용자가 직접 골랐어요(2026-11-27, 리더 세션의 질문 도구, 노트 10780): "승인, 호환 링크 없음 (Recommended)". D-1 (a)와 나머지 기본값(Q2 아니요, Q3 건드리지 않음, D-4 상대 링크, D-6 보고하고 멈춤, Q5 그대로)을 승인하고 부모 조각 5 를 대신하는 것도 승인했어요. 이미 있는 `moai-cli` 를 지우는 일은 승인에 없어요. Q7 은 확인하지 못한 채로 남아요(unverified).
 
 ## Plan
 
@@ -112,7 +117,7 @@ parent: SPEC-20261121-moai-name
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | 호환 링크를 두지 않아요(기본값). 선택지: (a) 두지 않음 — 새 폴더에 `moai-cli` 없음, 옛 `moai-cli` 는 보고만 / (b) 한 릴리스 동안 새 폴더에 `bin/moai-cli` 를 `moai` 로 이은 링크로 둠 (부모 조각 5 의 설계) / (c) 설치 때마다 링크 폴더의 `moai-cli` 링크를 새 `bin/moai` 로 다시 가리킴. 대가: (a) 는 사용자가 고친 훅·상태 줄과 스크립트가 끊기고 옛 링크가 옛 빌드로 남음(R-1, 미리보기가 알림), (b) 는 사용자 말("더이상 사용하지 않는다")과 어긋나고 나중에 지우는 일이 한 번 더 필요해요, (c) 는 HOME 에 `moai-cli` 를 계속 쓰는 일이라 "새로 고치지 않는다"와 어긋나요 | 사용자 결정 10487, 부모 조각 5 | SPEC 개정 |
+| D-1 | 호환 링크를 두지 않아요(기본값). 선택지: (a) 두지 않음 — 새 폴더에 `moai-cli` 없음, 옛 `moai-cli` 는 보고만 / (b) 한 릴리스 동안 새 폴더에 `bin/moai-cli` 를 `moai` 로 이은 링크로 둠 (부모 조각 5 의 설계) / (c) 설치 때마다 링크 폴더의 `moai-cli` 링크를 새 `bin/moai` 로 다시 가리킴. 대가: (a) 는 사용자가 고친 훅·상태 줄과 스크립트가 끊기고 옛 링크가 옛 빌드로 남음(R-1, 미리보기가 알림), (b) 는 사용자 말("더이상 사용하지 않는다")과 어긋나고 나중에 지우는 일이 한 번 더 필요해요, (c) 는 HOME 에 `moai-cli` 를 계속 쓰는 일이라 "새로 고치지 않는다"와 어긋나요 | 사용자 결정 10487, 부모 조각 5, 사용자 선택 10780 (승인, 2026-11-27) | SPEC 개정 |
 | D-2 | 설치 스크립트가 복사하는 파일은 아카이브의 `moai`, 없으면 `moai-cli` 를 `moai` 라는 이름으로 | R-5, Q7 | 한 줄 |
 | D-3 | 이름 검사는 `bin/moai` 단독을 `unchanged` 로 보고 쓰지 않아요. 기존 모양의 판정은 바꾸지 않음 | 빌드 59 미리보기, `SPEC-20261127-launcher-bin-layout` 의 요구 1~7 이 이미 정한 모양 | 분기 제거 |
 | D-4 | switch 의 런처는 실행 중인 빌드 폴더의 `bin/moai` 이고 링크는 그 빌드로 가는 상대 링크예요(기본값). 선택지: (a) 그것 / (b) 옛 `path/moai-cli` 가 있을 때만 제안하고 없으면 `held`. 대가: (a) 는 링크 모양(옆의 `moai-cli` 가 아님)이 바뀌어 `is_the_link` 와 되돌리기 판정을 함께 바꿔요, (b) 는 새 설치에서는 switch 가 늘 `held` 예요 | 부모의 Go 경로 제거 SPEC 이 정한 switch 의 역할 | 조각 3 만 되돌림 |
