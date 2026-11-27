@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261127-state-kept-narrowing
 title: "The managed ignore block allows only the sub-paths of manifests/, workflows/ and decisions/ that Rust writes; the first-level KEPT names stay"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-27
+approval:
+  by: user
+  at: 2026-11-27
+  basis: "사용자가 리더 세션의 질문 도구에서 직접 고른 답(승인 노트 10722): \"블록 줄만 좁힘 (Recommended)\" (D-1 은 a, D-2 는 B); 이 레인이 기록 직전에 이 파일에서 moai spec show 로 approval_digest 를 다시 읽어 노트 10721 의 값과 같음을 확인했어요(선택은 리더가 옮긴 글이고 이 레인이 직접 보지는 않았어요)"
+  digest: "sha256:18854a79f3f39196a0f1c36a33428f9e002fa66e49c1d73149fc12926cc14ad0"
 ---
 
 # The managed ignore block allows only the sub-paths of manifests/, workflows/ and decisions/ that Rust writes; the first-level KEPT names stay
@@ -17,7 +22,7 @@ created: 2026-11-27
 ## Interview
 
 - Q1: `STATE_KEPT` 좁히기를 C-300에 넣을까요, 후속으로 뺄까요? → A: "승인, 좁히기는 후속"(사용자 직접 선택 2026-11-27, 기록은 카드 C-300 노트 10517)
-- Q2: 아래 Decisions의 D-1(`config/`·`docs/`)과 D-2(좁히는 범위)는 어느 쪽인가요? → A: 아직 묻지 않았어요. 레인 기본안은 D-1 a, D-2 B예요. 승인은 이 파일에 기록하지 않고, 리더가 사용자에게 물어 레저에 승인 노트를 남겨야 코드를 시작해요.
+- Q2: 아래 Decisions의 D-1(`config/`·`docs/`)과 D-2(좁히는 범위)는 어느 쪽인가요? → A: "블록 줄만 좁힘 (Recommended)"(사용자 직접 선택 2026-11-27, 리더 세션의 질문 도구, 기록은 카드 C-591 노트 10722): D-1 은 a, D-2 는 B예요. 선택은 리더가 옮긴 글이고 이 레인이 직접 보지는 않았어요.
 
 ## Facts
 
