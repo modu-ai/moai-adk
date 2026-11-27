@@ -12,7 +12,7 @@ use common::home::TempHome;
 use serde_json::{json, Value};
 use std::ffi::CString;
 use std::os::unix::ffi::OsStrExt;
-use std::os::unix::fs::symlink;
+use std::os::unix::fs::{symlink, FileTypeExt};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -383,8 +383,23 @@ fn a_link_or_a_special_file_on_the_way_is_refused_and_never_followed() {
     std::fs::remove_file(&notes).unwrap();
 
     // 3. The notes file is a named pipe: refused before the open can wait.
+    // (`TempHome::snapshot` reads every file and would wait on a pipe, so this case compares
+    // the folder listing and the pipe itself instead.)
     fifo(&notes);
-    assert!(check("notes file is a pipe").contains("not a regular file"));
+    let out = within(w.command("failure", "k", "t", &[]), Duration::from_secs(10));
+    let (kind, message) = refusal(&out);
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("not a regular file"), "{message}");
+    assert_eq!(
+        TempHome::names_in(&improve),
+        ["notes.jsonl"],
+        "nothing else was made"
+    );
+    assert!(std::fs::symlink_metadata(&notes)
+        .unwrap()
+        .file_type()
+        .is_fifo());
+    assert_eq!(std::fs::read_to_string(&sentinel).unwrap(), "keep\n");
     std::fs::remove_file(&notes).unwrap();
 
     // 4. The notes path is a folder.
