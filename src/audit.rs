@@ -269,9 +269,9 @@ pub fn pr_binding(commit: &str, pr: Option<&Value>, lookup_failed: bool) -> PrBi
 /// The auditor's own view of PROJECT.
 pub fn observe(project: &Path) -> Result<Observed> {
     // The environment HOME is read here so a HOME whose state root is refused keeps being refused
-    // (SPEC-20261124-identity-home-arg D-13).
-    let identity =
-        crate::identity::identity_in(project, crate::layout::environment_home().as_deref())?;
+    // (SPEC-20261124-identity-home-arg D-13); it is also the process HOME given with it (D-17).
+    let home = crate::layout::environment_home();
+    let identity = crate::identity::identity_in_from(project, home.as_deref(), home.as_deref())?;
     Ok(Observed {
         commit: current_revision(project)?,
         tree_digest: crate::tree_digest(project, &run::TREE_EXCLUDES)?,
