@@ -103,4 +103,28 @@ approval:
 
 ## Result
 
-`status: draft`예요. 코드는 아직 한 줄도 바꾸지 않았어요. 사용자의 승인과 D-1·D-2 선택을 기다려요(`SPEC-READY`).
+구현 커밋은 `ee4a7bb75f`예요. 승인은 사용자의 직접 선택(원장 노트 10722)이고 D-1 (a), D-2 B예요.
+
+- AC-1: met — `state_root::tests::the_narrow_allow_list_leaves_the_first_level_names_alone`가 `KEPT_NARROW` 표(manifests `*.json`, workflows `*/`, decisions `*.jsonl`)와 `KEPT`의 열한 이름·`is_kept` 답이 그대로임을 고정해요. 통과했어요.
+- AC-2: met — `the_block_allows_only_the_paths_rust_writes_under_manifests_workflows_decisions`가 진짜 `git check-ignore`로 Rust 경로는 보이고 평평한 Go 모양 파일은 무시됨을 확인해요. 통과했어요.
+- AC-3: met — `a_tracked_file_the_narrow_block_would_hide_keeps_an_exact_allow_line`가 추적 중인 `manifests/x.txt`, `manifests/sub/y.json`, `workflows/w1.md`가 정확한 `!` 줄(윗 폴더 줄 포함)로 보이고 계획이 `now hidden:`을 내며 `git ls-files`에 남음을 확인해요. 통과했어요. 스무 개 초과는 `the_plan_counts_the_hidden_files_past_twenty`, 이전 폴더 `.moai-cli/`에서 옮겨 오는 파일은 `a_tracked_file_in_the_earlier_folder_stays_visible_after_the_move`가 확인해요.
+- AC-4: met — `every_state_path_a_writer_spells_is_allowed_by_the_block`가 소스가 적는 경로를 읽어 모두 허용됨을 확인하고, 만든 경로 `manifests/sub/x.json`은 무시됨을 확인해요. 통과했어요.
+- AC-5: met — `the_narrow_block_is_the_same_in_plan_and_apply_and_idempotent`가 계획과 적용이 같은 여섯 줄을 내고(허용 줄 → 무시 줄 → 다시 허용 순서) 두 번째 적용이 파일을 바꾸지 않음을 확인해요. 통과했어요.
+
+실행: `gitignore_block_cli` 55개와 `state_root` 단위 테스트가 모두 통과했어요(슬롯 `--max 2`, nextest). 골든 `16`·`17`은 `MOAI_UPDATE_FIXTURES=1`로 다시 만들었고 블록 줄(50→56)과 `rendered_sha256`, `manifest_sha256`만 달라졌어요.
+
+바뀐 다른 핀(이 카드 범위의 테스트 파일 안): 블록 줄 수 `51 added`→`57 added` 둘, 팀 파일 목록과 SPEC 테스트의 평평한 `workflows/run.md`·`decisions/D-1.md`를 새 모양(`workflows/run/SKILL.md`, `decisions/D-1.jsonl`)으로.
+
+SPEC에 없던 한 가지: 사용자가 쓴 규칙이 이미 `manifests/x.json` 같은 모양을 무시하면 그 폴더의 다시 허용하는 줄을 빼요(블록은 사용자 규칙의 효과를 바꾸지 않는다는 기존 약속, B1). 이를 `a_user_rule_keeps_its_effect_and_the_preview_names_it`가 고정해요. `src/project_update.rs`는 건드리지 않았어요.
+
+guard-mutant: the_block_allows_only_the_paths_rust_writes_under_manifests_workflows_decisions | the `<state>/<folder>/*` ignore line of `render_ignore` | exit 100
+guard-mutant: a_tracked_file_the_narrow_block_would_hide_keeps_an_exact_allow_line | the exact `!` line written for each `narrow.exact` path | exit 100
+guard-mutant: without_git_the_block_keeps_the_whole_folder_lines | the git-missing fallback to the whole-folder block (`Ok(off)` made `Ok(on)`) | exit 100
+guard-mutant: the_plan_counts_the_hidden_files_past_twenty | the `now hidden: and N more files` line | exit 100
+guard-mutant: a_user_rule_keeps_its_effect_and_the_preview_names_it | the `skip_allow_back` check before the allow-back line | exit 100
+guard-mutant: the_narrow_allow_list_leaves_the_first_level_names_alone | the `decisions` pattern `*.jsonl` of `KEPT_NARROW` changed to `*` | exit 100
+guard-mutant: a_tracked_file_in_the_earlier_folder_stays_visible_after_the_move | the earlier-folder prefix in `narrowing` | exit 100
+guard-mutant: every_state_path_a_writer_spells_is_allowed_by_the_block | the `workflows` pattern `*/` of `KEPT_NARROW` changed to `*.md` | exit 100
+guard-mutant: the_narrow_block_is_the_same_in_plan_and_apply_and_idempotent | the allow-back line moved before the ignore line | exit 100
+
+한계: 새 Rust 쓰기 경로가 허용 줄에 없는 모양이면 조용히 무시돼요(스캔은 문자열로 만든 경로를 못 읽어요). 이미 블록이 있는 프로젝트는 다음 `moai update`까지 예전 줄이에요.
