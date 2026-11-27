@@ -514,12 +514,12 @@ fn go_project() -> Fx {
 fn go_settings_project(recorded: bool) -> Fx {
     let mut fx = Fx::new();
     let section = format!("{MOAI_DIR}/config/sections/a.yaml");
-    let settings = r#"{"model":"opus","plansDirectory":".moai/plans"}"#;
+    let settings = format!(r#"{{"model":"opus","plansDirectory":"{MOAI_DIR}/plans"}}"#);
     fx.write(&section, "a: 1\n");
-    fx.write(".claude/settings.json", settings);
+    fx.write(".claude/settings.json", &settings);
     fx.record(&section, "a: 1\n");
     if recorded {
-        fx.record(".claude/settings.json", settings);
+        fx.record(".claude/settings.json", &settings);
     }
     fx.write(
         &format!("{MOAI_DIR}/manifest.json"),
