@@ -62,7 +62,7 @@ created: 2026-11-26
 - REQ-8 (REQ-6): IF the `cd` runs in a subshell, a command substitution or a shell string given to another shell, THEN the hook shall allow the call under REQ-6, as REQ-3 does for the worktree session.
 - REQ-9 (revision 4): The reason of REQ-1 shall add, in the same line, how a session that started in the main checkout and was moved by a shell `cd` gets out: end the session and start it again from the main checkout; the sentence names `EnterWorktree` as the way in, adds no `git -C`, no subshell `cd` and no new backticked form (D-8, D-13).
 - REQ-10 (REQ-6): By the default of D-12 the hook shall not exempt a registered lane or leader session from REQ-6.
-- REQ-11 (revision 4, default of D-14): The boundary's `git-state` deny, which only a session that skips permission prompts (`bypassPermissions`) gets, shall keep refusing `commit-tree`, `hash-object`, `mktree`, `mktag` and `write-tree` that `-C`, `--git-dir` or `--work-tree` aim at a checkout that is not the session's own (AC-12 pins that answer).
+- REQ-11 (revision 4, default of D-14): The boundary's `git-state` deny shall keep refusing `commit-tree`, `hash-object`, `mktree`, `mktag` and `write-tree` that `-C`, `--git-dir` or `--work-tree` aim at a checkout that is not the session's own, in a session that runs in the `bypassPermissions` mode, the only mode the boundary denies in (AC-12 pins that answer).
 
 ## Acceptance
 
