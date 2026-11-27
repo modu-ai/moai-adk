@@ -106,4 +106,12 @@ parent: SPEC-20261122-project-ci-design
 
 ## Result
 
-(status draft — written when the slice lands)
+브랜치 `spec/project-ci-workflows-20261122`의 이번 조각은 워크플로 생성기(`src/project_ci_workflows.rs`)를 바꾸지 않았어요. 생성기는 아직 착지하지 않은 이전 조각에서 이 브랜치로 합쳐진 것이고(그 조각은 따로 리뷰를 받은 적이 없어요), 이 head 에서 다시 돌려 통과를 확인했어요. 같은 head 의 `moai check affected` 체크 결과는 READY 노트에 있어요.
+
+- 이 글의 숫자: 이 head 에서 CI 관련 지정 대상 84개(생성기 단위 테스트 포함, 실행한 대상은 `project-ci-design` SPEC 의 Result 에 적었어요)가 슬롯 안에서 통과했어요(exit 0, 실패 0). 임시 프로젝트와 임시 HOME 만 썼어요.
+- AC-1: met — `each_flow_gets_the_triggers_of_its_row`, `only_m_flow_gets_the_nightly_run_at_an_off_peak_minute`, `the_blocking_choice_keeps_one_job_name_and_no_path_filter` 통과.
+- AC-2: met — `other_systems_appear_only_when_named_and_only_build`, `every_generated_job_has_a_timeout_a_cache_and_a_concurrency_group`, `the_generator_checks_the_answers_again` 통과.
+- AC-3: met — `the_safety_rules_hold_for_every_generated_file`, `the_lint_finds_each_broken_rule`, `checkout_keeps_no_credentials`, `names_and_environments_are_quoted` 통과.
+- AC-4: met — `the_deploy_workflow_exists_only_after_the_yes_and_names_its_environment` 통과.
+- AC-5: met — `the_blocking_choice_keeps_one_job_name_and_no_path_filter`, 그리고 설정 단계가 글로만 나오고 `gh`·`curl` 이 불리지 않는 `the_settings_are_shown_as_text_and_no_command_is_run_to_apply_them`(PATH 의 기록용 대체 스크립트가 호출 0번을 확인) 통과. 뮤턴트로 `gh` 호출을 넣으면 이 테스트가 실패해요(exit 100).
+- AC-6: not_run — 더 넓은 READY 집합은 리더의 배치 체크 몫이고 이 조각에서는 돌리지 않았어요.
