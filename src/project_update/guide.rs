@@ -453,7 +453,7 @@ mod tests {
     fn an_open_leftover_is_listed_and_is_not_settled() {
         let open = [
             OpenLeftover {
-                path: ".moai-cli/",
+                path: crate::fixed_state!(""),
                 archive: true,
             },
             OpenLeftover {
@@ -480,7 +480,7 @@ mod tests {
                 .filter(|e| e.get("leftover").is_some())
                 .collect();
             assert_eq!(leftovers.len(), 2, "{finish}");
-            assert_eq!(leftovers[0]["leftover"], ".moai-cli/");
+            assert_eq!(leftovers[0]["leftover"], crate::fixed_state!(""));
             assert_ne!(leftovers[0]["say"], leftovers[1]["say"]);
             let say = finish["say"].as_str().unwrap();
             plain(say);
