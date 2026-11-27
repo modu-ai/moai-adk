@@ -4,7 +4,8 @@
 //! ledger list are pure; [`run`] is the one place that starts programs.
 
 use crate::check_affected::{
-    read_facts, scan_violations, step, table_violations, Facts, Runner, Stack, Step, TestFile,
+    judged_test_paths, read_facts, scan_violations, step, table_violations_judging, Facts, Runner,
+    Stack, Step, TestFile,
 };
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
@@ -290,7 +291,9 @@ fn registry_readable(text: &str) -> bool {
 
 /// The cheap step `test_tables`: the top-level test files the range adds, checked against the area
 /// table, the state-folder allow list and the scan registry with the same judges `check affected`
-/// uses. `None` when the range adds no such file or the repository has no table.
+/// uses, and every changed test file (C-431, [`judged_test_paths`]) against the allow list and the
+/// scan registry. `None` when the range adds no top-level file and no changed test file breaks a
+/// table, or the repository has no table.
 fn table_step(facts: &Facts) -> Option<Step> {
     let added = facts
         .added
@@ -301,7 +304,8 @@ fn table_step(facts: &Facts) -> Option<Step> {
                 .is_some_and(|s| !s.contains('/'))
         })
         .count();
-    if added == 0
+    let judged = judged_test_paths(&facts.present, &facts.moved);
+    if (added == 0 && judged.is_empty())
         || (facts.areas_text.is_none()
             && facts.allow_text.is_none()
             && facts.scan_list.is_none()
@@ -309,8 +313,9 @@ fn table_step(facts: &Facts) -> Option<Step> {
     {
         return None;
     }
-    let mut lines = table_violations(
+    let mut lines = table_violations_judging(
         &facts.added,
+        &judged,
         &facts.tests,
         facts.areas_text.as_deref(),
         facts.allow_text.as_deref(),
@@ -325,7 +330,7 @@ fn table_step(facts: &Facts) -> Option<Step> {
         }
     }
     lines.extend(scan_violations(
-        &facts.added,
+        &judged,
         &facts.tests,
         facts.scan_list.as_deref(),
         facts.tracked.as_deref(),
@@ -335,11 +340,16 @@ fn table_step(facts: &Facts) -> Option<Step> {
             "{table}: the table exists but cannot be read ({error}); fix or restore it, it is not treated as absent"
         ));
     }
-    Some(report_step(
-        "test_tables",
-        &format!("{added} added test file(s)"),
-        lines,
-    ))
+    // As in `check affected`: only a miss plans the step for a range that adds no top-level file.
+    if added == 0 && lines.is_empty() {
+        return None;
+    }
+    let what = if added > 0 {
+        format!("{added} added test file(s)")
+    } else {
+        format!("{} changed test file(s)", judged.len())
+    };
+    Some(report_step("test_tables", &what, lines))
 }
 
 /// The steps of `check fast`, in the order they run: the cheap ones, then the ledger. A repository

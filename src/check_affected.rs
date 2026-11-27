@@ -1518,6 +1518,43 @@ pub fn table_violations(
     allow: Option<&str>,
     moved: &[String],
 ) -> Vec<String> {
+    table_violations_judging(added, added, tests, areas, allow, moved)
+}
+
+/// The test files of `present` (the changed files that still exist) that the cheap `test_tables`
+/// step reads, added or not (C-431): a top-level `tests/<name>.rs` and a module of a moved area,
+/// `tests/<area>/<name>.rs`. A file the range only edits is judged by the same rules the ledger
+/// tests apply to the whole tree, so a gain of a state folder name or of a tree read stops the run
+/// before cargo instead of in the ledger step.
+pub(crate) fn judged_test_paths(present: &[String], moved: &[String]) -> Vec<String> {
+    present
+        .iter()
+        .filter(|p| {
+            let Some(rest) = p.strip_prefix("tests/").and_then(|r| r.strip_suffix(".rs")) else {
+                return false;
+            };
+            match rest.split_once('/') {
+                None => true,
+                Some((area, name)) => {
+                    !name.contains('/') && name != "main" && moved.iter().any(|m| m == area)
+                }
+            }
+        })
+        .cloned()
+        .collect()
+}
+
+/// [`table_violations`] with the files the state-folder allow list counts given apart from the
+/// added ones: the area table reads only what the range `added` (a name that is not in it matters
+/// for a new file alone), the allow list reads every path of `judged`.
+pub fn table_violations_judging(
+    added: &[String],
+    judged: &[String],
+    tests: &[TestFile],
+    areas: Option<&str>,
+    allow: Option<&str>,
+    moved: &[String],
+) -> Vec<String> {
     let mut out = Vec::new();
     let stems: Vec<&str> = added
         .iter()
@@ -1561,13 +1598,15 @@ pub fn table_violations(
     if let Some(text) = allow {
         let rows = parse_allow_rows(text);
         let (earlier, new) = (earlier_state_name(), new_state_name());
-        // The added files whose text the allow list counts: `tests/<name>.rs` and a module of a
+        // The files whose text the allow list counts: `tests/<name>.rs` and a module of a
         // moved area, `tests/<area>/<name>.rs`, which the list names by that longer path.
-        let mut files: Vec<(String, &str, Option<&str>)> = stems
+        let mut files: Vec<(String, &str, Option<&str>)> = judged
             .iter()
-            .map(|s| (format!("tests/{s}.rs"), *s, None))
+            .filter_map(|p| p.strip_prefix("tests/")?.strip_suffix(".rs"))
+            .filter(|s| !s.contains('/'))
+            .map(|s| (format!("tests/{s}.rs"), s, None))
             .collect();
-        for p in added {
+        for p in judged {
             let Some((area, name)) = p
                 .strip_prefix("tests/")
                 .and_then(|r| r.strip_suffix(".rs"))
@@ -2106,9 +2145,11 @@ pub(crate) fn step(label: &str, program: &str, args: &[&str], heavy: bool) -> St
 }
 
 /// The cheap step `test_tables` (SPEC-20261124-new-test-file-precheck): the added top-level
-/// `tests/*.rs` files checked against the area table and the state-folder allow list. `None`
-/// when the range adds no such file or the repository has neither table, so the plan, the log
-/// and the summary of every other run stay as they were.
+/// `tests/*.rs` files checked against the area table and the state-folder allow list, and, since
+/// C-431, every changed test file ([`judged_test_paths`]) against the allow list and the scan list.
+/// `None` when the range adds no top-level file and no changed test file breaks a table, or the
+/// repository has none of the tables, so the plan, the log and the summary of every other run stay
+/// as they were.
 fn table_step(facts: &Facts) -> Option<Step> {
     let added = facts
         .added
@@ -2119,7 +2160,8 @@ fn table_step(facts: &Facts) -> Option<Step> {
                 .is_some_and(|s| !s.contains('/'))
         })
         .count();
-    if added == 0
+    let judged = judged_test_paths(&facts.present, &facts.moved);
+    if (added == 0 && judged.is_empty())
         || (facts.areas_text.is_none()
             && facts.allow_text.is_none()
             && facts.scan_list.is_none()
@@ -2127,8 +2169,9 @@ fn table_step(facts: &Facts) -> Option<Step> {
     {
         return None;
     }
-    let mut lines = table_violations(
+    let mut lines = table_violations_judging(
         &facts.added,
+        &judged,
         &facts.tests,
         facts.areas_text.as_deref(),
         facts.allow_text.as_deref(),
@@ -2143,7 +2186,7 @@ fn table_step(facts: &Facts) -> Option<Step> {
         }
     }
     lines.extend(scan_violations(
-        &facts.added,
+        &judged,
         &facts.tests,
         facts.scan_list.as_deref(),
         facts.tracked.as_deref(),
@@ -2159,10 +2202,20 @@ fn table_step(facts: &Facts) -> Option<Step> {
             "{table}: the table exists but cannot be read ({error}){shape}; fix or restore it, it is not treated as absent"
         ));
     }
+    // A range that adds no top-level test file plans the step only to name a miss, so the plan,
+    // the log and the summary of a clean run that edits test files stay as they were.
+    if added == 0 && lines.is_empty() {
+        return None;
+    }
+    let what = if added > 0 {
+        format!("{added} added test file(s)")
+    } else {
+        format!("{} changed test file(s)", judged.len())
+    };
     let mut s = step(
         "test_tables",
         "(in-process)",
-        &["test_tables", &format!("{added} added test file(s)")],
+        &["test_tables", &what],
         false,
     );
     s.report = Some(lines);
@@ -2466,7 +2519,7 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
     .filter(|l| !l.is_empty())
     .map(String::from)
     .collect();
-    let present = changed
+    let present: Vec<String> = changed
         .iter()
         .filter(|p| dir.join(p).is_file())
         .cloned()
@@ -2518,12 +2571,9 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
         .iter()
         .any(|p| p == crate::gate::SCAN_REGISTRY)
         .then(|| read_registry_texts(dir, &base, &head, &moved));
-    let adds_test_file = added.iter().any(|p| {
-        p.strip_prefix("tests/")
-            .and_then(|r| r.strip_suffix(".rs"))
-            .is_some_and(|s| !s.contains('/'))
-    });
-    let tracked = if adds_test_file {
+    // The tracked files are read for any changed test file, as the scan step judges those too.
+    let changes_test_file = !judged_test_paths(&present, &moved).is_empty();
+    let tracked = if changes_test_file {
         git(dir, &["ls-files", "-z"]).ok().map(|out| {
             out.split('\0')
                 .filter(|p| !p.is_empty())
@@ -3965,6 +4015,25 @@ mod tests {
         assert_eq!(step.report, Some(Vec::new()));
     }
 
+    /// C-431 (a): the files the step judges are the changed top-level test files and the modules of
+    /// a moved area, and nothing else: not the area's `main.rs`, not a deeper folder, not another
+    /// folder, not a file that is no Rust source.
+    #[test]
+    fn judged_test_paths_take_top_level_files_and_modules_of_moved_areas_only() {
+        let present = paths(&[
+            "tests/a.rs",
+            "tests/lane/x.rs",
+            "tests/lane/main.rs",
+            "tests/lane/deep/z.rs",
+            "tests/other/y.rs",
+            "tests/data.json",
+            "src/a.rs",
+        ]);
+        let got = judged_test_paths(&present, &paths(&["lane"]));
+        assert_eq!(got, paths(&["tests/a.rs", "tests/lane/x.rs"]));
+        assert!(judged_test_paths(&[], &paths(&["lane"])).is_empty());
+    }
+
     /// REQ-9: the guidance says where a new test file registers and that the step stops the run.
     #[test]
     fn the_guidance_says_where_a_new_test_file_registers() {
@@ -4242,6 +4311,12 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         }
         assert!(added.len() > 100, "the scan found {} files", added.len());
         let list = std::fs::read_to_string(root.join("tools/repo_scans.json")).unwrap();
+        // A list that no longer parses makes `scan_violations` answer nothing, which would pass
+        // this test empty (audit N1 of C-431).
+        assert!(
+            scan_entries(&list).is_some(),
+            "tools/repo_scans.json does not parse as a scan list"
+        );
         let listed = git(root, &["ls-files", "-z"]).expect("git ls-files");
         let tracked: Vec<String> = listed
             .split('\0')
