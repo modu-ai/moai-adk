@@ -2,7 +2,7 @@
 id: SPEC-20261120-lane-screen-followups
 title: "lane-screen follow-ups — other choice shapes, scan time cap, list size, reason visibility"
 status: approved
-revision: 2
+revision: 3
 created: 2026-11-20
 parent: SPEC-20261119-lane-screen-scan
 approval:
@@ -49,7 +49,7 @@ RED 시험(새 시험 파일, 가짜 orca)을 붙이고, 구현은 같은 카드
 - REQ-3: When `lane-screen --scan` runs with a total time cap, the scan shall stop once the cap has passed and report every terminal it did not read as unreachable, naming the cap in its reason · failure: none — unread terminals are reported, never silently dropped.
 - REQ-4: When `orca terminal list` reports more terminals than the size cap, the scan shall fail with a reason that names the reported size · failure: none — an over-large list is never partially scanned.
 - REQ-5: When a terminal's read times out and its program path is long, the report line shall keep the timeout reason visible, cutting the path instead of the reason · failure: none — the reason phrase must stay in the line.
-- REQ-6: When a known question is on the screen and a short row below it is choice-shaped, the classifier shall answer permission_prompt or unknown, never working or idle · failure: none — choice-shaped is a row of two or more short words split by a delimiter (`Approve / Reject`, `OK / Cancel`, `[ Proceed ] [ Cancel ]`) or a short row starting with a bracket or a number (`[1] Approve / [2] Reject`, `1. Proceed`); the word list (yes no allow deny y n) is gone and the shape is the criterion.
+- REQ-6: When a known question is on the screen and a short row below it is choice-shaped, the classifier shall answer permission_prompt or unknown, never working or idle · failure: none — choice-shaped is a row of two or more short words split by a delimiter (`Approve / Reject`, `OK / Cancel`, `[ Proceed ] [ Cancel ]`) or a short row starting with a bracket or a number (`[1] Approve / [2] Reject`, `1. Proceed`); the word list (yes no allow deny y n) is gone and the shape is the criterion, with one exception (user decision 2026-11-27, ledger note 10779): a question row that holds a yes/no word pair (`yes`/`no` or `y`/`n`, any case) joined by `or` is refused too, and no other word list returns.
 - REQ-7: When the shape criterion of REQ-6 replaces the word list, the twelve refusals of the C-120 re-audit shall keep refusing while a question-adjacent row that is not choice-shaped stops refusing · failure: none — the twelve are the six question-line choice shapes over working and idle plus the numbered or delimiter-split choice rows under a question (`Allow / Deny`, `1. run the tests / 2. open the pull request`); the freed rows are plain prose such as `no changes yet`; the cost and the gain are both written into docs/design-review/appendix/operations/lane_send.md.
 
 ## Acceptance
@@ -86,7 +86,7 @@ RED 시험(새 시험 파일, 가짜 orca)을 붙이고, 구현은 같은 카드
 | D-4 | 긴 경로는 자르고 사유는 자르지 않음 | C-N8 — 사유가 정보 | 경로 전체 출력으로 |
 | D-5 | 선택 인식은 낱말 목록이 아니라 모양: 아는 질문 아래(8줄 창) 구분자로 나뉜 짧은 낱말 둘 이상, 또는 괄호·번호로 시작하는 짧은 줄 | 리더 범위 추가 노트(재감사 N1·N2) — 목록을 늘리면 계속 뒤진다 | 낱말 목록 복귀 |
 | D-7 | (사용자 결정 필요, 기본값: 포함) 터미널 목록 출력이 `OUTPUT_LIMIT`(1 MiB)를 넘어 잘릴 때도 "is not an Orca answer" 대신 크기를 적은 사유로 실패시킨다 | 카드 C-N4 의 원문. `--max-terminals` 만으로는 이 경우를 덮지 않음 | 터미널 수 상한만 |
-| D-6 | 재감사의 12가지 거절은 모양 기준 아래에서도 그대로 거절(안전 쪽 유지), 질문 아래 선택 모양이 아닌 산문 줄만 풀림 — 대가와 이득을 lane_send.md 에 적음 | N1 의 "어느 쪽이 보내지고 막히는지 정해" 에 대한 제안(구현 조각에서 리더 확정) | 12가지 중 일부 허용으로 |
+| D-6 | 재감사의 12가지 거절은 모양 기준 아래에서도 그대로 거절(안전 쪽 유지), 질문 아래 선택 모양이 아닌 산문 줄만 풀림 — 대가와 이득을 lane_send.md 에 적음. 예외 하나(사용자 결정 2026-11-27, 레저 노트 10779): 질문 줄 안의 긍정·부정 낱말 짝(yes/no, y/n, 대소문자 무관)이 `or` 로 이어진 것은 거절하고, 다른 낱말 목록은 되살리지 않음 | N1 의 "어느 쪽이 보내지고 막히는지 정해" 에 대한 제안(구현 조각에서 리더 확정) | 12가지 중 일부 허용으로 |
 
 ## Risks
 
