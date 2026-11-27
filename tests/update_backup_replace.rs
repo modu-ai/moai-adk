@@ -1953,6 +1953,14 @@ fn prior_install_offer_waits_for_own_pending_recovery() {
         !h["files"].as_array().unwrap().is_empty(),
         "per-file recovery stays first: {rp}"
     );
+
+    // Control: with a root both receipts cover, only the pending state holds the offer back.
+    let (f, _, a, b, _) = upgraded(true);
+    assert_offers_prior(&recovery_plan_by(&b, &f.home), &a);
+    set_receipt_field(&f.home, &id_of(&b), "status", "pending");
+    let rp = recovery_plan_by(&b, &f.home);
+    assert!(host(&rp, "claude")["restore_backup"].is_null(), "{rp}");
+    assert_eq!(host(&rp, "claude")["receipt_status"], json!("pending"));
 }
 
 // SPEC-20261127-recovery-prior-install AC-6
