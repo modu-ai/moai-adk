@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261124-identity-home-arg
 title: "identity takes the HOME as an argument: identity_in, the claim group, then every remaining caller, and the identity adapter removed"
-status: draft
+status: approved
 revision: 7
 created: 2026-11-24
+approval:
+  by: user
+  at: 2026-11-27
+  basis: "리더 결정 노트 10862 (카드 C-409, 2026-11-27): 사용자가 리더 세션의 질문 도구로 직접 골랐어요, '안 1: 인자로 넘김 (Recommended)'. 개정 7(SPEC-READY 노트 10844, 초안 head f95a366c95)의 D-17(안 1)과 REQ-32..37, AC-25..28, 조각 2c-1·2c-2 의 승인이에요."
+  digest: "sha256:e1cc5ae67edee144414383b9655fdff7f5632711c8111bdac7a382556e40911e"
 ---
 
 # identity takes the HOME as an argument: identity_in, the claim group, then every remaining caller, and the identity adapter removed
@@ -32,7 +37,7 @@ created: 2026-11-24
 - Q8: (판 5) `identity` 를 쓰던 테스트는 어떻게 하나요? → A: 환경 HOME 을 드러내어 읽어 `identity_in` 에 넘기거나 `None` 을 넘기도록 고치고, 어댑터 자체를 재던 AC-4 테스트는 지워요(D-14).
 - Q9: (판 5) 기준선은 몇 줄 줄어요? → A: 읽기만으로는 몰라요(unverified). 변경 전후 관찰 실행으로 재요(D-15).
 - Q10: (판 6) 카드 기준 1 은 어떻게 적나요? → A: not met 으로 두고 `card land --keep-open` 으로 착지해요. 비교용 HOME 을 인자로 넘기는 일은 후속 카드예요(리더 결정 노트 10218, D-16).
-- Q11: (판 7) 비교용 프로세스 HOME 을 어떻게 `rev_parse` 까지 가져오나요? → A: 세 안이고(안 3 은 버렸어요) 비교는 바로 아래 세 줄에 있어요. 고르는 것은 사용자예요. 이 카드가 맡는다는 것(후속 카드로 떼지 않아요)은 리더 결정이에요(2026-11-27 메시지).
+- Q11: (판 7) 비교용 프로세스 HOME 을 어떻게 `rev_parse` 까지 가져오나요? → A: 안 1(인자로 넘김)이에요. 사용자가 직접 골랐어요(2026-11-27, 리더 세션의 질문 도구: "안 1: 인자로 넘김 (Recommended)", 리더 결정 노트 10862). 안 2·안 3 은 버렸어요. 세 안의 비교는 바로 아래 세 줄에 있고, 이 카드가 맡는다는 것(후속 카드로 떼지 않아요)은 리더 결정이에요(2026-11-27 메시지).
 안 1(추천): 프로세스 HOME 인자를 가장자리에서 올려요. 새 `identity_in_from(path, home, process_home)`. 바뀌는 파일: 제품 약 14개(아래 조각표 2c-1 여섯 개, 2c-2 여덟 개), 테스트 파일은 세지 않았어요(unverified, 호출 서명이 바뀌는 곳마다). 동작이 달라지는 경우: 없어요(임시 HOME 테스트의 자식 환경도, Windows `USERPROFILE` 경우도 지금과 같아요). 두 조각이 각각 동작을 지키며 착지해요. 이유: SPEC-20261124-home-env-readers D-8 을 그대로 지키고, 임시 HOME 을 쓰는 프로세스 안 테스트가 개발자의 실제 git 설정을 읽지 않아요.
 안 2(작은 안): '넘긴 HOME 은 프로세스 HOME' 을 기본으로 봐요. `rev_parse` 는 비교를 안 하고, HOME 을 받으면 자식이 프로세스 환경을 그대로 써요(HOME 을 덮어쓰지 않아요). 바뀌는 파일: `src/identity.rs` 와 `tests/home_env_readers.rs`, identity.rs 안의 테스트 둘(약 2개). 동작이 달라지는 경우: (1) 임시 HOME 을 넘기는 프로세스 안 테스트(`update_hooks::plan_in`, `audit_clone::plan`, 키 금고 테스트)에서 git 자식이 임시 HOME 의 설정이 아니라 프로세스의 실제 HOME·`XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 을 읽어요 — 테스트가 실제 HOME 을 읽게 돼요. (2) Windows 에서 HOME 이 없어 `key_vault::home()` 이 `USERPROFILE` 을 줄 때, 지금은 자식에게 그 값을 HOME 으로 주고 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 을 지우는데, 그 뒤로는 프로세스 환경을 그대로 써요(Mac 에서 확인 못 함). (3) 이 SPEC 의 Non-goals 가 막은 'git 자식 환경 규칙 바꾸기' 를 하게 돼요. 작지만 위 세 가지 때문에 추천하지 않아요.
 안 3(버림): 넘긴 HOME 이 있으면 늘 HOME 을 덮어쓰고 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 을 지워요. 환경 HOME 을 넘기는 여섯 호출부에서 사용자의 git 설정(`safe.directory` 등)이 사라져 제품 동작이 바뀌어요.
