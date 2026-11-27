@@ -448,6 +448,23 @@ mod tests {
         c
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn improve_signals_a_symbolic_link_is_refused_by_name_and_never_followed() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let target = dir.path().join("target.jsonl");
+        std::fs::write(&target, "{}\n").unwrap();
+        let link = dir.path().join("notes.jsonl");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        let err = read_improve_notes(&link).err().expect("a link is refused");
+        assert!(err.contains("symbolic link"), "{err}");
+        let err = read_improve_notes(dir.path()).err().expect("a folder is refused");
+        assert!(err.contains("not a regular file"), "{err}");
+        assert!(read_improve_notes(&dir.path().join("none.jsonl"))
+            .unwrap()
+            .is_none());
+    }
+
     #[test]
     fn improve_signals_only_the_flake_count_is_marked_approximate() {
         let signal = |class: &str| Signal {
