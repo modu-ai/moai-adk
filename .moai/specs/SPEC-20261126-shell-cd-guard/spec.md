@@ -5,10 +5,10 @@ status: approved
 revision: 3
 created: 2026-11-26
 approval:
-  by: leader
-  at: 2026-11-26
-  basis: "리더 GOAL-APPROVAL 노트 10298 (사용자 목표 2026-11-26 \"불포함 카드 까지 모두 다 구현을 해서 릴리즈를 하자. 카드 우선순위도 정해서 계속해서 모든 카드 구현 완료를 하자\" 에 따른 리더 판단, 사용자 직접 선택 아님): 판 2 의 방향은 결정 10265 와 보충 10289 예요"
-  digest: "sha256:3092b8f1d45f47cdf1cb498007cd60c23e1c78741569436810a7a5fdc7c2f219"
+  by: user
+  at: 2026-11-27
+  basis: "USER-APPROVAL 노트 10637 (개정 3, 사용자가 직접 골랐어요 2026-11-27, 리더 세션의 질문 도구 \"승인 (Recommended)\"; 리더가 노트에 적었고 레인은 그 노트를 인용만 해요). 앞 개정의 근거는 리더 GOAL-APPROVAL 노트 10298 (사용자 목표 2026-11-26 에 따른 리더 판단, 사용자 직접 선택 아님): 판 2 의 방향은 결정 10265 와 보충 10289 예요"
+  digest: "sha256:f00fb1d97535dfd8e388c15ade294496fb92408efc066456275af259696ba656"
 ---
 
 # A worktree session's shell cd is refused with the other way in one line
