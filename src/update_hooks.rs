@@ -117,8 +117,9 @@ fn skip(reason: String) -> Value {
 }
 
 /// The work tree `cwd` belongs to, or why there is none.
-fn project_of(cwd: &Path) -> std::result::Result<PathBuf, String> {
-    let id = crate::identity::identity(cwd).map_err(|e| format!("no project here: {e}"))?;
+fn project_of(cwd: &Path, home: &Path) -> std::result::Result<PathBuf, String> {
+    let id = crate::identity::identity_in(cwd, Some(home))
+        .map_err(|e| format!("no project here: {e}"))?;
     match id["work_tree"].as_str() {
         Some(top) => Ok(PathBuf::from(top)),
         None => Err("not inside a git work tree".into()),
@@ -139,7 +140,7 @@ pub fn plan_in(home: &Path, cwd: &Path, path_env: &str) -> Result<Layer> {
         skipped: Vec::new(),
         plan_digest: String::new(),
     };
-    match project_of(cwd) {
+    match project_of(cwd, home) {
         Err(reason) => layer.skipped.push(skip(reason)),
         Ok(root) => {
             let same_as_home = fs::canonicalize(home).ok().as_deref() == Some(root.as_path());

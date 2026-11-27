@@ -2056,6 +2056,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 repo_url: repo_url.as_deref(),
                 tmp_root: &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
             },
+            std::env::var_os("HOME")
+                .filter(|h| !h.is_empty())
+                .map(PathBuf::from)
+                .as_deref(),
         ),
         Command::Update {
             confirm,
