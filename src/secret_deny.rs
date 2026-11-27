@@ -123,7 +123,7 @@ fn build(project: &Path, bound: usize) -> Result<Built, String> {
             "entries": [],
         }),
         List::Text(text) => {
-            let entries: Vec<Value> = list_entries(&text)
+            let entries: Vec<Value> = list_entries(text)
                 .map(|(line, entry)| {
                     let matched: Vec<&String> = walk
                         .files
