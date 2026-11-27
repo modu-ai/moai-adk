@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261127-go-residue-secret-readers
 title: "go-residue never opens a reader with a secret-shaped name and keeps every Go file when it exists"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-27
 parent: SPEC-20261126-go-residue-in-use
+approval:
+  by: user
+  at: 2026-11-27
+  basis: "카드 노트 10717 (리더가 옮겨 적은 사용자의 직접 선택 \"승인, 경로 전체 (Recommended)\", 2026-11-27, D-1 은 A). 레인은 승인을 기록하지 않았고 노트를 인용했어요. 승인 digest 는 Interview Q2 를 옮긴 뒤 moai spec show 로 다시 읽었어요(같은 값)"
+  digest: "sha256:2eb7ce618092f64f0ed43346cd35c8ef9ff1f3db3a1a4a13833b759211c4385e"
 ---
 
 # go-residue never opens a reader with a secret-shaped name and keeps every Go file when it exists
@@ -27,7 +32,7 @@ parent: SPEC-20261126-go-residue-in-use
 ## Interview
 
 - Q1: 무엇이 필요한가요? → A: 카드 본문(리더가 옮긴 리뷰 노트 10598): "SPEC REQ-3 says a secret-shaped name is treated as a place that could not be read, so the file it may reference is kept; readers.rs has no such branch and no AC covers it. Failing direction must stay 'do not move'." (2026-11-27)
-- Q2: 아래 Decisions 의 "승인 때 골라요" 항목(D-1)과 이 SPEC 의 첫 판(revision 1)을 승인할까요? → A: 아직 답이 없어요(사용자 선택 대기). 승인 노트의 답을 따르고, 답이 없으면 구현하지 않아요.
+- Q2: 아래 Decisions 의 "승인 때 골라요" 항목(D-1)과 이 SPEC 의 첫 판(revision 1)을 승인할까요? → A: "승인, 경로 전체 (Recommended)"(2026-11-27 사용자 직접 선택, 리더가 질문 도구의 답을 카드 노트 10717 에 옮겨 적음). D-1 은 A 예요: 경로의 폴더 이름이든 파일 이름이든 비밀값 모양이면 열지 않아요(`go_state::has_secret_component`). 대가: `credentials-handling.md` 같은 평범한 문서도 걸려서 그 프로젝트의 Go 정리가 멈출 수 있고, 문서 이름을 바꾸면 풀려요.
 
 ## Non-goals
 
