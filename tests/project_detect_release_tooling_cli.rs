@@ -6,18 +6,17 @@
 //! tool. Through the binary in temporary folders only; nothing is written.
 
 mod common;
+use common::home::TempHome;
 use serde_json::{json, Value};
-use std::{
-    fs,
-    process::{Command, Stdio},
-};
+use std::{fs, process::Stdio};
 use tempfile::TempDir;
 
-const EXE: &str = crate::common::MOAI_BIN;
-
+/// `project-detect` of `root` through the binary with a temporary HOME of its own (a clean
+/// environment: nothing of this machine's HOME is read).
 fn detect(root: &TempDir) -> Value {
-    let out = Command::new(EXE)
-        .args(["project-detect", root.path().to_str().unwrap()])
+    let home = TempHome::new();
+    let out = home
+        .command(&["project-detect", root.path().to_str().unwrap()])
         .stdin(Stdio::null())
         .output()
         .unwrap();
