@@ -1096,18 +1096,36 @@ pub fn unhold(
 }
 
 /// `card prereq C-n --needs C-m --by <name>`: C-n waits for C-m, one active `blocks` link from
-/// C-m to C-n. A second call changes nothing (`created: false`).
+/// C-m to C-n. A second call changes nothing (`created: false`). With `remove` the link is
+/// retired instead (`removed: true`, or `removed: false` when no active link exists and nothing
+/// is written); a loop of any length is refused when a link is added.
 pub fn prereq(
     project: &Path,
     home: &Path,
     reference: &str,
     needs: &str,
     by: &str,
+    remove: bool,
 ) -> Result<Value> {
     input::parse_ref(reference).map_err(|e| format!("card prereq refused: {e}"))?;
     let (id, mut ledger) = open_for_write(project, home)?;
     let card_id = card_or_source(&ledger, "prereq", reference)?;
     let needs_id = card_or_source(&ledger, "prereq", needs)?;
+    if remove {
+        let removed = workflow::retire_prerequisite(
+            &mut ledger,
+            card_id,
+            needs_id,
+            by,
+            caller_session().as_deref(),
+        )
+        .map_err(|e| format!("card prereq refused: {e}"))?;
+        return Ok(json!({
+            "action": "prereq", "project_id": id, "card": input::card_name(card_id),
+            "needs": input::card_name(needs_id), "removed": removed,
+            "events": u8::from(removed), "writes": removed,
+        }));
+    }
     let created = workflow::add_prerequisite(
         &mut ledger,
         card_id,

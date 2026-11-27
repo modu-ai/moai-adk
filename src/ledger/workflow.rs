@@ -937,15 +937,47 @@ pub fn current_hold(conn: &Connection, card_id: i64) -> rusqlite::Result<Option<
 }
 
 /// The cards `card_id` waits for: those with an active `blocks` link to it that are not `done`,
-/// in card order.
+/// in card order. A withdrawn card (state `hold` whose newest `card.withdraw` or `card.fold` event
+/// is a `card.withdraw`) no longer counts: its work is given up. A folded card still counts, since
+/// its work moved to another card, and so does a plain `hold` card with neither event
+/// (SPEC-20261127-card-prereq-remove REQ-9, REQ-10). `COALESCE` keeps a card with no such event
+/// counting: a bare `NOT (… = …)` over a missing event would drop the row.
 pub fn unfinished_prerequisites(conn: &Connection, card_id: i64) -> rusqlite::Result<Vec<i64>> {
     let mut stmt = conn.prepare(
         "SELECT l.from_card FROM card_link l JOIN card c ON c.card_id = l.from_card \
          WHERE l.kind = 'blocks' AND l.state = 'active' AND l.to_card = ?1 AND c.state <> 'done' \
+         AND NOT (c.state = 'hold' AND COALESCE((SELECT e.kind FROM event e \
+                  WHERE e.card_id = c.card_id AND e.kind IN ('card.withdraw', 'card.fold') \
+                  ORDER BY e.event_id DESC LIMIT 1), '') = 'card.withdraw') \
          ORDER BY l.from_card",
     )?;
     let rows = stmt.query_map([card_id], |r| r.get(0))?;
     rows.collect()
+}
+
+/// The refusal for a card with a HOLD in force or a prerequisite that is not done, or `None`. A
+/// free-text HOLD is never read: only the `card.hold` event and the `blocks` links are. `card
+/// take` calls it before it reserves and the reservation transaction calls it again inside its
+/// write transaction, so the words and the order (HOLD first) are one.
+pub fn hold_gate_refusal(conn: &Connection, card_id: i64) -> rusqlite::Result<Option<String>> {
+    let name = format!("C-{card_id}");
+    if let Some(hold) = current_hold(conn, card_id)? {
+        return Ok(Some(format!(
+            "card take refused: {name} is on HOLD ({}): {}; lift it with `moai card unhold {name} \
+             --reason <why> --by <name>` only when the decision is made; nothing was taken",
+            hold.category, hold.reason
+        )));
+    }
+    let needs = unfinished_prerequisites(conn, card_id)?;
+    if needs.is_empty() {
+        return Ok(None);
+    }
+    let names: Vec<String> = needs.iter().map(|c| format!("C-{c}")).collect();
+    Ok(Some(format!(
+        "card take refused: {name} waits for {}, which {} not done; nothing was taken",
+        names.join(", "),
+        if names.len() == 1 { "is" } else { "are" }
+    )))
 }
 
 /// Why a HOLD was not set or lifted.
@@ -1117,10 +1149,13 @@ pub enum PrereqError {
     CardNotFound(i64),
     /// A card cannot need itself.
     SelfNeed(i64),
-    /// `needs` already needs `card_id`, so the two would wait for each other.
+    /// `needs` already needs `card_id`, directly or through other cards, so the cards of the loop
+    /// would wait for each other. `path` is the loop in order, from `card_id` through `needs`
+    /// back to `card_id`: each card needs the next one.
     Cycle {
         card_id: i64,
         needs: i64,
+        path: Vec<i64>,
     },
     InvalidInput(String),
     Ledger(LedgerError),
@@ -1131,10 +1166,24 @@ impl std::fmt::Display for PrereqError {
         match self {
             PrereqError::CardNotFound(id) => write!(f, "card not found: C-{id}"),
             PrereqError::SelfNeed(id) => write!(f, "the card C-{id} cannot need itself"),
-            PrereqError::Cycle { card_id, needs } => write!(
+            // Two cards keep the words they always had.
+            PrereqError::Cycle {
+                card_id,
+                needs,
+                path,
+            } if path.len() <= 3 => write!(
                 f,
                 "C-{needs} already needs C-{card_id}, so they would wait for each other"
             ),
+            PrereqError::Cycle { path, .. } => {
+                let names: Vec<String> = path.iter().map(|c| format!("C-{c}")).collect();
+                write!(
+                    f,
+                    "the cards would wait for each other in a loop ({}); remove one link with \
+                     `moai card prereq <card> --needs <card> --remove --by <name>` first",
+                    names.join(" -> ")
+                )
+            }
             PrereqError::InvalidInput(why) => write!(f, "{why}"),
             PrereqError::Ledger(e) => write!(f, "{e}"),
         }
@@ -1149,9 +1198,54 @@ impl From<LedgerError> for PrereqError {
     }
 }
 
+/// The loop that `card_id` needing `needs` would close, or `None`. It follows the active `blocks`
+/// links breadth first from `needs` (a card's prerequisites are the `from_card` of the links that
+/// reach it) and stops when it reaches `card_id`; every active link counts whatever the state of
+/// the cards on it. The answer is `card_id, needs, …, card_id`: each card needs the next one.
+/// Retired links are not followed. Each card is visited once, so the walk ends on any ledger.
+fn prerequisite_loop(
+    conn: &Connection,
+    card_id: i64,
+    needs: i64,
+) -> rusqlite::Result<Option<Vec<i64>>> {
+    let mut stmt = conn.prepare(
+        "SELECT from_card FROM card_link \
+         WHERE kind = 'blocks' AND state = 'active' AND to_card = ?1 ORDER BY from_card",
+    )?;
+    let mut parent: std::collections::HashMap<i64, i64> = std::collections::HashMap::new();
+    let mut queue = std::collections::VecDeque::from([needs]);
+    parent.insert(needs, card_id);
+    while let Some(card) = queue.pop_front() {
+        let next: Vec<i64> = stmt
+            .query_map([card], |r| r.get(0))?
+            .collect::<rusqlite::Result<_>>()?;
+        for prerequisite in next {
+            if prerequisite == card_id {
+                // `card` needs `card_id`. Walk back from `card` to `needs` through the cards that
+                // discovered each one, then put `card_id` at both ends.
+                let mut middle = vec![card];
+                while *middle.last().expect("one card") != needs {
+                    middle.push(parent[middle.last().expect("one card")]);
+                }
+                middle.reverse();
+                let mut path = vec![card_id];
+                path.extend(middle);
+                path.push(card_id);
+                return Ok(Some(path));
+            }
+            if let std::collections::hash_map::Entry::Vacant(slot) = parent.entry(prerequisite) {
+                slot.insert(card);
+                queue.push_back(prerequisite);
+            }
+        }
+    }
+    Ok(None)
+}
+
 /// Records that `card_id` needs `needs` done first: one active `blocks` link from `needs` to
 /// `card_id` and one `card.prereq` event. `Ok(false)` when the link is already there (nothing
-/// is written). A card that needs itself, or one that `needs` already needs, is refused.
+/// is written). A card that needs itself, or one that `needs` needs back through any number of
+/// cards, is refused and the answer names the loop.
 pub fn add_prerequisite(
     w: &mut WriteLedger,
     card_id: i64,
@@ -1190,8 +1284,12 @@ pub fn add_prerequisite(
         if existing.as_deref() == Some("active") {
             return Ok(Ok(false));
         }
-        if link(card_id, needs)?.as_deref() == Some("active") {
-            return Ok(Err(PrereqError::Cycle { card_id, needs }));
+        if let Some(path) = prerequisite_loop(tx, card_id, needs)? {
+            return Ok(Err(PrereqError::Cycle {
+                card_id,
+                needs,
+                path,
+            }));
         }
         if existing.is_some() {
             tx.execute(
@@ -1212,6 +1310,54 @@ pub fn add_prerequisite(
             session.unwrap_or("user"),
             card_id,
             "card.prereq",
+            &json!({"needs": needs, "by": by}),
+        )?;
+        Ok(Ok(true))
+    })
+    .map_err(PrereqError::from)?
+}
+
+/// Takes back that `card_id` needs `needs`: the active `blocks` link from `needs` to `card_id`
+/// becomes `retired` (the row stays, the schema forbids deleting it) and one
+/// `card.prereq_remove` event records `needs` and the by. `Ok(false)` when there is no active
+/// link (nothing is written). A later [`add_prerequisite`] for the same pair makes the same row
+/// active again after the loop check. SPEC-20261127-card-prereq-remove REQ-3 to REQ-6.
+pub fn retire_prerequisite(
+    w: &mut WriteLedger,
+    card_id: i64,
+    needs: i64,
+    by: &str,
+    session: Option<&str>,
+) -> Result<bool, PrereqError> {
+    one_line("the by", by, MAX_AUTHOR_CHARS).map_err(PrereqError::InvalidInput)?;
+    if let Some(session) = session {
+        one_line("the session id", session, MAX_AUTHOR_CHARS).map_err(PrereqError::InvalidInput)?;
+    }
+    w.with_write_tx(|tx, now| {
+        for id in [card_id, needs] {
+            let exists: bool = tx.query_row(
+                "SELECT count(*) > 0 FROM card WHERE card_id = ?1",
+                [id],
+                |r| r.get(0),
+            )?;
+            if !exists {
+                return Ok(Err(PrereqError::CardNotFound(id)));
+            }
+        }
+        let changed = tx.execute(
+            "UPDATE card_link SET state = 'retired', updated_at = ?3 \
+             WHERE kind = 'blocks' AND from_card = ?1 AND to_card = ?2 AND state = 'active'",
+            params![needs, card_id, now],
+        )?;
+        if changed == 0 {
+            return Ok(Ok(false));
+        }
+        reservation::add_event(
+            tx,
+            now,
+            session.unwrap_or("user"),
+            card_id,
+            "card.prereq_remove",
             &json!({"needs": needs, "by": by}),
         )?;
         Ok(Ok(true))

@@ -118,3 +118,5 @@ HOLD 와 선행 조건이 자유 글에만 있으면 레인은 카드를 잡고 
 - AC-5b: met — `hold_candidates_lists_free_text_holds_read_only_until_a_person_moves_one` 통과(HOME 스냅샷이 같고, 사람이 `card hold` 를 부른 뒤에만 목록과 `ready` 에서 빠져요).
 - AC-6: met — 위 표(뮤턴트 여섯, 모두 복원).
 - 틈(후속으로 남겨요): 뮤턴트는 S1 코드(원장·`next`·`take`)에만 돌렸고 `hold_candidates.rs` 의 낱말 일치와 명령 포장 함수(`hold`·`unhold`·`prereq`)는 뮤턴트를 돌리지 않았어요(AC-6 은 여섯 이하). 세 카드 이상의 선행 고리, 틈 (3). `card scope` 사건의 `--by` 에 `leader` 를 적었어요(리더 노트 8280 의 위임이고, 사건은 이 세션 id 도 남겨요).
+- 뒤의 SPEC(`SPEC-20261127-card-prereq-remove`) 이 바꾼 것 1: REQ-5 는 이제 두 카드 짝만이 아니라 어떤 길이의 고리도 거절하고 고리의 카드를 차례로 말해요. 앞의 틈 (3)(세 카드 이상의 선행 고리)은 이것으로 닫혀요. `card prereq --remove` 로 링크를 지울 수 있어요.
+- 뒤의 SPEC 이 바꾼 것 2: `card hold-candidates`(REQ-11)는 코드대로 `draft`·`ready`·`active`·`review` 의 열린 카드를 나열해요. 이 문서의 옛 문구(끝나지 않은 카드)는 코드와 어긋났고 코드가 맞아요.
