@@ -892,6 +892,46 @@ pub fn show(project: &Path, name: &str, now: i64) -> Result<Value, String> {
     })
 }
 
+/// The whole registry of this clone, read without writing anything (C-314): every entry that could
+/// be read, by name, with `held` (its lease runs) or `ended`, its mode and host session id as
+/// `show` gives them, and whether a launcher holds the name's `.live` lock; the names whose entry or
+/// lock could not be read come under `unreadable`. The `instance` is never printed: it is the key
+/// that releases a name, and only `show` hands it out, for one name. No folder is made and no lock
+/// is taken; a clone with no registry lists no entry.
+pub fn list(project: &Path, now: i64) -> Result<Value, String> {
+    let scan = scan_registry(project)?.unwrap_or_default();
+    let entries: Vec<Value> = scan
+        .entries
+        .iter()
+        .map(|e| {
+            let mut row = json!({
+                "name": e.name,
+                "status": if e.lease_until > now { "held" } else { "ended" },
+                "lease_until": crate::forge::policy::format_utc(e.lease_until),
+                "live_lock": scan.locked.contains(&e.name),
+            });
+            if let Some(m) = accepted_mode(e.mode.as_deref()) {
+                row["mode"] = json!(m);
+            }
+            if let Some(s) = e
+                .session
+                .as_deref()
+                .filter(|s| crate::session_current::well_formed(s))
+            {
+                row["session"] = json!(s);
+            }
+            row
+        })
+        .collect();
+    Ok(json!({
+        "action": "session.list",
+        "count": entries.len(),
+        "entries": entries,
+        "unreadable": scan.unreadable,
+        "writes": false,
+    }))
+}
+
 /// SPEC-20261125-session-names-project-prefix REQ-7, REQ-8: whether the session name `name` is a
 /// lane of this clone's registry, answered before the leader sends it a message. `lane` only when
 /// the name's `.live` lock is held (`basis` `live_lock`) or its registry entry has a running lease
