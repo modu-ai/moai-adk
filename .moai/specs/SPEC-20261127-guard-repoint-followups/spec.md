@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261127-guard-repoint-followups
 title: "guard-repoint 후속: card land 가 낡은 기록을 관찰해 알리고, next-flow 가 repoint 를 알려 주고, update 가 링크 워크트리에서도 훅을 보류"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-27
+approval:
+  by: user
+  at: 2026-11-27
+  basis: "사용자가 리더 세션의 질문 도구에서 직접 고른 답(결정 노트 10644, 승인 노트 10647): \"승인, 거절은 관찰부터 (Recommended)\" (D-1 은 b, D-2~D-7 은 a); 이 레인이 기록 직전에 커밋 03411f456a 의 파일에서 moai spec show 로 approval_digest 를 다시 읽어 노트 10647 의 값과 같음을 확인했어요(선택은 리더가 옮긴 글이고 이 레인이 직접 보지는 않았어요)"
+  digest: "sha256:904d69c6a26213187d7859053f4113b495bb02816fd034cd0bfba1ca9ca4f4ff"
 ---
 
 # guard-repoint 후속: card land 가 낡은 기록을 관찰해 알리고, next-flow 가 repoint 를 알려 주고, update 가 링크 워크트리에서도 훅을 보류
