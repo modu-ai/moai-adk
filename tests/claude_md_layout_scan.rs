@@ -388,6 +388,8 @@ const EXCEPTIONS: &[Row] = &[
     row("src/gate.rs", r#"name != "AGENTS.md""#, GUARD),
     row("src/go_residue.rs", r#""AGENTS.md","#, GUARD),
     row("src/go_residue.rs", r#""AGENTS.local.md","#, GUARD),
+    row("src/go_residue/readers.rs", r#""AGENTS.md","#, READ),
+    row("src/go_residue/readers.rs", r#""AGENTS.local.md","#, READ),
     row("src/go_state.rs", r#"const ROOT_FILES: [&str; 3] = ["CLAUDE.md", "AGENTS.md", "AGENTS.local.md"];"#, BACKUP),
     row("src/go_state.rs", r#""AGENTS.md" => "CLAUDE.md","#, BACKUP),
     row("src/go_state.rs", r#""AGENTS.local.md" => "CLAUDE.local.md","#, BACKUP),
