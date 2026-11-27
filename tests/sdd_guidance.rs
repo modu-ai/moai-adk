@@ -641,9 +641,11 @@ fn lines_with<'a>(text: &'a str, needles: &[&str]) -> Vec<&'a str> {
 fn a_new_spec_names_the_one_shall_and_failure_path_rules_in_its_requirements() {
     let home = tempfile::tempdir().unwrap();
     let project = home.path().join("proj");
-    fs::create_dir_all(project.join(".moai")).unwrap();
+    // The state folder of the fresh project comes from the resolver, as the command finds it.
+    let state = moai_cli::state_root::path(&project, "");
+    fs::create_dir_all(&state).unwrap();
     fs::write(
-        project.join(".moai/moai.json"),
+        state.join("moai.json"),
         moai_cli::state_root::marker_bytes("test", &[]),
     )
     .unwrap();
@@ -673,12 +675,10 @@ fn a_new_spec_names_the_one_shall_and_failure_path_rules_in_its_requirements() {
             "{slug}: {}",
             String::from_utf8_lossy(&out.stdout)
         );
-        let written = fs::read_to_string(
-            project
-                .join(".moai/specs")
-                .join(format!("SPEC-20261127-{slug}"))
-                .join("spec.md"),
-        )
+        let written = fs::read_to_string(moai_cli::state_root::path(
+            &project,
+            &format!("specs/SPEC-20261127-{slug}/spec.md"),
+        ))
         .unwrap();
         let from = written.find("## Requirements").expect("Requirements");
         let section = &written[from..];
