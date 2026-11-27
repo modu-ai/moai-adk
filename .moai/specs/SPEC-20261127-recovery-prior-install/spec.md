@@ -94,3 +94,20 @@ backup-then-replace(`update-apply --confirm-backup-replace`)는 원래 폴더를
 | D-3 | 다른 설치의 제안이 막히면(사용자 편집, 백업 사라짐, 매니페스트 불일치) 행을 보이지 않아요. | 다른 설치의 막힌 백업이 이 설치의 `recovery-apply` 를 `partial` 로 만들면 안 돼요. 사용자가 오래된 백업을 지운 HOME 에서 모든 업그레이드가 `none` 행을 만들게 돼요. | `none` 행을 보이도록 REQ-1 의 "when the action is `restore_backup`" 를 빼요. |
 | D-4 | 새 필드는 `RestoreBackup.from_install` 하나이고 `schema_version` 은 1 그대로예요. | 값이 있을 때만 쓰는 덧붙임이고 읽는 곳은 `recovery.rs` 뿐이에요(`deny_unknown_fields` 라서 옛 바이너리가 만든 계획을 새 쪽이 읽는 데는 문제가 없어요). | `schema_version` 을 2 로 올려요. |
 | D-5 | 후보는 `installations/` 의 폴더를 읽어 고르고 `update.rs` 의 레이아웃 선택(`resolve_host_receipt`)은 쓰지 않아요. | 그 함수는 가장 새 영수증 하나만 돌려줘서 (b) 에서 B 자신이 이겨요. 이름을 바꾸거나 pub(crate) 를 더하려면 `src/update.rs`(tier 2 바닥)를 건드려야 해요. | `update.rs` 에 후보 목록을 돌려주는 함수를 더하고 tier 2 감사를 받아요. |
+
+## Result
+
+- AC-1: met
+- AC-2: met
+- AC-3: met
+- AC-4: met
+- AC-5: met
+- AC-6: met
+- AC-7: met
+- AC-8: met
+- AC-9: met
+
+근거와 남은 한계는 이 SPEC 을 맡은 카드의 READY 노트에 있어요. 두 가지만 여기에 남겨요.
+
+- 한 번의 업그레이드(A 에서 B)만 REQ-2 대로 덮어요. B 가 두 번째로 파일을 쓰는 적용을 하면 영수증이 마지막 적용의 쓰기만 담아서 제안이 사라져요(특성화 테스트 `prior_install_offer_ends_after_a_second_writing_apply`, 쓰지 않는 적용은 제안이 남아요).
+- `restore_backup_host` 의 적용 직전 재분류 비교는 `recovery_apply` 가 앞에서 새 계획과 같은지 먼저 보기 때문에 CLI 로는 닿지 않는 경합 구간만 지켜요. 그 가드의 뮤턴트는 `exit 0` 이었어요.
