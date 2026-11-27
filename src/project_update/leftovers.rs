@@ -447,14 +447,28 @@ fn folder_item(root: &Path, kind: Kind, name: &str) -> Item {
     }
 }
 
-/// The `<state>.rust-<name>` real folders directly under the project, sorted.
+/// The longest suffix after the set-aside prefix that is listed.
+const MAX_ASIDE_SUFFIX: usize = 64;
+
+/// Whether the suffix of a set-aside folder name is plain text: ASCII letters, digits, `-`, `_`
+/// and `.` only, so a name that carries a control or direction character, a space or a long text
+/// is never printed as a path, an argv entry or a sentence.
+fn plain_suffix(suffix: &str) -> bool {
+    !suffix.is_empty()
+        && suffix.len() <= MAX_ASIDE_SUFFIX
+        && suffix
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+}
+
+/// The `<state>.rust-<name>` real folders directly under the project with a plain name, sorted.
 fn asides(root: &Path) -> Vec<String> {
     let prefix = aside_prefix();
     let mut names: Vec<String> = fs::read_dir(root)
         .map(|rd| {
             rd.flatten()
                 .filter_map(|e| e.file_name().into_string().ok())
-                .filter(|n| n.len() > prefix.len() && n.starts_with(&prefix))
+                .filter(|n| n.strip_prefix(&prefix).is_some_and(plain_suffix))
                 .collect()
         })
         .unwrap_or_default();
@@ -698,6 +712,30 @@ mod tests {
 
     fn only(items: &[Item], path: &str) -> Item {
         items.iter().find(|i| i.path == path).cloned().unwrap()
+    }
+
+    /// A folder name is the project's text, not ours: only a plain name (ASCII letters, digits,
+    /// `-`, `_`, `.`, a bounded length) after the prefix is listed, so no control or direction
+    /// character and no long text reaches a printed path, an argv or a sentence.
+    #[test]
+    fn a_set_aside_folder_is_listed_only_under_a_plain_name() {
+        let tmp = project();
+        let prefix = aside_prefix();
+        let plain = format!("{prefix}{STAMP}");
+        let notes = format!("{prefix}notes");
+        for name in [
+            plain.clone(),
+            notes.clone(),
+            format!("{prefix}x\ny"),
+            format!("{prefix}\u{202e}z"),
+            format!("{prefix}a b"),
+            format!("{prefix}{}", "a".repeat(MAX_ASIDE_SUFFIX + 1)),
+        ] {
+            fs::create_dir(tmp.path().join(name)).unwrap();
+        }
+        let mut want = vec![plain, notes];
+        want.sort();
+        assert_eq!(asides(tmp.path()), want);
     }
 
     /// The listing digest covers sorted names, kinds and file sizes of the first level only: it is
