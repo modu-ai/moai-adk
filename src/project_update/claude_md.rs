@@ -1914,8 +1914,7 @@ fn take_ignore_back(root: &Path, receipt: &mut Receipt, done: &mut Undone) {
         Standing::File(found) => {
             let original = receipt.moves.iter().find(|m| m.path == CLAUDE_LOCAL_MD);
             let written = receipt.writes.iter().find(|w| w.path == CLAUDE_LOCAL_MD);
-            original.is_some_and(|m| m.sha256 == found)
-                && !written.is_some_and(|w| w.sha256 == found)
+            original.is_some_and(|m| m.sha256 == found) && written.is_none_or(|w| w.sha256 != found)
         }
         Standing::Linked | Standing::Other => false,
     };
