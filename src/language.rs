@@ -91,8 +91,8 @@ pub const ITEMS: &[Item] = &[
     },
     Item {
         id: "instruction_files",
-        label_en: "Instruction files (AGENTS.md, rules)",
-        label_ko: "지침 파일(AGENTS.md, 규칙)",
+        label_en: "Instruction files (CLAUDE.md, CLAUDE.local.md, rules)",
+        label_ko: "지침 파일(CLAUDE.md, CLAUDE.local.md, 규칙)",
         default: DefaultSource::English,
         asked: true,
     },

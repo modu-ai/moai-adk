@@ -3,9 +3,9 @@
 
 use std::path::PathBuf;
 
-/// Check that Claude Code reads AGENTS.md
+/// Check that Claude Code reads your own AGENTS.md
 ///
-/// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
+/// Read-only Claude Code check: whether a session started in PROJECT reads your own AGENTS.md.
 #[derive(clap::Args)]
 pub struct Args {
     project: PathBuf,

@@ -1,8 +1,9 @@
-//! SPEC-20261121-shared-build-root: worktrees build under the shared build root and a
-//! worktree holding its own `target/` is reported. The plan names the build folder, the
-//! apply creates it, and the gc plan counts in-worktree targets. Every test builds its own
-//! git repository in a temporary directory and runs the real binary; the developer's
-//! repository, its common dir and the real HOME are never touched.
+//! SPEC-20261122-worktree-place REQ-5: a new worktree gets no separate build home. The plan
+//! names no build folder, the apply creates nothing for one under HOME, and a link or a file
+//! already at an earlier build path is left as it is. The gc plan counts worktrees holding
+//! their own `target/` (SPEC-20261121-shared-build-root). Every test builds its own git
+//! repository in a temporary directory and runs the real binary; the developer's repository,
+//! its common dir and the real HOME are never touched.
 
 #![cfg(unix)]
 
@@ -11,7 +12,6 @@ use common::CleanEnv;
 use serde_json::{json, Value};
 use std::{
     fs,
-    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     process::{Command, Output},
 };
@@ -178,25 +178,21 @@ fn apply(f: &Fx, digest: &str) -> Value {
     envelope(&out)
 }
 
-/// REQ-1: the plan names the worktree's build folder under the shared build root, and
-/// planning creates nothing.
+/// The apply created the worktree and says nothing about a build folder.
+fn assert_created_without_a_build_folder(env: &Value) {
+    assert_eq!(env["result"]["decision"], json!("created"), "{env}");
+    assert_eq!(env["result"]["build_folder"], Value::Null, "{env}");
+    assert!(env["result"].get("build_folder_error").is_none(), "{env}");
+}
+
+/// REQ-5: the plan names no build folder, and planning creates nothing.
 #[test]
-fn worktree_plan_names_the_shared_build_folder() {
+fn worktree_plan_names_no_build_folder() {
     let f = fixture();
     let r = plan(&f);
     let path = PathBuf::from(r["path"].as_str().unwrap());
-    let name = path.file_name().unwrap().to_string_lossy().into_owned();
     assert_eq!(r["writes"], json!(false));
-    assert_eq!(
-        r["build_folder"],
-        json!(f
-            .home
-            .join(".moai/build")
-            .join(&name)
-            .to_string_lossy()
-            .as_ref()),
-        "the plan names <HOME>/.moai/build/<worktree folder name>"
-    );
+    assert_eq!(r["build_folder"], Value::Null, "{r}");
     assert!(!path.exists(), "planning created nothing");
     assert!(
         !f.home.join(".moai/build").exists(),
@@ -204,29 +200,28 @@ fn worktree_plan_names_the_shared_build_folder() {
     );
 }
 
-/// REQ-2: the apply creates the build folder with mode 0700.
+/// REQ-5: the apply creates no build folder, and nothing else, under HOME.
 #[test]
-fn worktree_apply_creates_the_build_folder_0700() {
+fn worktree_apply_creates_no_build_folder_under_home() {
     let f = fixture();
     let p = plan(&f);
     let digest = p["plan_digest"].as_str().unwrap().to_string();
     let env = apply(&f, &digest);
-    assert_eq!(env["result"]["decision"], json!("created"), "{env}");
-    let folder = PathBuf::from(env["result"]["build_folder"].as_str().unwrap());
-    let meta = fs::metadata(&folder).unwrap();
-    assert!(meta.is_dir(), "{} is a directory", folder.display());
-    #[cfg(unix)]
-    assert_eq!(
-        meta.permissions().mode() & 0o777,
-        0o700,
-        "the build folder is private to the owner"
+    assert_created_without_a_build_folder(&env);
+    let under_home: Vec<PathBuf> = fs::read_dir(&f.home)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+    assert!(
+        under_home.is_empty(),
+        "the apply wrote under HOME: {under_home:?}"
     );
 }
 
-/// REQ-2: a link at the build folder's path is never followed; the apply stays created and
-/// reports the refusal in the answer.
+/// REQ-5: a link already at an earlier build path is left alone: the apply does not follow it,
+/// does not replace it and reports nothing about it.
 #[test]
-fn worktree_apply_reports_a_link_at_the_build_folder() {
+fn worktree_apply_leaves_a_link_at_the_old_build_folder_alone() {
     let f = fixture();
     let elsewhere = f.home.parent().unwrap().join("elsewhere");
     fs::create_dir_all(f.home.join(".moai/build")).unwrap();
@@ -237,19 +232,20 @@ fn worktree_apply_reports_a_link_at_the_build_folder() {
     let p = plan(&f);
     let digest = p["plan_digest"].as_str().unwrap().to_string();
     let env = apply(&f, &digest);
-    assert_eq!(env["result"]["decision"], json!("created"), "{env}");
-    let err = env["result"]["build_folder_error"]
-        .as_str()
-        .unwrap_or_else(|| panic!("the link is reported: {env}"));
-    assert!(err.contains("is a link; it is not followed"), "{err}");
     assert!(
         fs::read_dir(&elsewhere).unwrap().count() == 0,
         "the link's target stayed empty"
     );
+    assert_eq!(
+        fs::read_link(f.home.join(".moai/build/primary-7-06-C")).unwrap(),
+        elsewhere,
+        "the link stays a link to the same folder"
+    );
+    assert_created_without_a_build_folder(&env);
 }
 
-/// REQ-1: without a known HOME the plan answers with an explicit --path and leaves the
-/// build folder field null (the apply-side slot stays unguarded too).
+/// REQ-5, REQ-2: without a known HOME the plan answers with an explicit --path, leaves the
+/// build folder field null and names the path as outside the project place.
 #[test]
 fn worktree_plan_without_home_leaves_the_field_null() {
     let f = fixture();
@@ -280,12 +276,17 @@ fn worktree_plan_without_home_leaves_the_field_null() {
         "no HOME means no named build folder: {env}"
     );
     assert!(!explicit.exists(), "planning created nothing");
+    assert_eq!(
+        env["result"]["would_refuse"]["code"],
+        json!("path_outside_place"),
+        "{env}"
+    );
 }
 
-/// REQ-2: a regular file occupying the <HOME>/.moai/build slot is reported; the apply stays
-/// created.
+/// REQ-5: a regular file occupying the <HOME>/.moai/build slot keeps its bytes and is not
+/// reported.
 #[test]
-fn worktree_apply_reports_a_file_at_the_home_moai_slot() {
+fn worktree_apply_leaves_a_file_at_the_home_moai_slot_alone() {
     let f = fixture();
     fs::create_dir_all(f.home.join(".moai")).unwrap();
     fs::write(f.home.join(".moai/build"), "not a folder\n").unwrap();
@@ -293,17 +294,17 @@ fn worktree_apply_reports_a_file_at_the_home_moai_slot() {
     let p = plan(&f);
     let digest = p["plan_digest"].as_str().unwrap().to_string();
     let env = apply(&f, &digest);
-    assert_eq!(env["result"]["decision"], json!("created"), "{env}");
-    let err = env["result"]["build_folder_error"]
-        .as_str()
-        .unwrap_or_else(|| panic!("the occupied slot is reported: {env}"));
-    assert!(err.contains("is not a folder"), "{err}");
+    assert_eq!(
+        fs::read(f.home.join(".moai/build")).unwrap(),
+        b"not a folder\n".to_vec(),
+        "the occupying file keeps its bytes"
+    );
+    assert_created_without_a_build_folder(&env);
 }
 
-/// REQ-2: a regular file occupying the build folder's own slot is reported; the apply
-/// stays created and the file is never touched.
+/// REQ-5: a regular file at an earlier build folder path keeps its bytes and is not reported.
 #[test]
-fn worktree_apply_reports_a_file_at_the_leaf_slot() {
+fn worktree_apply_leaves_a_file_at_the_leaf_slot_alone() {
     let f = fixture();
     fs::create_dir_all(f.home.join(".moai/build")).unwrap();
     let leaf = f.home.join(".moai/build/primary-7-06-C");
@@ -312,16 +313,12 @@ fn worktree_apply_reports_a_file_at_the_leaf_slot() {
     let p = plan(&f);
     let digest = p["plan_digest"].as_str().unwrap().to_string();
     let env = apply(&f, &digest);
-    assert_eq!(env["result"]["decision"], json!("created"), "{env}");
-    let err = env["result"]["build_folder_error"]
-        .as_str()
-        .unwrap_or_else(|| panic!("the occupied leaf is reported: {env}"));
-    assert!(err.contains("is not a folder"), "{err}");
     assert_eq!(
         fs::read(&leaf).unwrap(),
         b"not a folder\n".to_vec(),
         "the occupying file keeps its bytes"
     );
+    assert_created_without_a_build_folder(&env);
 }
 
 /// REQ-3 + REQ-4: the gc plan counts examined worktrees holding their own `target/`, with

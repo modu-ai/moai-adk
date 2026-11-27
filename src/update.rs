@@ -701,7 +701,9 @@ pub struct HostReceipt {
     pub status: String,
     pub started_at: String,
     pub finished_at: Option<String>,
-    /// This apply's file actions (before/after per file).
+    /// This apply's file actions (before/after per file). When a committed ordinary apply keeps
+    /// a `backup`, its writes come first, in write order, followed by one `unchanged` entry at
+    /// the owned digest for every other owned path (SPEC-20261126-keep-restore-backup REQ-2).
     pub entries: Vec<HostReceiptEntry>,
     /// Ownership manifest: every file this host owns and its sha at this receipt's
     /// commit point. The plan's baseline comes from here (REQ-04B-01). A pending
@@ -714,7 +716,9 @@ pub struct HostReceipt {
     /// them. serde-default keeps pre-#2268 receipts readable.
     #[serde(default)]
     pub top_skills_existed_before: bool,
-    /// #2483: set by a backup-then-replace apply; recovery restores from it.
+    /// #2483: set by a backup-then-replace apply; recovery restores from it. A later ordinary
+    /// apply of the same installation that commits keeps it from that installation's committed
+    /// receipt; a failed one does not (SPEC-20261126-keep-restore-backup REQ-1, REQ-6, REQ-7).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub backup: Option<ReplaceBackup>,
 }
@@ -2073,7 +2077,11 @@ fn user_layer_plan_in(
     let keys = crate::update_keys::plan(home)?;
     let home_layer = crate::update_home::plan(home)?;
     let switch_layer = switch::plan(home)?;
-    let git_hooks_layer = crate::git_hooks::update::plan(home, &cwd)?;
+    let git_hooks_layer =
+        crate::git_hooks::update::plan_with_guard(home, &cwd, guard_answer(&cwd))?;
+    // SPEC-20261126-guard-record-repoint REQ-9: one notice while the guard record is stale,
+    // read-only and built after every digest, so it changes no digest and no token.
+    notices.extend(repoint_notice(&cwd));
     // SPEC-20261122-html-report-install: planned on its own, whatever the moai skill copy says.
     let extra_skills = extra_skill::plan(home, package, allow_older)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
@@ -2173,6 +2181,38 @@ fn claude_folders_notice(home: &Path) -> Option<serde_json::Value> {
             "rules": shown(&default),
         },
         "warning": warning,
+    }))
+}
+
+/// The guard answer the git-hook plan and both apply sites of `moai update` share, so the preview's
+/// token is the one the apply accepts (SPEC-20261126-guard-record-repoint REQ-7, REQ-8, D-2): the
+/// guard hook is offered when the guard can act in `cwd` and withheld while the record is stale.
+fn guard_answer(cwd: &Path) -> bool {
+    crate::card::guard::can_act(cwd) && crate::card::guard::repoint::stale(cwd).is_none()
+}
+
+/// The confirmed git-hook apply of `moai update`, given the preview's guard answer, followed by
+/// the guard record when it is absent: the answer carries `guard: {record, ..}` the way
+/// `git-hooks-apply` does (D-9). An existing record, stale or not, is never rewritten.
+fn apply_git_hooks(cwd: &Path, token: &str, now: &str) -> Result<serde_json::Value> {
+    let mut answer = crate::git_hooks::update::apply_guarded(cwd, token, now, guard_answer(cwd))?;
+    answer["guard"] = crate::card::guard::seed_record(cwd);
+    Ok(answer)
+}
+
+/// The notice of a stale guard record in the preview (REQ-9, REQ-10): it names the record, the
+/// profile branch and the command that re-points it. Text only, no part of any digest; `None`
+/// when the record is current or the state cannot be read.
+fn repoint_notice(cwd: &Path) -> Option<serde_json::Value> {
+    let stale = crate::card::guard::repoint::stale(cwd)?;
+    Some(json!({
+        "kind": "guard_record_stale",
+        "part": "guard",
+        "host": "git",
+        "reason": format!(
+            "the guard record names {} but the profile's integration branch is {}: the guard hook is withheld while the record names another branch than the profile. Preview the fix with: moai card guard-repoint",
+            stale.record, stale.profile_branch
+        ),
     }))
 }
 
@@ -2615,7 +2655,7 @@ fn update_command_core(
             if let Some(t) = git_hooks_token {
                 let cwd = std::env::current_dir()
                     .map_err(|_| "current directory unavailable".to_string())?;
-                let r = crate::git_hooks::update::apply(&cwd, t, &crate::audit::utc_now())?;
+                let r = apply_git_hooks(&cwd, t, &crate::audit::utc_now())?;
                 out["revert"]["git_hooks"] = r["revert"].clone();
                 out["revert_order"] = json!(revert_order(&out["revert"]));
                 out["git_hooks_result"] = r;
@@ -2761,7 +2801,7 @@ fn update_command_core(
         part((|| {
             let cwd =
                 std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
-            crate::git_hooks::update::apply(&cwd, t, &crate::audit::utc_now())
+            apply_git_hooks(&cwd, t, &crate::audit::utc_now())
         })())
     });
     let revert = |op: &str, r: &serde_json::Value| {
@@ -3364,6 +3404,17 @@ fn apply_update_in(
         // read, never written; the new receipt goes under this installation's id).
         let previous = resolve_host_receipt(&canonical_home, &install_id, host)?.receipt;
         let pre_owned = owned_map(previous.as_ref());
+        // SPEC-20261126-keep-restore-backup REQ-5, REQ-6: only this installation's own committed
+        // receipt hands its backup on, never `previous`, which may be another installation's. It
+        // is read here because the pending save below overwrites it.
+        let kept_backup = load_host_receipt(&host_receipt_path(
+            &canonical_home,
+            &install_id,
+            host,
+            false,
+        )?)?
+        .filter(|r| r.status == "committed")
+        .and_then(|r| r.backup);
         let top_skills_existed = fs::symlink_metadata(skills_parent(home, host)?).is_ok();
         let mut receipt = HostReceipt {
             schema_version: crate::install::RECEIPT_SCHEMA_VERSION,
@@ -3513,6 +3564,26 @@ fn apply_update_in(
             if now != m.current_sha256 {
                 return Err("a file changed during apply; run recovery-plan".into());
             }
+        }
+        // SPEC-20261126-keep-restore-backup REQ-1, REQ-2: the restore offer stays. Recovery
+        // restores only when every file under the root has an entry with its bytes, so each owned
+        // path this apply did not write gets one after the writes. Only the commit save carries
+        // this; a failed apply keeps the pending receipt without it (REQ-7).
+        if let Some(backup) = kept_backup {
+            for (path, sha) in &owned_now {
+                if writes.iter().any(|w| &w.path == path) {
+                    continue;
+                }
+                receipt.entries.push(HostReceiptEntry {
+                    path: path.clone(),
+                    action: "unchanged".into(),
+                    before_sha256: Some(sha.clone()),
+                    after_sha256: Some(sha.clone()),
+                    published: false,
+                    error: None,
+                });
+            }
+            receipt.backup = Some(backup);
         }
         receipt.owned = owned_vec(host, &owned_now);
         receipt.status = "committed".into();

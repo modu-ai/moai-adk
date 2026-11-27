@@ -68,18 +68,28 @@ pub struct AgentsRequest {
 /// and skills alone is not held up by a hand-edited managed file
 /// (SPEC-20261120-project-harness-research, revision 2). Its name belongs to the request file,
 /// never to a question or an option shown to the user.
+/// `keep-harness` leaves the project agent and skill files a generation manifest owns but its
+/// request does not name as they are, and this engine plans its own files as usual
+/// (SPEC-20261127-update-old-manifest-way). Only the generation planner reads it; like
+/// `harness-only`, its name belongs to the request file, never to a question or an option shown
+/// to the user.
 /// `personal-file` creates `CLAUDE.local.md` once. The earlier picks `import` and `claude-import`
 /// are gone: they are refused like any unknown id, and no code reads them by name.
-pub const PICKS: [&str; 5] = [
+pub const PICKS: [&str; 6] = [
     "append-managed",
     "skip-conflicts",
     "move",
     "personal-file",
     HARNESS_ONLY,
+    KEEP_HARNESS,
 ];
 
 /// The pick that plans every file of this engine as `skip` (see [`PICKS`]).
 pub(crate) const HARNESS_ONLY: &str = "harness-only";
+
+/// The pick that keeps the owned project agent and skill files a request does not name (see
+/// [`PICKS`]).
+pub(crate) const KEEP_HARNESS: &str = "keep-harness";
 
 fn picked(r: &AgentsRequest, id: &str) -> bool {
     r.picks.iter().any(|p| p == id)

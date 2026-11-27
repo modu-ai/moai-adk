@@ -56,8 +56,8 @@ Commands
     key-import-plan        Preview importing an old key file
     key-import-apply       Import a previewed old key file
   Diagnose
-    claude-doctor          Check that Claude Code reads
-                           AGENTS.md
+    claude-doctor          Check that Claude Code reads your
+                           own AGENTS.md
     install-inspect        Show the installed MoAI binaries
     identity               Show where a path sits in its
                            clone
