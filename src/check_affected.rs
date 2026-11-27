@@ -4015,6 +4015,62 @@ mod tests {
         assert_eq!(step.report, Some(Vec::new()));
     }
 
+    /// C-431 (a), the shape of C-460's first run (its version of `tests/update_linked_config_files.rs`
+    /// gained a `copy_tree` helper with `read_dir(` and the first `CARGO_MANIFEST_DIR` of the file):
+    /// an existing test file that begins to walk the tree is named, with the line to add.
+    #[test]
+    fn a_changed_test_file_that_begins_to_walk_the_tree_is_named_by_the_scan() {
+        let body = "fn copy_tree() { let _ = std::fs::read_dir(\".\"); }";
+        let tests = vec![
+            file("zz_walk", &rooted(body)),
+            file("repo_scans_table", EXEMPT_TEXT),
+        ];
+        let mut facts = facts_for(&["tests/zz_walk.rs"], &[], tests, &[]);
+        facts.scan_list = Some(SCAN_LIST.to_string());
+        facts.tracked = Some(tracked());
+        let lines = table_step(&facts)
+            .expect("a changed walker plans the step")
+            .report
+            .expect("an in-process report");
+        assert!(
+            lines
+                .iter()
+                .any(|l| l.starts_with("tests/zz_walk.rs") && l.contains("walks the tree")),
+            "{lines:?}"
+        );
+    }
+
+    /// C-431 (a), no false positive: every `tests/**/*.rs` file of this checkout taken as changed,
+    /// modules of the moved areas included, plans no miss, so a lane that edits any of them passes
+    /// the cheap step. The two older repository tests read only the top-level files.
+    #[test]
+    fn the_repository_test_files_all_taken_as_changed_plan_no_miss() {
+        let root = Path::new(MANIFEST);
+        let mut facts = read_facts(root, "HEAD..HEAD").expect("read the facts of this checkout");
+        let listed = git(root, &["ls-files", "-z"]).expect("git ls-files");
+        let tracked: Vec<String> = listed
+            .split('\0')
+            .filter(|p| !p.is_empty())
+            .map(String::from)
+            .collect();
+        facts.present = tracked
+            .iter()
+            .filter(|p| p.starts_with("tests/") && p.ends_with(".rs"))
+            .cloned()
+            .collect();
+        facts.tracked = Some(tracked);
+        let judged = judged_test_paths(&facts.present, &facts.moved);
+        assert!(judged.len() > 100, "the scan found {} files", judged.len());
+        assert!(
+            judged.iter().any(|p| p.matches('/').count() == 2),
+            "no module of a moved area was judged"
+        );
+        let lines = table_step(&facts)
+            .and_then(|s| s.report)
+            .unwrap_or_default();
+        assert!(lines.is_empty(), "{}", lines.join("\n"));
+    }
+
     /// C-431 (a): the files the step judges are the changed top-level test files and the modules of
     /// a moved area, and nothing else: not the area's `main.rs`, not a deeper folder, not another
     /// folder, not a file that is no Rust source.
