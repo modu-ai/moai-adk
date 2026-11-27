@@ -261,6 +261,33 @@ fn a_question_row_with_a_pair_of_alternatives_anywhere_is_never_working_or_idle(
     }
 }
 
+/// The one word pair of REQ-6 (user decision, ledger note 10779): a yes word and a no word joined
+/// by `or`, anywhere in a question row, in any case and either order. A question row such as `…
+/// now yes or no please confirm it` has the same shape as `commit or push?`, so only this pair is
+/// told apart, by its words.
+#[test]
+fn a_yes_no_pair_joined_by_or_in_a_question_row_is_never_working_or_idle() {
+    for row in [
+        "Do you want to delete the build folder now yes or no please confirm it",
+        "Do you want to delete the build folder now Yes or No please confirm it",
+        "Do you want to delete the build folder now no or yes please confirm it",
+        "Are you sure you want to overwrite the whole build folder y or n and then continue",
+        "Do you want to proceed with the deployment of the new build Y OR N please",
+        "Do you want to delete the build folder now (yes, or no) please confirm it",
+    ] {
+        for (kind, screen) in [
+            ("working", working_with(vec![row])),
+            ("idle", idle_with(&[row])),
+        ] {
+            let state = state_of(&screen);
+            assert!(
+                state == "permission_prompt" || state == "unknown",
+                "{kind} screen, row {row:?}: expected permission_prompt or unknown, got {state}"
+            );
+        }
+    }
+}
+
 /// The guard of the repair: a question whose own words hold no choice shape, and plain prose after
 /// it (REQ-7), still let a send through.
 #[test]
@@ -268,6 +295,11 @@ fn a_question_row_without_a_choice_shape_still_reads_working_or_idle() {
     for row in [
         "Do you want me to run the tests now?",
         "Would you like me to commit or push?",
+        // Only the yes/no pair is read by its words: another `or` pair, a yes or a no with a
+        // word that is not its opposite, and the two words apart from `or` are plain prose.
+        "Do you want me to keep the old file or replace it with the new one?",
+        "Do you want me to note the yes or maybe cases in the report first?",
+        "Do you want me to answer yes to the first one or no to the second one?",
         "Do you want to continue? no changes yet",
         "Do you want to continue? yes, go ahead",
         "Do you want me to edit src/main.rs?",
@@ -439,6 +471,8 @@ fn lane_send_refuses_a_question_row_ending_in_a_choice_shape_and_sends_nothing()
         "Do you want to proceed? Yes, and don't ask again / No, tell Claude what to do differently",
         "Yes/No: do you want to proceed?",
         "Do you want to delete the build folder now yes/no please confirm it",
+        "Do you want to delete the build folder now yes or no please confirm it",
+        "Are you sure you want to overwrite the whole build folder y or n and then continue",
     ] {
         let screens = [
             ("working", format!("{}{row}\n", working_screen_text())),
