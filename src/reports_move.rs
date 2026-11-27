@@ -134,7 +134,8 @@ fn walk(root: &Path, rel: &str, files: &mut Vec<(String, u64)>, unmovable: &mut 
             // A repository of its own (its `.git` is a folder, or a file for a worktree or a
             // submodule): its files are not this project's reports, and git run from the project
             // cannot tell which of them that repository tracks.
-            if name == ".git" {
+            // Any letter case: on a case-insensitive file system `.GIT` is the same folder.
+            if name.eq_ignore_ascii_case(".git") {
                 return Err(format!(
                     "`{dir}` holds a git repository of its own; nothing moves"
                 ));
@@ -490,7 +491,10 @@ pub fn apply(
         return Err("stale or altered plan; re-preview required".into());
     }
     if approved.state == "blocked" {
-        return Err(format!("blocked: {}; nothing moved", approved.reason));
+        return Err(format!(
+            "reports move blocked: {}; nothing moved",
+            approved.reason
+        ));
     }
     let root =
         fs::canonicalize(root).map_err(|_| contract::PROJECT_PATH_UNAVAILABLE.to_string())?;
