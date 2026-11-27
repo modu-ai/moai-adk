@@ -490,6 +490,41 @@ fn the_update_layer_counts_the_rewrite_and_gates_it() {
     assert!(!String::from_utf8_lossy(&file).contains("moai-cli"));
 }
 
+/// SPEC-20261124-identity-home-arg AC-16 (REQ-15, REQ-16): the hook layer resolves the project
+/// from the HOME `plan_in` is given. Only that HOME holds a symlinked state root; the
+/// environment HOME is sound.
+#[test]
+fn home_arg_rest_update_layer_refuses_a_linked_given_home() {
+    use moai_cli::update_hooks;
+    let w = update_world(CLAUDE);
+    let elsewhere = w.root.join("elsewhere");
+    fs::create_dir(&elsewhere).unwrap();
+    // A Go generation marker makes the earlier state folder the state root; the link goes there
+    // and the state root is read back to prove it.
+    let go = w.home.join(moai_cli::home_root::MOAI_DIR);
+    fs::create_dir_all(&go).unwrap();
+    fs::write(
+        go.join("user-assets.json"),
+        br#"{"schema_version": 1, "files": {}}"#,
+    )
+    .unwrap();
+    let link = moai_cli::home_root::path(&w.home);
+    std::os::unix::fs::symlink(&elsewhere, &link).unwrap();
+    assert_eq!(moai_cli::home_root::path(&w.home), link);
+    assert!(fs::symlink_metadata(&link).unwrap().is_symlink());
+
+    let layer = update_hooks::plan_in(&w.home, &w.project, &w.rust()).unwrap();
+    assert_eq!(layer.project, None, "{}", layer.to_json());
+    assert!(layer.hosts.is_empty(), "{}", layer.to_json());
+    assert_eq!(
+        layer.skipped,
+        [json!({
+            "part": "hooks",
+            "reason": "no project here: home state root is a symlink; refused",
+        })]
+    );
+}
+
 /// `hook_status.configured` tells an old `moai-cli` install (it still runs) from a current one
 /// and from a drifted file, for every host.
 #[test]

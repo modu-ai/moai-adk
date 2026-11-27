@@ -76,10 +76,16 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         .as_deref()
         .map(moai_cli::lane_registry::registry_dir);
     let max_empty = moai_cli::lane_idle::resolve_max(args.max_empty, args.snapshot.is_some())?;
+    // The environment HOME is read here, at the edge, so a HOME whose state root is refused keeps
+    // giving no count (SPEC-20261124-identity-home-arg D-13).
+    let home = std::env::var_os("HOME").map(PathBuf::from);
     let anchor = (max_empty > 0)
         .then(|| {
-            moai_cli::identity::identity(args.dir.as_deref().unwrap_or(std::path::Path::new(".")))
-                .ok()
+            moai_cli::identity::identity_in(
+                args.dir.as_deref().unwrap_or(std::path::Path::new(".")),
+                home.as_deref(),
+            )
+            .ok()
                 .filter(|id| id["identity_status"].as_str() == Some("ok"))
                 .and_then(|id| id["clone_anchor"].as_str().map(PathBuf::from))
         })

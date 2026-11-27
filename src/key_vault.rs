@@ -198,10 +198,15 @@ pub fn folder_name(project_id: Option<&str>, primary_dir: &str, clone_hex: &str)
     format!("{name}-{hex}")
 }
 
-/// The project scope of `dir` from the workspace identity (`identity`), or `None` outside a
-/// git work tree. No git command is started here beyond the identity's own.
-pub fn project_scope(dir: &Path) -> Result<Option<Scope>> {
-    let id = crate::identity::identity(dir)?;
+/// The project scope of `dir` from the workspace identity resolved against the HOME given
+/// (`identity_in`), or `None` outside a git work tree. A HOME whose home state root is a symlink
+/// is refused. `None` resolves no home state, as `identity_in` does. No git command is started
+/// here beyond the identity's own.
+pub fn project_scope_in(dir: &Path, home: Option<&Path>) -> Result<Option<Scope>> {
+    scope_of_identity(&crate::identity::identity_in(dir, home)?)
+}
+
+fn scope_of_identity(id: &Value) -> Result<Option<Scope>> {
     if id["identity_status"] == "no_git" {
         return Ok(None);
     }
@@ -234,21 +239,22 @@ pub fn project_scope(dir: &Path) -> Result<Option<Scope>> {
     ))))
 }
 
-/// The scope a `key-*` command works on: `--shared`, else the project of `dir`. Outside a
-/// git work tree only `--shared` is possible.
-pub fn scope_for(dir: &Path, shared: bool) -> Result<Scope> {
+/// The scope a `key-*` command works on: `--shared`, else the project of `dir` resolved against
+/// `home`. Outside a git work tree only `--shared` is possible.
+pub fn scope_for(dir: &Path, shared: bool, home: Option<&Path>) -> Result<Scope> {
     if shared {
         return Ok(Scope::Shared);
     }
-    project_scope(dir)?.ok_or_else(|| {
+    project_scope_in(dir, home)?.ok_or_else(|| {
         "not inside a git work tree: run it in the project, or use --shared for a key every project uses".to_string()
     })
 }
 
-/// [`scope_for`] the current directory.
+/// [`scope_for`] the current directory, with the HOME the vault itself uses ([`home`]); with
+/// none, no HOME is given.
 pub fn scope_here(shared: bool) -> Result<Scope> {
     let dir = std::env::current_dir().map_err(|_| "the current directory is unreadable")?;
-    scope_for(&dir, shared)
+    scope_for(&dir, shared, home().ok().as_deref())
 }
 
 fn state_dir(home: &Path) -> PathBuf {
@@ -613,7 +619,7 @@ pub fn read_here(
     };
     let dir = std::env::current_dir()
         .map_err(|_| unresolved("the current directory is unreadable".into()))?;
-    let project = project_scope(&dir).map_err(unresolved)?;
+    let project = project_scope_in(&dir, Some(home)).map_err(unresolved)?;
     read(home, project.as_ref(), provider)
 }
 
@@ -1265,6 +1271,45 @@ mod tests {
                 "{f}"
             );
         }
+    }
+
+    /// SPEC-20261124-identity-home-arg AC-13 (REQ-11, REQ-12): `read_here` resolves the project
+    /// scope with the HOME it is given, so a given HOME whose state root is a symlink is refused
+    /// before an entry is read, whatever the environment HOME is.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_rest_read_here_refuses_a_linked_home_state_root() {
+        let dir = tempfile::tempdir().unwrap();
+        let linked = crate::identity::linked_home_test::symlinked_home(dir.path());
+        let refused = read_here(&linked, "glm").expect_err("a linked home state root");
+        assert_eq!(refused.code, "key_absent");
+        assert!(
+            refused
+                .reason
+                .contains("home state root is a symlink; refused"),
+            "{refused:?}"
+        );
+    }
+
+    /// AC-13 (REQ-11, REQ-12): `scope_for` takes the HOME. A given HOME whose state root is a
+    /// symlink is refused for the project scope; a sound HOME and no HOME both answer the scope,
+    /// and the shared scope reads no HOME at all.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_rest_scope_for_follows_the_home_it_is_given() {
+        let dir = tempfile::tempdir().unwrap();
+        let work = dir.path().join("work");
+        fs::create_dir(&work).unwrap();
+        crate::layout::home_arg_tests::init_repo(&work);
+        let linked = crate::identity::linked_home_test::symlinked_home(dir.path());
+        let refused = scope_for(&work, false, Some(&linked)).expect_err("a linked home state root");
+        assert_eq!(refused, "home state root is a symlink; refused");
+        assert_eq!(scope_for(&work, true, Some(&linked)), Ok(Scope::Shared));
+        let sound = dir.path().join("sound");
+        fs::create_dir(&sound).unwrap();
+        let with_home = scope_for(&work, false, Some(&sound)).unwrap();
+        assert!(matches!(with_home, Scope::Project(_)), "{with_home:?}");
+        assert_eq!(scope_for(&work, false, None), Ok(with_home));
     }
 
     #[test]
