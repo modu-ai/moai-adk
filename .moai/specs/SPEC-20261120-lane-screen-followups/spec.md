@@ -126,4 +126,23 @@ lane_screen_followups_cli` — 1 통과(`the_plain_working_screen_still_reads_wo
 1. `a_long_program_path_does_not_hide_the_timeout_reason` 은 긴 터미널 `worktreePath` 를 쓰는데, REQ-5 의 사유를 가리는 것은 긴 프로그램 경로(`MOAI_ORCA_BIN`)예요. 그 시험은 긴 `MOAI_ORCA_BIN` 경로의 가짜 orca 로 다시 짜야 해요.
 2. 카드 본문 C-N4 는 터미널 목록 출력이 1 MiB 를 넘어 `OUTPUT_LIMIT`(`src/lane_send.rs`, `1 << 20`)에서 잘려 "is not an Orca answer" 로 잘못 실패하는 일이에요. D-3 의 `--max-terminals` 는 터미널 수 상한이라 이 경우를 덮지 않아요 → 사용자 결정 D-7 (아래).
 
-가지 이름: 이번 가지는 `spec/20261120-lane-screen-followups`(NeXT 팁에서 새로 땄어요)인데 `moai tdd red` 는 `spec/<slug>-<yyyymmdd>` 꼴을 요구해요. 그 꼴의 이름 `spec/lane-screen-followups-20261120` 은 이전 레인의 옛 가지(커밋 미착지, 지우지 않아요)가 이미 써요. RED 조각에서 `spec/lane-screen-followups-20261127` 같은 겹치지 않는 이름으로 바꿔요(SPEC 날짜 규칙은 리더 확인).
+가지 이름: 이번 가지는 `spec/20261120-lane-screen-followups`(NeXT 팁에서 새로 땄어요)이고 `moai tdd red` 가 이 이름을 받아서 바꾸지 않았어요(위에서 걱정한 이름 충돌은 없었어요). 옛 가지 `spec/lane-screen-followups-20261120`(이전 레인, 미착지)은 지우지 않고 그대로예요.
+
+### GREEN (2026-11-27, 헤드 c7e62da529, base NeXT 팁 7ec80a8155 를 머지한 위)
+
+RED 커밋 7d0926fe03(`moai tdd red`: 두 확인 모두 test-failure, 종료 101), 구현 c7e62da529(`moai tdd green`: 두 확인 모두 통과, 종료 0). 새 시험 파일 9개 중 RED 7개가 모두 통과하고 가드 둘(`the_plain_working_screen_still_reads_working`, `a_long_program_path_does_not_hide_the_timeout_reason`)은 처음부터 통과였어요: 긴 프로그램 경로는 이유 문구가 경로보다 앞에 와서 팁에서 이미 안 가려져요(REQ-5 는 새 코드 없이 시험으로만 지켜요).
+
+- AC-1: met. `cargo test --locked --offline --test lane_screen_followups_cli` 종료 0, 9 passed. `[1] Yes`·`1: Yes`·`a. Yes`·`Overwrite? (y/N/a)` 는 working 아래에서 permission_prompt 나 unknown 이고 lane-send 는 종료 1 에 orca send 호출 0회예요.
+- AC-2: met. `cargo test --locked --offline --test lane_screen_followups_cli scan_followups` 종료 0, 4 passed(시간 상한: 안 읽은 터미널이 unreachable 이고 이유에 `--max-seconds 1`).
+- AC-3: met. 같은 명령(4 passed): 터미널 수 상한은 크기 3 과 `--max-terminals` 를 적고 화면을 읽지 않으며, 출력이 1 MiB 를 넘으면 "1 MiB" 를 적고(D-7) "is not an Orca answer" 가 아니고, 긴 경로 시험은 가드로 통과해요.
+- AC-4: met. 적힌 verify 명령은 그대로 돌리면 `error: unexpected argument 'n1_table_…' found` 로 종료 1 이에요(cargo 가 테스트 이름을 하나만 받아요, 2026-11-27 슬롯에서 확인). 같은 뜻의 `cargo test --locked --offline --test lane_screen_followups_cli -- n2_shapes_under_a_known_question_are_never_working n1_table_keeps_the_twelve_refusals_and_frees_plain_prose` 는 2 passed 예요. AC 글은 승인 범위라서 고치지 않았고 리더에게 승인 개정(verify 줄 하나)을 요청했어요.
+
+범위·규칙의 어긋남과 선택(읽는 사람이 알아야 할 것):
+
+- SPEC Scope 의 write 목록은 `tests/lane_screen_cli.rs` 를 read-only 로 적었는데 REQ-6·REQ-7 이 그 파일의 핀 셋을 바꿔요: 질문 아래 낱말 하나(`Allow`·`deny`·`y`·`N`·`yes`·`No`)는 거절하던 것이 이제 working 이고(REQ-7 이 풀어 주는 평범한 줄), 문장(`yes, go ahead`·`No - wait`·`answer: NO.`)도 같고, 번호 줄 하나(`1. maybe later`)는 working 이던 것이 unknown(REQ-6: `1. Proceed` 와 같은 모양)이에요. 카드 범위를 `card scope`(세대 3, `--by zoe`)로 그 파일까지 넓혔고, 바꾼 단언마다 주석에 REQ 를 적었어요. 같은 이유로 `src/lane_screen.rs` 단위 시험의 단언도 바뀌었어요(이름도 바뀐 셋과 새 셋).
+- 시험 파일 `tests/lane_screen_followups_cli.rs` 는 RED 커밋 뒤 잠겨 있어서 GREEN 에서 손대지 않았어요.
+- `--max-seconds` 기본값 120 초는 제가 정했어요(승인 글은 상한이 있다고만 해요): 상한이 없으면 C-N3 이 기본으로 남아서예요. 되돌리려면 `DEFAULT_MAX_SECONDS` 한 줄이에요.
+- 질문 아래 평범한 줄의 풀림(REQ-7)은 안전 쪽에서 느슨해지는 변경이에요. 자동 보안 검토가 "낱말 목록을 다시 더하라"고 제안했지만, 그것은 REQ-6 의 "낱말 목록은 없고 모양이 기준" 과 사용자가 승인한 D-6 을 되돌리는 일이라 따르지 않았어요. 대가와 이득은 `lane_send.md` 에 적었어요.
+- 질문이 없는 새 모양 목록 줄(둘 이상)은 비어 있지 않은 마지막 6줄 안에서만 세요(`LIST_ROWS`): 기존 `lane_screen_cli` 의 창 시험(질문이 9번째, 선택 줄이 7·8번째)이 그대로 맞고, 살아 있는 선택 창은 맨 아래에 그려지기 때문이에요.
+
+Windows·Linux 는 not_run 이에요(fake orca 는 `/bin/sh` 스크립트).
