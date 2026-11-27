@@ -31,6 +31,11 @@
 //! that is still left, or waits when none is: so a caller never passes an earlier waiter that
 //! can use the same slot, and never waits for a free slot of its own that no earlier waiter can
 //! use (a narrower waiter queued ahead keeps no wider caller off a slot it cannot take itself).
+//! One caller queues at the front: [`hold_ordered`] with `front` writes the stamp of its waiting
+//! file in microseconds instead of nanoseconds, so the name sorts ahead of every other waiting
+//! file and the caller starts before them (SPEC-20261126-leader-slot-front; `check affected
+//! --full` run by the registered leader session). Front callers keep their arrival order among
+//! themselves; nothing else about the order, the slots or the limits changes.
 //! An unlocked waiting file is a dead waiter and is not counted. A caller that asks for a slot
 //! first removes the waiting files of callers that are gone: plain files named like a waiter's
 //! own whose pid is not alive and which no process holds locked (SPEC-20261123-heavy-slot-leftover
@@ -161,6 +166,20 @@ pub const SLOT_FD_ENV: &str = "MOAI_HEAVY_SLOT_FD";
 pub fn build_jobs_cap(slots: usize) -> usize {
     let cpus = std::thread::available_parallelism().map_or(1, |n| n.get());
     crate::check_affected::default_jobs(cpus, slots)
+}
+
+/// The arrival stamp a waiting file starts with (SPEC-20261126-leader-slot-front REQ-3): the time
+/// in nanoseconds, or in microseconds for the front place of a confirmed leader's wide check. A
+/// waiting file keeps its three-part name `<20 digits>-<pid>-<max>` and is ordered as text, so a
+/// microsecond stamp (16 digits, zero padded to 20) sorts ahead of every nanosecond one, in a
+/// build without this change too; two front stamps keep their arrival order.
+#[cfg(unix)]
+fn waiting_stamp(front: bool, ns: u128) -> u128 {
+    if front {
+        ns / 1_000
+    } else {
+        ns
+    }
 }
 
 /// The pid a waiting file names (`<digits>-<pid>` or `<digits>-<pid>-<max>`); `None` for any
@@ -834,7 +853,7 @@ pub fn machine_line(folder: &Path) -> String {
 }
 
 #[cfg(unix)]
-pub use sys::{acquire, hold, status, Held};
+pub use sys::{acquire, hold, hold_ordered, status, Held};
 
 #[cfg(not(unix))]
 pub fn status(_folder: &Path) -> Result<Value> {
@@ -874,6 +893,20 @@ pub fn hold(
     _command: &[String],
     _limits: Limits,
     _progress: &mut dyn std::io::Write,
+) -> std::result::Result<Held, u8> {
+    eprintln!("heavy-slot: flock is unavailable on this platform");
+    Err(USAGE)
+}
+
+#[cfg(not(unix))]
+pub fn hold_ordered(
+    _folder: &Path,
+    _max: usize,
+    _name: &str,
+    _command: &[String],
+    _limits: Limits,
+    _progress: &mut dyn std::io::Write,
+    _front: bool,
 ) -> std::result::Result<Held, u8> {
     eprintln!("heavy-slot: flock is unavailable on this platform");
     Err(USAGE)
@@ -1695,6 +1728,24 @@ mod sys {
         limits: Limits,
         progress: &mut dyn Write,
     ) -> std::result::Result<Held, u8> {
+        hold_ordered(folder, max, name, command, limits, progress, false)
+    }
+
+    /// [`hold`] with the place the caller queues at: `front` writes the arrival stamp of the
+    /// waiting file in microseconds ([`super::waiting_stamp`]), so the file sorts ahead of every
+    /// waiting file stamped in nanoseconds and the caller starts before them
+    /// (SPEC-20261126-leader-slot-front REQ-1 to REQ-3). Callers whose `front` is true keep their
+    /// arrival order among themselves. Nothing else differs: the slot count, the limits, the
+    /// refusals and the CPU rule are the same for both places (REQ-6).
+    pub fn hold_ordered(
+        folder: &Path,
+        max: usize,
+        name: &str,
+        command: &[String],
+        limits: Limits,
+        progress: &mut dyn Write,
+        front: bool,
+    ) -> std::result::Result<Held, u8> {
         if max < 1 {
             eprintln!("heavy-slot: acquire needs --max >= 1 and a command after --");
             return Err(USAGE);
@@ -1723,7 +1774,11 @@ mod sys {
         };
         // Every caller queues first, so one that arrived earlier is never passed (REQ-4); the
         // name ends with this caller's `--max`, so the others know which slots it can use.
-        let me = format!("{:020}-{}-{max}", now_ns(), std::process::id());
+        let me = format!(
+            "{:020}-{}-{max}",
+            super::waiting_stamp(front, now_ns()),
+            std::process::id()
+        );
         let wait_path = waiting.display(&me);
         let queue = || -> std::result::Result<File, Open> {
             let f = open_plain_in(&waiting, &me, true, true)?;
@@ -2579,10 +2634,34 @@ mod alive_tests {
 #[cfg(all(test, unix))]
 mod queue_tests {
     use super::sys::{lock_own, my_slots, waiter_max};
+    use super::waiting_stamp;
     use std::time::{Duration, Instant};
 
     fn names(v: &[&str]) -> Vec<String> {
         v.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// SPEC-20261126-leader-slot-front REQ-1 to REQ-3: the front stamp is the time in
+    /// microseconds inside the same three-part name, so it sorts ahead of every nanosecond name
+    /// (an older build included), keeps its `--max`, and two front stamps keep their arrival order.
+    #[test]
+    fn a_front_stamp_sorts_ahead_of_every_nanosecond_name_and_keeps_the_name_shape() {
+        let ns: u128 = 1_795_747_522_123_456_789;
+        assert_eq!(waiting_stamp(false, ns), ns);
+        assert_eq!(waiting_stamp(true, ns), 1_795_747_522_123_456);
+        let lane = format!("{ns:020}-7-1");
+        let front = format!("{:020}-42-3", waiting_stamp(true, ns + 5_000_000));
+        let earlier = format!("{:020}-43-2", waiting_stamp(true, ns));
+        assert!(front.as_str() < lane.as_str(), "{front} {lane}");
+        assert!(earlier.as_str() < front.as_str(), "{earlier} {front}");
+        assert_eq!(waiter_max(&front), Some(3));
+        // The lane waits behind a front waiter that wants the one free slot, as it does behind
+        // any earlier waiter; the front waiter itself is not held back by the lane.
+        assert_eq!(
+            my_slots(vec![0], &names(&[&front, &lane]), &lane),
+            Vec::<usize>::new()
+        );
+        assert_eq!(my_slots(vec![0], &names(&[&front, &lane]), &front), vec![0]);
     }
 
     #[test]
