@@ -611,12 +611,25 @@ pub fn apply_with_choices(
             chosen_action(f)?;
         }
     }
+    // A host the plan blocked (a link at its folder, say) is never written; the result names it.
+    let blocked: Vec<(&str, &str)> = fresh
+        .hosts
+        .iter()
+        .filter(|h| h.preflight != "ok")
+        .map(|h| {
+            (
+                h.host.as_str(),
+                h.blocked_reason.as_deref().unwrap_or("blocked"),
+            )
+        })
+        .collect();
     if writes.is_empty() {
         let mut v = serde_json::json!({"state": "unchanged", "plan_digest": fresh.plan_digest, "written": []});
         if !kept.is_empty() {
             v["state"] = "partial".into();
             v["kept"] = serde_json::json!(kept);
         }
+        name_blocked(&mut v, &blocked);
         return Ok(v);
     }
     let (id, receipt_dir) = new_receipt_dir(&home)?;
@@ -750,7 +763,32 @@ pub fn apply_with_choices(
         v["state"] = "partial".into();
         v["kept"] = serde_json::json!(kept);
     }
+    name_blocked(&mut v, &blocked);
     Ok(v)
+}
+
+/// Adds the blocked hosts (`host`, `reason`) to an apply result, with no key when none is blocked.
+/// A result that wrote nothing becomes `blocked` with a one-line `reason`, so no screen reads it as
+/// done; a result that wrote something for another host is `partial`.
+fn name_blocked(v: &mut serde_json::Value, blocked: &[(&str, &str)]) {
+    if blocked.is_empty() {
+        return;
+    }
+    v["blocked"] = blocked
+        .iter()
+        .map(|(host, reason)| serde_json::json!({"host": host, "reason": reason}))
+        .collect();
+    v["reason"] = blocked
+        .iter()
+        .map(|(host, reason)| format!("{host}: {reason}"))
+        .collect::<Vec<_>>()
+        .join("; ")
+        .into();
+    v["state"] = if v["state"] == "unchanged" {
+        "blocked".into()
+    } else {
+        "partial".into()
+    };
 }
 
 /// Whether the apply writes anything for this file: a nested create or update, or the removal
