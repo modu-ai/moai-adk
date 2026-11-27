@@ -168,6 +168,16 @@ fn is_this_build(first_line: Option<&str>) -> bool {
         })
 }
 
+/// Whether `path` is known not to exist (its own metadata, never through a link). Only a
+/// `NotFound` answer counts: any other read error (a denied folder, a name below a file) leaves
+/// the state unknown, which the caller treats as the closed side, never as "nothing there".
+pub fn path_is_absent(path: &Path) -> bool {
+    matches!(
+        fs::symlink_metadata(path),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound
+    )
+}
+
 /// Preview the two names for the executable `exe` (the running binary in the CLI). Reads
 /// only; an existing `bin/moai` that is not the same bytes is run once with `--version`.
 pub fn plan_for(home: &Path, exe: &Path) -> Result<Plan> {
@@ -205,7 +215,7 @@ fn plan_names(home: &Path, exe: &Path) -> Result<Plan> {
         // The shape of a new install: `bin/moai` is a regular file and there is no `bin/moai-cli`
         // at all. Nothing to link and nothing to write (SPEC-20261127-installed-binary-name-moai
         // REQ-5); a `moai-cli` that exists and is not a regular file is still blocked below.
-        if fs::symlink_metadata(&canonical).is_err()
+        if path_is_absent(&canonical)
             && fs::symlink_metadata(&alias).is_ok_and(|m| m.file_type().is_file())
         {
             let sha = crate::install::sha256_file(&alias)?;
