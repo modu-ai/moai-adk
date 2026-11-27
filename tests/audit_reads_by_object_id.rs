@@ -16,6 +16,12 @@ const CLAUSE: &str = "never `cd` or `git -C` into a worktree that is not your ow
 const CONTRACT: &str = "skills/moai/references/audit.md";
 const LANE_RULES: &str = "docs/lane-rules.md";
 
+// Paths of texts that exist only inside these tests, spelled in two pieces so that the skill
+// reference scan of the tree (`tests/skill_references_scan.rs`) does not read them as references
+// to files of the checked-in package.
+const MADE_UP: &str = concat!("skills", "/x/zz-audit.md");
+const NOT_AN_AUDIT_TEXT: &str = concat!("skills", "/audit/zz.md");
+
 /// The rule files that are audit texts whatever their name.
 const NAMED: [&str; 5] = [
     LANE_RULES,
@@ -252,7 +258,7 @@ fn ac2_the_checked_in_audit_texts_hold_only_the_baseline_cd_and_git_c() {
 /// SPEC-20261126-audit-reads-by-object-id AC-3 (REQ-3)
 #[test]
 fn ac3_a_new_cd_or_git_c_instruction_is_named_with_its_file_and_line() {
-    let made_up = "skills/x/zz-audit.md";
+    let made_up = MADE_UP;
     let mut texts = BTreeMap::from([
         (CONTRACT.to_string(), audit_texts()[CONTRACT].clone()),
         (made_up.to_string(), "# Made up\n".to_string()),
@@ -301,7 +307,7 @@ fn ac3_a_new_cd_or_git_c_instruction_is_named_with_its_file_and_line() {
 /// SPEC-20261126-audit-reads-by-object-id AC-4 (REQ-4)
 #[test]
 fn ac4_a_baseline_count_that_differs_names_the_entry() {
-    let file = "skills/x/zz-audit.md";
+    let file = MADE_UP;
     let allowed = "`git -C <worktree> status`";
     let judged = |text: String, entry: &'static str| {
         judge(
@@ -336,7 +342,7 @@ fn ac4_a_baseline_count_that_differs_names_the_entry() {
 #[test]
 fn ac5_audit_texts_are_chosen_by_file_name_or_by_the_named_list() {
     for path in [
-        "skills/x/zz-audit.md",
+        MADE_UP,
         "docs/x/zz-AUDIT-notes.md",
         "agents/zz_audit_helper.toml",
     ] {
@@ -347,7 +353,7 @@ fn ac5_audit_texts_are_chosen_by_file_name_or_by_the_named_list() {
     }
     for path in [
         "docs/x/zz-rules.md",
-        "skills/audit/zz.md",
+        NOT_AN_AUDIT_TEXT,
         "docs/x/lane-rules.md",
     ] {
         assert!(!is_audit_text(path), "{path} is not chosen");
