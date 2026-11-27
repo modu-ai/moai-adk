@@ -126,6 +126,7 @@ pub mod local_build;
 pub mod manifest_merge;
 pub mod message;
 pub mod migrate;
+pub mod moai_doctor;
 pub mod model_effort_questions;
 pub mod model_effort_settings;
 pub mod move_journal;

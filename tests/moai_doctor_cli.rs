@@ -30,6 +30,8 @@ struct World {
     project: PathBuf,
     bin: PathBuf,
     calls: PathBuf,
+    /// Holds the call record, outside the HOME tree the read-only test compares.
+    _record: tempfile::TempDir,
 }
 
 impl World {
@@ -38,12 +40,14 @@ impl World {
         let project = home.project("demo");
         let bin = home.path().join("fake-bin");
         fs::create_dir_all(&bin).unwrap();
-        let calls = home.path().join("claude-calls.log");
+        let record = tempfile::tempdir().unwrap();
+        let calls = record.path().join("claude-calls.log");
         World {
             home,
             project,
             bin,
             calls,
+            _record: record,
         }
     }
 
@@ -218,11 +222,12 @@ fn config_folder_default_is_ok() {
 #[test]
 fn versions_below_the_table_name_the_rows_and_their_versions() {
     let w = World::new();
-    w.claude("2.1.100 (Claude Code)", "{}", 0);
+    // 2.1.30 is below the oldest row (`claude auth status`, 2.1.41).
+    w.claude("2.1.30 (Claude Code)", "{}", 0);
     let result = w.result(&[], &[]);
     let c = check(&result, "claude_version");
     assert_eq!(c["state"], "warn", "{c}");
-    assert_eq!(c["evidence"]["installed"], "2.1.100", "{c}");
+    assert_eq!(c["evidence"]["installed"], "2.1.30", "{c}");
     let rows = c["evidence"]["rows"].as_array().unwrap();
     let row = rows
         .iter()
@@ -231,9 +236,21 @@ fn versions_below_the_table_name_the_rows_and_their_versions() {
     assert_eq!(row["min"], "2.1.133");
     assert_eq!(row["state"], "below");
     assert!(
-        rows.iter().all(|r| r["state"] == "below"),
-        "2.1.100 is below every row: {rows:?}"
+        c["summary"].as_str().unwrap().contains("worktree.baseRef"),
+        "{c}"
     );
+    // A row of another platform is not judged; every other row is below.
+    assert!(
+        rows.iter()
+            .filter(|r| r["state"] != "not_applicable")
+            .all(|r| r["state"] == "below"),
+        "2.1.30 is below every applicable row: {rows:?}"
+    );
+    let windows = rows
+        .iter()
+        .find(|r| r["feature"] == "cross-session messaging (native Windows)")
+        .expect("the Windows row");
+    assert_eq!(windows["state"], "not_applicable", "{windows}");
 }
 
 #[test]
@@ -247,7 +264,7 @@ fn versions_at_or_above_every_row_are_ok() {
         .as_array()
         .unwrap()
         .iter()
-        .all(|r| r["state"] == "ok"));
+        .all(|r| r["state"] == "ok" || r["state"] == "not_applicable"));
 }
 
 #[test]

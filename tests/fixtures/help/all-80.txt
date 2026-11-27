@@ -152,6 +152,8 @@ Keys
 Diagnose
   claude-doctor                    Check that Claude Code reads your own
                                    AGENTS.md
+  doctor                           Diagnose the moai layer of your Claude Code
+                                   setup
   install-inspect                  Show the installed MoAI binaries
   identity                         Show where a path sits in its clone
   worktree-report                  Report the space worktrees use
