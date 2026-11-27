@@ -842,7 +842,7 @@ fn local_file(root: &Path, manifest: &Value) -> Result<&'static str> {
         .flatten()
         .find(|f| f["section_id"] == crate::agents::IGNORE_SECTION)
         .map(|f| crate::agents::ignore_kind_lists_local(f["kind"].as_str()));
-    let unknown = "the generation manifest does not tell whether AGENTS.local.md is tracked \
+    let unknown = "the generation manifest does not tell whether CLAUDE.local.md is tracked \
                    or ignored; ask the user and regenerate through /moai project";
     let user_rule_decides = || -> Result<&'static str> {
         let ignore = crate::apply::read_opt(&crate::apply::target(root, ".gitignore")?)?;
@@ -2258,7 +2258,7 @@ fn undo_order() -> Value {
             {"step": "go-state", "commands": [
                 "moai go-state-revert-plan <PROJECT> --backup <backup of the go-state step>",
                 "moai go-state-revert --backup <backup of the go-state step> --plan-digest <digest of that plan> --permission-reference <reference> <PROJECT>",
-            ], "note": "refused while the project harness step's AGENTS.md is in place"},
+            ], "note": "refused while the project harness step's CLAUDE.md is in place"},
             {"step": "go-settings", "commands": [
                 "moai go-settings-revert --receipt <receipt of the go-settings step> --permission-reference <reference> <PROJECT>",
             ]},

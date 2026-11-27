@@ -3198,7 +3198,14 @@ fn claude_doctor_agents_loading_combinations() {
         claude_md["agents_md_status"],
         json!("suppressed_by_claude_md")
     );
-    assert_eq!(claude_md["suggestions"].as_array().unwrap().len(), 2);
+    // SPEC-20261122-claude-md-text-and-ignore AC-10 (REQ-5): the one proposal is the move; no
+    // import and no setting that reads both files.
+    assert_eq!(
+        claude_md["suggestions"],
+        json!([
+            "move the text of your AGENTS.md into CLAUDE.md (for a file of this project, /moai update offers the pick `move`)"
+        ])
+    );
     let (_p3, local) = case(&[("CLAUDE.local.md", "# private\n")]);
     assert_eq!(local["agents_md_status"], json!("suppressed_by_claude_md"));
     assert!(local["suppressing_files"][0]

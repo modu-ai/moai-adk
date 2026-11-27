@@ -3010,6 +3010,52 @@
       "rejects": "A file under skills/ or agents/ that names a tools/ script of this repository (.sh, .py or .json); a user project has none"
     },
     {
+      "id": "agents-md-name-in-shipped-text",
+      "always": true,
+      "tests": [
+        "tests/claude_md_layout_scan.rs (all)"
+      ],
+      "test_targets": [
+        "claude_md_layout_scan"
+      ],
+      "rules": [
+        "tests/claude_md_layout_scan.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/"
+        },
+        {
+          "prefix": "agents/"
+        },
+        {
+          "prefix": "templates/"
+        },
+        {
+          "prefix": "schemas/"
+        },
+        {
+          "prefix": "install/"
+        },
+        {
+          "prefix": "README.md"
+        },
+        {
+          "prefix": "README.ko.md"
+        },
+        {
+          "prefix": "CLAUDE.md"
+        },
+        {
+          "prefix": "REVIEW.md"
+        },
+        {
+          "prefix": "src/"
+        }
+      ],
+      "rejects": "a shipped line that names an older instruction file (AGENTS.md, AGENTS.local.md, AGENTS.override.md, AGENTS files, or its format insert in the merge sources) outside a listed line fragment, a listed fragment whose count differs, a row without a reason or with a bare file name, a surface that cannot be read, a sentence the SPEC rewrote that is gone, or an older name in what a temporary setup writes (SPEC-20261122-claude-md-text-and-ignore AC-1 to AC-4)"
+    },
+    {
       "id": "home-env-readers",
       "always": true,
       "tests": [

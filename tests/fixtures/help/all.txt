@@ -30,8 +30,8 @@ Project
   card-summary-apply      Post a card's summary to its issue, once
   ledger-recover-plan     Preview recovering a damaged project ledger
   ledger-recover-apply    Recover the previewed project ledger
-  agents-plan             Preview the AGENTS.md managed section
-  agents-apply            Write a previewed AGENTS.md managed section
+  agents-plan             Preview the CLAUDE.md managed section
+  agents-apply            Write a previewed CLAUDE.md managed section
   generation-plan         Preview the project's generated agent and skill files
   generation-apply        Write previewed generated agent and skill files
   github-plan             Preview the project's GitHub templates
@@ -122,7 +122,7 @@ Keys
   keys-revert             Undo the keys one update imported
   models-revert           Undo the model settings one update saved
 Diagnose
-  claude-doctor           Check that Claude Code reads AGENTS.md
+  claude-doctor           Check that Claude Code reads your own AGENTS.md
   install-inspect         Show the installed MoAI binaries
   identity                Show where a path sits in its clone
   worktree-report         Report the space worktrees use

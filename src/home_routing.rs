@@ -63,7 +63,7 @@ pub const NOT_SUPPORTED: [(&str, &str); 2] = [
     ),
     (
         "cursor",
-        "Cursor CLI has no user-level instruction file (rules live in the app); the project AGENTS.md carries it",
+        "Cursor CLI has no user-level instruction file (rules live in the app); not written",
     ),
 ];
 
