@@ -92,7 +92,7 @@ pub const ROWS: &[Row] = &[
         CHANGELOG,
     ),
     row("crossSessionInbound", (2, 1, 224), None, CHANGELOG),
-    row("AGENTS.md direct reading", (2, 1, 277), None, CHANGELOG),
+    row("agents file direct reading", (2, 1, 277), None, CHANGELOG),
     row("claude auth status", (2, 1, 41), None, CHANGELOG),
     row(
         "claude auth status configDirectory",
