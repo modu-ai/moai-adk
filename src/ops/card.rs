@@ -466,8 +466,14 @@ enum Action {
     /// Writes the ledger. One active `blocks` link runs from the needed card to this one and one
     /// `card.prereq` event records the by. `card next` lists this card as skipped with the
     /// reason `prerequisite` naming the cards that are not done, and `card take` refuses it
-    /// before any reservation. A second call for the same pair changes nothing (`created:
-    /// false`). A card that needs itself, or one the needed card already needs, is refused.
+    /// before any reservation (and again inside the reservation transaction). A second call for
+    /// the same pair changes nothing (`created: false`). A card that needs itself, or one the
+    /// needed card already needs through any number of cards, is refused and the answer names
+    /// the loop. A withdrawn card no longer counts as unfinished; a folded one still does.
+    /// `--remove` takes the link back: it becomes `retired` (the row stays), one
+    /// `card.prereq_remove` event records the by, and the answer has `removed` (`false` and
+    /// nothing written when there is no active link). Adding the pair again makes the same row
+    /// active after the loop check.
     Prereq {
         /// The card that waits (`C-12` or `#3066`).
         card: String,
@@ -477,6 +483,9 @@ enum Action {
         /// Who records it (one line, 1..=200 characters).
         #[arg(long)]
         by: String,
+        /// Take the link back instead of adding it.
+        #[arg(long)]
+        remove: bool,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -1785,9 +1794,10 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             card,
             needs,
             by,
+            remove,
             project,
             home,
-        } => w::prereq(&project, &resolve_home(home)?, &card, &needs, &by),
+        } => w::prereq(&project, &resolve_home(home)?, &card, &needs, &by, remove),
         Action::HoldCandidates { project, home } => {
             moai_cli::card::hold_candidates::candidates(&project, &resolve_home(home)?)
         }

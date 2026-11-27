@@ -203,32 +203,6 @@ fn no_criteria_refusal(
     )))
 }
 
-/// The refusal for a card with a HOLD in force or a prerequisite that is not done, or `None`.
-/// A free-text HOLD is never read: only the `card.hold` event and the `blocks` links are.
-fn hold_gate_refusal(
-    conn: &rusqlite::Connection,
-    card_id: i64,
-) -> rusqlite::Result<Option<String>> {
-    let name = input::card_name(card_id);
-    if let Some(hold) = crate::ledger::workflow::current_hold(conn, card_id)? {
-        return Ok(Some(format!(
-            "card take refused: {name} is on HOLD ({}): {}; lift it with `moai card unhold {name} \
-             --reason <why> --by <name>` only when the decision is made; nothing was taken",
-            hold.category, hold.reason
-        )));
-    }
-    let needs = crate::ledger::workflow::unfinished_prerequisites(conn, card_id)?;
-    if needs.is_empty() {
-        return Ok(None);
-    }
-    let names: Vec<String> = needs.iter().map(|c| input::card_name(*c)).collect();
-    Ok(Some(format!(
-        "card take refused: {name} waits for {}, which {} not done; nothing was taken",
-        names.join(", "),
-        if names.len() == 1 { "is" } else { "are" }
-    )))
-}
-
 /// The reservation states that hold a card (the ones `card ready` also refuses).
 const LIVE_RESERVATION: &str = "status IN ('held','expired_candidate','held_for_review')";
 
@@ -544,7 +518,9 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
     if is_ready {
         // A HOLD or an unfinished prerequisite is refused before any reservation is written
         // (SPEC-20261121-card-hold-gate); `card next` asks the same two functions.
-        if let Some(why) = hold_gate_refusal(ledger.conn(), card_id).map_err(|e| e.to_string())? {
+        if let Some(why) = crate::ledger::workflow::hold_gate_refusal(ledger.conn(), card_id)
+            .map_err(|e| e.to_string())?
+        {
             return Err(why);
         }
         if let Some(why) =
