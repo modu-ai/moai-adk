@@ -1,8 +1,9 @@
 ---
 id: SPEC-20261127-card-prereq-remove
 title: "카드 선행 조건을 지울 수 있고, 어떤 길이의 순환도 거절하고, HOLD·선행 조건 검사는 예약 트랜잭션 안에서 해요"
-status: draft
+status: approved
 revision: 1
+approval: {by: user, at: 2026-11-27, basis: "사용자가 직접 골랐어요(리더 세션의 질문 도구, 레저 노트 10699) 선택지 '기본값으로 승인 (Recommended)' — 개정 1을 글 그대로 승인하고 D-1 은 (a) 철회만 풀기, D-3 은 끝난 카드를 지나는 고리까지 모두 거절, D-4 는 앞의 검사를 그대로 두고 안쪽 검사를 더함, D-6 은 HOLD 후보 목록 문구를 코드에 맞춤. 승인 대상 커밋 41453a1b7d", digest: "sha256:d544bb164300ab23629902f6f257ef1d260cf94e73ca3b7210d2372c9fb37865"}
 created: 2026-11-27
 ---
 
