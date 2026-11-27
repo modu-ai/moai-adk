@@ -137,4 +137,12 @@ approval:
 - AC-9: 충족. `git diff --stat b18c7639a9..HEAD -- src` → `src/card/spec_link.rs`, `src/ledger/reservation.rs`, `src/ops/card.rs` 세 파일, `src/card/dispatch.rs` 는 0줄이에요. `src/ops/card.rs` 는 `card line-lease` 로 패치를 적용했어요.
 - 남은 것: 카드의 기준 2 는 시계 분기 반쪽이 남아 `met` 로 적지 않아요(D-1 (a), C-445 착지 뒤 `src/card/dispatch.rs` 안 단위 테스트).
 
-조각 2(개정 2): 아직 시작하지 않았어요. 위 조각 1 결과는 개정 1 의 것이고 AC-10..AC-15 의 결과는 승인과 구현 뒤에 적어요.
+조각 2(개정 2): 위 조각 1 결과는 개정 1 의 것이에요. 개정 2 는 승인 `59b012a2d0`(노트 10807, `approval_digest` 는 Interview 를 옮긴 뒤에도 `sha256:0080e7f1…` 로 같아요) → 판정 함수 리팩터 `eaae8fb792`(동작 그대로, 단위 테스트 통과) → RED `9f4351645e`(`moai tdd red`, 세 체크가 단언 실패) → GREEN `800a60544e` 순서이고 `moai tdd green` 이 세 체크를 다시 돌려 통과했어요. 새 테스트 다섯 개는 모두 `tests/card/card_add_spec_cli.rs` 와 `dispatch.rs` 안 단위 테스트에 있어요. 기존 `tests/card/card_spec_cli.rs` 테스트 둘(`research_and_audit_cards_are_not_warned_about_an_unapproved_spec`, `spec_show_lists_the_linked_cards_of_this_machine_as_local`)이 `card spec` 으로 한 SPEC 에 열린 카드 여럿을 이어서 새 규칙에 걸려서, 카드마다 SPEC 하나 또는 옛 빌드가 남긴 모양의 연결로 고쳤어요(검증하는 내용은 그대로).
+
+- AC-10: 충족. `a_hold_card_does_not_become_ready_beside_an_open_card_of_its_spec` 가 거절 글(열린 카드 이름, `--follow-up`, `card criterion-add`), 이벤트 불변, 열린 카드가 `done`·`hold` 가 되면 수락, 관계 있는 `hold` 카드와 SPEC 없는 `hold` 카드 수락을 읽어요. `a_draft_card_and_a_legacy_pair_of_open_cards_still_go_ready` 가 `draft` 카드와 옛 빌드가 남긴 열린 카드 둘이 그대로 `ready` 되는 것을 지켜요(리더 알림). `ready` 의 호출을 지운 뮤턴트, 같은 호출이 `draft` 도 보는 뮤턴트, 관계 검사를 지운 뮤턴트가 모두 실패(exit 100).
+- AC-11: 충족. `card_spec_does_not_add_a_second_open_card_to_a_spec`; `done` 과 `hold` 제외를 지운 뮤턴트, 같은 SPEC 다시 연결의 조기 반환을 지운 뮤턴트, `--unlink` 를 떠나는 SPEC 으로 판정하는 뮤턴트가 모두 실패(exit 100).
+- AC-12: 충족. `the_ready_and_spec_help_name_the_open_card_refusal`; `card ready` 도움말의 거절 문장을 지운 뮤턴트에서 실패(exit 100).
+- AC-13: 충족. `dispatch.rs` 안 `the_takeover_gate_choice_follows_status_clock_and_lease` 가 `held` + 읽히는 시계 + 끝난 임대, `held_for_review`·`expired_candidate`, 시계 `Err`, 끝나지 않은 임대를 고정해요. 리팩터 전과 같은 식에서 통과했고, `held` 조건을 지운 뮤턴트와 시계 `Err` 를 느슨한 문으로 읽는 뮤턴트가 실패(exit 100). `card_reclaim_early_cli` 는 고치지 않고 통과해요(`card_*` 일곱 모듈과 `spec_close_cli`, `ac_verify_required`, `sdd_guidance` 240개 통과).
+- AC-14: 충족. `target/card-help-gates-2/mut-*.log` 아홉 개가 뮤턴트 하나씩 따로 돌린 로그이고(첫 줄에 뮤턴트 이름), `grep -L 'exit=100'` 이 아무것도 내지 않아요. 뮤턴트마다 복원하고 `git status --short` 가 빈 것을 보고 다음을 적용했어요.
+- AC-15: 충족. `git diff --stat df710fbe20..HEAD -- src` 가 `src/card/dispatch.rs`, `src/card/spec_link.rs`, `src/ops/card.rs`(줄 리스) 세 파일이고 모두 조각 2 쓰기 목록 안이에요.
+- 남은 것: 카드 기준 2·8·9 를 `met` 로 적는 일은 독립 리뷰 뒤의 몫이에요. 조각 2 가 `card reclaim` 의 동작을 바꾸지 않았다는 것은 `card_reclaim_early_cli` 통과로 읽었어요.
