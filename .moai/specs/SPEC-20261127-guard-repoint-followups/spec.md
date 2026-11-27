@@ -157,7 +157,9 @@ guard-mutant: none | `disagrees_*` 일곱 시험은 뮤턴트를 돌리지 않�
 
 (exit 100 은 nextest 의 시험 실패 종료 코드이고 101 은 `cargo test` 의 것이에요. 둘 다 시험이 단언에서 실패했어요.)
 
-next-flow.md 한도 (D-5 a): 8111 → 8180 바이트(한도 8192 두 곳은 그대로, 팁 래칫만 8180 으로). 문단을 넣으려고 줄인 곳은 아래 다섯 가지이고 테스트가 고정하지 않는 문장만이에요(고정된 문장은 `GAP`, 원격 복사 줄의 `remote_copy` 구절, 감사 브리프 줄, 재시작 줄의 앞부분이라 그대로 뒀어요): 새 창 문장 한 줄, "스스로 세션을 비우는 것은 보장이 아니다" 문장, 원격 복사 줄의 두 꼬리(`a key of the project profile` 과 끝 절), ACK 줄과 재시작 줄의 단어, 넓은 체크 줄의 "full run every five landings stays". 이 마지막 문장은 의미가 있는 문장이었어요(전체 실행 주기): `CLAUDE.md` 의 Verify 절에 같은 규칙이 있어서 그쪽이 원본으로 남아요. 되돌리고 싶으면 알려 주세요.
+next-flow.md 한도 (D-5 a): 8111 → 8153 바이트(한도 8192 두 곳은 그대로, 팁 래칫만 8153 으로). 문단을 넣으려고 줄인 곳은 아래 다섯 가지이고 테스트가 고정하지 않는 문장만이에요(고정된 문장은 `GAP`, 원격 복사 줄의 `remote_copy` 구절, 감사 브리프 줄, 재시작 줄의 앞부분, 그리고 `src/card/land/batch.rs` 의 단위 테스트가 읽는 `every five landings` 라 그대로 뒀어요): 새 창 문장 한 줄, "스스로 세션을 비우는 것은 보장이 아니다" 문장, "백그라운드 세션은 푸시도 풀 리퀘스트도 하지 않는다" 문장(같은 줄 앞부분이 이미 푸시와 풀 리퀘스트 없음을 말해요), 원격 복사 줄의 두 꼬리(`a key of the project profile` 과 끝 절), ACK 줄과 재시작 줄의 단어, 넓은 체크 줄의 문장 모양(`the full run comes every five landings`, 뜻은 그대로).
+
+첫 `check affected --card`(헤드 `5841f7e9b7`)는 FAIL 이었어요: `card::land::batch::tests::the_verify_section_and_the_flow_reference_name_the_new_order` 하나가 `every five landings` 를 못 찾았어요(`src/card/land/batch.rs:661`, 이 테스트가 두 문서를 `include_str!` 로 읽어요). 제 고정 문장 검색이 `src/` 를 빼고 `tests/` 만 봤던 탓이에요. 문장을 되살리고 위 백그라운드 문장을 줄여 고쳤어요; 이 줄 아래의 결과는 새 헤드로 다시 돌린 것이에요.
 
 알려진 빈틈과 사용자에게 남는 질문:
 

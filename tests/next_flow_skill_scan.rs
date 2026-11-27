@@ -2412,10 +2412,10 @@ const SELF_CHECK: &str = "references/internal/self-check.md";
 
 /// The byte size of the flow reference on the tip that carries the pointer to the message table
 /// (SPEC-20261125-agent-team-session-names REQ-23: 8041 bytes before the pointer line, and
-/// `FLOW_REF_LIMIT` stays the budget); the restored meanings fit inside it. Raised to 8180 by
+/// `FLOW_REF_LIMIT` stays the budget); the restored meanings fit inside it. Raised to 8153 by
 /// SPEC-20261127-guard-repoint-followups, which added the `guard-repoint` bullet to "Landing" and
 /// trimmed other lines to keep `FLOW_REF_LIMIT`.
-const FLOW_REF_TIP_BYTES: usize = 8180;
+const FLOW_REF_TIP_BYTES: usize = 8153;
 
 /// The first line of `text` that holds `marker`, a list item found by its first words so that a
 /// renumbered list does not break the pin.

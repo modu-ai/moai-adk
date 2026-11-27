@@ -18,8 +18,7 @@ Four technical rules make the flow run.
 ## A lane
 
 - Work in a worktree under the project's `.claude/worktrees`, on its own branch; never in the primary checkout.
-- A lane only commits: no push, no pull request and no merge of a moved integration tip. A background session never pushes and never opens a pull request.
-- A lane submits two things and nothing else: its head commit and the base its checks ran on, by `moai card submit <card> --generation <g>`. Its note starts `LANE-READY-INTEGRATION <card> head=<40 hex>` and names the base below it.
+- A lane only commits: no push, no pull request and no merge of a moved integration tip.- A lane submits two things and nothing else: its head commit and the base its checks ran on, by `moai card submit <card> --generation <g>`. Its note starts `LANE-READY-INTEGRATION <card> head=<40 hex>` and names the base below it.
 - At tier 2 the READY note carries one line per new guard test: `guard-mutant: <test> | <code removed or flipped> | exit <n>`, where `<n>` is the non-zero exit code the test gave on a copy that lacks the guarded code, or `guard-mutant: none | <reason>` when the change adds no guard test; the lane runs that mutant once per new guard test before READY. Below tier 2 none is asked for. `moai bundle check` lists a missing, unreadable or `exit 0` line as a warning.
 - Work cap: cards in work and awaiting a check at most twice the lanes; at the cap take no new card, help check and land; the leader opens none above it.
 - A decision the lane cannot make goes on the card as a blocked note (`workflows/work.md`); with no registered leader the lane takes the next card, and with a registered leader it waits for that leader's dispatch.
@@ -53,7 +52,7 @@ Four technical rules make the flow run.
 ## Landing
 
 - A card lands exactly once, by the lander: the leader session, the only caller the command accepts. The command is `moai card land <card> --head <40 hex> --by leader`.
-- READY receipt: `check affected --card`. The wide set runs once per batch in `card land-batch`.
+- READY receipt: `check affected --card`. The wide set runs once per batch in `card land-batch`; the full run comes every five landings.
 - When the tip is not on the first-parent line of the head (the tip moved after the lane's base), the command refuses with `stale_base` and changes nothing. The lander then merges the lane's head onto the tip in a worktree of its own, with the tip as the first parent, and lands that merge.
 - Audit brief: name the scan tests `moai repo-scans --refs <tip> <head>` picks; run only their `cargo` checks on the merge tree, leaving out a Python line, and record each as a receipt step `scan:<id>` of the PASS for `moai card land`.
 - The protection hook is git's `reference-transaction` hook, which runs `moai card guard`. It refuses every create, move and delete of the integration branch that the landing command did not announce, a rename or copy onto its name included. Land with `moai card land`; never look for a way around the hook.
