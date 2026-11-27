@@ -1116,7 +1116,7 @@ fn leftover_lock_is_archived_only_while_its_process_is_dead() {
     fx.write(&format!("{BACKUPS}note.txt"), "an earlier backup\n");
     let plan = fx.update_plan();
     assert_steps_settled(&plan);
-    let for_lock = apply_argv(&fx, &plan, &[lock.clone()]);
+    let for_lock = apply_argv(&fx, &plan, std::slice::from_ref(&lock));
 
     // The process came alive after the plan.
     let live = json!({"pid": std::process::id(), "started_at": "2026-11-01T00:00:00Z",
@@ -1144,7 +1144,7 @@ fn leftover_lock_is_archived_only_while_its_process_is_dead() {
     // The bytes changed after the plan, the process still dead.
     fx.write(&lock, &dead);
     let plan = fx.update_plan();
-    let stale = apply_argv(&fx, &plan, &[lock.clone()]);
+    let stale = apply_argv(&fx, &plan, std::slice::from_ref(&lock));
     let other = json!({"pid": dead_pid(), "started_at": "2026-11-02T00:00:00Z", "hostname": "h"})
         .to_string();
     fx.write(&lock, &other);
@@ -1156,7 +1156,7 @@ fn leftover_lock_is_archived_only_while_its_process_is_dead() {
 
     // Control: the lock as it is now, a fresh plan, moves it.
     let plan = fx.update_plan();
-    let done = run_printed(&fx, &apply_argv(&fx, &plan, &[lock.clone()]));
+    let done = run_printed(&fx, &apply_argv(&fx, &plan, std::slice::from_ref(&lock)));
     assert_eq!(done["ok"], json!(true), "{done}");
     let stamp = receipt_of(&done);
     assert_eq!(outcome(&done["result"], &lock), "moved", "{done}");
