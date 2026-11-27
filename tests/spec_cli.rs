@@ -318,12 +318,12 @@ fn check_reports_codes_and_exits_one_on_an_error() {
     let path = spec_path(&p, ID);
     let template = fs::read_to_string(&path).unwrap();
     let good = filled(&template);
-    fs::write(
-        &path,
-        filled(&template.replace(" · verify: `<command that checks it>`", ""))
-            .replace("revision: 1\n", "revision: 1\nowner: me\n"),
-    )
-    .unwrap();
+    let bad = filled(&template.replace(" · verify: `<command that checks it>`", ""))
+        .replace("revision: 1\n", "revision: 1\nowner: me\n");
+    // The line of the criterion that lost its `verify:`, read from the written file: a line of
+    // the template added above it must not move a constant here.
+    let ac_line = bad.lines().position(|l| l.starts_with("- AC-1")).unwrap() + 1;
+    fs::write(&path, &bad).unwrap();
     let before = tree_state(home.path());
     let (code, v) = spec(&home, &p, &["check", ID]);
     assert_eq!(code, 1, "{v}");
@@ -339,7 +339,7 @@ fn check_reports_codes_and_exits_one_on_an_error() {
         "{m}"
     );
     assert!(
-        m.contains(&format!(".moai/specs/{ID}/spec.md:23 ac_no_verify")),
+        m.contains(&format!(".moai/specs/{ID}/spec.md:{ac_line} ac_no_verify")),
         "{m}"
     );
     // show still answers, with the findings.
