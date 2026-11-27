@@ -134,6 +134,10 @@ fn cut_to(row: &str, max: usize) -> String {
 /// How many of the last non-blank rows may hold a confirmation question (R-N1).
 const BOTTOM_ROWS: usize = 8;
 
+/// How many of the last non-blank rows may hold the entries of a choice list that has no
+/// question above it (`[1] Yes`, `[2] No`).
+const LIST_ROWS: usize = 6;
+
 /// Words of a confirmation question, lower case.
 const QUESTIONS: [&str; 6] = [
     "do you want",
@@ -144,15 +148,220 @@ const QUESTIONS: [&str; 6] = [
     "(y/n)",
 ];
 
-/// The words a confirmation's choices are written with, lower case. A real dialog does not always
-/// say yes and no: `Allow` and `Deny`, `1. Y` and `2. N` (leader note 3433, R-N1).
-const CHOICE_WORDS: [&str; 6] = ["yes", "no", "allow", "deny", "y", "n"];
+/// A choice row is short: at most this many characters once its marks are cut off.
+const SHORT_ROW: usize = 40;
 
-/// Whether a (lower case) row holds a choice word as a whole word: `Yes, go`, `(No)`, `Allow /
-/// Deny`, `(y/N/a)` do, `Yesterday`, `Nobody`, `Allowance` and `Not now` do not.
-fn has_choice_word(row: &str) -> bool {
-    row.split(|c: char| !c.is_alphanumeric())
-        .any(|w| CHOICE_WORDS.contains(&w))
+/// The longest word of a choice (`Approve`, `Continue`, `Decline`).
+const CHOICE_WORD_CHARS: usize = 12;
+
+/// The longest token of a bracket question group (`y`, `N`, `a`, `yes`, `no`).
+const BRACKET_TOKEN_CHARS: usize = 3;
+
+/// A row without the marks in front of it (frame, cursor, bullet): it starts at the first letter,
+/// digit or bracket, and its closing frame is cut off.
+fn body(row: &str) -> &str {
+    row.trim_start_matches(|c: char| !c.is_alphanumeric() && c != '[' && c != '(')
+        .trim_end_matches(|c: char| c.is_whitespace() || matches!(c, '│' | '┃' | '║'))
+}
+
+/// Whether `word` is one alphabetic word of at most `max` characters, a closing `?`, `.` or `:`
+/// aside.
+fn alpha_word(word: &str, max: usize) -> bool {
+    let word = word.trim().trim_end_matches(['?', '.', ':']);
+    !word.is_empty() && word.chars().count() <= max && word.chars().all(char::is_alphabetic)
+}
+
+/// Whether `text` is one to three short alphabetic words.
+fn few_words(text: &str) -> bool {
+    let words = text.split_whitespace().count();
+    (1..=3).contains(&words)
+        && text
+            .split_whitespace()
+            .all(|w| alpha_word(w, CHOICE_WORD_CHARS))
+}
+
+/// A bracket question group: a `(…)` or `[…]` that holds two or more tokens of at most three
+/// letters split by `/` or `|`, as in `(y/N/a)`, `[y/n]`, `(yes/no)`, `(yes/no/[fingerprint])`.
+fn bracket_question(row: &str) -> bool {
+    row.match_indices(['(', '[']).any(|(at, _)| {
+        let inside = row[at + 1..]
+            .split([')', ']', '(', '['])
+            .next()
+            .unwrap_or("");
+        let tokens: Vec<&str> = inside
+            .split(['/', '|'])
+            .map(str::trim)
+            .filter(|t| !t.is_empty())
+            .collect();
+        tokens.len() >= 2 && tokens.iter().all(|t| alpha_word(t, BRACKET_TOKEN_CHARS))
+    })
+}
+
+/// A short row that opens with a bracket the way a button or a list entry does: `[1] Yes`,
+/// `[ Proceed ] [ Cancel ]`, `[Y]es [N]o`, `(a) Keep`.
+fn bracketed(body: &str) -> bool {
+    let close = match body.chars().next() {
+        Some('[') => (']', CHOICE_WORD_CHARS),
+        Some('(') => (')', BRACKET_TOKEN_CHARS),
+        _ => return false,
+    };
+    body.chars().count() <= SHORT_ROW
+        && body[1..]
+            .split_once(close.0)
+            .is_some_and(|(inside, _)| inside.trim().chars().count() <= close.1)
+}
+
+/// A short row that opens with a list marker: `1: Yes`, `a. Yes`, `a) Yes` and, with
+/// `numbered_too`, the `1. Yes` and `2) No` rows [`numbered`] reads.
+fn marked(body: &str, numbered_too: bool) -> bool {
+    if body.chars().count() > SHORT_ROW {
+        return false;
+    }
+    let digits = body.chars().take_while(char::is_ascii_digit).count();
+    let (marker, rest) = if (1..=2).contains(&digits) {
+        (true, &body[digits..])
+    } else if body.chars().next().is_some_and(|c| c.is_ascii_alphabetic()) {
+        (false, &body[1..])
+    } else {
+        return false;
+    };
+    let Some(after) = rest.strip_prefix(['.', ')', ':']) else {
+        return false;
+    };
+    let colon = rest.starts_with(':');
+    (after.is_empty() || after.starts_with(' ')) && (!marker || colon || numbered_too)
+}
+
+/// A short row of two or more words split by `/`, `|` or `or`: `Approve / Reject`, `Allow /
+/// Deny`, `Yes/No`, `choose: yes or no`.
+fn split_choice(body: &str) -> bool {
+    if body.chars().count() > SHORT_ROW {
+        return false;
+    }
+    if body.contains(['/', '|']) {
+        let parts: Vec<&str> = body.split(['/', '|']).collect();
+        return parts.len() >= 2 && parts.iter().all(|p| few_words(p));
+    }
+    body.split_once(" or ").is_some_and(|(left, right)| {
+        let last = left.split_whitespace().next_back().unwrap_or("");
+        let first = right.split_whitespace().next().unwrap_or("");
+        alpha_word(last, CHOICE_WORD_CHARS) && alpha_word(first, CHOICE_WORD_CHARS)
+    })
+}
+
+/// Whether a (cleaned) row is choice-shaped: a bracket question, or a short row that is a button
+/// or a list entry or a split of short words. The shape is the criterion, not a list of words
+/// (REQ-6 of SPEC-20261120-lane-screen-followups).
+fn choice_shaped(row: &str) -> bool {
+    let body = body(row);
+    bracket_question(row) || bracketed(body) || marked(body, true) || split_choice(body)
+}
+
+/// Whether `text` holds a pair of alternatives: a `/` or `|` between two alphabetic words, with or
+/// without spaces (`yes/no`, `Allow | Deny`, `again / No`). Every part of a token must be only
+/// letters, so a token with a dot, a colon, a digit or an underscore in a part, or with an empty
+/// part, is a path or a link and no pair (`src/main.rs`, `https://host/x`). A path of plain folder
+/// names is all letters and reads as a pair, however many slashes it has (`src/lib`,
+/// `crates/core/src`). It is a shape, not a word list: `and/or` reads as a pair too. The cost is a
+/// refusal on a question row only.
+fn slash_pair(text: &str) -> bool {
+    let tokens: Vec<&str> = text.split_whitespace().collect();
+    let edge = |c: char| !c.is_alphanumeric();
+    let pair_token = |token: &str| {
+        let parts: Vec<&str> = token.trim_matches(edge).split(['/', '|']).collect();
+        parts.len() >= 2
+            && parts
+                .iter()
+                .all(|p| !p.is_empty() && p.chars().all(char::is_alphabetic))
+    };
+    tokens.iter().any(|t| pair_token(t))
+        || tokens.windows(3).any(|w| {
+            matches!(w[1], "/" | "|")
+                && w[0]
+                    .trim_end_matches(edge)
+                    .chars()
+                    .next_back()
+                    .is_some_and(char::is_alphabetic)
+                && w[2]
+                    .trim_start_matches(edge)
+                    .chars()
+                    .next()
+                    .is_some_and(char::is_alphabetic)
+        })
+}
+
+/// Whether `text` holds the one word pair the shape rule cannot see (REQ-6, user decision 2026-11-27,
+/// ledger note 10779): a yes word and a no word joined by `or`, as `yes or no` or `y or n`, in any
+/// case and either order, with punctuation round the words allowed (`(yes, or no)`). Nothing else
+/// is read by its words: `commit or push`, `yes or maybe` and `yes to one or no to two` are plain
+/// text, because `… now yes or no please confirm it` has the same shape as `commit or push?`.
+fn yes_no_or(text: &str) -> bool {
+    let words: Vec<String> = text
+        .split_whitespace()
+        .map(|w| {
+            w.trim_matches(|c: char| !c.is_alphanumeric())
+                .to_lowercase()
+        })
+        .collect();
+    words.windows(3).any(|w| {
+        w[1] == "or"
+            && matches!(
+                (w[0].as_str(), w[2].as_str()),
+                ("yes", "no") | ("no", "yes") | ("y", "n") | ("n", "y")
+            )
+    })
+}
+
+/// Whether a question row carries its own choices: a bracket question (`Overwrite? (y/N/a)`), a
+/// pair of alternatives anywhere in it (`Yes/No: do you want to proceed?`, `… now yes/no please
+/// confirm it`, `… ? Yes, and don't ask again / No, tell Claude`), a yes word and a no word joined
+/// by `or` anywhere in it ([`yes_no_or`]), or a choice shape in the tail after a question mark
+/// (`Do you want to proceed? Yes/No`, `… ? [Yes] [No]`, `… ? yes or no`). The question's own words
+/// are never read as a shape (`Would you like me to commit or push?` is a plain question), so only
+/// the text after a `?` counts for the shapes. A row with no question mark (`are you sure Yes/No`)
+/// is read from each of its last three words on.
+fn question_row_shaped(row: &str) -> bool {
+    if bracket_question(row) || slash_pair(row) || yes_no_or(row) {
+        return true;
+    }
+    if row.contains('?') {
+        return row
+            .split('?')
+            .skip(1)
+            .map(str::trim)
+            .any(|tail| !tail.is_empty() && choice_shaped(tail));
+    }
+    let mut starts: Vec<usize> = Vec::new();
+    let mut offset = 0;
+    for word in row.split(' ') {
+        if !word.is_empty() {
+            starts.push(offset);
+        }
+        offset += word.len() + 1;
+    }
+    starts
+        .iter()
+        .rev()
+        .take(3)
+        .any(|at| choice_shaped(&row[*at..]))
+}
+
+/// Whether a row is a list entry the shape reader newly knows (no question needed): `[1] Yes`,
+/// `1: Yes`, `a. Yes`. The `1.` and `1)` rows are the reader of [`numbered`].
+fn list_entry(row: &str) -> bool {
+    let body = body(row);
+    bracketed(body) || marked(body, false)
+}
+
+/// Whether two or more rows in a row are one bare word each (`Allow`, `Deny`): a list of choices
+/// drawn one to a line.
+fn word_rows(rows: &[String]) -> bool {
+    let bare: Vec<bool> = rows
+        .iter()
+        .filter(|r| !r.is_empty())
+        .map(|r| alpha_word(body(r), CHOICE_WORD_CHARS))
+        .collect();
+    bare.windows(2).any(|pair| pair[0] && pair[1])
 }
 
 /// The cursor a menu draws before the highlighted choice: `❯` is Claude Code's own, `>` is its
@@ -280,23 +489,31 @@ pub fn classify(rows: &[String]) -> Seen {
     // below it, and no numbered Yes and No rows the reader could use (the choices are drawn in a
     // way it does not know, or in other words): Enter may pick the first choice, so the lane is
     // not `working` or `idle` whatever its footer says (leader R-N1, note 3256). The choices
-    // are there when a choice word (`yes no allow deny y n`) is on the question row or a row
-    // below it (R-B1, note 3433: `proceed? (yes/no)` is one row), or when two or more numbered
-    // rows are below it whatever they say (R-N1, note 3433: `1. Allow once`, `3. Deny`). A
-    // question with only the input line under it is a lane that ended its turn and waits: that
-    // is the screen a send is for (leader S-N2, note 3362).
-    let near_bottom = rows
+    // are there when the question row carries them (`question_row_shaped`: a pair of alternatives
+    // anywhere in it, leader decision 10737, a yes word and a no word joined by `or`, user
+    // decision 10779, or a choice shape in the tail after its question
+    // mark, R-B1, note 3433: `proceed? (yes/no)` is one row, and review note 10724: `Do you want
+    // to proceed? Yes/No`), when a choice-shaped row (`choice_shaped`: a
+    // bracket question, a button or list entry, a split of short words) is below it, when two or
+    // more numbered rows are below it whatever they
+    // say (R-N1, note 3433: `1. Allow once`, `3. Deny`), or when two bare words stand one to a
+    // row (`Allow`, `Deny`). A bracket question such as `Overwrite? (y/N/a)` is its own question.
+    // A question with only the input line under it is a lane that ended its turn and waits: that
+    // is the screen a send is for (leader S-N2, note 3362). Without a question, two list entries
+    // of the newer shapes (`[1] Yes`, `1: Yes`, `a. Yes`) in the window are a choice list too.
+    let near_bottom: Vec<(usize, &String)> = rows
         .iter()
         .enumerate()
         .filter(|(_, r)| !r.is_empty())
         .rev()
-        .take(BOTTOM_ROWS);
-    if let Some((i, _)) = near_bottom.into_iter().find(|(i, _)| {
-        let Some(row) = lower.get(*i) else {
-            return false;
-        };
-        QUESTIONS.iter().any(|q| row.contains(q))
-            && (lower[*i..].iter().any(|r| has_choice_word(r))
+        .take(BOTTOM_ROWS)
+        .collect();
+    if let Some((i, _)) = near_bottom.iter().find(|(i, row)| {
+        let known = QUESTIONS.iter().any(|q| lower[*i].contains(q)) || bracket_question(row);
+        known
+            && (question_row_shaped(row)
+                || rows[*i + 1..].iter().any(|r| choice_shaped(r))
+                || word_rows(&rows[*i + 1..])
                 || rows[*i + 1..]
                     .iter()
                     .filter(|r| numbered(r).is_some())
@@ -305,8 +522,24 @@ pub fn classify(rows: &[String]) -> Seen {
     }) {
         return seen(
             State::Unknown,
-            rows.get(i),
+            rows.get(*i),
             "a question is near the bottom of the screen and its choices could not be read as Yes and No rows",
+        );
+    }
+    // An unanswered dialog is the last thing drawn: entries with more than `LIST_ROWS` rows of
+    // output under them are not the live prompt.
+    let entries: Vec<usize> = near_bottom
+        .iter()
+        .take(LIST_ROWS)
+        .rev()
+        .filter(|(_, r)| list_entry(r))
+        .map(|(i, _)| *i)
+        .collect();
+    if let [first, _, ..] = entries[..] {
+        return seen(
+            State::Unknown,
+            rows.get(first),
+            "a list of choices is near the bottom of the screen and could not be read as Yes and No rows",
         );
     }
     if let Some(i) = find("esc to interrupt") {
@@ -789,6 +1022,29 @@ pub const MAX_SCAN: usize = 200;
 /// Longest title, branch or handle shown, in characters.
 const SHOWN_CHARS: usize = 80;
 
+/// The limits of one scan (`--max-seconds`, `--max-terminals`).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ScanLimits {
+    /// The instant after which no screen is read any more, and the seconds it was set from (the
+    /// reasons name them).
+    pub deadline: Option<(std::time::Instant, u64)>,
+    /// The most terminals a list may hold; a longer list fails with no screen read.
+    pub max_terminals: Option<usize>,
+}
+
+impl ScanLimits {
+    /// The reason of a terminal the time cap left unread, or `None` while the time remains.
+    fn expired(&self) -> Option<String> {
+        let (at, secs) = self.deadline?;
+        (std::time::Instant::now() >= at).then(|| time_cap_text(secs))
+    }
+}
+
+/// How the reasons name the total time cap.
+fn time_cap_text(secs: u64) -> String {
+    format!("the scan's time cap of --max-seconds {secs} passed")
+}
+
 /// The error text for a terminal list that cannot be read (the program is absent, it failed, or
 /// its answer is not a list).
 pub fn list_error(detail: &str) -> String {
@@ -810,11 +1066,14 @@ fn shown(text: &str) -> String {
 /// `orca terminal read --screen --json` out). A terminal that cannot be read, has no handle or is
 /// not answered with an Orca answer is `unreachable`; the scan goes on. A usage limit carries its
 /// reset time in UTC from the screen text (no usage record: a terminal does not say whose
-/// HOME it is). `now` is Unix seconds. `Err` only when the list itself cannot be read.
+/// HOME it is). `now` is Unix seconds. `Err` only when the list itself cannot be read or holds
+/// more terminals than `limits.max_terminals` (nothing is read then). Once `limits.deadline` has
+/// passed, the terminals not read yet are `unreachable` and say so.
 pub fn scan(
     list_json: &str,
     read: &mut dyn FnMut(&str) -> Result<String, String>,
     now: i64,
+    limits: &ScanLimits,
 ) -> Result<serde_json::Value, String> {
     use serde_json::{json, Map, Value};
 
@@ -839,6 +1098,11 @@ pub fn scan(
         .and_then(Value::as_u64)
         .map_or(0, |n| usize::try_from(n).unwrap_or(usize::MAX));
     let total = reported.max(listed.len());
+    if let Some(max) = limits.max_terminals.filter(|max| total > *max) {
+        return Err(format!(
+            "the terminal list holds {total} terminals, more than --max-terminals {max}; no screen was read"
+        ));
+    }
     let cut_short = total > listed.len()
         || listed.len() > MAX_SCAN
         || answer
@@ -863,11 +1127,18 @@ pub fn scan(
         // (state, reason, evidence, reset) of this terminal.
         let (state, reason, evidence, reset) = match term.get("handle").and_then(Value::as_str) {
             None => unreachable_row("the list gives this terminal no handle"),
+            Some(_) if limits.expired().is_some() => unreachable_row(&format!(
+                "the terminal was not read: {}",
+                limits.expired().unwrap_or_default()
+            )),
             Some(raw) => match read(raw) {
-                Err(d) => unreachable_row(&format!(
-                    "the terminal could not be read: {}",
-                    cut(&clean(&d))
-                )),
+                Err(d) => unreachable_row(&match limits.expired() {
+                    // The read ran out of the time that was left, or ended just after the cap.
+                    Some(cap) => {
+                        format!("the terminal could not be read: {cap}: {}", cut(&clean(&d)))
+                    }
+                    None => format!("the terminal could not be read: {}", cut(&clean(&d))),
+                }),
                 Ok(out) => {
                     let input = read_input(&out);
                     if input.source != "orca:screen" {
@@ -992,12 +1263,13 @@ mod tests {
     }
 
     #[test]
-    fn a_question_above_yes_and_no_words_that_are_no_choice_rows_is_unknown() {
-        // The rows below the question: `[1] Yes` and `[2] No` are no choice rows (the number
-        // is closed by `]`), then filler rows with no yes or no word.
+    fn a_question_above_a_choice_shaped_row_is_unknown_until_it_leaves_the_window() {
+        // The row below the question is a split of short words (REQ-6), then filler rows that
+        // are no choice. (Before the shape criterion this test used `[1] Yes` and `[2] No`; those
+        // two rows are a choice list by themselves now, see `two_list_entries_are_a_choice_list`.)
         let with = |question: &str, below: usize| {
             let mut v = filler(6, &["✳ Frosting… (esc to interrupt)", question]);
-            v.extend(["[1] Yes".to_string(), "[2] No".to_string()]);
+            v.push("Allow / Deny".to_string());
             v.extend((0..below).map(|i| format!("below {i}")));
             classify(&v)
         };
@@ -1013,8 +1285,8 @@ mod tests {
             assert_eq!(seen.evidence.as_deref(), Some(q), "{q}");
         }
         // The window is the last 8 non-blank rows: the 8th still counts, the 9th is transcript.
-        assert_eq!(with("Do you want to proceed?", 5).state, State::Unknown);
-        assert_eq!(with("Do you want to proceed?", 6).state, State::Working);
+        assert_eq!(with("Do you want to proceed?", 6).state, State::Unknown);
+        assert_eq!(with("Do you want to proceed?", 7).state, State::Working);
         // A blank row is not a row of the window.
         let mut blanks = filler(
             6,
@@ -1031,7 +1303,7 @@ mod tests {
     }
 
     #[test]
-    fn a_question_that_ends_the_turn_is_not_unknown_without_a_yes_or_no_word_below() {
+    fn a_question_that_ends_the_turn_is_not_unknown_without_a_choice_shaped_row_below() {
         let ends = |question: &str, below: &[&str]| {
             let mut v = filler(6, &["✳ Frosting… (esc to interrupt)", question]);
             v.extend(below.iter().map(|s| s.to_string()));
@@ -1043,12 +1315,26 @@ mod tests {
             ends(q, &["❯ ", "⏵⏵ bypass (shift+tab to cycle)"]),
             State::Working
         );
-        for word in ["Yesterday", "Nobody", "Not now", "Yeses", "Noted"] {
+        // REQ-7: a bare word or a sentence is plain prose, not a choice shape, so it no longer
+        // refuses (`yes`, `No.` and `answer: NO` did before the word list was removed).
+        for word in [
+            "Yesterday",
+            "Nobody",
+            "Not now",
+            "Yeses",
+            "Noted",
+            "yes",
+            "No.",
+            "answer: NO",
+        ] {
             assert_eq!(ends(q, &[word]), State::Working, "{word}");
         }
-        for word in ["yes", "No.", "(Yes)", "[no]", "yes/no", "answer: NO"] {
+        // A short bracketed word and a split of short words are choice shapes.
+        for word in ["(Yes)", "[no]", "yes/no"] {
             assert_eq!(ends(q, &[word]), State::Unknown, "{word}");
         }
+        // Two bare words one to a row are a list of choices drawn one to a line.
+        assert_eq!(ends(q, &["Allow", "Deny"]), State::Unknown);
         // A yes or no ABOVE the question does not count.
         let mut v = filler(6, &["yes it ran", "✳ Frosting… (esc to interrupt)", q]);
         assert_eq!(classify(&v).state, State::Working);
@@ -1058,7 +1344,7 @@ mod tests {
     }
 
     #[test]
-    fn a_question_with_a_choice_word_on_its_row_or_below_or_two_numbered_rows_is_unknown() {
+    fn a_question_with_a_choice_shape_on_its_row_or_below_is_unknown() {
         let screen = |rows: &[&str]| {
             let mut v = filler(6, &["✳ Frosting… (esc to interrupt)"]);
             v.extend(rows.iter().map(|s| s.to_string()));
@@ -1079,27 +1365,303 @@ mod tests {
         let q = "Do you want to proceed?";
         for below in [
             &["Allow / Deny"][..],
-            &["allow"],
-            &["Deny"],
-            &["y"],
-            &["N"],
+            &["Allow", "Deny"],
             &["1. Allow once", "2. Allow always", "3. Deny"],
             &["◆ 1. Y", "  2. N"],
             &["  1. Proceed", "  2. Cancel"],
+            // REQ-6: one numbered row under a known question is a choice shape too.
+            &["  1. maybe later"],
         ] {
             let mut rows = vec![q];
             rows.extend_from_slice(below);
             assert_eq!(screen(&rows).state, State::Unknown, "{below:?}");
         }
-        // One numbered row, or words that only contain a choice word, are not enough.
-        assert_eq!(screen(&[q, "  1. maybe later"]).state, State::Working);
-        for word in ["Allowance", "denied", "yard", "Nine", "yesterday", "nobody"] {
+        // REQ-7: one bare word (the word list is gone), or words that only contain a choice
+        // word, are plain prose.
+        for word in [
+            "allow",
+            "Deny",
+            "y",
+            "N",
+            "Allowance",
+            "denied",
+            "yard",
+            "Nine",
+            "yesterday",
+            "nobody",
+        ] {
             assert_eq!(screen(&[q, word]).state, State::Working, "{word}");
         }
         // A choice word ABOVE the question does not count, and neither does one in an unrelated row.
         assert_eq!(screen(&["yes", "All done.", q]).state, State::Working);
         // Numbered rows ABOVE the question do not count.
         assert_eq!(screen(&["1. a", "2. b", q]).state, State::Working);
+    }
+
+    #[test]
+    fn a_yes_no_pair_joined_by_or_is_read_by_its_words() {
+        // A yes word and a no word joined by `or`: any case, either order, punctuation allowed.
+        for text in [
+            "yes or no",
+            "Yes or No",
+            "no or yes",
+            "y or n",
+            "N OR Y",
+            "now (yes, or no) please",
+            "Is that yes or no?",
+            "answer: yes or no.",
+        ] {
+            assert!(yes_no_or(text), "{text:?} is a yes/no pair");
+        }
+        // Nothing else is read by its words: another `or` pair, a yes or a no beside a word that
+        // is not its opposite, the two words with no `or` between them, a word that only holds one
+        // of them, and an `or` that joins a longer phrase.
+        for text in [
+            "commit or push",
+            "keep the old file or replace it",
+            "yes or maybe",
+            "later or no",
+            "yes and no",
+            "yes, no",
+            "y or no",
+            "yesterday or nothing",
+            "yes to one or no to two",
+            "yes",
+            "or",
+            "",
+        ] {
+            assert!(!yes_no_or(text), "{text:?} is no yes/no pair");
+        }
+        // On a question row it refuses; the same row without the pair does not.
+        assert!(question_row_shaped(
+            "Do you want to delete the build folder now yes or no please confirm it"
+        ));
+        assert!(!question_row_shaped(
+            "Do you want to delete the build folder now or keep it please confirm it"
+        ));
+    }
+
+    #[test]
+    fn a_path_of_plain_folder_names_reads_as_a_pair_of_alternatives() {
+        // The shape rule cannot tell a path of folder names from `and/or`: every part is only
+        // letters, however many slashes there are. It costs a refusal on a question row.
+        for text in ["src/lib", "crates/core/src", "and/or", "Allow|Deny"] {
+            assert!(slash_pair(text), "{text:?} reads as a pair");
+        }
+        // A part with a dot, a colon, a digit or an underscore, or an empty part, is no pair.
+        for text in [
+            "src/main.rs",
+            "https://example.com/docs/x",
+            "docs/v2/api",
+            "my_dir/lib",
+            "src//lib",
+            "plain words only",
+        ] {
+            assert!(!slash_pair(text), "{text:?} is no pair");
+        }
+    }
+
+    #[test]
+    fn a_question_row_is_read_by_its_tail_after_the_question_mark() {
+        // The tail after a `?` is a choice shape; the question's own words never are.
+        for row in [
+            "Do you want to proceed? Yes/No",
+            "Do you want to delete the build folder? Yes/No",
+            "Do you want to delete the build folder? [Yes] [No]",
+            "Do you want to continue? yes or no",
+            "Do you want to continue? Allow / Deny",
+            "Do you want to proceed? Yes/No?",
+            "Do you want to proceed? 1. Yes 2. No",
+            "Overwrite? (y/N/a)",
+            // A pair of alternatives anywhere in the row (leader decision 10737).
+            "Do you want to proceed? Yes, and don't ask again / No, tell Claude what to do differently",
+            "Yes/No: do you want to proceed?",
+            "Do you want to delete the build folder now yes/no please confirm it",
+            "Do you want to delete the build folder now (Yes | No) please confirm it",
+            "Are you sure you want to overwrite the whole build folder Allow/Deny",
+            // No question mark: read from each of the last three words on.
+            "Are you sure Yes/No",
+            "Do you want to proceed [Yes] [No]",
+        ] {
+            assert!(question_row_shaped(row), "{row:?} carries its choices");
+        }
+        for row in [
+            "Do you want me to run the tests now?",
+            "Would you like me to commit or push?",
+            "Do you want to continue or stop?",
+            "Do you want to continue? no changes yet",
+            "Do you want to continue? yes, go ahead",
+            "Do you want to continue? allowed 3 lanes so far",
+            "Are you sure about the plan",
+            // A path with an extension and a link are no pair.
+            "Do you want me to edit src/main.rs?",
+            "Do you want me to open https://example.com/docs/x?",
+            "Do you want me to run the build and then the tests?",
+        ] {
+            assert!(!question_row_shaped(row), "{row:?} is a plain question");
+        }
+        // The same rows on a screen: a refusal on a working and on a waiting one, a pass for the
+        // plain questions.
+        let on_screen = |row: &str, waiting: bool| {
+            let mut v = filler(
+                4,
+                &[if waiting {
+                    "agent waiting"
+                } else {
+                    "✳ Frosting… (esc to interrupt)"
+                }],
+            );
+            v.push(row.to_string());
+            if waiting {
+                v.push("❯ ".to_string());
+                v.push("? for shortcuts".to_string());
+            }
+            classify(&v).state
+        };
+        for waiting in [false, true] {
+            assert_eq!(
+                on_screen("Do you want to proceed? Yes/No", waiting),
+                State::Unknown,
+                "waiting {waiting}"
+            );
+            assert_ne!(
+                on_screen("Would you like me to commit or push?", waiting),
+                State::Unknown,
+                "waiting {waiting}"
+            );
+        }
+    }
+
+    #[test]
+    fn two_list_entries_are_a_choice_list_without_any_question() {
+        let screen = |rows: &[&str]| {
+            let mut v = filler(6, &["✳ Frosting… (esc to interrupt)"]);
+            v.extend(rows.iter().map(|s| s.to_string()));
+            classify(&v)
+        };
+        for rows in [
+            &["[1] Yes", "[2] No"][..],
+            &["1: Yes", "2: No"],
+            &["a. Yes", "b. No"],
+            &["a) Keep", "b) Replace"],
+            &["Overwrite? (y/N/a)"],
+        ] {
+            let seen = screen(rows);
+            assert_eq!(seen.state, State::Unknown, "{rows:?}");
+            assert!(seen.evidence.is_some(), "{rows:?}");
+        }
+        // One entry is not a list; numbered `1.` rows without a question are the reader of
+        // `numbered`, not of the shape reader (a transcript lists steps that way).
+        assert_eq!(screen(&["[1] Yes"]).state, State::Working);
+        assert_eq!(
+            screen(&["1. first step", "2. second step"]).state,
+            State::Working
+        );
+        // The two entries must be among the last six rows: five rows below them still refuse,
+        // a sixth makes them old output.
+        let far = |below: usize| {
+            let mut v = filler(6, &["✳ Frosting… (esc to interrupt)", "[1] Yes", "[2] No"]);
+            v.extend((0..below).map(|i| format!("below {i}")));
+            classify(&v).state
+        };
+        assert_eq!(far(4), State::Unknown);
+        assert_eq!(far(5), State::Working);
+        // The input prompt and the footer of an idle lane are no list entries.
+        let mut idle = filler(6, &["Would you like me to run the lint step next?", "❯ "]);
+        idle.push("? for shortcuts".to_string());
+        assert_eq!(classify(&idle).state, State::Idle);
+    }
+
+    #[test]
+    fn the_shapes_read_the_rows_they_name_and_leave_prose_alone() {
+        // bracket_question: two or more tokens of at most three letters in one group.
+        for row in [
+            "Overwrite? (y/N/a)",
+            "Proceed? [y/n]",
+            "Save? (yes/no)",
+            "continue connecting (yes/no/[fingerprint])?",
+        ] {
+            assert!(bracket_question(row), "{row}");
+        }
+        for row in [
+            "(esc to interrupt)",
+            "(shift+tab to cycle)",
+            "(src/lane_screen.rs)",
+            "(yes)",
+            "(approve/reject)",
+            "no brackets",
+        ] {
+            assert!(!bracket_question(row), "{row}");
+        }
+        // bracketed: a short row that opens with a bracket group.
+        for row in [
+            "[1] Yes",
+            "[ Proceed ] [ Cancel ]",
+            "[Y]es [N]o",
+            "(a) Keep",
+            "(Yes)",
+        ] {
+            assert!(bracketed(row), "{row}");
+        }
+        for row in [
+            "(esc to interrupt)",
+            "[a very long bracket group here] x",
+            "text [1]",
+            "[1] Yes and a tail that runs past forty characters",
+        ] {
+            assert!(!bracketed(row), "{row}");
+        }
+        // marked: `1: Yes`, `a. Yes`, `a) Yes`; the `1.` rows only with `numbered_too`.
+        for row in ["1: Yes", "a. Yes", "b) No", "c:"] {
+            assert!(marked(row, false), "{row}");
+        }
+        assert!(!marked("1. Yes", false));
+        assert!(marked("1. Yes", true));
+        assert!(marked("2) No", true));
+        for row in [
+            "1.Yes",
+            "12:30 pm",
+            "note: this",
+            "ab. no",
+            "No changes yet",
+            "a",
+        ] {
+            assert!(!marked(row, true), "{row}");
+        }
+        // split_choice: short words split by `/`, `|` or `or`.
+        for row in [
+            "Approve / Reject",
+            "OK / Cancel",
+            "Yes/No",
+            "Keep | Replace",
+            "choose: yes or no",
+            "Allow once / Allow always",
+        ] {
+            assert!(split_choice(row), "{row}");
+        }
+        for row in [
+            "src/lane_screen.rs",
+            "and then it ran / and stopped after a very long sentence here",
+            "no changes yet",
+            "a/1",
+            "Approve",
+        ] {
+            assert!(!split_choice(row), "{row}");
+        }
+        // word_rows: two bare words, one to a row, with no other row between them.
+        assert!(word_rows(&["Allow".into(), "Deny".into()]));
+        assert!(word_rows(&[
+            "x y".into(),
+            "Allow".into(),
+            String::new(),
+            "Deny".into()
+        ]));
+        assert!(!word_rows(&["Allow".into()]));
+        assert!(!word_rows(&[
+            "Allow".into(),
+            "two words".into(),
+            "Deny".into()
+        ]));
     }
 
     #[test]
@@ -1162,6 +1724,117 @@ mod tests {
         );
         assert_eq!(dialog("  1. Yes", "  2. No"), State::PermissionPrompt);
         assert_eq!(dialog("  1. Yesterday", "  2. Not now"), State::Working);
+    }
+
+    /// An `orca terminal list --json` answer with `n` terminals.
+    fn list_of(n: usize) -> String {
+        let terminals: Vec<serde_json::Value> = (1..=n)
+            .map(|i| serde_json::json!({"handle": format!("t{i}"), "title": "lane", "branch": "main"}))
+            .collect();
+        serde_json::json!({
+            "ok": true,
+            "result": {"terminals": terminals, "totalCount": n, "truncated": false},
+        })
+        .to_string()
+    }
+
+    fn working_answer() -> String {
+        let rows = ["a", "b", "c", "d", "esc to interrupt", "e"];
+        serde_json::json!({"ok": true, "result": {"terminal": {
+            "handle": "t", "status": "running", "tail": rows, "truncated": false,
+            "limited": false, "returnedLineCount": 6, "source": "screen",
+        }}})
+        .to_string()
+    }
+
+    #[test]
+    fn a_list_over_max_terminals_fails_naming_both_sizes_and_reads_nothing() {
+        let mut reads = 0;
+        let limits = ScanLimits {
+            deadline: None,
+            max_terminals: Some(2),
+        };
+        let err = scan(
+            &list_of(3),
+            &mut |_| {
+                reads += 1;
+                Ok(working_answer())
+            },
+            NOW,
+            &limits,
+        )
+        .unwrap_err();
+        assert!(err.contains("3 terminals"), "{err}");
+        assert!(err.contains("--max-terminals 2"), "{err}");
+        assert_eq!(reads, 0, "no screen is read from an over-large list");
+        // A list exactly as long as the cap is scanned, and so is any list with no cap.
+        for max in [Some(3), None] {
+            let limits = ScanLimits {
+                deadline: None,
+                max_terminals: max,
+            };
+            let done = scan(&list_of(3), &mut |_| Ok(working_answer()), NOW, &limits).unwrap();
+            assert_eq!(done["count"], serde_json::json!(3), "{max:?}");
+        }
+    }
+
+    #[test]
+    fn after_the_time_cap_the_rest_are_unreachable_and_name_the_cap() {
+        use std::time::{Duration, Instant};
+        // A cap that already passed reads nothing and every terminal says so.
+        let past = Instant::now()
+            .checked_sub(Duration::from_secs(1))
+            .expect("the clock has run for a second");
+        let limits = ScanLimits {
+            deadline: Some((past, 7)),
+            max_terminals: None,
+        };
+        let mut reads = 0;
+        let done = scan(
+            &list_of(2),
+            &mut |_| {
+                reads += 1;
+                Ok(working_answer())
+            },
+            NOW,
+            &limits,
+        )
+        .unwrap();
+        assert_eq!(reads, 0);
+        for row in done["terminals"].as_array().unwrap() {
+            assert_eq!(row["state"], serde_json::json!("unreachable"));
+            let reason = row["reason"].as_str().unwrap();
+            assert!(reason.contains("--max-seconds 7"), "{reason}");
+            assert!(reason.contains("not read"), "{reason}");
+        }
+        // Time left: every terminal is read.
+        let limits = ScanLimits {
+            deadline: Some((Instant::now() + Duration::from_secs(60), 60)),
+            max_terminals: None,
+        };
+        let done = scan(&list_of(2), &mut |_| Ok(working_answer()), NOW, &limits).unwrap();
+        assert_eq!(done["by_state"]["working"], serde_json::json!(2));
+        // A read that ends after the cap keeps its own reason beside the cap.
+        let limits = ScanLimits {
+            deadline: Some((Instant::now() + Duration::from_millis(30), 1)),
+            max_terminals: None,
+        };
+        let done = scan(
+            &list_of(1),
+            &mut |_| {
+                std::thread::sleep(Duration::from_millis(80));
+                Err("did not answer within 1 seconds: `orca`".to_string())
+            },
+            NOW,
+            &limits,
+        )
+        .unwrap();
+        let reason = done["terminals"][0]["reason"].as_str().unwrap();
+        assert!(reason.contains("--max-seconds 1"), "{reason}");
+        assert!(
+            reason.contains("did not answer within 1 seconds"),
+            "{reason}"
+        );
     }
 
     #[test]
