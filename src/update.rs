@@ -1963,13 +1963,13 @@ pub fn installed_agents_dir() -> Result<PathBuf> {
 }
 
 /// The user layer `moai-cli update` installs (#2638): the skill copies, the base agents, the
-/// routing section of the global instruction files and the MoAI-Easy output style (#2875), all
+/// routing section of the global instruction files and the MoAI-Style output style (#2875), all
 /// from one package snapshot.
 pub struct UserLayerPlan {
     pub skills: UpdatePlan,
     pub agents: crate::agent_install::Plan,
     pub routing: crate::home_routing::Plan,
-    /// The MoAI-Easy output style (#2875): Claude's style file and `outputStyle`.
+    /// The MoAI-Style output style (#2875): Claude's style file and `outputStyle`.
     pub style: crate::home_style::Plan,
     /// The `moai` hard link in this build's version folder (#2791 AC-1).
     pub bin_names: crate::bin_names::Plan,
@@ -2452,7 +2452,7 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
 
 /// #2522, #2638: one-line `moai-cli update` over the package installed with this binary — the
 /// user layer: the skill copies, the base agents (`agent_install`), the routing section of
-/// the global instruction files (`home_routing`) and the MoAI-Easy output style (`home_style`,
+/// the global instruction files (`home_routing`) and the MoAI-Style output style (`home_style`,
 /// #2875).
 ///
 /// Always computes every preview from one package snapshot. Without a confirmation it

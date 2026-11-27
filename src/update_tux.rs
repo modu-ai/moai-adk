@@ -943,7 +943,7 @@ fn tally(files: &[Value]) -> (usize, usize, usize, usize, usize) {
         match f["action"].as_str().unwrap_or("") {
             "unchanged" => t.0 += 1,
             "create" | "append" | "merge" | "set" => t.1 += 1,
-            "update" | "replace" | "replace_copy" => t.2 += 1,
+            "update" | "replace" | "replace_copy" | "retire" => t.2 += 1,
             "conflict" => t.3 += 1,
             _ => t.4 += 1,
         }
@@ -2248,9 +2248,8 @@ impl Out<'_> {
 
 fn change_mark(action: &str) -> Option<Mark> {
     match action {
-        "create" | "append" | "merge" | "set" | "update" | "replace" | "replace_copy" => {
-            Some(Mark::Update)
-        }
+        "create" | "append" | "merge" | "set" | "update" | "replace" | "replace_copy"
+        | "retire" => Some(Mark::Update),
         "conflict" => Some(Mark::Warn),
         _ => None,
     }
