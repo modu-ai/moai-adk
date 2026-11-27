@@ -10,7 +10,9 @@
 //! Over-keeping is the safe error here: a reader that cannot be read, or an import or script
 //! that leaves the project, makes the survey keep every Go file (REQ-3); a name that matches by
 //! accident only keeps one file more. Reading goes through `go_state::read_bounded_text`, so a
-//! link on the path, more than 4 MiB and text that is not UTF-8 are all refused the same way.
+//! link on the path, more than 4 MiB and text that is not UTF-8 are all refused the same way. A
+//! reader whose path holds a secret-shaped name (`go_state::has_secret_component`) is not opened
+//! at all and counts as unread (SPEC-20261127-go-residue-secret-readers).
 
 use serde_json::Value;
 use std::{
@@ -20,7 +22,7 @@ use std::{
     path::Path,
 };
 
-use crate::go_state::{linked_component, read_bounded_text};
+use crate::go_state::{has_secret_component, linked_component, read_bounded_text};
 
 /// The largest reader file read: the limit Claude Code puts on an `@` import.
 const READ_LIMIT: u64 = 4 * 1024 * 1024;
@@ -147,6 +149,15 @@ impl Collector<'_> {
     /// The text of a reader file: `None` when it does not exist (which blocks nothing) or when
     /// it could not be read (which is recorded as an unread reader).
     fn read(&mut self, rel: &str) -> Option<String> {
+        // A secret-shaped name on any component of the path is a reader that is not opened: only
+        // the entry's existence is looked at, so no secret ever reaches the survey. The shared
+        // rule is the one the rest of the update uses; this module keeps no list of its own.
+        if has_secret_component(rel) {
+            if fs::symlink_metadata(self.project.join(rel)).is_ok() {
+                self.unread(rel, "has a secret-shaped name");
+            }
+            return None;
+        }
         self.reads += 1;
         if self.reads > FILE_LIMIT {
             self.unread(rel, "the survey reads at most 1000 reader files");
