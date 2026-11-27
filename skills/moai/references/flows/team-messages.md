@@ -1,6 +1,6 @@
 # Team messages
 
-How the leader window and the agents (lanes) talk during one card. A session started with `moai cc -l` is named `<project name>-leader` and one started with `moai cc -a` is named `<project name>-agent-<english name>` (`moai session-register --names` prints the project name); a session started plain takes the same names with `/rename` (`workflows/work.md`, `workflows/leader.md`). Every step of the flow goes by a cross-session message, and the ledger is the record.
+How the leader window and the agents (lanes) talk during one card. A session started with `moai cc -l` is named `leader-<project name>` and one started with `moai cc -a` is named `agent-<english name>`, a name no other session on the machine holds (`moai session-register --names` prints the project name); a session started plain takes the same names with `/rename` (`workflows/work.md`, `workflows/leader.md`). Every step of the flow goes by a cross-session message, and the ledger is the record.
 
 ## The message table
 

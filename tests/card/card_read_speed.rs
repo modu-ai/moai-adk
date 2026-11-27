@@ -409,17 +409,15 @@ fn the_batched_head_check_gives_the_verdict_of_the_per_head_check() {
 }
 
 /// `card next` builds the leader name and the lane prefix from one project name; the session
-/// module's own functions must keep the same two forms.
+/// module's own functions must keep the same two forms (SPEC-20261127-launcher-session-names:
+/// `leader-<project name>`, and the lane prefix `agent-`, which carries no project name).
 #[test]
 fn the_leader_name_and_lane_prefix_keep_their_forms_of_the_project_name() {
     let w = World::new();
     let name = moai_cli::session::project_name(&w.project);
     assert_eq!(
         moai_cli::session::leader_session_name(&w.project),
-        format!("{name}-leader")
+        format!("leader-{name}")
     );
-    assert_eq!(
-        moai_cli::session::agent_prefix(&w.project),
-        format!("{name}-agent-")
-    );
+    assert_eq!(moai_cli::session::agent_prefix(&w.project), "agent-");
 }

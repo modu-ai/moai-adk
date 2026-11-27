@@ -1422,6 +1422,32 @@ fn lock_ac3_leaders_and_unknown_names_do_not_count_but_a_lane_name_does() {
     assert!(message.contains("2 lane(s)"), "{message}");
 }
 
+/// SPEC-20261127-launcher-session-names REQ-11 (AC-7): the leader is read as `leader-<project
+/// name>` or `<project name>-leader`, so an entry of either name is no lane even without the
+/// leader mode; a lane is read as `agent-<name>` or `<project name>-agent-<name>`, and a lane that
+/// holds both forms counts once.
+#[test]
+fn lock_ac7_both_leader_names_are_no_lane_and_both_lane_forms_are_one_lane() {
+    let w = world(None);
+    w.lane("agent-1", &sid(1));
+    w.lane("leader-demo", &sid(9));
+    w.lane("demo-leader", &sid(8));
+    w.working(&sid(1), 2);
+    let third = w.ready_card("src/third/");
+    let (_, message) = refusal(&w.take(&sid(1), &third));
+    assert!(message.contains("1 lane(s)"), "{message}");
+
+    // One lane that holds both forms of its name counts once: two lanes allow four cards.
+    let _short = hold_lock(&w, "agent-ben");
+    let _long = hold_lock(&w, "demo-agent-ben");
+    result(&w.take(&sid(1), &third));
+    let fourth = w.ready_card("src/fourth/");
+    result(&w.take(&sid(1), &fourth));
+    let fifth = w.ready_card("src/fifth/");
+    let (_, message) = refusal(&w.take(&sid(1), &fifth));
+    assert!(message.contains("2 lane(s)"), "{message}");
+}
+
 /// REQ-4, REQ-6, REQ-7 (AC-4): with the sessions folder replaced by a link the limit is not off:
 /// `card take` refuses and names the registry, `card next` answers `registry_error` at the limit
 /// and names no card, and `wip_limit` 0 still takes.

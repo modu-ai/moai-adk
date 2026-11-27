@@ -106,6 +106,15 @@ fn ac3_a_held_live_lock_is_a_lane() {
         said["reason"].as_str().is_some_and(|r| !r.is_empty()),
         "{said}"
     );
+    // SPEC-20261127-launcher-session-names REQ-10: the new shape `agent-<name>` is judged by the
+    // same rule: this clone's lock makes it a lane, and nothing else does.
+    let held = moai_cli::session::lock_named_live(&f.sessions(), "agent-ben").unwrap();
+    let said = f.answer(&["--lane-check", "agent-ben"]);
+    assert_eq!(said["status"], "lane", "{said}");
+    assert_eq!(said["basis"], "live_lock", "{said}");
+    drop(held);
+    let said = f.answer(&["--lane-check", "agent-ben"]);
+    assert_eq!(said["status"], "not_lane", "{said}");
 }
 
 /// AC-3 (REQ-8): a registry entry whose lease runs is a lane; one whose lease is over is not.
@@ -207,15 +216,23 @@ fn ac3_names_prints_the_names_of_this_project() {
     let f = Fixture::new("some folder");
     let said = f.answer(&["--names"]);
     assert_eq!(said["project"], "some-folder", "{said}");
-    assert_eq!(said["leader"], "some-folder-leader", "{said}");
-    assert_eq!(said["agent_prefix"], "some-folder-agent-", "{said}");
+    assert_eq!(said["leader"], "leader-some-folder", "{said}");
+    assert_eq!(said["agent_prefix"], "agent-", "{said}");
+    // SPEC-20261127-launcher-session-names REQ-9: the earlier project-prefixed forms stay readable.
+    assert_eq!(said["earlier"]["leader"], "some-folder-leader", "{said}");
+    assert_eq!(
+        said["earlier"]["agent_prefix"], "some-folder-agent-",
+        "{said}"
+    );
     let state = f.repo.join(moai_cli::PROJECT_STATE_DIR);
     fs::create_dir_all(&state).unwrap();
     fs::write(state.join("project.yaml"), "{\"project_id\": \"demo\"}\n").unwrap();
     let said = f.answer(&["--names"]);
     assert_eq!(said["project"], "demo", "{said}");
-    assert_eq!(said["leader"], "demo-leader", "{said}");
-    assert_eq!(said["agent_prefix"], "demo-agent-", "{said}");
+    assert_eq!(said["leader"], "leader-demo", "{said}");
+    assert_eq!(said["agent_prefix"], "agent-", "{said}");
+    assert_eq!(said["earlier"]["leader"], "demo-leader", "{said}");
+    assert_eq!(said["earlier"]["agent_prefix"], "demo-agent-", "{said}");
     let plain = tempfile::tempdir().unwrap();
     let out = Command::new(common::MOAI_BIN)
         .args(["session-register", "--names"])
