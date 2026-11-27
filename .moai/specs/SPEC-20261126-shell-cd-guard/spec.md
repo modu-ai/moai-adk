@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261126-shell-cd-guard
 title: "A MoAI session keeps its shell folder: a cd inside a linked worktree, or from the main checkout into one, is refused with the other way in one line"
-status: draft
+status: approved
 revision: 4
 created: 2026-11-26
+approval:
+  by: user
+  at: 2026-11-27
+  basis: "USER-APPROVAL 노트 10711 (개정 4, 사용자가 직접 골랐어요 2026-11-27, 리더 세션의 질문 도구 \"기본값으로 승인 (Recommended)\"; 리더가 노트에 적었고 레인은 그 노트를 인용만 해요). 승인은 개정 4 의 글 그대로예요: D-12 등록된 레인도 예외 없음, D-14 객체만 쓰는 git 명령은 지금처럼 거절, D-11 읽을 수 없는 목표는 허용, D-13 탈출구 없음. 앞 개정의 근거는 노트 10637"
+  digest: "sha256:74287255680dae72001282c283db8daedf2325f913715623ef49e3b0429b729d"
 ---
 
 # A MoAI session keeps its shell folder: a cd inside a linked worktree, or from the main checkout into one, is refused with the other way in one line
@@ -193,9 +198,9 @@ head 05ccfb5e13 은 옮기지 않는 `cd` 세 가지(`$( … )` 안 here-documen
 - AC-2, AC-3, AC-5, AC-6 와 `hooks_cd_guard_cli` 전체: `cargo nextest run --offline --locked --test hooks_cd_guard_cli --test hook_bash_boundary_cli` 45/45 통과(`hook_bash_boundary_cli` 38, `hooks_cd_guard_cli` 7), AC-4 `rg -c 'cd into it' src` 종료 1.
 - 가드 뮤턴트 1개: 글의 `cargo test --manifest-path` 에서 `test` 를 지우면(Edit, 되돌림) `the_session_cd_refusal_cargo_form_is_one_cargo_accepts` 종료 100.
 
-### 개정 4: 초안(코드 없음)
+### 개정 4: 승인됨, 코드 쓰기 전
 
-SPEC 만 쓴 개정이에요. 코드와 시험은 쓰지 않았고 승인 블록은 없어요(개정 3 의 승인은 노트 10637, 개정 4 는 사용자가 D-12·D-14 를 고른 뒤 리더가 적어요). 개정 3 까지의 AC-1~AC-7 결과는 위 그대로이고 AC-3 문구만 좁혀졌어요.
+SPEC 글은 커밋 f47f5a33bb 이고 승인은 노트 10711(사용자가 직접 골랐어요, 개정 4 글 그대로)이에요. 승인 digest 는 그 커밋의 파일에서 `moai spec show` 로 읽은 값이에요. 이 줄을 쓸 때 코드와 시험은 아직 없어요. 개정 3 까지의 AC-1~AC-7 결과는 위 그대로이고 AC-3 문구만 좁혀졌어요.
 
 - AC-8: not_run — 코드 없음(`a_main_checkout_cd_into_a_worktree_is_denied`)
 - AC-9: not_run — 코드 없음(`a_main_checkout_cd_that_does_not_enter_a_worktree_is_allowed`)
