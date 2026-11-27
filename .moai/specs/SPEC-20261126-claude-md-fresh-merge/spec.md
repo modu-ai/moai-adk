@@ -109,3 +109,18 @@ Go 세대에서 올라온 프로젝트는 업데이트 뒤에도 옛 지침이 �
 | D-7 | 두 옛 요구를 D-2 의 Go 세대 `CLAUDE.md` 에 대해서만 좁혀요. `SPEC-20261122-claude-md-project-picks` REQ-10("`@AGENTS.md` 를 이미 실으면 `move` 없음", `picks.rs` 의 `settled()`)은 그 파일의 import 를 끝난 것으로 세지 않아요. `SPEC-20261124-claude-md-product-next` REQ-2·REQ-3 의 선택 목록(`move`·`leave`·`remove-originals`)은 `claude-md` 단계가 그 파일을 맡는 동안 나오지 않고, 직접 명령도 선택 없이 그 단계를 이름 불러요. 다른 `CLAUDE.md` 에는 두 SPEC 이 그대로예요. | Go 세대 파일의 import 는 바꿀 대상이에요(노트 10309). `move` 가 열리면 옛 `CLAUDE.md` 에 `AGENTS.md` 글(mo.ai.kr 에서 약 80KB)이 덧붙어, 새로 설정하는 방향과 반대가 돼요. | 판정을 되돌려요. |
 | D-8 | 비밀 모양 값이 있는 묶음은 추적 파일(`CLAUDE.md`)에 합치지 못해요. `personal` 이나 백업만 가능해요. | 비밀은 저장소에 들어가지 않아요. | 선택을 허용해요. |
 | D-9 | `leave` 는 기존 decline 기록을 써요. 출처 파일 하나의 바이트가 바뀌면 다시 물어요. | 선택 단계가 이미 쓰는 방식이에요. | 기록 없이 매번 물어요. |
+
+## Result
+
+작성 세션이 직접 실행한 결과예요. 모든 테스트는 임시 HOME 과 mo.ai.kr 모양의 임시 git 프로젝트에서 실제 바이너리로 돌렸고 실제 `mo.ai.kr` 에는 쓰지 않았어요. 개정 2(리더가 사용자 선택으로 승인)에 따라 `claude-md` 단계는 go-settings 나 go-state 단계가 남은 동안에만 `blocked` 이고 `reports`·`go-residue` 명령은 막지 않아요.
+
+- AC-1: met — `cargo test --locked --offline --test project_update_claude_md_cli step_` 가 20개 통과했어요. go-settings 명령이 남은 경우, go-state 이동이 남은 경우, go-state 가 reports 적용 뒤로 기다리는 경우는 `blocked` 이고, reports 나 선택적 go-residue 명령만 남은 경우는 `replace`·`leave` 를 내요.
+- AC-2: met — `... project_update_claude_md_cli base_` 16개 통과(기록과 같은 바이트는 0줄, git 기록의 원본 대비 고친 줄, 맞는 blob 없음은 전체, `template_hash` 기준 비교, 미리보기 전후 트리 동일).
+- AC-3: met — `... project_update_claude_md_cli hunk_` 18개 통과(같은 묶음 한 번, 비밀 모양 줄은 개수만, 옮기는 경로 표시, 200줄 경고).
+- AC-4: met — `... project_update_claude_md_cli apply_` 17개 통과(찍힌 명령 그대로 실행, `@AGENTS.md` 없음, personal 선택일 때만 `CLAUDE.local.md`, 백업 바이트 동일과 git 무시, 재시작 안내, 다시 미리보면 `unchanged`, `undo_order`). 위험 경로는 임시 HOME 의 Rust 통합 테스트로만 돌렸어요.
+- AC-5: met — `... project_update_claude_md_cli refuse_` 13개 통과(자리표시 프로필, 링크, UTF-8 아님, 1 MiB 초과, 바뀐 파일, 모르는 id, 비밀 줄 shared 선택, 무시되지 않는 백업 자리: 이유와 트리 동일).
+- AC-6: met — `... project_update_claude_md_cli receipt_` 18개 통과(첫 이동 뒤 실패 시 모든 파일 복귀, revert 가 바이트와 모드 복원, 고친 새 파일은 그대로 두고 이름을 말함).
+- AC-7: met — `... project_update_claude_md_cli leave_` 4개 통과(decline 명령은 `update-declined.json` 만 쓰고 `skip`, 출처가 바뀌면 다시 물음).
+- AC-8: met — `cargo test --locked --offline --test update_closing_commit` 7개, `--test next_flow_skill_scan` 76개, `--test source_manifest_facts` 8개 통과.
+- AC-9: met — `--test claude_md_picks_cli` 29개, `--test project_update_go_residue_cli` 17개 통과, `cargo fmt --check` exit 0, `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0.
+- 가드 뮤턴트: 개정 2 의 `claude_md_waits` 를 옛 규칙으로 되돌리면 `step_asks_*` 2개가, go-state 절을 지우거나 reports 사유 절을 지우면 `step_waits_while_the_go_state_move_waits_behind_the_reports_apply` 가 실패해요(각 exit 100).
