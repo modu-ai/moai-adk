@@ -163,8 +163,30 @@ Acceptance lines exist for REQ-1…REQ-11, the requirements of slice S1. REQ-12�
 
 ## Result
 
-이 브랜치(`spec/self-improvement-loop-20261121-r2`)에는 코드가 없어요. 조각 S1 의 모든 AC(AC-1~AC-9)는 이 브랜치에서 `not_run` 이고, SPEC 이 승인된 뒤 S1 구현이 새로 돌려서 적어요.
+조각 S1(읽기 전용 `improve-signals`)의 결과예요. 이 브랜치(`spec/self-improvement-loop-20261121-r2`)에서 새로 구현하고 모두 다시 돌렸어요(D12). 옛 브랜치 `spec/self-improvement-loop-20261121`(`a4f4f177ca`)의 기록은 이 결과의 증거가 아니고, 그 브랜치는 건드리지 않았어요(코드는 참고로만 읽고 NeXT 사실에 맞게 다시 붙였어요).
 
-이 개정이 실제로 한 일(2026-11-27, NeXT tip `e98798e41f`): 2026-11-21 초안 파일을 `a4f4f177ca` 에서 옮겨 Codex·OMP 철회, `CLAUDE.md`·`CLAUDE.local.md`, nextest, NeXT-Flow, 줄 임대, 읽은 사실의 위치를 맞췄어요. `moai spec check` 결과는 SPEC-READY 노트에 적어요.
+단계: RED 커밋 `7081b1711c`(`tests/improve_signals_cli.rs` 11개, `moai tdd red` 기록: 구현 없이 돌려 11개 모두 단언 실패, 종료 코드 100), GREEN 커밋 `0c9580e8fc`(`src/ops/improve_signals.rs`, 운영 문서 조각, `src/help.rs` 행 둘, 도움말 골든 4개; `moai tdd green` 통과), 커밋 `44842d25fe`(심볼릭 링크 거절 단위 테스트). 아래 verify 결과는 NeXT tip `cf2c0b1374` 를 머지한 헤드 `4f6751b7fa` 에서 적힌 그대로 슬롯 안에서 돌린 것이에요.
 
-참고(이 브랜치의 증거가 아니에요): 옛 브랜치 `spec/self-improvement-loop-20261121` 의 헤드 `70bb7e360c` 에서 2026-11-21 에 `improve_signals_cli` 11개와 `improve_signals` 단위 테스트 7개가 통과했고 뮤턴트 5개가 모두 테스트를 빨갛게 했다고 그 브랜치의 Result 가 적었어요. 그 기록은 옛 바탕(`0989b3fc58`)의 일이라 지금 NeXT 에서는 다시 확인해야 해요.
+이번 조각이 SPEC 본문을 넘은 곳: D6 의 사용자 답("출력에 어림값임을 표시해요")에 따라 `flake:` 부류에만 `"approximate": true` 를 넣었어요(단위 테스트 `improve_signals_only_the_flake_count_is_marked_approximate`). 요구 줄과 AC 는 바꾸지 않았어요.
+
+- AC-1: met — `cargo nextest run --locked --offline --test improve_signals_cli` 11개 통과(exit 0). `every_source_becomes_a_class_with_count_times_and_examples`(다섯 부류, 횟수, 시각, 예시), `a_class_shows_at_most_five_examples_and_the_newest_ones`, `nothing_is_written_with_or_without_a_ledger_and_an_absent_source_is_reported`(없는 장부와 노트 파일은 `absent`, exit 0), `a_broken_ledger_and_an_unsafe_notes_file_are_refused`(링크·이름 붙은 파이프는 `invalid_input`, 망가진 장부는 `blocked`)가 이 줄을 맡아요.
+- AC-2: met — 같은 11개 중 `one_signal_is_observed_once_and_two_are_candidates_for_every_source`(네 출처 모두 1 은 `observed_once`, 2 는 `candidate`)와 `bad_lines_of_the_notes_file_are_counted_and_skipped`. 단위 테스트 `improve_signals_status_flips_at_two`.
+- AC-3: met — `an_agents_own_claim_is_never_a_signal`: READY·DONE·CANDIDATE·MERGE-READY·MERGED-LOCAL·"고쳤다"·판정 글자만 든 노트 일곱은 `skipped.no_rule` 7 이고, `false_claim` 메모만 부류가 돼요. `an_audit_note_cites_each_path_once_and_a_note_without_a_path_is_uncited`(경로 한 번, 경로 없으면 `uncited`, PASS 판정은 안 셈).
+- AC-4: met — `nothing_is_written_with_or_without_a_ledger_and_an_absent_source_is_reported`: 장부와 노트 파일이 있을 때와 둘 다 없을 때 모두 `TempHome::snapshot`(폴더 수정 시각 포함)이 실행 전후 같고 `improve` 폴더와 장부 파일이 생기지 않아요. 결과에 `writes: false`.
+- AC-5: met — `host_memory_is_never_opened`: Claude 자동 메모리 자리(`.claude/projects/demo/memory/MEMORY.md`)의 이름 붙은 파이프가 있어도 30초 안에 exit 0 이고 `host_memory: "off"`. 철회된 호스트의 파이프 자리는 이 개정에서 뺐어요.
+- AC-6: met — `texts_are_masked_and_cut_to_120_characters`: `password=…`·`token=…` 모양 글은 `[redacted]` 로 나가고 원문이 출력 어디에도 없으며 300자 첫 줄은 120자로 잘려요.
+- AC-7: met — `cargo nextest run --locked --offline --bin moai-cli improve_signals` 9개 통과(exit 0): `improve_signals_reads_the_newest_n_notes_and_says_when_it_cut`(N 개는 `truncated: false`, N+1 은 N 개를 읽고 `true`), `improve_signals_cuts_a_body_at_the_byte_limit`(8,192 바이트).
+- AC-8: met — `cargo nextest run --locked --offline --bin moai-cli operations_doc_matches_code help_table_names_every_command_once every_command_has_examples` 3개 통과, `cargo nextest run --locked --offline --test help_layout` 11개 통과(골든 4개를 `MOAI_HELP_GOLDEN_WRITE=1` 로 머지된 트리에서 다시 만들었어요).
+- AC-9: met — 가드 뮤턴트 다섯, 하나씩 걸고 이름 붙은 테스트를 슬롯에서 돌린 뒤 되돌렸고 마지막에 `git diff` 가 의도한 테스트 추가만 남겼어요.
+
+| 뮤턴트 | 빨갛게 만든 테스트 | 종료 코드 |
+| --- | --- | --- |
+| `THRESHOLD` 2 → 3 | `one_signal_is_observed_once_and_two_are_candidates_for_every_source` | 100 |
+| `is_audit_fail` 이 `verdict: FAIL` 을 보지 않음 | `an_audit_note_cites_each_path_once_and_a_note_without_a_path_is_uncited` | 100 |
+| 심볼릭 링크 거절 제거 | `improve_signals_a_symbolic_link_is_refused_by_name_and_never_followed` | 100 (첫 시도는 살아남아 exit 0 이었어요: 다음 검사 "일반 파일이 아님"이 같은 링크를 같은 오류 종류로 거절해서예요. 그래서 이 단위 테스트를 더했고 다시 걸었을 때 100) |
+| `excerpt` 가 가림을 전혀 안 함 | `texts_are_masked_and_cut_to_120_characters` | 100 |
+| `read_notes` 의 `truncated` 가 `> limit` → `>= limit` | `improve_signals_reads_the_newest_n_notes_and_says_when_it_cut` | 100 |
+
+한 가림 단계만 빼는 뮤턴트(`redact_secret_shapes` 만 제거)는 `redact_outgoing` 이 같은 모양을 가려서 살아남아요. 두 단계가 겹치는 것이라 동작 차이가 없어서(같은 입력에 같은 출력) 테스트를 더하지 않았어요. 둘 다 빼면 위 네 번째 줄처럼 빨개져요.
+
+알려진 한계: 점검 실패의 종료 코드는 읽지 않아요(D8). 플레이키 횟수는 어림값이에요(D6, 출력에 표시). Windows 는 `not_run`(두 테스트 대상이 unix 전용이에요). `improve-note` 와 제안·평가·적용은 뒤 조각(S2~S4)이에요.
