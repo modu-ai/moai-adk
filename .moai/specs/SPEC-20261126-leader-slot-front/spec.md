@@ -88,4 +88,17 @@ created: 2026-11-26
 
 ## Result
 
-(아직 없음 — 승인 전 초안)
+승인은 이 SPEC 카드의 위임 승인 노트 9818(revision 1)이에요. 구현 브랜치는 `spec/leader-slot-front-20261126-r2`(CPU 여유 규칙과 `check_affected.rs` 를 먼저 바꾸는 두 변경이 랜딩된 뒤 NeXT `8933f238cd` 에서 새로 만들고 SPEC 커밋만 옮김)예요. 바꾼 것: `src/heavy_slot.rs`(`waiting_stamp`, `hold_ordered`, 단위 테스트 하나), `src/check_affected.rs`(`front_place`, `hold_slot` 의 로그 줄), 새 테스트 `tests/heavy_slot_front_cli.rs`(15개), 문서 두 곳, 옛 SPEC 의 Result 한 줄.
+
+- AC-1: met — `cargo test --locked --offline --test heavy_slot_front_cli front_ac1_` 3개가 통과해요(리더 실행이 레인 둘 앞 `waiting 1 of 3`, 리더 둘은 도착 순서로 레인 앞, 링크드 워크트리 실행도 앞). 전체 모듈 15개 통과, 구현 전에는 10개가 실패했어요(RED).
+- AC-2: met — `front_ac2_` 3개가 통과해요(실행 중인 명령이 먼저 끝남, `--max 4` 가 파일의 max 1 을 못 올리고 `limits.json` 바이트가 그대로, 바쁜 기계는 exit 75, 낮은 CPU 읽기는 리더 실행도 잡아 둠).
+- AC-3: met — `front_ac3_` 8개가 통과해요(다른 세션, 이름 `leader`, 리더 모드 아닌 항목, lease 지난 항목, 세션 id 없음, 등록 없음, `--full` 없음은 도착 순서이고, 두 번째 `leader` 등록은 거절돼요).
+- AC-4: met — `front_ac4_` 가 통과해요(`front place`, `arrival order (no session id)`, `arrival order (…)` 한 줄, `--full` 없는 실행은 줄 없음, `heavy-slot: slot ` 줄은 하나).
+- AC-5: met — `cargo test --locked --offline --test heavy_slot_fifo_cli` 10개 통과. 같은 헤드에서 `heavy_slot_cli` 54개, `check_affected_one_slot` 9개, 단위 테스트 `a_front_stamp_sorts_ahead_of_every_nanosecond_name_and_keeps_the_name_shape` 통과.
+- AC-6: met — `git diff --check` 0, `cargo fmt --all -- --check` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `moai spec check SPEC-20261126-leader-slot-front` 오류 0·경고 0, `moai trailer-check NeXT..HEAD` 0.
+
+뮤턴트(가드 테스트마다 하나, Edit 뒤 `git restore`, 종료 101 은 테스트가 잡았다는 뜻): `ns / 1_000` 제거 → `front_ac1_a_leader_full_run_starts_before_two_waiting_lane_runs` 101, 리더 확인을 항상 참으로 → `front_ac3_another_session_queues_in_arrival_order` 101, `opts.full &&` 제거 → `front_ac3_a_leader_run_without_full_queues_in_arrival_order` 101, 세션 id 없음 분기를 앞자리로 → `front_ac3_a_call_without_a_session_id_queues_in_arrival_order` 101.
+
+위험한 길: 임시 HOME·임시 git 저장소·임시 슬롯 폴더에서 실제 `moai` 바이너리로 레인 흉내(`heavy-slot-acquire --name leader` 에 리더 세션 id, 다른 세션 id, 세션 id 없음, 리더 모드 아닌 항목, lease 지난 항목)와 링크드 워크트리 실행을 돌렸어요. 실제 `card land-batch` 의 슬롯 줄 서기는 돌리지 않았어요(not_run, D-5).
+
+알려진 한계: 세션 id 는 `moai session-register --show` 로 읽혀서 값을 베껴 넣은 세션은 막지 못해요(Risks 의 첫 항목 그대로). 새 빌드를 설치하기 전의 옛 빌드 리더는 앞에 서지 못해요.
