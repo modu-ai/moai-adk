@@ -1,62 +1,103 @@
 ---
 id: SPEC-20261126-shell-cd-guard
-title: "A worktree session's shell cd is refused with the other way in one line"
+title: "A MoAI session keeps its shell folder: a cd inside a linked worktree, or from the main checkout into one, is refused with the other way in one line"
 status: approved
-revision: 3
+revision: 5
 created: 2026-11-26
 approval:
   by: user
   at: 2026-11-27
-  basis: "USER-APPROVAL 노트 10637 (개정 3, 사용자가 직접 골랐어요 2026-11-27, 리더 세션의 질문 도구 \"승인 (Recommended)\"; 리더가 노트에 적었고 레인은 그 노트를 인용만 해요). 앞 개정의 근거는 리더 GOAL-APPROVAL 노트 10298 (사용자 목표 2026-11-26 에 따른 리더 판단, 사용자 직접 선택 아님): 판 2 의 방향은 결정 10265 와 보충 10289 예요"
-  digest: "sha256:f00fb1d97535dfd8e388c15ade294496fb92408efc066456275af259696ba656"
+  basis: "USER-APPROVAL 노트 10744 (개정 5, 한 줄 개정, 사용자가 직접 골랐어요 2026-11-27, 리더 세션의 질문 도구 \"기준 글을 사실에 맞춤 (Recommended)\"; 리더가 노트에 적었고 레인은 그 노트를 인용만 해요). 승인 범위는 AC-12 의 모드 낱말을 `bypassPermissions` 로 바로잡는 것과 REQ-11 에 같은 한정을 두는 것뿐이에요(커밋 b125fa7bc1 과 952afdf4b3 의 두 줄); 다른 요구·기준·결정과 코드는 그대로예요. 개정 4 의 승인은 노트 10711 이고 그대로예요"
+  digest: "sha256:1cfd845493d88554e4a618e71d7105f07d9493cd38f7f0aba7ccf96228f370c6"
 ---
 
-# A worktree session's shell cd is refused with the other way in one line
+# A MoAI session keeps its shell folder: a cd inside a linked worktree, or from the main checkout into one, is refused with the other way in one line
 
 ## Intent
 
 레인과 감사 세션은 카드마다 자기 연결 워크트리에서 일해요. Bash 에서 `cd` 를 쓰면 세션의 작업 폴더가 공유 체크아웃이나 다른 워크트리로 옮겨 가고, 밤새(2026-11-25~26) 같은 일이 여러 번 일어났어요(`docs/later.md`). 글 규칙만으로는 막히지 않으니 원인인 훅에서 막아요: 워크트리 세션의 Bash 명령이 세션 셸에서 `cd`·`pushd`·`popd` 를 실행하려 하면 tool-preflight 가 거절하고 대신 쓸 길을 한 줄로 알려요.
 
+개정 4(mo.ai.kr 리더 보고 2026-11-27 16:15 KST, 설치본 57-dev): 같은 규칙에 반대쪽 입구가 비어 있었어요. 기본(주) 체크아웃에서 띄운 세션이 `cd <연결 워크트리> && git …` 를 한 번 쓰면 셸 폴더가 그 워크트리로 옮겨지고, 그 순간부터 훅은 이 세션을 "자기 워크트리의 세션"으로 읽어요(`own_checkout` 이 입력의 `cwd` 가 든 체크아웃을 세션 체크아웃으로 보기 때문이에요). 그러면 돌아가는 `cd` 는 이 SPEC 의 규칙이 막고, 주 체크아웃을 향한 `git -C … commit-tree` 는 `git-state` 가 막아서 세션을 다시 띄우는 것 말고 회복 수단이 없어요. 개정 4 는 들어가는 `cd` 를 막고(REQ-6~8), 이미 갇힌 세션에 복구 안내를 주고(REQ-9), 객체만 쓰는 git 하위 명령의 취급을 사용자 결정으로 올려요(REQ-11).
+
 ## Non-goals
 
-- 쓰기 경계(H3)·삭제·git 판정의 범위는 바꾸지 않아요.
-- `moai hook bash-boundary` 입구의 판정 표와 훅 배선, 설정 생성기는 바꾸지 않아요.
+- 쓰기 경계(H3)·삭제·git 판정의 범위는 바꾸지 않아요(기본 선택에서; 결정 D-14 에서 사용자가 넓히기를 고르면 그 한 곳만 바뀌어요).
+- `moai hook bash-boundary` 입구의 판정 표와 훅 배선, 설정 생성기는 바꾸지 않아요(같은 조건).
 - R-5 의 거짓 거절을 없애는 렉서 수정은 이 SPEC 에 넣지 않아요(후속 작업).
+- 이미 갇힌 세션의 셸 폴더를 훅이 되돌리지는 않아요(훅은 명령 글만 읽어요).
+
+## Read forms
+
+정적 명령 가드는 "이미 허용되는 명령"의 목록이 없으면 리뷰마다 새 지적이 나와서, 새 규칙보다 앞서 현재 동작을 적어요. 출처는 `src/hook_bash_boundary.rs` 의 `GIT_READ`·`classify_git`·`moves_session` 읽기와 `tests/hooks_cd_guard_cli.rs` 의 `MOVES`·`STAYS`, `tests/hook_bash_boundary_cli.rs` 의 고정 행이에요(NeXT 8b6ab17634 에서 읽었어요). 이 목록의 허용 줄은 개정 4 가 끝난 뒤에도 허용이고, AC-14 가 표로 고정해요. 설치된 훅에 실제 명령을 넣어 보는 확인은 이 레인에서 `HOME` 을 바꾸는 호출이 호스트 가드에 거절돼서 돌리지 못했어요(not_run, 거절 글은 카드 노트에 그대로 있어요). 아래는 코드와 시험 표를 읽은 결과예요.
+
+| 세션 | 명령 | 지금 | 개정 4 뒤 |
+| --- | --- | --- | --- |
+| 주 체크아웃(MoAI 프로젝트) | `cd src`, `cd <주>/src`, `cd /tmp/x`, `pushd src`, `popd`, `cd`, `cd -`, `cd "$X"` | 허용(REQ-4) | 허용 |
+| 주 체크아웃 | `cd <연결 워크트리>`, `cd <연결 워크트리>/src`, `pushd <연결 워크트리>`, `ls && cd <연결 워크트리>`, `X=1 cd <연결 워크트리>`, `builtin cd <연결 워크트리>`, `eval 'cd <연결 워크트리>'` | 허용 | **거절(REQ-6)** |
+| 주 체크아웃 | `(cd <연결 워크트리> && ls)`, `v=$(cd <연결 워크트리> && pwd)`, `bash -c 'cd <연결 워크트리>'`, `echo "cd <연결 워크트리>"` | 허용 | 허용(REQ-8, D-3) |
+| 주 체크아웃 | `git -C <연결 워크트리> status`·`log -1`·`diff`·`rev-parse HEAD`·`cat-file -p HEAD` 와 `GIT_READ` 전체 | 허용(읽기) | 허용 |
+| 주 체크아웃 | `git add`·`commit`·`fetch`·`restore`·`rm --cached`(자기 체크아웃) | 허용 | 허용 |
+| 주 체크아웃 | `git -C <연결 워크트리> add`·`commit`·`checkout …`(다른 체크아웃의 쓰기) | `git-state` 거절 | 같음 |
+| 연결 워크트리 | `cd src`, `cd <다른 곳>`, `pushd`, `popd`(어떤 `cd` 든) | 거절(REQ-1) | 거절 + 복구 안내(REQ-9) |
+| 연결 워크트리 | `MOVES`·`STAYS` 표의 모든 줄(`(cd src && ls)`, `bash -c 'cd src'`, `git -C /tmp status` 등) | 표대로 | 같음 |
+| 연결 워크트리 | `git -C <주>`·`<다른 워크트리>` 의 `status`·`log -1`·`diff`·`rev-parse HEAD` | 허용(읽기) | 허용 |
+| 연결 워크트리 | `git -C <주>` 의 `commit-tree`·`hash-object -w`·`mktree`·`mktag`·`write-tree` | `git-state` 거절(`GIT_WRITE`) | D-14 선택에 따라 |
+
+`GIT_READ` 가 읽기로 읽는 하위 명령은 `status log diff show rev-parse rev-list ls-files ls-tree cat-file describe blame grep shortlog whatchanged name-rev merge-base merge-tree for-each-ref show-ref ls-remote check-ignore check-attr var version help count-objects fsck verify-commit verify-tag diff-tree diff-index diff-files range-diff cherry show-branch annotate difftool archive bundle format-patch request-pull get-tar-commit-id column stripspace check-ref-format interpret-trailers mailinfo mailsplit check-mailmap fmt-merge-msg verify-pack show-index` 이고, 형태에 따라 읽기인 것은 `branch`(`--show-current`·`-l`·`--list`·`-a`·`-r`·`-v`), `tag`(`-l`·인자 없음), `remote`(`show`·`get-url`), `stash`(`list`·`show`), `worktree list`, `reflog`(`expire`·`delete` 제외), `symbolic-ref`(인자 하나), `lfs`(`version`·`env`·`ls-files`·`status`·`logs`·`locks`·`pointer`)예요. `hash-object` 는 `-w` 가 없어도 `GIT_WRITE` 에 있어서 지금은 거절이에요(읽기 형태가 아니에요).
 
 ## Interview
 
 - Q1: 어떤 세션이 대상인가요? -> A: 요청의 "격리된 레인 세션"을 세션 체크아웃이 MoAI 프로젝트의 연결 워크트리인 세션으로 읽었어요(D-2, 위임 승인 때 리더가 바꿀 수 있어요).
 - Q2: 어떤 `cd` 를 막나요? -> A: 세션 셸의 작업 폴더를 옮기는 것만요(요청: 맨 앞, `&&` 뒤, `;` 뒤; 문자열 안의 글자는 제외). 서브셸과 다른 셸의 문자열은 옮기지 않아요(D-3).
 - Q3: 폴더를 옮기지 않는데 거절되는 남은 입력은 어떻게 하나요? -> A: 알려진 거짓 거절로 적고 테스트로 고정해요. 코드는 바꾸지 않아요(리더 결정, 노트 10265; 두 번째 감사 노트 10263). 범위는 D-7 이에요.
+- Q4: (개정 4) 이 사고를 같은 SPEC 의 개정으로 다루나요, 후속 SPEC 으로 다루나요? -> A: 개정 4 예요(D-9). 새 규칙이 승인된 REQ-4 와 AC-3 의 "주 체크아웃 세션은 거절하지 않아요"와 직접 부딪쳐서 한 문서에서 고쳐야 모순된 요구 둘이 남지 않아요.
+- Q5: (개정 4) 들어가는 `cd` 를 무엇을 보고 막나요? -> A: 명령이 실행되기 전, 세션 폴더가 주 체크아웃일 때 `cd`·`pushd` 의 글자로 읽히는 목표가 같은 저장소의 연결 워크트리 안이면 막아요(D-10, D-11). 시작 폴더를 따로 기록하지 않고 `CLAUDE_PROJECT_DIR` 도 믿지 않아요.
+- Q6: (개정 4) 그 워크트리에 등록된 레인은 예외인가요? -> A: 기본은 예외 없음이에요. 지금 레인은 주 체크아웃에서 등록하고 `EnterWorktree` 로 들어가서 등록부의 `worktree` 가 목표를 가리키지 못해요. 사용자 결정이에요(D-12).
+- Q7: (개정 4) 객체만 쓰는 git 하위 명령은요? -> A: 기본은 지금처럼 거절이에요. 넓히는 선택지와 대가는 사용자 결정이에요(D-14).
 
 ## Requirements
 
 - REQ-1: When a Bash call in a worktree session of a MoAI project would run `cd`, `pushd` or `popd` in the session shell, the tool-preflight hook shall deny the call with a one-line reason that names the other ways.
 - REQ-2 (REQ-1): IF the letters are inside a quoted string, a comment, a here-document body or an argument of another command, THEN the hook shall allow the call under this rule, except for the known false denials of R-5.
 - REQ-3 (REQ-1): IF the `cd` runs in a subshell, a command substitution or a shell string given to another shell, THEN the hook shall allow the call under this rule, except for the known false denials of R-5.
-- REQ-4 (REQ-1): IF the session checkout is the primary checkout, the folder is no MoAI project or the command cannot be split into commands, THEN the hook shall allow the call under this rule.
+- REQ-4 (REQ-1): IF the session checkout is the primary checkout, the folder is no MoAI project or the command cannot be split into commands, THEN the hook shall allow the call under REQ-1 (revision 4: a primary-checkout session keeps every `cd` that does not enter a linked worktree; REQ-6 holds the entering `cd`).
 - REQ-5: The reason of the boundary's `git-state` deny shall leave out the advice to `cd` into a worktree.
+- REQ-6 (revision 4): When a Bash call in a primary-checkout session of a MoAI project would run `cd` or `pushd` in the session shell with a target that resolves to a folder inside a linked worktree of the same repository, the tool-preflight hook shall deny the call with a one-line reason that names the other ways, whatever the permission mode.
+- REQ-7 (REQ-6): IF the target is not literal text (a variable, a substitution, `-`, a bare `cd`, a `CDPATH` search, a stack index) or names no folder, THEN the hook shall allow the call under REQ-6 (D-11); a literal target is an absolute path or a path relative to the session folder or to the folder an earlier `cd` of the same line left, with `~` and `..`, read in the forms REQ-1 reads the command words.
+- REQ-8 (REQ-6): IF the `cd` runs in a subshell, a command substitution or a shell string given to another shell, THEN the hook shall allow the call under REQ-6, as REQ-3 does for the worktree session.
+- REQ-9 (revision 4): The reason of REQ-1 shall add, in the same line, how a session that started in the main checkout and was moved by a shell `cd` gets out: end the session and start it again from the main checkout; the sentence names `EnterWorktree` as the way in, adds no `git -C`, no subshell `cd` and no new backticked form (D-8, D-13).
+- REQ-10 (REQ-6): By the default of D-12 the hook shall not exempt a registered lane or leader session from REQ-6.
+- REQ-11 (revision 4, default of D-14): The boundary's `git-state` deny shall keep refusing `commit-tree`, `hash-object`, `mktree`, `mktag` and `write-tree` that `-C`, `--git-dir` or `--work-tree` aim at a checkout that is not the session's own, in a session that runs in the `bypassPermissions` mode, the only mode the boundary denies in (AC-12 pins that answer).
 
 ## Acceptance
 
 - AC-1 (REQ-1): 임시 HOME 의 MoAI 프로젝트에 `git worktree add` 로 만든 연결 워크트리에서 `moai hook-dispatch --host claude --event tool-preflight` 가 `cd x`, `ls && cd x`, `ls; cd x`, `{ cd x; }`, `if true; then cd x; fi`, `X=1 cd x`, `builtin cd x`, `eval 'cd x'`, `pushd x`, `popd` 를 `default` 와 `bypassPermissions` 두 모드에서 거절하고, 이유가 한 줄이며 절대 경로·부속 명령 뒤에 경로를 주는 `--manifest-path`·git 단일 명령·객체 id 읽기를 말해요(개정 3: `git -C` 와 서브셸은 레인 규칙이 금지한 꼴이라 글에서 빠졌어요, D-8) · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_worktree_session_cd_is_denied)'`
 - AC-2 (REQ-2, REQ-3): 같은 워크트리 세션에서 `echo "cd x"`, `grep 'cd ' a.txt`, `printf '%s' 'a && cd x'`, `ls # cd x`, here-document 본문의 `cd x`, `ls cd`, `(cd x && ls)`, `v=$(cd x && pwd)`, `bash -c 'cd x'`, `sh -c "cd x"`, `command -v cd`, `/usr/bin/cd x` 는 거절되지 않아요(R-5 의 입력은 여기에 들지 않아요) · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_cd_that_does_not_move_the_session_is_allowed)'`
-- AC-3 (REQ-4): 주 체크아웃 세션, MoAI 프로필이 없는 폴더의 연결 워크트리, 나눌 수 없는 명령은 이 규칙으로 거절되지 않아요 · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_session_outside_a_worktree_keeps_cd)'`
+- AC-3 (REQ-4): 개정 4 에서 들어가지 않는 `cd` 로 좁혔어요. 주 체크아웃 세션의 `cd src`·`cd <주>/src`·`pushd src`·`popd`·`cd`, MoAI 프로필이 없는 폴더의 연결 워크트리, 나눌 수 없는 명령은 REQ-1 로 거절되지 않아요 · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_session_outside_a_worktree_keeps_cd)'`
 - AC-4 (REQ-5): `git-state` 거절 이유에 `cd into it` 이 남지 않아요 · verify: `rg -c 'cd into it' src` (일치 없음, exit 1)
 - AC-5 (REQ-1, REQ-2): 기존 경계 시험(`moai hook bash-boundary` 의 허용·거절 표)은 바뀌지 않고 통과해요 · verify: `cargo nextest run --test hook_bash_boundary_cli`
 - AC-6 (REQ-2, REQ-3): 같은 워크트리 세션에서 R-5 의 대표 입력 네 가지는 `default` 와 `bypassPermissions` 두 모드에서 session-cd 규칙으로 거절돼요(알려진 동작을 고정) · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_known_false_denial_stays_denied)'`
 - AC-7 (REQ-1): 거절 이유가 권하는 cargo 꼴은 cargo 가 받아들여요: 이유의 백틱 안 `cargo` 꼴은 부속 명령(`test`)이 플래그 앞에 오고, `<path>` 자리에 임시 crate 를 넣어 다른 폴더에서 그대로 돌리면(`--no-run --offline` 만 덧붙임) cargo 가 종료 0 으로 끝나요 · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(the_session_cd_refusal_cargo_form_is_one_cargo_accepts)'`
+- AC-8 (REQ-6): 카드 기준 1 의 앞쪽이에요. 임시 HOME 의 MoAI 프로젝트(주 체크아웃, 연결 워크트리 `wt-own`, 주 체크아웃 안에 만든 연결 워크트리 `.claude/worktrees/x`)에서 세션 폴더가 주 체크아웃이거나 그 하위 폴더일 때 `moai hook-dispatch --host claude --event tool-preflight` 가 `cd <wt-own>`, `cd <wt-own>/src`, `cd .claude/worktrees/x`, `pushd <wt-own>`, `ls && cd <wt-own>`, `cd src && cd <wt-own>`, `X=1 cd <wt-own>`, `builtin cd <wt-own>`, `eval 'cd <wt-own>'` 를 `default` 와 `bypassPermissions` 두 모드에서 거절하고, 이유가 한 줄이며 `moai-boundary/session-cd: ` 로 시작하고 `EnterWorktree` 를 말해요 · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_main_checkout_cd_into_a_worktree_is_denied)'`
+- AC-9 (REQ-7, REQ-8): 같은 세션에서 `cd src`, `cd .`, `cd <주>/src`, `cd <연결 워크트리가 아닌 폴더>`, `cd "$W"`, `cd $W`, `cd -`, `cd`, `(cd <wt-own> && ls)`, `v=$(cd <wt-own> && pwd)`, `bash -c 'cd <wt-own>'`, `echo "cd <wt-own>"`, `git -C <wt-own> status`, 다른 저장소의 연결 워크트리로 가는 `cd` 는 REQ-6 으로 거절되지 않아요 · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_main_checkout_cd_that_does_not_enter_a_worktree_is_allowed)'`
+- AC-10 (REQ-9): 카드 기준 2 예요. 연결 워크트리 세션의 `cd src` 거절 이유가 한 줄이고, 셸 `cd` 로 옮겨진 세션이 세션을 끝내고 주 체크아웃에서 다시 띄우라는 말과 `EnterWorktree` 를 담고, `git -C`·서브셸 `( cd`·`pushd` 를 권하지 않고, 백틱 안의 꼴은 cargo 꼴 하나뿐이에요. AC-7 의 cargo 확인은 이 글에도 그대로 통과해요 · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(the_session_cd_refusal_tells_a_moved_session_how_to_get_out)'`
+- AC-11 (REQ-10): 카드 기준 1 의 뒤쪽이에요. 같은 임시 HOME 의 세션 등록부에 살아 있는 `agent` 항목(같은 세션 id)을 두어도 AC-8 의 `cd <wt-own>` 은 거절돼요(기본 선택의 동작을 고정; D-12 에서 다른 선택을 고르면 이 시험이 그 선택의 예외 시험으로 바뀌어요) · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_registered_session_is_not_exempt_from_the_entering_cd_rule)'`
+- AC-12 (REQ-11): 카드 기준 3 이에요. 연결 워크트리 세션에서 `git -C <주> commit-tree -m x HEAD^{tree}`, `git -C <주> hash-object -w x`, `git -C <주> mktree`, `git -C <주> mktag`, `git -C <주> write-tree` 가 `bypassPermissions` 모드에서 `moai-boundary/git-state` 로 거절되고, 같은 하위 명령을 `-C` 없이 쓰는 줄은 거절되지 않아요(기본 선택의 동작을 고정; D-14 에서 B·C 를 고르면 이 시험이 그 선택의 허용 시험으로 바뀌어요) · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(an_objects_only_git_command_toward_another_checkout_stays_denied)'`
+- AC-13 (REQ-1, REQ-2, REQ-3): 위 "Read forms" 표의 허용 줄 전부가 해당 세션에서 개정 4 코드로도 거절되지 않아요(`git -C` 읽기 줄, 자기 체크아웃의 쓰기 줄, `MOVES`·`STAYS` 표) · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(the_read_forms_stay_allowed)'`
 
 ## Scope
 
 - write: `src/hook_bash_boundary.rs`(세션 셸의 `cd` 를 찾는 함수와 `git-state` 문장), `src/hook_engine.rs`(`tool_preflight_deny` 의 호출 몇 줄, reports 커밋 가드 작업의 예약과 겹쳐 line-lease), `tests/hooks_cd_guard_cli.rs`, 이 SPEC 폴더.
 - write 하지 않는 것: `src/hooks.rs`(설정 생성기; 처음 잡은 범위에 적혔지만 필요 없고 다른 작업이 예약), `moai hook bash-boundary` 의 판정 표, 사용자의 설정 파일, 훅 배선, 권한 모드.
+- 개정 4: 이 개정을 쓰는 카드의 범위는 SPEC 폴더뿐이에요. 코드는 승인 뒤 같은 카드가 쓰고, 그때의 쓰기 범위는 위 목록과 같아요(`src/hook_bash_boundary.rs`, `src/hook_engine.rs` 호출부, `tests/hooks_cd_guard_cli.rs`). D-14 에서 B·C 를 고르면 `git-state` 판정 표와 `tests/hook_bash_boundary_cli.rs` 의 고정 행이 더해지고 그 선택은 새 범위를 SPEC 에 적은 뒤에만 써요.
 
 ## Plan
 
 1. RED: `tests/hooks_cd_guard_cli.rs` 를 실제 `git worktree add` 픽스처와 임시 HOME 으로 쓰고 실패를 봐요.
 2. GREEN: 기존 렉서(`lex`)로 괄호 깊이 0 의 명령에서 대입·예약어·`command`/`builtin` 을 건너뛴 첫 단어가 `cd`·`pushd`·`popd` 인지 보는 함수(`eval` 의 리터럴 문자열은 같은 깊이로)를 더하고, tool-preflight 의 guard 뒤에서 부르며, `git-state` 문장을 고쳐요.
 3. 가드 뮤턴트, `moai check affected --card`, 임시 폴더의 실제 `hook-dispatch` 실행 한 번, READY.
+
+개정 4(승인 뒤에만, 같은 순서): 4. RED: `tests/hooks_cd_guard_cli.rs` 에 AC-8~AC-13 시험을 쓰고 실패를 봐요. 기존 `a_session_outside_a_worktree_keeps_cd` 가 주 체크아웃에서 연결 워크트리로 가는 `cd` 를 허용으로 세고 있으면 AC-3 문구대로 들어가지 않는 `cd` 만 남겨요. 5. GREEN: `session_cd` 옆에 같은 렉서(`lex`)와 `change_dir` 가 읽는 글자 형태로 `cd`·`pushd` 의 목표를 읽는 함수를 더해요(파일만 읽고 프로세스를 띄우지 않아요, 목표가 든 체크아웃은 `checkout_of` 로 찾고 `common` 이 세션 체크아웃과 같으면서 `primary` 가 아닌 것만 거절). 6. `SESSION_CD` 에 REQ-9 의 문장을 더하고 `SESSION_ENTER` 글을 더해요. 7. 가드 뮤턴트(목표 읽기를 항상 허용, `common` 비교 제거, 복구 문장 제거), `moai check affected --card`, 임시 폴더의 실제 `hook-dispatch` 실행 한 번, READY.
 
 ## Decisions
 
@@ -70,6 +111,33 @@ approval:
 | D-6 | `hook_engine.rs` 의 `capabilities` 가드 목록에는 항목을 더하지 않아요(상태 보고가 새 가드를 적게 말할 뿐 더 말하지 않아요). | `SPEC-20261126-reports-staged-guard` 작업이 같은 배열 두 줄을 고치는 중이에요. | 그 착지 뒤 후속 작업에서 한 줄 더하기. |
 | D-7 | R-5 의 입력은 폴더를 옮기지 않아도 거절될 수 있어요. REQ-2·REQ-3 의 예외예요. | 리더 결정(노트 10265): 막아야 할 것을 놓치지 않는 거절 쪽 빈틈이고, 일부러 만든 입력에서만 나와요. | 렉서가 그 부분을 읽게 고치고 AC-6 의 입력을 허용 목록으로 옮기는 개정. |
 | D-8 | 거절 글은 `git -C`, 서브셸 `( cd … )`, 맨 `cd <경로>`, `pushd`, `popd` 를 권하지 않아요. 글이 권하는 cargo 꼴은 `cargo test --manifest-path <path>/Cargo.toml` 이에요(플래그는 부속 명령 뒤). | 레인 규칙이 그 꼴들을 금지해서 권하면 레인이 두 번째 거절을 만나요(배치 24 의 C-583 이 글을 고쳤어요). cargo 는 부속 명령 앞의 `--manifest-path` 를 거절해요(cargo 1.94.1, 리뷰 노트 10564). | 글을 되돌리는 개정. |
+| D-9 | 이 사고의 수정은 이 SPEC 의 개정 4 로 써요. 후속 SPEC 이 아니에요. | 개정 3 이 코드 착지(0d4dd1dd8b) 뒤에도 이 SPEC 을 고친 선례가 있어요. 새 규칙이 승인된 REQ-4·AC-3 과 부딪쳐서 두 SPEC 이 같은 규칙을 반대로 말하게 되는 것을 막아요. 승인 블록은 개정 3 의 것(노트 10637)을 지웠고 `status: draft` 예요: 개정 4 의 승인은 사용자가 고른 뒤 리더가 적어요. | 새 SPEC 으로 옮기고 이 SPEC 에는 REQ-4 의 한 줄만 고치는 개정. |
+| D-10 | 들어가는 `cd` 는 명령이 실행되기 전에, 세션 폴더(`cwd`)가 주 체크아웃일 때의 목표로 판정해요. 시작 폴더를 따로 기록하지 않고 `CLAUDE_PROJECT_DIR` 도 판정에 쓰지 않아요. | 원인은 `own_checkout` 이 입력의 `cwd` 로 세션을 읽는 것이고(`src/hook_bash_boundary.rs`), 갇히는 순간은 그 `cd` 한 번이에요. 그때의 `cwd` 는 아직 주 체크아웃이라 기록 없이 판정돼요. `CLAUDE_PROJECT_DIR` 은 이 레인의 Bash 에서 주 체크아웃 세션일 때는 값이 보이고 워크트리 세션에서는 비어 있었지만(관찰, 훅 입력이 아니에요) 훅 프로세스의 값은 확인하지 못했어요(not_run). | 세션 시작 때 훅이 시작 폴더를 파일로 적고 그것으로 판정하는 개정(상태 쓰기가 생겨요). |
+| D-11 | 목표를 글자로 읽을 수 없으면 허용해요(REQ-7). 경계 판정기의 "읽을 수 없으면 거절" 원칙을 이 규칙에는 쓰지 않아요. | 이 규칙은 세션이 갇히는 사고를 막는 편의 가드이고 삭제·보호 브랜치 같은 되돌릴 수 없는 일을 막지 않아요. `cd "$W"` 나 `cd -` 까지 막으면 주 체크아웃 세션의 흔한 `cd` 가 함께 거절돼요. R-2 의 읽지 않는 줄과 같은 처리라서 REQ-4 와 일관돼요. | 읽을 수 없는 목표도 거절하는 개정(주 체크아웃 세션의 변수 `cd` 가 모두 거절돼요). |
+| D-12 | **사용자 결정(기본: A).** 들어가는 `cd` 에 등록된 레인 예외를 두지 않아요(REQ-10). 선택지는 아래 표예요. | 카드 제안(가)는 "그 워크트리의 레인으로 등록된 세션은 예외"예요. 이 저장소의 최근 레인은 주 체크아웃에서 등록하고 `EnterWorktree` 로 들어가서, 읽은 최근 `agent` 항목 셋(2026-11-27, `.git/.moai-cli/sessions/*.json` 을 `jq` 로 읽음; lease 가 아직 남았는지는 따지지 않았어요)의 `worktree` 가 모두 주 체크아웃이에요. 11-25 의 옛 항목 하나(`agent-2`)만 연결 워크트리 값이었어요. 그래서 등록부의 `worktree` 는 목표를 가리킨다고 믿을 수 없어요. 레인 규칙은 셸 `cd` 를 이미 금지하고, `EnterWorktree` 는 훅이 판정하지 않는 도구예요. | 표의 B 또는 C 로 바꾸는 개정. |
+| D-13 | 거절 글은 한 줄이고 두 가지예요: 연결 워크트리 세션의 `SESSION_CD` 에 복구 문장(REQ-9)을 더하고, 들어가는 `cd` 에는 `SESSION_ENTER` 를 새로 둬요. 둘 다 `moai-boundary/session-cd: ` 로 시작하고 `git -C`·서브셸·`pushd` 를 권하지 않고 백틱은 cargo 꼴 하나뿐이에요(D-8, AC-7 이 그 꼴을 읽어요). "프로젝트 폴더로는 `cd` 를 허용하는 탈출구"는 쓰지 않아요. | 탈출구는 레인(`CLAUDE_PROJECT_DIR` 이 주 체크아웃)에게도 열려서 이 SPEC 이 막으려던 일(레인이 공유 체크아웃으로 `cd`)을 다시 열어요. 복구 문장은 `EnterWorktree` 로 들어간 레인이 따라 하지 않도록 "셸 `cd` 로 옮겨진" 세션만 말해요. 문장 초안은 아래 "글 초안" 이에요. | 탈출구를 두는 개정(레인 보호가 약해져요). |
+| D-14 | **사용자 결정(기본: A).** 객체만 쓰는 git 하위 명령(`commit-tree`, `hash-object`, `mktree`, `mktag`, `write-tree`)이 다른 체크아웃을 향한 `-C` 일 때: 지금처럼 거절(REQ-11). 선택지는 아래 표예요. | 이 명령들은 객체 저장소에만 쓰고 ref·인덱스·작업 트리를 건드리지 않지만, 지금은 `GIT_WRITE` 한 줄이라 다른 체크아웃을 향하면 `git-state` 로 거절돼요. 가드를 넓히는 쪽이라 기본을 현재 동작에 둬요. 이 명령들의 `-C` 거절을 고정한 시험은 지금 없어서(`tests/hook_bash_boundary_cli.rs`·`hooks_cd_guard_cli.rs` 를 읽었어요) AC-12 가 처음 고정해요. | 표의 B 또는 C 로 바꾸는 개정. |
+
+### D-12 선택지: 들어가는 `cd` 의 예외
+
+| 선택 | 판정하는 것 | 대가 |
+| --- | --- | --- |
+| A(기본) | 예외 없음. 레인은 `EnterWorktree` 로 들어가요. | 셸 `cd` 로 자기 워크트리에 들어가려는 레인도 거절돼요(레인 규칙은 이미 금지). 카드 기준 1 의 "등록된 레인은 예외"는 이 선택에서 시험으로 보이지 않고, AC-11 이 예외 없음을 고정해요. |
+| B | 살아 있는 `agent` 모드 등록 항목의 `session` 이 훅 입력의 `session_id` 와 같으면 예외(파일만 읽어요: `mode_of` 와 같은 읽기). | 최근 레인의 등록부 `worktree` 가 주 체크아웃이라 목표와 맞춰 볼 수 없어요. 그래서 등록된 모든 레인이 어느 워크트리로든 `cd` 할 수 있게 돼요(구멍). 목표와 `worktree` 가 같을 때만 예외로 좁히면(B') 구멍은 없지만 최근 레인에는 아무 효과가 없어요. 훅 입력 `session_id` 와 등록부 `session` 값의 꼴이 같은지는 확인하지 못했어요(not_run). |
+| C | 카드 예약(잡은 세션 id 와 `--worktree`)이 목표 워크트리를 가리키는 세션만 예외. | 가장 정확하지만 훅이 원장 데이터베이스를 열어야 해요. 지금 어떤 훅도 원장을 읽지 않고(git 가드는 파일만 읽어요), 지연과 실패 방식이 새로 생겨요. |
+
+### D-14 선택지: 객체만 쓰는 git 하위 명령
+
+| 선택 | 허용하는 것 | 대가 |
+| --- | --- | --- |
+| A(기본) | 없음. 지금처럼 `git-state` 거절. | 갇힌 세션이 주 체크아웃 객체 저장소에 객체를 쓰는 `commit-tree` 를 못 써요(세션을 다시 띄워요). 판정 표와 AC-5 는 그대로예요. |
+| B | `commit-tree`·`mktree`·`mktag`·`hash-object`(`-w` 유무와 상관없이)를 `-C` 목표의 `common` 이 세션 체크아웃과 같을 때만 허용. 연결 워크트리는 한 객체 저장소를 나눠 쓰므로 객체가 같은 곳에 쌓여요. `write-tree` 는 목표의 인덱스를 읽어 그 체크아웃의 상태를 읽으므로 빼요. | 판정 표(`classify_git` 의 쓰기 목록)가 바뀌어 AC-5 의 고정 행에 새 행이 더해져요. `commit-tree` 뒤의 `update-ref` 는 그것대로 판정돼서(보호 브랜치·다른 체크아웃의 `ref`) 거절이 남아요. 다른 저장소를 향한 `-C` 는 계속 거절이에요. |
+| C | 위 다섯 가지를 어느 체크아웃이든 허용. | 다른 저장소의 객체 저장소에도 쓰게 돼서 "세션 체크아웃이 아닌 것의 상태" 경계가 이 명령들에 한해 사라져요. `write-tree` 가 들면 다른 체크아웃의 인덱스를 읽고 그 내용을 객체로 써요. 판정 표와 AC-5 가 바뀌어요. |
+
+### 글 초안(D-13)
+
+- `SESSION_ENTER`: `moai-boundary/session-cd: this command would move the shell of a session in the main checkout into a linked worktree, and a shell cd cannot take it back out. Stay where you are: name files by their absolute path, give a path argument to a command that takes one (`cargo test --manifest-path <path>/Cargo.toml`), or enter the worktree with EnterWorktree.`
+- `SESSION_CD` 에 더하는 문장(기존 글 끝에 이어요): `If a shell cd (not EnterWorktree) already moved a session that started in the main checkout into this worktree, the shell cannot go back: end the session and start it again from the main checkout.`
 
 ## Risks
 
@@ -77,6 +145,10 @@ approval:
 - R-2: 계산된 명령어(`$C x`), 별칭·함수 안의 `cd`, zsh 의 폴더 이름만 입력(autocd)은 판정하지 않아요.
 - R-3: 세션 폴더가 이미 워크트리 밖이면 이 규칙은 적용되지 않아요(기존 경계 판정은 그대로).
 - R-4: 새 빌드를 리더가 설치한 뒤에야 레인 세션에 적용돼요.
+- R-6(개정 4): 들어가는 `cd` 규칙도 R-2·R-5 의 읽지 않는 줄과 D-11 의 읽을 수 없는 목표(`cd "$W"`)는 통과시켜서 세션이 여전히 갇힐 수 있어요. 옛 빌드(R-4)도 같아요. 그래서 복구 문장(REQ-9)이 필요하고 AC-10 이 그 글을 시험해요.
+- R-7(개정 4): 주 체크아웃 세션이 연결 워크트리를 셸 `cd` 로 읽는 일(예: 리더가 레인의 워크트리를 살펴보기)은 거절돼요. `git -C <경로>` 읽기, 절대 경로, 서브셸 `( cd … )` 가 대신이에요(Read forms 표).
+- R-8(개정 4): 이미 갇힌 세션은 이 규칙으로 풀리지 않고, 훅은 명령 글만 읽어서 셸 폴더를 되돌리지 못해요. 복구는 세션을 다시 띄우는 것이고 글이 그렇게 말해요.
+- R-9(개정 4): 목표 읽기는 글자 그대로의 경로만 따라가요. 링크를 거친 목표는 `checkout_of` 가 풀어서 보지만, 명령이 실행되는 사이에 바뀌는 폴더(경쟁 상태)는 판정하지 않아요.
 - R-5: 알려진 거짓 거절(zsh 기준으로 세션 폴더가 안 옮겨지는데 거절될 수 있어요).
   - 명령 치환 `$( … )` 안의 주석이나 here-document 본문에 `)` 가 있고, 그 뒤에 `cd`·`pushd`·`popd` 와 짝 없는 `(` 가 이어지는 줄. 렉서가 그 `)` 를 치환의 끝으로 읽고, `(` 때문에 괄호 수가 다시 맞아요. macOS bash 3.2 는 here-document 쪽에서 치환을 실제로 일찍 끝내 폴더를 옮기므로 그 셸에서는 맞는 거절이에요.
   - here-document 끝 표시에 `$` 가 들어 있는 줄(`<<EOF$X`)의 본문. 렉서가 `$X` 를 버려서, 본문에 `EOF` 만 있는 줄이 나오면 그 뒤의 `cd` 를 명령으로 읽어요.
@@ -125,3 +197,20 @@ head 05ccfb5e13 은 옮기지 않는 `cd` 세 가지(`$( … )` 안 here-documen
 - AC-7: met — `cargo nextest run --test hooks_cd_guard_cli -E 'test(the_session_cd_refusal_cargo_form_is_one_cargo_accepts)'` 1/1 통과(종료 0). 글을 고치기 전에는 같은 테스트가 단언 실패, 종료 100(`tdd red` 기록, 커밋 4640b4dba4).
 - AC-2, AC-3, AC-5, AC-6 와 `hooks_cd_guard_cli` 전체: `cargo nextest run --offline --locked --test hooks_cd_guard_cli --test hook_bash_boundary_cli` 45/45 통과(`hook_bash_boundary_cli` 38, `hooks_cd_guard_cli` 7), AC-4 `rg -c 'cd into it' src` 종료 1.
 - 가드 뮤턴트 1개: 글의 `cargo test --manifest-path` 에서 `test` 를 지우면(Edit, 되돌림) `the_session_cd_refusal_cargo_form_is_one_cargo_accepts` 종료 100.
+
+### 개정 4·5: 구현 결과
+
+SPEC 글은 커밋 f47f5a33bb(개정 4, 승인 노트 10711)와 b125fa7bc1·952afdf4b3(개정 5, 승인 노트 10744: AC-12 의 모드 낱말과 REQ-11 의 같은 한정만)이에요. RED 커밋 c035539ea4(`moai tdd red`: 세 확인이 test-failure, 종료 101), 구현 커밋 8450c0dad4(`moai tdd green` 통과). 개정 3 까지의 AC-1~AC-7 결과는 위 그대로이고 AC-3 문구만 좁혀졌어요.
+
+- AC-8: met — `cargo test --locked --offline --test hooks_cd_guard_cli` 13 passed(종료 0). RED 에서는 `a_main_checkout_cd_into_a_worktree_is_denied` 가 `allowed in default: "cd <wt-own>"` 로 실패, 종료 101.
+- AC-9: met — 같은 실행에서 `a_main_checkout_cd_that_does_not_enter_a_worktree_is_allowed` 통과. 이 시험은 RED 에서도 통과해서(허용 줄을 고정하는 시험) 구현이 허용 줄을 깨지 않는다는 쪽의 증거예요.
+- AC-10: met — `the_session_cd_refusal_tells_a_moved_session_how_to_get_out` 통과(한 줄, 백틱 한 쌍, cargo 확인 통과, "end the session"·"start it again from the main checkout" 포함). RED 에서는 들어가는 `cd` 가 허용이라 실패, 종료 101(복구 문장도 아직 없었어요).
+- AC-11: met — `a_registered_session_is_not_exempt_from_the_entering_cd_rule` 통과(등록부 항목을 두 곳에서 등록해도 거절). RED 에서 실패, 종료 101.
+- AC-12: met(개정 5 글대로) — `an_objects_only_git_command_toward_another_checkout_stays_denied` 통과: `bypassPermissions` 모드에서 대조군 `checkout x`, `commit-tree`, `hash-object -w`, `mktree`, `mktag`, `write-tree`, `--git-dir=<주>/.git commit-tree` 가 `moai-boundary/git-state` 로 거절되고 `-C` 없는 같은 하위 명령은 허용이에요(두 모드 모두 `-C` 없는 줄 허용). 이 시험은 RED 에서도 통과했어요(현재 동작을 고정). `default` 모드의 경계는 확인 창이라 deny 가 아니고 이 카드 이전부터 그랬어요(`src/hook_engine.rs` 의 bypass 분기; 개정 5 가 글을 사실에 맞췄어요).
+- AC-13: met — `the_read_forms_stay_allowed` 통과(주 체크아웃 세션의 읽기 줄·`git add`·`git fetch`·`cd` 허용 줄, 워크트리 세션의 `git -C` 읽기 줄, `STAYS` 표). RED 에서도 통과(허용 줄 고정).
+- 가드 뮤턴트 5개(Edit 한 곳, 같은 대상의 전체 `hooks_cd_guard_cli` 실행, 되돌림은 `git restore` 하나): 들어가는 쪽을 항상 허용으로(`return true`→`return false`) → AC-8·AC-10·AC-11 시험 셋이 종료 101; 같은 저장소 비교 제거(`&& here.common == own.common`) → AC-9 시험이 `cd <other-wt>` 거절로 종료 101; 복구 문장 삭제 → AC-10 시험 종료 101; `GIT_WRITE` 에서 `commit-tree` 제거 → AC-12 시험이 이유가 `moai-boundary/unreadable` 로 바뀌어 종료 101; 연결 워크트리 조건 제거(`!here.primary` 삭제) → AC-9·AC-13·옛 시험 둘 종료 101.
+- 읽은 것(2026-11-27, NeXT 8b6ab17634 와 0dbd34db49): `src/hook_bash_boundary.rs` 의 `own_checkout`·`session_cd`·`session_moves`·`enters_worktree`·`change_dir`·`classify_git`·`GIT_READ`·`GIT_WRITE`·`D5`, `src/hook_engine.rs` 의 `tool_preflight_deny`·`bypass_boundary_deny`, `src/lane_registry.rs` 의 `SessionEntry`·`mode_of`, 시험 표 `tests/hooks_cd_guard_cli.rs`.
+- 열린 점: AC-8 의 `~` 는 훅 프로세스의 `HOME` 으로 풀어요(호출부가 `HOME` 을 넘겨요). `src/hook_engine.rs` 는 호출부 한 곳(`HOME` 을 읽어 넘기는 줄)만 바꿨고, 같은 파일의 범위를 쥔 다른 카드(`card check` 의 `overlaps` 에 보인 것)와 같은 구역인지는 이 세션이 확인하지 못했어요.
+- not_run: 설치된 훅에 실제 명령을 넣는 확인(호스트 가드가 `HOME` 을 바꾸는 호출을 거절했어요), 훅 프로세스의 `CLAUDE_PROJECT_DIR` 값, 훅 입력 `session_id` 와 등록부 `session` 의 꼴 비교, Windows, Linux.
+- 읽은 것(2026-11-27, NeXT 8b6ab17634): `src/hook_bash_boundary.rs` 의 `own_checkout`·`session_cd`·`moves_session`·`change_dir`·`classify_git`·`GIT_READ`·`GIT_WRITE`·`D5`, `src/hook_engine.rs` 의 `tool_preflight_deny`, `src/lane_registry.rs` 의 `SessionEntry`·`mode_of`, 시험 표 `tests/hooks_cd_guard_cli.rs`·`tests/hook_bash_boundary_cli.rs`, 등록부 항목 넷(`jq`, 읽기만).
+- not_run: 설치된 훅에 실제 명령을 넣는 확인(호스트 가드가 `HOME` 을 바꾸는 호출을 거절했어요), 훅 프로세스의 `CLAUDE_PROJECT_DIR` 값, 훅 입력 `session_id` 와 등록부 `session` 의 꼴 비교.
