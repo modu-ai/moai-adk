@@ -268,7 +268,11 @@ fn path_gate(root: &Path, rel: &str) -> (Vec<Failure>, bool) {
         })
         .collect::<Result<_, _>>()
         .unwrap_or_default();
-    if parts.is_empty() || path.components().any(|c| !matches!(c, Component::Normal(_))) {
+    if parts.is_empty()
+        || path
+            .components()
+            .any(|c| !matches!(c, Component::Normal(_)))
+    {
         return bad("the target path has a `.` or `..` part");
     }
     let mut cur = root.to_path_buf();
@@ -295,16 +299,14 @@ fn path_gate(root: &Path, rel: &str) -> (Vec<Failure>, bool) {
 fn is_project_path(rel: &str) -> bool {
     let parts: Vec<&str> = rel.split('/').collect();
     match parts.as_slice() {
-        [".claude", "skills", dir, "SKILL.md"] => {
-            dir.strip_prefix("moai-prj-")
-                .or_else(|| dir.strip_prefix("prj-"))
-                .is_some_and(|name| !name.is_empty())
-        }
-        [".claude", "agents", file] | [".claude", "agents", "moai", file] => {
-            file.strip_prefix("prj-")
-                .and_then(|n| n.strip_suffix(".md"))
-                .is_some_and(|name| !name.is_empty())
-        }
+        [".claude", "skills", dir, "SKILL.md"] => dir
+            .strip_prefix("moai-prj-")
+            .or_else(|| dir.strip_prefix("prj-"))
+            .is_some_and(|name| !name.is_empty()),
+        [".claude", "agents", file] | [".claude", "agents", "moai", file] => file
+            .strip_prefix("prj-")
+            .and_then(|n| n.strip_suffix(".md"))
+            .is_some_and(|name| !name.is_empty()),
         _ => false,
     }
 }
@@ -464,7 +466,10 @@ fn parse_item(raw: &str) -> Result<Item, String> {
 fn valid_id(id: &str) -> bool {
     let n = id.chars().count();
     (1..=ID_CHARS).contains(&n)
-        && id.chars().next().is_some_and(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+        && id
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
         && id
             .chars()
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_')
@@ -482,10 +487,7 @@ fn plain_line(s: &str) -> bool {
 fn secret_gate(items: &[Item]) -> Vec<Failure> {
     let shaped = |s: &str| redact::redact_secret_shapes(s) != s;
     let hit = items.iter().any(|i| {
-        shaped(&i.id)
-            || shaped(&i.rule)
-            || shaped(&i.reason)
-            || i.source.iter().any(|s| shaped(s))
+        shaped(&i.id) || shaped(&i.rule) || shaped(&i.reason) || i.source.iter().any(|s| shaped(s))
     });
     if hit {
         vec![fail(SECRET, "an item holds a word shaped like a secret")]
@@ -503,10 +505,19 @@ fn drift_gate(root: &Path, items: &[Item]) -> Vec<Failure> {
             .iter()
             .any(|p| std::fs::symlink_metadata(root.join(p)).is_err())
         {
-            out.push(fail(DRIFT, "an item names a project path that does not exist"));
+            out.push(fail(
+                DRIFT,
+                "an item names a project path that does not exist",
+            ));
         }
-        if moai_words(&text).iter().any(|w| help::group_of(w).is_none()) {
-            out.push(fail(DRIFT, "an item names a moai command this binary does not have"));
+        if moai_words(&text)
+            .iter()
+            .any(|w| help::group_of(w).is_none())
+        {
+            out.push(fail(
+                DRIFT,
+                "an item names a moai command this binary does not have",
+            ));
         }
     }
     out.dedup();
@@ -520,7 +531,10 @@ fn cited_paths(text: &str) -> BTreeSet<String> {
     for word in
         text.split(|c: char| !(c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '/' | '-')))
     {
-        let word = word.strip_prefix("./").unwrap_or(word).trim_end_matches('.');
+        let word = word
+            .strip_prefix("./")
+            .unwrap_or(word)
+            .trim_end_matches('.');
         if word.is_empty()
             || word.len() > 200
             || word.starts_with('/')
@@ -633,32 +647,39 @@ fn item_prefix(id: &str) -> String {
 /// one at the end of the file. Every byte outside the block stays as it was.
 fn merge(text: &str, items: &[Item]) -> Result<String, Merge> {
     let lines: Vec<&str> = text.split_inclusive('\n').collect();
-    let begins: Vec<usize> = (0..lines.len()).filter(|&i| marker_line(lines[i], BEGIN)).collect();
-    let ends: Vec<usize> = (0..lines.len()).filter(|&i| marker_line(lines[i], END)).collect();
+    let begins: Vec<usize> = (0..lines.len())
+        .filter(|&i| marker_line(lines[i], BEGIN))
+        .collect();
+    let ends: Vec<usize> = (0..lines.len())
+        .filter(|&i| marker_line(lines[i], END))
+        .collect();
     if text.matches(BEGIN).count() != begins.len() || text.matches(END).count() != ends.len() {
         return Err(Merge::Markers);
     }
-    let (head, mut block, tail): (String, Vec<String>, String) = match (begins.as_slice(), ends.as_slice()) {
-        ([], []) => {
-            if items.iter().any(|i| i.op != Op::Add) {
-                return Err(Merge::Items("replace and retire need the block moai-lessons".into()));
-            }
-            let mut head = text.to_string();
-            if !head.is_empty() && !head.ends_with('\n') {
+    let (head, mut block, tail): (String, Vec<String>, String) =
+        match (begins.as_slice(), ends.as_slice()) {
+            ([], []) => {
+                if items.iter().any(|i| i.op != Op::Add) {
+                    return Err(Merge::Items(
+                        "replace and retire need the block moai-lessons".into(),
+                    ));
+                }
+                let mut head = text.to_string();
+                if !head.is_empty() && !head.ends_with('\n') {
+                    head.push('\n');
+                }
                 head.push('\n');
+                head.push_str(BEGIN);
+                head.push('\n');
+                (head, Vec::new(), format!("{END}\n"))
             }
-            head.push('\n');
-            head.push_str(BEGIN);
-            head.push('\n');
-            (head, Vec::new(), format!("{END}\n"))
-        }
-        ([b], [e]) if b < e => (
-            lines[..=*b].concat(),
-            lines[b + 1..*e].iter().map(|l| l.to_string()).collect(),
-            lines[*e..].concat(),
-        ),
-        _ => return Err(Merge::Markers),
-    };
+            ([b], [e]) if b < e => (
+                lines[..=*b].concat(),
+                lines[b + 1..*e].iter().map(|l| l.to_string()).collect(),
+                lines[*e..].concat(),
+            ),
+            _ => return Err(Merge::Markers),
+        };
     for item in items {
         let prefix = item_prefix(&item.id);
         let at = block.iter().position(|l| l.starts_with(&prefix));
@@ -668,12 +689,16 @@ fn merge(text: &str, items: &[Item]) -> Result<String, Merge> {
             (Op::Replace, Some(i)) => block[i] = format!("{}\n", item.line()),
             (Op::Retire, Some(i)) => {
                 if !block[i].contains(" | status: trial | ") {
-                    return Err(Merge::Items("retire names an item that is not a trial".into()));
+                    return Err(Merge::Items(
+                        "retire names an item that is not a trial".into(),
+                    ));
                 }
                 block.remove(i);
             }
             (Op::Replace | Op::Retire, None) => {
-                return Err(Merge::Items("replace and retire name an id that does not exist".into()))
+                return Err(Merge::Items(
+                    "replace and retire name an id that does not exist".into(),
+                ))
             }
         }
     }
@@ -714,7 +739,11 @@ fn plan_digest(rel: &str, old_sha: &str, new_sha: &str, baseline: &str, items: &
             ("rule", json!(item.rule)),
             ("source", json!(item.source)),
         ]);
-        h.update(serde_json::to_string(&canonical).unwrap_or_default().as_bytes());
+        h.update(
+            serde_json::to_string(&canonical)
+                .unwrap_or_default()
+                .as_bytes(),
+        );
         h.update(b"\n");
     }
     format!("sha256:{:x}", h.finalize())
@@ -767,7 +796,10 @@ mod tests {
             let lines = |text: &str, items: &[Item]| merge(text, items).unwrap().lines().count();
             assert_eq!(lines(&text_of(budget - 1), &[add("new")]), budget);
             assert_eq!(lines(&text_of(budget), &[add("new")]), budget + 1);
-            assert_eq!(lines(&text_of(budget), &[add("new"), retire("old")]), budget);
+            assert_eq!(
+                lines(&text_of(budget), &[add("new"), retire("old")]),
+                budget
+            );
         }
         assert_eq!(budget_for(".claude/skills/prj-x/SKILL.md"), SKILL_LINES);
     }
@@ -784,20 +816,53 @@ mod tests {
 
     #[test]
     fn improve_plan_a_test_is_known_by_its_path_alone() {
-        for yes in ["tests/a.rs", "pkg/tests/a.md", "a/evals/x.md", "x/test/y.md", "src/a_test.rs", "src/test_a.py", "w/a.test.ts", "w/a.spec.ts", "a/__tests__/b.js"] {
+        for yes in [
+            "tests/a.rs",
+            "pkg/tests/a.md",
+            "a/evals/x.md",
+            "x/test/y.md",
+            "src/a_test.rs",
+            "src/test_a.py",
+            "w/a.test.ts",
+            "w/a.spec.ts",
+            "a/__tests__/b.js",
+        ] {
             assert!(is_test_path(yes), "{yes}");
         }
-        for no in [".claude/skills/moai-prj-x/SKILL.md", ".claude/agents/moai/prj-x.md", "docs/testing-guide.md", "src/contest.rs", "src/attest.md"] {
+        for no in [
+            ".claude/skills/moai-prj-x/SKILL.md",
+            ".claude/agents/moai/prj-x.md",
+            "docs/testing-guide.md",
+            "src/contest.rs",
+            "src/attest.md",
+        ] {
             assert!(!is_test_path(no), "{no}");
         }
     }
 
     #[test]
     fn improve_plan_the_allow_list_shape_is_grade_a_only() {
-        for yes in [".claude/skills/moai-prj-x/SKILL.md", ".claude/skills/prj-x/SKILL.md", ".claude/agents/prj-x.md", ".claude/agents/moai/prj-x.md"] {
+        for yes in [
+            ".claude/skills/moai-prj-x/SKILL.md",
+            ".claude/skills/prj-x/SKILL.md",
+            ".claude/agents/prj-x.md",
+            ".claude/agents/moai/prj-x.md",
+        ] {
             assert!(is_project_path(yes), "{yes}");
         }
-        for no in [".claude/skills/moai/SKILL.md", ".claude/skills/moai-prj-/SKILL.md", ".claude/skills/other/SKILL.md", ".claude/agents/other.md", ".claude/agents/moai/other.md", ".claude/agents/moai/prj-x.txt", ".claude/settings.json", "CLAUDE.md", "CLAUDE.local.md", ".claude/skills/moai-prj-x/extra.md", ".claude/agents/moai/deep/prj-x.md"] {
+        for no in [
+            ".claude/skills/moai/SKILL.md",
+            ".claude/skills/moai-prj-/SKILL.md",
+            ".claude/skills/other/SKILL.md",
+            ".claude/agents/other.md",
+            ".claude/agents/moai/other.md",
+            ".claude/agents/moai/prj-x.txt",
+            ".claude/settings.json",
+            "CLAUDE.md",
+            "CLAUDE.local.md",
+            ".claude/skills/moai-prj-x/extra.md",
+            ".claude/agents/moai/deep/prj-x.md",
+        ] {
             assert!(!is_project_path(no), "{no}");
         }
     }
@@ -824,19 +889,31 @@ mod tests {
 
     #[test]
     fn improve_plan_a_command_is_read_only_inside_backticks() {
-        assert_eq!(moai_words("Run `moai card show C-1` and `moai improve-plan`, not moai skill."), vec!["card", "improve-plan"]);
+        assert_eq!(
+            moai_words("Run `moai card show C-1` and `moai improve-plan`, not moai skill."),
+            vec!["card", "improve-plan"]
+        );
         assert!(moai_words("`moai --version` and `moai ` and ``").is_empty());
         assert!(help::group_of("card").is_some());
     }
 
     #[test]
     fn improve_plan_merge_keeps_every_byte_outside_the_block() {
-        let text = format!("before\n{BEGIN}\n{}\n{END}\nafter without newline", add("old").line());
+        let text = format!(
+            "before\n{BEGIN}\n{}\n{END}\nafter without newline",
+            add("old").line()
+        );
         let merged = merge(&text, &[add("new")]).unwrap();
         assert!(merged.starts_with("before\n"));
         assert!(merged.ends_with(&format!("{END}\nafter without newline")));
         assert!(merge("no block", &[retire("x")]).is_err());
-        assert_eq!(merge(&format!("{END}\n{BEGIN}\n"), &[add("x")]), Err(Merge::Markers));
-        assert_eq!(merge(&format!("a {BEGIN} b\n"), &[add("x")]), Err(Merge::Markers));
+        assert_eq!(
+            merge(&format!("{END}\n{BEGIN}\n"), &[add("x")]),
+            Err(Merge::Markers)
+        );
+        assert_eq!(
+            merge(&format!("a {BEGIN} b\n"), &[add("x")]),
+            Err(Merge::Markers)
+        );
     }
 }

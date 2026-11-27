@@ -64,7 +64,13 @@ pub fn run(args: Args) -> Result<Value, String> {
         .to_path_buf();
 
     let key = masked(&args.key);
-    let line = note_line(&now_utc()?, &args.kind, &key, &masked(&args.text), &masked(&args.by));
+    let line = note_line(
+        &now_utc()?,
+        &args.kind,
+        &key,
+        &masked(&args.text),
+        &masked(&args.by),
+    );
     let file_bytes = append(&root, &rel, &line)?;
     Ok(json!({
         "action": "note", "path": rel.to_string_lossy(), "kind": args.kind, "key": key,
@@ -102,8 +108,13 @@ fn check_shape(kind: &str, key: &str, text: &str, by: &str) -> Result<(), String
         return Err(refused("the observer is at most 80 characters"));
     }
     // A control character in the key would make `improve-signals` count the line as a bad line.
-    if [key, text, by].iter().any(|s| s.chars().any(char::is_control)) {
-        return Err(refused("a control character is not allowed in the key, the text or the observer"));
+    if [key, text, by]
+        .iter()
+        .any(|s| s.chars().any(char::is_control))
+    {
+        return Err(refused(
+            "a control character is not allowed in the key, the text or the observer",
+        ));
     }
     Ok(())
 }
@@ -130,7 +141,9 @@ fn note_line(at: &str, kind: &str, key: &str, text: &str, by: &str) -> String {
 /// link; returns the size of the file after the write.
 fn append(root: &Path, rel: &Path, line: &str) -> Result<u64, String> {
     let parts: Vec<&std::ffi::OsStr> = rel.iter().collect();
-    let (file_name, folders) = parts.split_last().ok_or_else(|| refused("the notes path is empty"))?;
+    let (file_name, folders) = parts
+        .split_last()
+        .ok_or_else(|| refused("the notes path is empty"))?;
     let mut cur = root.to_path_buf();
     for part in folders {
         cur.push(part);
@@ -149,13 +162,20 @@ fn append(root: &Path, rel: &Path, line: &str) -> Result<u64, String> {
                 std::fs::create_dir(&cur)
                     .map_err(|_| refused(&format!("{} cannot be created", shown(root, &cur))))?;
             }
-            Err(_) => return Err(refused(&format!("{} cannot be inspected", shown(root, &cur)))),
+            Err(_) => {
+                return Err(refused(&format!(
+                    "{} cannot be inspected",
+                    shown(root, &cur)
+                )))
+            }
         }
     }
     let path = cur.join(file_name);
     match std::fs::symlink_metadata(&path) {
         Ok(m) if m.file_type().is_symlink() => {
-            return Err(refused("the notes file is a symbolic link; it is not followed"))
+            return Err(refused(
+                "the notes file is a symbolic link; it is not followed",
+            ))
         }
         Ok(m) if !m.is_file() => return Err(refused("the notes file is not a regular file")),
         Ok(_) => {}
@@ -233,7 +253,8 @@ fn ends_with_newline(file: &std::fs::File) -> Result<bool, String> {
 
 /// A file of `size` bytes takes `add` more bytes and stays at or under the limit.
 fn fits(size: u64, add: u64) -> bool {
-    size.checked_add(add).is_some_and(|total| total <= FILE_BYTES)
+    size.checked_add(add)
+        .is_some_and(|total| total <= FILE_BYTES)
 }
 
 #[cfg(test)]
@@ -243,19 +264,34 @@ mod tests {
     #[test]
     fn improve_note_the_shape_is_held_at_n_and_refused_at_n_plus_one() {
         let ok = |k: &str, key: &str, text: &str, by: &str| check_shape(k, key, text, by);
-        assert!(ok("failure", &"k".repeat(80), &"t".repeat(200), &"b".repeat(80)).is_ok());
+        assert!(ok(
+            "failure",
+            &"k".repeat(80),
+            &"t".repeat(200),
+            &"b".repeat(80)
+        )
+        .is_ok());
         assert!(ok("failure", &"k".repeat(81), "t", "b").is_err());
         assert!(ok("failure", "k", &"t".repeat(201), "b").is_err());
         assert!(ok("failure", "k", "t", &"b".repeat(81)).is_err());
         assert!(ok("failure", "", "t", "b").is_err());
         assert!(ok("praise", "k", "t", "b").is_err());
         assert!(ok("failure", "k\u{7}", "t", "b").is_err());
-        assert!(ok("failure", "한".repeat(80).as_str(), "글".repeat(200).as_str(), "b").is_ok());
+        assert!(ok(
+            "failure",
+            "한".repeat(80).as_str(),
+            "글".repeat(200).as_str(),
+            "b"
+        )
+        .is_ok());
     }
 
     #[test]
     fn improve_note_the_size_limit_is_exact() {
-        assert!(fits(FILE_BYTES - 10, 10), "ending exactly at the limit is accepted");
+        assert!(
+            fits(FILE_BYTES - 10, 10),
+            "ending exactly at the limit is accepted"
+        );
         assert!(!fits(FILE_BYTES - 10, 11), "one byte over is refused");
         assert!(!fits(FILE_BYTES + 1, 0));
         assert!(!fits(u64::MAX, 1));
