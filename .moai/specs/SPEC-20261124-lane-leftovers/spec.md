@@ -2,13 +2,9 @@
 id: SPEC-20261124-lane-leftovers
 title: "lanes keep their throwaway copies and temporary HOMEs inside the worktree and report what is left in READY"
 status: approved
-revision: 4
+revision: 5
 created: 2026-11-24
-approval:
-  by: leader
-  at: 2026-11-24
-  basis: "리더 결정 노트 8243 (2026-11-24T05:37:14Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8242 에 답함): SPEC 판 4 승인 — REQ-1·AC-1 의 대상 파일 next-flow 를 self-check 로, Scope 에서 next-flow.md 를 빼고 source-manifest.json 해시 한 값을 더함, Plan 3d, Result; 검사 한도를 올리지 않고 되돌림; 레인은 그 노트를 인용만 해요"
-  digest: "sha256:e954cc4fa2708734176332a7ddafbba120f0155ed7f93c1d780072b172ab8e7f"
+approval: {by: user, at: 2026-11-27, basis: "레저 결정 노트 10729 (ref note:571:bca33cf383c072543ff03855744e9d4e) 인용: 사용자가 직접 골랐어요(2026-11-27, 리더 세션의 질문 도구): \"`.moai/state/`만 빼기 (Recommended)\" = D-4 (a), 개정 5 를 글 그대로 승인", digest: "sha256:52d6b3385bf7e24aafa02919498a378b8a8b8348ee799ae0c1a38dc6761326d2"}
 ---
 
 # lanes keep their throwaway copies and temporary HOMEs inside the worktree and report what is left in READY
@@ -23,6 +19,8 @@ approval:
 
 읽어서 확인한 것 하나가 설계를 정했어요: 공용 체크아웃의 `.gitignore` 는 `/.moai/*` 를 무시해요(`git check-ignore -v .moai/none.log` → `.gitignore:361:/.moai/*`, 이 실행에서 읽음). 그래서 카드가 말한 "공용 체크아웃 `git status` 비교" 는 `.moai/none.log` 같은 파일을 보지 못해요. 무시된 파일까지 읽어야 해요(REQ-4).
 
+판 5 (2026-11-27, 초안): 공용 체크아웃 목록이 상태줄 캐시 폴더 `.moai/state/` 를 "새 무시된 파일"로 보고해서(`.gitignore` 가 `/.moai/state/` 를 무시해요) 세 레인(jade, ivan, abel)이 2026-11-26 에 각자 "내가 쓴 것인가" 를 확인하느라 점검을 한 번씩 썼어요(카드 본문의 말이고, 이 SPEC 을 쓰며 다시 재지는 않았어요). 판 5 는 REQ-4 의 고정 목록에 그 폴더 하나만 더해요. 무시된 파일을 전부 빼는 길은 택하지 않았어요(Interview Q6).
+
 읽는 사람: 레인, 리더, 이 변경의 감사자.
 
 ## Interview
@@ -32,6 +30,7 @@ approval:
 - Q3: `<worktree>/target/<name>/` 의 것은 정리 때 같이 사라지는가? -> A: 저절로는 아니에요(카드 본문의 가정과 달라요). `docs/lane-rules.md` 가 말하듯 정리는 cargo 출력만 지우고 `target/<name>/` 의 노트가 있는 워크트리는 `worktree-gc-plan` 의 `remove` 후보가 아니에요. 그래서 레인이 READY 전에 자기 것을 상대 경로로 지우고(워크트리 안이라 허용), 못 지운 것만 `leftovers:` 에 적어요(REQ-1).
 - Q4: 시스템 임시 폴더나 scratchpad 의 것을 잡는 검사를 더하는가? -> A: 아니요(Non-goals). git 이 볼 수 없는 곳이라 위치 규칙과 READY 줄이 보고의 전부예요. 이 한계는 Risks 에 적었어요.
 - Q5: 새 거절 규칙은 observe 부터인가(SDD 규칙 11)? -> A: 부분만이에요. `leftovers:` 줄의 있고 없음은 읽는 일뿐이라 오탐이 없어서 카드대로 바로 거절해요. 공용 체크아웃 목록은 다른 레인의 파일이나 `.DS_Store` 같은 것에 오탐할 수 있어서 observe 로 시작해요. 이 선택은 D-1 로 리더에게 물어요.
+- Q6: (판 5) `shared_checkout_new` 에서 무시된 파일을 전부 빼는가, `.moai/state/` 만 빼는가? -> A: `.moai/state/` 만 빼요. 이 SPEC 의 REQ-4 와 AC-3 이 무시된 파일을 일부러 넣었고(Intent 의 `.moai/*` 확인: 무시된 곳에는 레인이 남긴 로그가 숨을 수 있어요), 통합 테스트 `the_shared_checkout_is_read_without_changing_it` 와 `--ignored=matching` 을 뺀 뮤턴트가 그걸 지켜요. 전부 빼면 레인이 공용 체크아웃에 남긴 무시된 흔적을 못 봐요. 세 레인이 겪은 것은 상태줄 캐시 한 곳이라, 도구가 스스로 만드는 상태 폴더 하나를 기대 목록에 더하는 것이 좁은 고침이에요. 이 선택은 리더가 2026-11-27 에 (가) 로 골랐고(리더의 카드 메시지), 사용자가 같은 날 D-4 (a) 로 승인했어요(레저 노트 10729).
 
 ## Non-goals
 
@@ -47,7 +46,7 @@ approval:
 - REQ-1: The lane guidance (`docs/lane-rules.md` and the `self-check` reference of the moai skill) shall say that a throwaway copy of the repository, a temporary HOME and a `mktemp` folder are made only under `<worktree>/target/<name>/` (with `TMPDIR` pointed there for a run that makes its own temporary folders) and are removed by a relative path before READY.
 - REQ-2: When `moai card note` gets a hand-back note (a first line that starts with `LANE-READY-INTEGRATION`, `REPAIRED` or `READY `) whose first line reads correctly, it shall keep the note only when the body holds exactly one readable `leftovers:` line · failure: see REQ-3.
 - REQ-3 (REQ-2): IF the body holds no `leftovers:` line, more than one, an empty one, a template placeholder left as it is (`<path>`) or `none` together with a path, THEN `moai card note` shall refuse the note with the line to add and write nothing.
-- REQ-4: When `moai card note` keeps a hand-back note, it shall add to its answer `shared_checkout_new`, the paths in the primary checkout that are untracked or ignored, are not on the fixed list of expected state (`target/`, `.claude/`, `CLAUDE.local.md`, `.mcp.json`, `.DS_Store`) and were created or changed after the card's reservation began · failure: see REQ-5.
+- REQ-4: When `moai card note` keeps a hand-back note, it shall add to its answer `shared_checkout_new`, the paths in the primary checkout that are untracked or ignored, are not on the fixed list of expected state (`target/`, `.claude/`, `.moai/state/`, `CLAUDE.local.md`, `.mcp.json`, `.DS_Store`) and were created or changed after the card's reservation began · failure: see REQ-5.
 - REQ-5 (REQ-4): IF the primary checkout cannot be read or the card holds no reservation, THEN `moai card note` shall keep the note and answer `shared_checkout: not_checked` with the reason.
 - REQ-6: When `moai card note` reads the primary checkout, it shall change nothing there, not even the index's stat cache · failure: none — a read that changes the checkout is a defect that the before/after comparison of AC-3 shows.
 - REQ-7: The `leftovers:` line shall appear in the Hand-off section of `docs/lane-rules.md`, on the operation page of `card`, in the `card note` help text and in the refusal text of REQ-3 as a line the lane can paste.
@@ -59,10 +58,13 @@ approval:
 - AC-3 (REQ-4, REQ-5, REQ-6): with a temporary primary checkout and a linked worktree, a new untracked file and a new ignored file made in the primary after the reservation are in `shared_checkout_new`; a file older than the reservation, an entry on the fixed list and a file inside the lane's own worktree are not; the note is kept; the primary's `.git/index` bytes and modification time and its `git status` output are the same before and after; with the repository unreadable the answer has `shared_checkout: not_checked` and the note is kept · verify: `cargo nextest run --locked --offline --test card_ready_leftovers_cli the_shared_checkout_is_read_without_changing_it`
 - AC-4 (REQ-2, REQ-3): the pure reader of the line (`none`, paths, placeholder, repeated, fenced, indented, `- ` prefix) is pinned by unit tests · verify: `cargo nextest run --locked --offline --lib card::ready_leftovers::tests`
 - AC-5 (REQ-7): the Hand-off section, the `card` operation page, the `card note` help text and the refusal text each show `leftovers:` · verify: `cargo nextest run --locked --offline --test card_ready_leftovers_cli the_leftovers_line_is_shown_where_a_lane_looks`
+- AC-6 (REQ-4): with a temporary primary checkout whose `.gitignore` ignores `/.moai/state/`, a new file under `.moai/state/` made after the reservation is not in `shared_checkout_new`, while a new untracked file and a new ignored file elsewhere in the same checkout still are; a folder that only has `state` in its name (`.moai/state-old/`, `src/state/`) is not on the list · verify: `cargo nextest run --locked --offline --test card the_status_line_cache_is_not_a_leftover_but_other_new_files_still_are`
+- AC-7 (REQ-4): the pure list of expected state holds `.moai/state/` and only the folder itself, pinned by a unit test · verify: `cargo nextest run --locked --offline --lib card::ready_leftovers::tests::the_status_line_cache_folder_is_expected_state`
 
 ## Scope
 
 - write: `.moai/specs/SPEC-20261124-lane-leftovers/**`, `src/card/ready_leftovers.rs`(새), `src/card/mod.rs`(한 줄 `pub mod`), `src/card/work.rs`(호출 한 줄과 답 필드), `src/ops/card.rs`(`Note` 도움말 글만), `tests/card_ready_leftovers_cli.rs`(새), `docs/lane-rules.md`, `docs/design-review/appendix/operations/card.md`, `skills/moai/references/internal/self-check.md`, `skills/moai/references/source-manifest.json`(판 4: `self-check.md` 의 sha256 값 하나, 줄 임대), `tests/fixtures/help/**`(`card note` 항목만), `tests/card_ready_receipt_cli.rs`와 `tests/e2e_temp_home_cli.rs`(판 2: 기존 READY 노트 본문에 `leftovers: none` 줄만 더해요), `tools/repo_scans.json`(판 3: `reads-docs` 와 `reads-skills` 두 항목에 새 테스트를 규칙 파일과 `--test` 로 더해요, 줄 임대)
+- write (판 5, 승인 뒤): 이 SPEC 폴더, `src/card/ready_leftovers.rs`(`is_expected` 한 곳), `tests/card/card_ready_leftovers_cli.rs`(새 테스트 하나; 이 파일은 이제 `card` 영역 폴더 아래예요), `docs/design-review/appendix/operations/card.md`(고정 목록을 말하는 한 문장); 새 테스트 파일을 더하지 않아서 `tests/areas.toml` 과 `tools/repo_scans.json` 은 건드리지 않아요
 - read-only: `src/card/ready_receipt.rs`, `src/bundle/mutant_line.rs`, `tests/areas.toml`, `docs/claude-md-rule-provenance.md`
 - forbidden: `CLAUDE.md`, `src/lib.rs`, 영수증 검사(`check_note`)를 느슨하게 하는 변경, 새 Python 테스트, 카드 번호를 SPEC id·가지·커밋·PR 에 쓰는 것, 실제 HOME, 다른 레인의 파일
 
@@ -75,6 +77,7 @@ approval:
 3c. 판 3: NeXT 팁의 파일 읽기 검사(`every_file_reader_has_an_always_scan_or_an_exemption`)가 문서를 열어 읽는 새 테스트 파일을 `tools/repo_scans.json` 의 `always` 항목에 올리라고 해서(이 실행에서 읽음), `reads-docs` 와 `reads-skills` 에 올려요. 임시 저장소의 무시 규칙은 `.git/info/exclude` 로, 고정 파일 이름은 이 저장소에 없는 이름으로 바꿔서 `FILE_READ_EXEMPT` 를 건드리지 않아요.
 3b. 판 2: 새 거절 때문에 기존 READY 노트 테스트 일곱(`card_ready_receipt_cli` 여섯, `e2e_temp_home_cli` 하나)이 실패해서(이 실행에서 읽음) 그 노트 본문에 `leftovers: none` 줄만 더해요. 영수증 검사 기대는 그대로예요.
 4. 뮤턴트: 새 가드 테스트마다 코드를 지우고 실패를 봐요(줄 검사 제거, 목록 필터 제거, `--no-optional-locks` 제거, 예약 시각 필터 제거). 영향 테스트 한 번, READY.
+3e. 판 5: RED 로 AC-6 의 통합 테스트(`.gitignore` 에 `/.moai/state/` 를 둔 임시 저장소에서 그 폴더의 새 파일은 빠지고 다른 새 파일 둘은 남아요)와 AC-7 의 단위 테스트를 먼저 써서 실패를 봐요. GREEN 은 `is_expected` 가 첫 두 마디가 `.moai/state` 인 경로를 기대 상태로 보는 한 줄이에요(`.moai/state-old/` 같은 이름은 아니에요). 뮤턴트: 그 한 줄을 지운 복사본에서 두 테스트가 실패해야 해요. 글은 `card.md` 의 고정 목록 문장 하나예요.
 5. observe 창: 이 SPEC 이 올라간 뒤 다음 READY 노트 10개까지(또는 리더가 정한 수까지) 공용 체크아웃 목록이 비지 않은 횟수와 오탐을 `## Result` 에 적어요. 거절로 바꾸는 일은 기록된 결정이에요(D-1).
 
 ## Risks
@@ -92,8 +95,16 @@ approval:
 - D-1: 거절의 범위. 선택지 (a) `leftovers:` 줄 검사는 지금 거절, 공용 체크아웃 목록은 observe(답에 드러내기만) — 기본값; (b) 둘 다 지금 거절; (c) 둘 다 observe 로 시작. 근거: 줄 검사는 있고 없음만 읽어 오탐이 없어요. 목록은 다른 레인의 파일에 오탐할 수 있어서 SDD 규칙 11 을 따라 observe 창이 필요해요(Q5). 되돌릴 수 있어요(다음 변경 하나). 분류: none. 기한: 없음(레인은 리더의 배차를 기다려요). 결정자: 리더(또는 사용자).
 - D-2: 공용 체크아웃 파일을 가르는 기준. 선택지 (a) 예약 시작 이후 만들거나 바뀐 것(생성 시각과 수정 시각 중 큰 값) — 기본값; (b) 예약 때 목록을 원장에 저장해 비교(더 정확하나 원장 쓰기와 `card take` 변경이 필요해요, 다른 카드의 몫). 기본값은 원장도 `card take` 도 바꾸지 않아요. 되돌릴 수 있어요. 분류: none.
 - D-3: 위치 규칙의 범위. 선택지 (a) 버리는 복사본·임시 HOME·`mktemp` 폴더만 `target/<name>/` — 기본값; (b) 레인의 모든 임시 파일(노트, 로그 포함)을 같은 곳으로 합치기. (b)는 scratchpad 를 쓰라는 호스트 지침과 부딪혀서 이 SPEC 에서는 하지 않아요. 되돌릴 수 있어요. 분류: none.
+- D-4 (판 5): 상태줄 캐시 폴더의 처리. 선택지 (a) 고정 목록에 `.moai/state/` 하나만 더해요 — 추천: 세 레인이 겪은 한 곳이고 무시된 다른 흔적은 계속 보고해요; (b) 무시된 파일을 전부 목록에서 빼요(`--ignored=matching` 을 `status` 처럼 뺌): REQ-4·AC-3·통합 테스트가 바뀌고 레인이 남긴 무시된 흔적을 못 봐요; (c) 아무것도 바꾸지 않고 레인이 `.moai/state/` 를 알아서 무시해요. 이 SPEC 의 승인된 요구 한 줄을 바꾸는 개정이라 사용자의 승인이 필요해요. 되돌릴 수 있어요(목록의 한 항목). 분류: none. 결정자: 사용자.
+  - 답(2026-11-27, 사용자가 리더 세션의 질문 도구에서 직접 골랐어요, 레저 노트 10729): (a) `.moai/state/` 만 빼기 (Recommended). 다른 무시된 흔적은 계속 보고해요. 개정 5 를 글 그대로 승인해요.
 
 ## Result
+
+판 5 는 사용자가 D-4 (a) 로 승인했어요(레저 노트 10729). NeXT 끝점 cf2c0b1374 를 합친 가지에서 읽은 것이에요(`cargo nextest run --locked --offline`, 힙 슬롯 `--max 2`). 아래 두 줄이 판 5, 그 아래 줄은 판 4 까지의 결과예요.
+
+- AC-6: met — `the_status_line_cache_is_not_a_leftover_but_other_new_files_still_are` 통과: `.gitignore` 모양(`<상태 폴더>/*` 무시)의 임시 저장소에서 `state/` 아래 새 파일 둘은 `shared_checkout_new` 에 없고, `state-old/`, 같은 폴더의 `other.log`, `src/state/x.txt`, 새 미추적 파일, 새 `*.log` 는 그대로 나와요. 같은 모듈 아홉 개 통과. 뮤턴트: `is_expected` 에서 캐시 폴더 두 줄을 지운 복사본이 이 테스트와 AC-7 의 테스트를 둘 다 실패시켰어요(exit 100, 제자리 변경 뒤 되돌림, 되돌린 뒤 같은 모듈 다시 통과).
+- AC-7: met — `card::ready_leftovers::tests::the_status_line_cache_folder_is_expected_state` 통과(폴더, 끝 `/`, 아래 파일 셋은 기대 상태, `state-old`·`states`·다른 위치의 `state/` 와 이전 배치의 상태 폴더 이웃은 아님). 모듈 열네 개 통과. 구현 메모: `state_root::rel(<주 체크아웃>, "state")` 가 프로젝트의 실제 상태 폴더(이 저장소는 `.moai/state`)를 알려 주므로 글자를 코드에 두지 않았어요(`state_folder_literal_scan` 통과).
+- 판 5 의 같은 실행에서 `home_isolation_scan`·`state_folder_literal_scan`·`source_manifest_facts`·`repo_scans_table` 합쳐 93개 통과.
 
 NeXT 팁 efb3a80ae9 를 합친 가지에서 읽은 것이에요(합치기는 리더 결정 노트 8196 의 (a); 같은 시각의 `check affected` 영수증은 READY 노트가 가져요). 모든 실행은 `RUSTC_WRAPPER=sccache`, 힙 슬롯 `--max 3`, `cargo nextest run --locked --offline` 이에요.
 
