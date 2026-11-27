@@ -21,6 +21,8 @@
 //! environment scrub, in the project folder), and for the hook with the environment git itself
 //! set, because the hook must work in the repository git is working in.
 
+pub mod repoint;
+
 use super::landed;
 use serde_json::{json, Value};
 use std::fs;

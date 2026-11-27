@@ -2077,7 +2077,11 @@ fn user_layer_plan_in(
     let keys = crate::update_keys::plan(home)?;
     let home_layer = crate::update_home::plan(home)?;
     let switch_layer = switch::plan(home)?;
-    let git_hooks_layer = crate::git_hooks::update::plan(home, &cwd)?;
+    let git_hooks_layer =
+        crate::git_hooks::update::plan_with_guard(home, &cwd, guard_answer(&cwd))?;
+    // SPEC-20261126-guard-record-repoint REQ-9: one notice while the guard record is stale,
+    // read-only and built after every digest, so it changes no digest and no token.
+    notices.extend(repoint_notice(&cwd));
     // SPEC-20261122-html-report-install: planned on its own, whatever the moai skill copy says.
     let extra_skills = extra_skill::plan(home, package, allow_older)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
@@ -2177,6 +2181,38 @@ fn claude_folders_notice(home: &Path) -> Option<serde_json::Value> {
             "rules": shown(&default),
         },
         "warning": warning,
+    }))
+}
+
+/// The guard answer the git-hook plan and both apply sites of `moai update` share, so the preview's
+/// token is the one the apply accepts (SPEC-20261126-guard-record-repoint REQ-7, REQ-8, D-2): the
+/// guard hook is offered when the guard can act in `cwd` and withheld while the record is stale.
+fn guard_answer(cwd: &Path) -> bool {
+    crate::card::guard::can_act(cwd) && crate::card::guard::repoint::stale(cwd).is_none()
+}
+
+/// The confirmed git-hook apply of `moai update`, given the preview's guard answer, followed by
+/// the guard record when it is absent: the answer carries `guard: {record, ..}` the way
+/// `git-hooks-apply` does (D-9). An existing record, stale or not, is never rewritten.
+fn apply_git_hooks(cwd: &Path, token: &str, now: &str) -> Result<serde_json::Value> {
+    let mut answer = crate::git_hooks::update::apply_guarded(cwd, token, now, guard_answer(cwd))?;
+    answer["guard"] = crate::card::guard::seed_record(cwd);
+    Ok(answer)
+}
+
+/// The notice of a stale guard record in the preview (REQ-9, REQ-10): it names the record, the
+/// profile branch and the command that re-points it. Text only, no part of any digest; `None`
+/// when the record is current or the state cannot be read.
+fn repoint_notice(cwd: &Path) -> Option<serde_json::Value> {
+    let stale = crate::card::guard::repoint::stale(cwd)?;
+    Some(json!({
+        "kind": "guard_record_stale",
+        "part": "guard",
+        "host": "git",
+        "reason": format!(
+            "the guard record names {} but the profile's integration branch is {}: the guard hook is withheld while the record names another branch than the profile. Preview the fix with: moai card guard-repoint",
+            stale.record, stale.profile_branch
+        ),
     }))
 }
 
@@ -2619,7 +2655,7 @@ fn update_command_core(
             if let Some(t) = git_hooks_token {
                 let cwd = std::env::current_dir()
                     .map_err(|_| "current directory unavailable".to_string())?;
-                let r = crate::git_hooks::update::apply(&cwd, t, &crate::audit::utc_now())?;
+                let r = apply_git_hooks(&cwd, t, &crate::audit::utc_now())?;
                 out["revert"]["git_hooks"] = r["revert"].clone();
                 out["revert_order"] = json!(revert_order(&out["revert"]));
                 out["git_hooks_result"] = r;
@@ -2765,7 +2801,7 @@ fn update_command_core(
         part((|| {
             let cwd =
                 std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
-            crate::git_hooks::update::apply(&cwd, t, &crate::audit::utc_now())
+            apply_git_hooks(&cwd, t, &crate::audit::utc_now())
         })())
     });
     let revert = |op: &str, r: &serde_json::Value| {
