@@ -89,6 +89,11 @@ pub struct RestoreBackup {
     /// For `none`: backup_unavailable | manifest_mismatch | backup_mismatch | symlink |
     /// user_changed | original_missing.
     pub reason: Option<String>,
+    /// The id of the earlier installation whose backup this is, when the plan offers the
+    /// restore of an earlier build's backup (SPEC-20261127-recovery-prior-install); absent for
+    /// this installation's own backup, so such a plan reads as it always did.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from_install: Option<String>,
 }
 
 const RESTORED_RECORD: &str = "RESTORED.json";
@@ -128,9 +133,11 @@ fn backup_manifest(home: &Path, b: &ReplaceBackup) -> Option<(PathBuf, Vec<Backu
     Some((dir, files))
 }
 
-/// True when every file under the projection root is one this receipt created, with its
-/// recorded bytes (an absent root counts as true).
-fn root_holds_only_ours(root: &Path, receipt: &HostReceipt) -> std::result::Result<(), String> {
+/// True when every file under the projection root is one of these receipts created, with its
+/// recorded bytes (an absent root counts as true). One receipt is the usual case; the restore of
+/// an earlier installation's backup reads that installation's receipt and this one's, because
+/// the files the earlier build wrote and the files this build changed are split between them.
+fn root_holds_only_ours(root: &Path, receipts: &[&HostReceipt]) -> std::result::Result<(), String> {
     match fs::symlink_metadata(root) {
         Err(_) => return Ok(()),
         Ok(m) if m.file_type().is_symlink() => return Err("symlink".into()),
@@ -138,10 +145,12 @@ fn root_holds_only_ours(root: &Path, receipt: &HostReceipt) -> std::result::Resu
     }
     let current = source_files(root).map_err(|_| "user_changed".to_string())?;
     for f in current {
-        let ours = receipt
-            .entries
-            .iter()
-            .any(|e| e.path == f.path && e.after_sha256.as_deref() == Some(f.sha256.as_str()));
+        let ours = receipts.iter().any(|receipt| {
+            receipt
+                .entries
+                .iter()
+                .any(|e| e.path == f.path && e.after_sha256.as_deref() == Some(f.sha256.as_str()))
+        });
         if !ours {
             return Err("user_changed".into());
         }
@@ -152,7 +161,7 @@ fn root_holds_only_ours(root: &Path, receipt: &HostReceipt) -> std::result::Resu
 fn classify_backup(
     home: &Path,
     root: &Path,
-    receipt: &HostReceipt,
+    receipts: &[&HostReceipt],
     b: &ReplaceBackup,
 ) -> RestoreBackup {
     let mut r = RestoreBackup {
@@ -160,6 +169,7 @@ fn classify_backup(
         original_at: "missing".into(),
         action: "none".into(),
         reason: None,
+        from_install: None,
     };
     let Some((dir, files)) = backup_manifest(home, b) else {
         r.reason = Some(
@@ -179,7 +189,7 @@ fn classify_backup(
             r.reason = Some("backup_mismatch".into());
             return r;
         }
-        if let Err(why) = root_holds_only_ours(root, receipt) {
+        if let Err(why) = root_holds_only_ours(root, receipts) {
             r.reason = Some(why);
             return r;
         }
@@ -191,6 +201,86 @@ fn classify_backup(
         r.reason = Some("original_missing".into());
     }
     r
+}
+
+/// The earlier installation whose backup the current one may offer to restore: of the receipts
+/// the other installations of this state folder hold for the host, the newest `committed` one
+/// with a backup the restore has not used. Nothing when there is none, when the two newest
+/// finished in the same second, or when any earlier installation's receipt cannot be read, is a
+/// link or names another installation or host: the plan never guesses between receipts.
+fn prior_candidate(home: &Path, install_id: &str, host: &str) -> Option<(String, HostReceipt)> {
+    let installations = crate::home_root::path(home).join("installations");
+    // (finish time, id, receipt) of the newest candidate so far.
+    let mut best: Option<(String, String, HostReceipt)> = None;
+    let mut tie = false;
+    for entry in fs::read_dir(installations).ok()? {
+        let entry = entry.ok()?;
+        let id = entry.file_name().to_str()?.to_string();
+        if id == install_id {
+            continue;
+        }
+        match fs::symlink_metadata(entry.path()) {
+            Ok(m) if m.is_dir() => {}
+            _ => continue, // a link or a file lends nothing
+        }
+        let receipt = match load_host_receipt(&host_receipt_path(home, &id, host, false).ok()?) {
+            Ok(Some(r)) => r,
+            Ok(None) => continue,
+            Err(_) => return None,
+        };
+        if receipt.install_id != id || receipt.host != host {
+            return None;
+        }
+        let Some(backup) = &receipt.backup else {
+            continue;
+        };
+        if receipt.status != "committed"
+            || fs::symlink_metadata(PathBuf::from(&backup.dir).join(RESTORED_RECORD)).is_ok()
+        {
+            continue;
+        }
+        let key = receipt
+            .finished_at
+            .clone()
+            .unwrap_or_else(|| receipt.started_at.clone());
+        match &best {
+            Some((k, _, _)) if key < *k => {}
+            Some((k, _, _)) if key == *k => tie = true,
+            _ => {
+                tie = false;
+                best = Some((key, id, receipt));
+            }
+        }
+    }
+    if tie {
+        return None;
+    }
+    best.map(|(_, id, receipt)| (id, receipt))
+}
+
+/// SPEC-20261127-recovery-prior-install: the restore of the original folder out of an earlier
+/// installation's backup, for a host this installation holds no backup of (`own` is its receipt,
+/// none at all before its first apply). The offer is made only when the restore itself would go
+/// through, that is when every file under the projection root is one the earlier receipt or this
+/// one wrote; a blocked offer shows no row, so another build's old backup never makes this
+/// installation's `recovery-apply` partial.
+fn prior_restore(
+    home: &Path,
+    install_id: &str,
+    host: &str,
+    root: &Path,
+    own: Option<&HostReceipt>,
+) -> Option<RestoreBackup> {
+    let (id, prior) = prior_candidate(home, install_id, host)?;
+    let backup = prior.backup.as_ref()?;
+    let mut receipts = vec![&prior];
+    receipts.extend(own);
+    let mut rb = classify_backup(home, root, &receipts, backup);
+    if rb.action != "restore_backup" {
+        return None;
+    }
+    rb.from_install = Some(id);
+    Some(rb)
 }
 
 /// Why `version_before` is null, or null when it is known (REQ-04C-06).
@@ -359,6 +449,10 @@ pub fn recovery_plan(home: &Path) -> Result<RecoveryPlan> {
             }
         };
         let Some(receipt) = receipt else {
+            // A build installed but not yet applied: an earlier installation's backup may stand.
+            h.restore_backup = projection_root(&canonical_home, host)
+                .ok()
+                .and_then(|root| prior_restore(&canonical_home, &install_id, host, &root, None));
             hosts.push(h);
             continue;
         };
@@ -370,7 +464,7 @@ pub fn recovery_plan(home: &Path) -> Result<RecoveryPlan> {
         if let Some(b) = &receipt.backup {
             if receipt.status == "pending" || receipt.status == "committed" {
                 let root = projection_root(&canonical_home, host)?;
-                h.restore_backup = Some(classify_backup(&canonical_home, &root, &receipt, b));
+                h.restore_backup = Some(classify_backup(&canonical_home, &root, &[&receipt], b));
             }
             hosts.push(h);
             continue;
@@ -415,6 +509,16 @@ pub fn recovery_plan(home: &Path) -> Result<RecoveryPlan> {
                     )?);
                 }
             }
+        }
+        // A finished receipt that holds no backup of its own (an ordinary apply, or a recovery
+        // that is over): an earlier installation's backup may stand. A pending receipt first
+        // goes through its per-file recovery.
+        if matches!(receipt.status.as_str(), "committed" | "recovered") {
+            h.restore_backup = projection_root(&canonical_home, host)
+                .ok()
+                .and_then(|root| {
+                    prior_restore(&canonical_home, &install_id, host, &root, Some(&receipt))
+                });
         }
         hosts.push(h);
     }
@@ -480,7 +584,10 @@ fn conflict_json(f: &RecoveryFile) -> Value {
 /// the receipt. Either way the receipt becomes `recovered` with an empty ownership
 /// manifest, so the next `update-plan` sees the folder as unmanaged again. This is the
 /// one recovery that also acts on a `committed` receipt: ordinary updates keep
-/// REQ-04C-05 (a committed host is never written).
+/// REQ-04C-05 (a committed host is never written). A restore with `from_install` puts back the
+/// backup an earlier installation made (SPEC-20261127-recovery-prior-install): it classifies
+/// again against that receipt and this installation's, moves the same folders, and closes both
+/// receipts, the earlier one with its finish time unchanged.
 fn restore_backup_host(
     home: &Path,
     install_id: &str,
@@ -497,15 +604,39 @@ fn restore_backup_host(
             json!([{"path": rb.backup_dir, "class": "conflict", "reason": rb.reason}]);
         return Ok(report);
     }
-    let path = host_receipt_path(home, install_id, &h.host, false)?;
-    let mut receipt: HostReceipt = load_host_receipt(&path)?.ok_or("host receipt disappeared")?;
+    let own = load_host_receipt(&host_receipt_path(home, install_id, &h.host, false)?)?;
+    // The receipt that holds the backup is this installation's own, or the earlier
+    // installation's that the plan names in `from_install`.
+    let (mut receipt, holder): (HostReceipt, String) = match &rb.from_install {
+        None => (
+            own.clone().ok_or("host receipt disappeared")?,
+            install_id.to_string(),
+        ),
+        Some(id) => {
+            let path = host_receipt_path(home, id, &h.host, false)?;
+            let prior = load_host_receipt(&path)?.ok_or("host receipt disappeared")?;
+            if prior.install_id != *id || prior.host != h.host || prior.status != "committed" {
+                return Err("host receipt changed since recovery-plan".into());
+            }
+            (prior, id.clone())
+        }
+    };
     let backup = receipt
         .backup
         .clone()
         .ok_or("host receipt changed since recovery-plan")?;
     // Re-classify right before any move (REQ-04C-02 style re-verification).
     let root = projection_root(home, &h.host)?;
-    if classify_backup(home, &root, &receipt, &backup) != *rb {
+    let mut receipts = vec![&receipt];
+    if rb.from_install.is_some() {
+        if own.as_ref().is_some_and(|o| o.status == "pending") {
+            return Err("host receipt changed since recovery-plan".into());
+        }
+        receipts.extend(own.as_ref());
+    }
+    let mut now = classify_backup(home, &root, &receipts, &backup);
+    now.from_install = rb.from_install.clone();
+    if now != *rb {
         return Err("backup or projection changed since recovery-plan; nothing moved".into());
     }
     let started = now_rfc3339();
@@ -536,9 +667,29 @@ fn restore_backup_host(
     }
     receipt.status = "recovered".into();
     receipt.owned = Vec::new();
-    receipt.finished_at = Some(now_rfc3339());
-    save_host_receipt(home, install_id, &receipt)?;
-    let done = vec![format!("{} ({})", backup.dir, rb.action)];
+    if rb.from_install.is_none() {
+        receipt.finished_at = Some(now_rfc3339());
+    }
+    // An earlier installation's receipt keeps its finish time: this installation's receipt,
+    // closed below, then stays the newest one, and a build installed later never finds two
+    // finished receipts of one second that it cannot tell apart.
+    save_host_receipt(home, &holder, &receipt)?;
+    let mut closed_own = false;
+    if rb.from_install.is_some() {
+        // This installation's committed receipt owns files that are gone now: close it too.
+        // One that holds nothing (a build that has applied nothing) or is closed already stays.
+        if let Some(mut mine) = own.filter(|o| o.status == "committed") {
+            mine.status = "recovered".into();
+            mine.owned = Vec::new();
+            mine.finished_at = Some(now_rfc3339());
+            save_host_receipt(home, install_id, &mine)?;
+            closed_own = true;
+        }
+    }
+    let done = vec![match &rb.from_install {
+        Some(id) => format!("{} ({} from installation {id})", backup.dir, rb.action),
+        None => format!("{} ({})", backup.dir, rb.action),
+    }];
     save_record(
         home,
         install_id,
@@ -555,7 +706,12 @@ fn restore_backup_host(
             not_attempted: Vec::new(),
         },
     )?;
-    report["receipt_status"] = json!("recovered");
+    if rb.from_install.is_none() || closed_own {
+        report["receipt_status"] = json!("recovered");
+    }
+    if let Some(id) = &rb.from_install {
+        report["from_install"] = json!(id);
+    }
     report["backup_restored"] = json!(rb.action == "restore_backup");
     report["recovered"] = json!(done);
     report["written"] = json!(true);

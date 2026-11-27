@@ -2017,3 +2017,29 @@ fn prior_install_used_backup_is_not_offered_again() {
     );
     assert_eq!(snapshot(&f.home.join(ROOTS[0].1)), original);
 }
+
+// Characterization, not an acceptance criterion: an apply by the new build that finds nothing
+// to write keeps the receipt's entries, so the offer stays.
+#[test]
+fn prior_install_offer_stays_after_a_no_write_apply() {
+    let (f, _, a, b, _) = upgraded(true);
+    sleep(Duration::from_millis(1100));
+    let (_, r) = ordinary_apply(&b, &f.home, &f.stage);
+    assert_eq!(host(&r, "claude")["status"], json!("unchanged"), "{r}");
+    assert_offers_prior(&recovery_plan_by(&b, &f.home), &a);
+}
+
+// Characterization, not an acceptance criterion, and a known limit of the approved REQ-2: the
+// offer counts the earlier receipt's entries and the entries of this installation's last apply
+// only, so once the new build writes a second time the files its first apply wrote belong to
+// neither list and the offer is no longer shown (`user_changed`, which shows no row).
+#[test]
+fn prior_install_offer_ends_after_a_second_writing_apply() {
+    let (f, _, _, b, _) = upgraded(true);
+    sleep(Duration::from_millis(1100));
+    put_file(&f.stage, "workflows/update.md", "# UPDATE\nrust v3\n");
+    let (_, r) = ordinary_apply(&b, &f.home, &f.stage);
+    assert_eq!(host(&r, "claude")["status"], json!("applied"), "{r}");
+    let rp = recovery_plan_by(&b, &f.home);
+    assert!(host(&rp, "claude")["restore_backup"].is_null(), "{rp}");
+}
