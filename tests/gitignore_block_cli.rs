@@ -208,9 +208,9 @@ const TEAM_FILES: [&str; 11] = [
     ".moai-cli/moai-cli.json",
     ".moai-cli/moai.json",
     ".moai-cli/manifests/generation.json",
-    ".moai-cli/workflows/run.md",
+    ".moai-cli/workflows/run/SKILL.md",
     ".moai-cli/config/sections/language.yaml",
-    ".moai-cli/decisions/D-1.md",
+    ".moai-cli/decisions/D-1.jsonl",
     ".moai-cli/docs/design.md",
     ".moai-cli/specs/SPEC-1/spec.md",
     "src/main.rs",
@@ -289,7 +289,7 @@ fn specs_stay_in_git_for_every_project() {
             fx.ignore()
         );
         // The rest of the allow-list does not move with the setting.
-        assert!(!fx.ignored(".moai-cli/decisions/D-1.md"), "{issues:?}");
+        assert!(!fx.ignored(".moai-cli/decisions/D-1.jsonl"), "{issues:?}");
         assert!(fx.ignored(".moai-cli/state/lane.json"), "{issues:?}");
     }
 }
@@ -369,6 +369,381 @@ fn the_block_ignores_local_and_keeps_tools_and_evals() {
     }
 }
 
+/// SPEC-20261127-update-leftovers-action REQ-23 (AC-12): the block ends with the glob
+/// `.moai.rust-*/`, written as is, so the folders the update sets aside stay out of git. A folder
+/// whose name the glob does not match is left alone.
+#[test]
+fn the_block_ignores_the_rust_set_aside_folders() {
+    let fx = Fx::new(None);
+    fx.apply_ok("none");
+    let text = fx.ignore();
+    for rel in [
+        ".moai.rust-20261101T000000Z/x",
+        ".moai.rust-20261101T000000Z/nested/y",
+    ] {
+        assert!(fx.ignored(rel), "{rel} is not ignored:\n{text}");
+    }
+    let begin = text.find(BEGIN).expect("block begin");
+    let end = text.find(END).expect("block end");
+    let last = text[begin..end].lines().rfind(|l| !l.is_empty()).unwrap();
+    assert_eq!(last, ".moai.rust-*/", "the block's last line:\n{text}");
+    for rel in [".moai-other/x", ".moai.rust/x"] {
+        assert!(!fx.ignored(rel), "{rel} is ignored:\n{text}");
+    }
+}
+
+/// The lines that narrow `manifests/`, `workflows/` and `decisions/` (SPEC-20261127-state-kept-
+/// narrowing REQ-1): per folder, the line that ignores what is directly inside it and the line that
+/// allows back only what Rust writes there.
+const NARROW: [(&str, &str, &str); 3] = [
+    (
+        "manifests",
+        ".moai-cli/manifests/*",
+        "!.moai-cli/manifests/*.json",
+    ),
+    (
+        "workflows",
+        ".moai-cli/workflows/*",
+        "!.moai-cli/workflows/*/",
+    ),
+    (
+        "decisions",
+        ".moai-cli/decisions/*",
+        "!.moai-cli/decisions/*.jsonl",
+    ),
+];
+
+/// The plan's `detail` of the `.gitignore` row.
+fn ignore_detail(plan: &Value) -> String {
+    Fx::ignore_row(plan)["detail"]
+        .as_str()
+        .unwrap_or("")
+        .to_string()
+}
+
+/// SPEC-20261127-state-kept-narrowing REQ-1, REQ-2, REQ-8 (AC-2): in a temporary git repository
+/// with the rendered block, what Rust writes under `manifests/`, `workflows/` and `decisions/` is
+/// visible, flat files and folders Rust does not write there are ignored, and the other kept
+/// names stay allowed whole.
+#[test]
+fn the_block_allows_only_the_paths_rust_writes_under_manifests_workflows_decisions() {
+    let fx = Fx::new(None);
+    fx.apply_ok("none");
+    let text = fx.ignore();
+    for rel in [
+        ".moai-cli/manifests/generation.json",
+        ".moai-cli/manifests/update-declined.json",
+        ".moai-cli/workflows/review-flow/SKILL.md",
+        ".moai-cli/workflows/review-flow/references/workflow.md",
+        ".moai-cli/decisions/run-1.jsonl",
+        // The other kept names keep their whole-folder allow lines.
+        ".moai-cli/config/sections/user.yaml",
+        ".moai-cli/docs/local-rules/a.md",
+        ".moai-cli/specs/SPEC-x/spec.md",
+        ".moai-cli/tools/check.sh",
+        ".moai-cli/evals/set.json",
+        ".moai-cli/project.yaml",
+    ] {
+        assert!(!fx.ignored(rel), "{rel} is ignored:\n{text}");
+    }
+    for rel in [
+        ".moai-cli/workflows/w1.md",
+        ".moai-cli/manifests/x.txt",
+        ".moai-cli/manifests/sub/y.json",
+        ".moai-cli/decisions/x.md",
+        ".moai-cli/decisions/sub/z.jsonl",
+    ] {
+        assert!(fx.ignored(rel), "{rel} is not ignored:\n{text}");
+    }
+}
+
+/// SPEC-20261127-state-kept-narrowing REQ-5, REQ-6, REQ-8 (AC-3): a file git already tracks that
+/// the narrow block would ignore gets an exact `!` line (and one for each folder above it inside
+/// the narrowed folder), the plan names it as `now hidden`, and the file stays tracked. A tracked
+/// file the block still allows gets neither, and a new untracked file of the same shape is ignored.
+#[test]
+fn a_tracked_file_the_narrow_block_would_hide_keeps_an_exact_allow_line() {
+    let fx = Fx::new(None);
+    let hidden = [
+        ".moai-cli/manifests/sub/y.json",
+        ".moai-cli/manifests/x.txt",
+        ".moai-cli/workflows/w1.md",
+    ];
+    let shown = [
+        ".moai-cli/manifests/own.json",
+        ".moai-cli/workflows/real/SKILL.md",
+    ];
+    for rel in hidden.iter().chain(&shown) {
+        let path = fx.root.join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, "x").unwrap();
+        git_ok(&fx.root, &["add", "--", rel]);
+    }
+    let detail = ignore_detail(&fx.plan("none"));
+    let named: Vec<&str> = detail
+        .lines()
+        .filter(|l| l.starts_with("now hidden: "))
+        .collect();
+    assert_eq!(
+        named,
+        [
+            "now hidden: .moai-cli/manifests/sub/y.json",
+            "now hidden: .moai-cli/manifests/x.txt",
+            "now hidden: .moai-cli/workflows/w1.md"
+        ],
+        "{detail}"
+    );
+    fx.apply_ok("none");
+    let text = fx.ignore();
+    for line in [
+        "!.moai-cli/manifests/sub/",
+        "!.moai-cli/manifests/sub/y.json",
+        "!.moai-cli/manifests/x.txt",
+        "!.moai-cli/workflows/w1.md",
+    ] {
+        assert!(text.lines().any(|l| l == line), "no `{line}`:\n{text}");
+    }
+    for rel in shown {
+        let line = format!("!{rel}");
+        assert!(
+            !text.lines().any(|l| l == line),
+            "`{line}` is there:\n{text}"
+        );
+    }
+    for rel in hidden {
+        assert!(!fx.ignored(rel), "{rel} is ignored:\n{text}");
+    }
+    for rel in [".moai-cli/workflows/w2.md", ".moai-cli/manifests/z.txt"] {
+        assert!(fx.ignored(rel), "{rel} is not ignored:\n{text}");
+    }
+    let tracked = git(&fx.root, &["ls-files", "-z", "--", ".moai-cli"]);
+    for rel in hidden.iter().chain(&shown) {
+        assert!(
+            tracked.contains(rel),
+            "{rel} is no longer tracked: {tracked}"
+        );
+    }
+    let again = fx.plan("none");
+    assert_eq!(Fx::ignore_row(&again)["action"], "unchanged", "{again}");
+    assert!(!ignore_detail(&again).contains("now hidden"), "{again}");
+}
+
+/// SPEC-20261127-state-kept-narrowing REQ-6: past twenty hidden files the plan names twenty and
+/// counts the rest in one line.
+#[test]
+fn the_plan_counts_the_hidden_files_past_twenty() {
+    let fx = Fx::new(None);
+    for n in 0..22 {
+        let rel = format!(".moai-cli/manifests/old-{n:02}.txt");
+        fs::write(fx.root.join(&rel), "x").unwrap();
+        git_ok(&fx.root, &["add", "--", &rel]);
+    }
+    let detail = ignore_detail(&fx.plan("none"));
+    let hidden: Vec<&str> = detail
+        .lines()
+        .filter(|l| l.starts_with("now hidden: "))
+        .collect();
+    assert_eq!(hidden.len(), 21, "{detail}");
+    assert_eq!(
+        hidden[20], "now hidden: and 2 more files under .moai-cli/",
+        "{detail}"
+    );
+}
+
+/// SPEC-20261127-state-kept-narrowing REQ-1, REQ-9, REQ-10 (AC-5): the plan shows the six narrow
+/// lines, the applied block holds exactly those, each folder's ignore line comes after its allow
+/// line and before its allow-back line, and a second plan changes nothing.
+#[test]
+fn the_narrow_block_is_the_same_in_plan_and_apply_and_idempotent() {
+    let fx = Fx::new(None);
+    let detail = ignore_detail(&fx.plan("none"));
+    for (_, ignore, allow) in NARROW {
+        for line in [ignore, allow] {
+            let shown = format!("+ {line}");
+            assert!(
+                detail.lines().any(|l| l == shown),
+                "no `{shown}`:\n{detail}"
+            );
+        }
+    }
+    fx.apply_ok("none");
+    let text = fx.ignore();
+    let lines: Vec<&str> = text.lines().collect();
+    let at = |l: &str| {
+        lines
+            .iter()
+            .position(|x| *x == l)
+            .unwrap_or_else(|| panic!("no `{l}`:\n{text}"))
+    };
+    for (folder, ignore, allow) in NARROW {
+        let whole = format!("!.moai-cli/{folder}/");
+        assert!(
+            at(&whole) < at(ignore) && at(ignore) < at(allow),
+            "the order of {folder}:\n{text}"
+        );
+    }
+    let again = fx.plan("none");
+    assert_eq!(Fx::ignore_row(&again)["action"], "unchanged", "{again}");
+    assert_eq!(fx.ignore(), text);
+}
+
+/// SPEC-20261127-state-kept-narrowing REQ-11: with no git on `PATH` the tracked paths cannot be
+/// listed, so the block keeps the whole-folder lines of every kept name, as before the narrowing.
+#[test]
+fn without_git_the_block_keeps_the_whole_folder_lines() {
+    let fx = Fx::new(None);
+    fx.without_git();
+    let detail = ignore_detail(&fx.plan("none"));
+    for (_, ignore, allow) in NARROW {
+        for line in [ignore, allow] {
+            let shown = format!("+ {line}");
+            assert!(!detail.lines().any(|l| l == shown), "`{shown}`:\n{detail}");
+        }
+    }
+    fx.apply_ok("none");
+    let text = fx.ignore();
+    for (folder, ignore, allow) in NARROW {
+        assert!(
+            text.lines().any(|l| l == format!("!.moai-cli/{folder}/")),
+            "no whole-folder line for {folder}:\n{text}"
+        );
+        for line in [ignore, allow] {
+            assert!(!text.lines().any(|l| l == line), "`{line}`:\n{text}");
+        }
+    }
+}
+
+/// SPEC-20261127-state-kept-narrowing REQ-5, REQ-6: a file git tracks in the earlier folder, which
+/// the update moves into `.moai/`, counts too: the plan names it under `.moai/` and the block gets
+/// the exact line there. A tracked file the block still allows gets neither.
+#[test]
+fn a_tracked_file_in_the_earlier_folder_stays_visible_after_the_move() {
+    let fx = Fx::moved(
+        None,
+        &[
+            ".moai-cli/workflows/w1.md",
+            ".moai-cli/manifests/own.json",
+            ".moai-cli/manifests/sub/y.json",
+        ],
+        "",
+    );
+    let detail = ignore_detail(&fx.plan("none"));
+    let named: Vec<&str> = detail
+        .lines()
+        .filter(|l| l.starts_with("now hidden: "))
+        .collect();
+    assert_eq!(
+        named,
+        [
+            "now hidden: .moai/manifests/sub/y.json",
+            "now hidden: .moai/workflows/w1.md"
+        ],
+        "{detail}"
+    );
+    fx.apply_ok("none");
+    let text = fx.ignore();
+    for line in [
+        "!.moai/workflows/w1.md",
+        "!.moai/manifests/sub/",
+        "!.moai/manifests/sub/y.json",
+    ] {
+        assert!(text.lines().any(|l| l == line), "no `{line}`:\n{text}");
+    }
+    assert!(
+        !text.lines().any(|l| l == "!.moai/manifests/own.json"),
+        "{text}"
+    );
+    for rel in [".moai/workflows/w1.md", ".moai/manifests/sub/y.json"] {
+        assert!(!fx.ignored(rel), "{rel} is ignored:\n{text}");
+    }
+    assert!(fx.ignored(".moai/workflows/w2.md"), "{text}");
+}
+
+/// The paths a source file spells in a string literal that starts with `manifests/`, `workflows/`
+/// or `decisions/`, before the file's `#[cfg(test)]` module, with each `{..}` filled in as `x`.
+/// A pattern (`*`, `<..>`) or a text with a space is not a path. The pairing of quotes is naive,
+/// and a path built piece by piece is not seen: the scan is a net, not a proof.
+fn state_paths_spelled_in_sources() -> Vec<(String, String)> {
+    let mut found = Vec::new();
+    let mut stack = vec![PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src")];
+    while let Some(dir) = stack.pop() {
+        for entry in fs::read_dir(&dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            if path.extension().and_then(|e| e.to_str()) != Some("rs") {
+                continue;
+            }
+            let text = fs::read_to_string(&path).unwrap();
+            let body = text.split("\n#[cfg(test)]").next().unwrap();
+            for line in body.lines() {
+                if line.trim_start().starts_with("//") {
+                    continue;
+                }
+                for literal in line.split('"').skip(1).step_by(2) {
+                    let literal = literal.replace("{DECISIONS_DIR}", "decisions");
+                    if !["manifests/", "workflows/", "decisions/"]
+                        .iter()
+                        .any(|f| literal.starts_with(f))
+                        || literal.ends_with('/')
+                        || literal.contains(['*', '<', '>', ' ', '%', '\\'])
+                    {
+                        continue;
+                    }
+                    let mut filled = String::new();
+                    let mut open = false;
+                    for c in literal.chars() {
+                        match c {
+                            '{' => open = true,
+                            '}' => {
+                                open = false;
+                                filled.push('x');
+                            }
+                            _ if open => {}
+                            _ => filled.push(c),
+                        }
+                    }
+                    found.push((path.display().to_string(), filled));
+                }
+            }
+        }
+    }
+    found
+}
+
+/// SPEC-20261127-state-kept-narrowing REQ-4, REQ-7 (AC-4): every path under `manifests/`,
+/// `workflows/` or `decisions/` that the sources spell is allowed by the rendered block, so a
+/// writer added later cannot be ignored without a failing test. A made-up writer path outside the
+/// lines is ignored, which shows the check can fail.
+#[test]
+fn every_state_path_a_writer_spells_is_allowed_by_the_block() {
+    let fx = Fx::new(None);
+    fx.apply_ok("none");
+    let text = fx.ignore();
+    assert!(
+        fx.ignored(".moai-cli/manifests/sub/x.json"),
+        "a path outside the lines is allowed:\n{text}"
+    );
+    let spelled = state_paths_spelled_in_sources();
+    let known = |rel: &str| spelled.iter().any(|(_, p)| p == rel);
+    for rel in [
+        "manifests/generation.json",
+        "workflows/x/SKILL.md",
+        "workflows/x/references/workflow.md",
+        "decisions/x.jsonl",
+    ] {
+        assert!(known(rel), "the scan did not find {rel}: {spelled:?}");
+    }
+    let blocked: Vec<String> = spelled
+        .iter()
+        .filter(|(_, rel)| fx.ignored(&format!(".moai-cli/{}", rel.trim_end_matches('/'))))
+        .map(|(file, rel)| format!("{file}: {rel}"))
+        .collect();
+    assert!(blocked.is_empty(), "ignored by the block: {blocked:#?}");
+}
+
 /// SPEC-20261120-moai-layout REQ-11: credential and `.env` files stay out of git anywhere under
 /// the state folder, in the folders the block allows too, and the lines come after the allow-list.
 #[test]
@@ -417,6 +792,108 @@ fn the_block_ignores_credential_and_env_files_even_in_tools_and_evals() {
     }
 }
 
+/// SPEC-20261120-moai-layout REQ-19 (AC-21): git ignores each researched secret file name under
+/// the state folder, in the folders the block allows too. Neighbour names stay visible, a pattern
+/// that carries a folder leaves the bare file name alone, and the lines come after the allow-list.
+#[test]
+fn the_block_ignores_the_researched_secret_names() {
+    // (REQ-19 pattern, one file name it has to keep out of git), in REQ-19 order.
+    const SECRETS: [(&str, &str); 30] = [
+        (".git-credentials", ".git-credentials"),
+        (".netrc", ".netrc"),
+        ("_netrc", "_netrc"),
+        (".pgpass", ".pgpass"),
+        ("pgpass.conf", "pgpass.conf"),
+        (".pypirc", ".pypirc"),
+        (".credentials.json", ".credentials.json"),
+        ("credentials.tfrc.json", "credentials.tfrc.json"),
+        (
+            "application_default_credentials.json",
+            "application_default_credentials.json",
+        ),
+        ("credentials.toml", "credentials.toml"),
+        (".vault-token", ".vault-token"),
+        (".mylogin.cnf", ".mylogin.cnf"),
+        ("master.key", "master.key"),
+        ("keystore.properties", "keystore.properties"),
+        ("id_rsa", "id_rsa"),
+        ("id_dsa", "id_dsa"),
+        ("id_ecdsa", "id_ecdsa"),
+        ("id_ecdsa_sk", "id_ecdsa_sk"),
+        ("id_ed25519", "id_ed25519"),
+        ("id_ed25519_sk", "id_ed25519_sk"),
+        ("id_mldsa44_ed25519", "id_mldsa44_ed25519"),
+        ("*.ppk", "deploy.ppk"),
+        ("*.tfstate", "terraform.tfstate"),
+        ("*.tfstate.*", "terraform.tfstate.backup"),
+        (".dev.vars", ".dev.vars"),
+        (".dev.vars.*", ".dev.vars.staging"),
+        (".aws/credentials", ".aws/credentials"),
+        (".cargo/credentials", ".cargo/credentials"),
+        (".gem/credentials", ".gem/credentials"),
+        (".streamlit/secrets.toml", ".streamlit/secrets.toml"),
+    ];
+    let fx = Fx::new(None);
+    fx.apply_ok("none");
+    let text = fx.ignore();
+    let state = moai_cli::state_root::dir(&fx.root);
+    // The state folder's `*` line already ignores a file directly in it, so only a file below an
+    // allowed folder shows that its own line works.
+    for (_, name) in SECRETS {
+        for folder in ["", "tools/", "tools/deep/er/", "evals/", "evals/sub/"] {
+            let rel = format!("{state}/{folder}{name}");
+            put(&fx, &rel, "x");
+            assert!(fx.ignored(&rel), "{rel} is not ignored:\n{text}");
+        }
+    }
+    // AC-21's neighbours, and `secrets.toml`, the bare name of a pattern that carries a folder
+    // (`credentials` is the bare name of the other three).
+    for name in [
+        "id_rsa.pub",
+        "deploy.pem",
+        "server.key",
+        "credentials",
+        "secrets.yaml",
+        ".npmrc",
+        "cert.p12",
+        "prod.tfvars",
+        "config.json",
+        "secrets.toml",
+    ] {
+        for folder in ["tools/", "tools/deep/er/", "evals/sub/"] {
+            let rel = format!("{state}/{folder}{name}");
+            put(&fx, &rel, "x");
+            assert!(!fx.ignored(&rel), "{rel} is ignored:\n{text}");
+        }
+    }
+    // The block's secret lines are the five of REQ-11 and then REQ-19's, no more and no fewer.
+    let prefix = format!("{state}/**/");
+    let expected: Vec<String> = [
+        "credentials.yaml",
+        "credentials.json",
+        "*.credentials",
+        ".env",
+        ".env.*",
+    ]
+    .into_iter()
+    .chain(SECRETS.map(|(pattern, _)| pattern))
+    .map(|pattern| format!("{prefix}{pattern}"))
+    .collect();
+    let lines: Vec<&str> = text.lines().collect();
+    let secret_lines: Vec<&str> = lines
+        .iter()
+        .copied()
+        .filter(|l| l.starts_with(&prefix))
+        .collect();
+    assert_eq!(secret_lines, expected, "{text}");
+    let last_allow = lines.iter().rposition(|l| l.starts_with('!')).unwrap();
+    let first_secret = lines.iter().position(|l| l.starts_with(&prefix)).unwrap();
+    assert!(
+        first_secret > last_allow,
+        "a secret line comes before an allow line:\n{text}"
+    );
+}
+
 /// The project as an earlier version left it: the block without the layout rule's lines (the
 /// `local/` line, the `tools/` and `evals/` allow lines and the credential lines), recorded as the
 /// block this tool wrote. Returns the earlier block text and the full block it grows into.
@@ -446,8 +923,9 @@ fn with_earlier_block(fx: &Fx) -> (String, String) {
     (old, full)
 }
 
-/// SPEC-20261120-moai-layout REQ-4, REQ-8: a block written before the layout rule gets its eight
-/// new lines as a `merge` in the plan, and the file is not written until the plan is applied.
+/// SPEC-20261120-moai-layout REQ-4, REQ-8: a block written before the layout rule gets its
+/// thirty-eight new lines as a `merge` in the plan, and the file is not written until the plan is
+/// applied.
 #[test]
 fn an_earlier_block_is_shown_as_changed_and_left_until_applied() {
     let fx = Fx::new(None);
@@ -458,7 +936,7 @@ fn an_earlier_block_is_shown_as_changed_and_left_until_applied() {
     assert_eq!(row["action"], "merge", "{row}");
     let detail = row["detail"].as_str().unwrap();
     for line in [
-        "managed block lines: 8 added, 0 removed",
+        "managed block lines: 38 added, 0 removed",
         "+ .moai-cli/local/",
         "+ !.moai-cli/tools/",
         "+ !.moai-cli/evals/",
@@ -970,7 +1448,7 @@ fn the_plan_shows_the_new_block_line_by_line_and_writes_nothing() {
     assert_eq!(row["action"], "create", "{row}");
     let detail = row["detail"].as_str().unwrap();
     for line in [
-        "managed block lines: 20 added, 0 removed",
+        "managed block lines: 57 added, 0 removed",
         "+ CLAUDE.local.md",
         "+ .moai-cli/receipts/",
         "+ .moai-cli/*",
@@ -980,6 +1458,7 @@ fn the_plan_shows_the_new_block_line_by_line_and_writes_nothing() {
         "+ !.moai-cli/specs/",
         "+ !.moai-cli/tools/",
         "+ !.moai-cli/evals/",
+        "+ .moai.rust-*/",
     ] {
         assert!(detail.lines().any(|l| l == line), "{line:?} in:\n{detail}");
     }
@@ -1474,13 +1953,14 @@ fn the_plan_shows_the_lines_added_to_a_gitignore_without_a_block() {
     assert_eq!(row["action"], "append", "{row}");
     let detail = row["detail"].as_str().unwrap();
     for line in [
-        "managed block lines: 20 added, 0 removed",
+        "managed block lines: 57 added, 0 removed",
         "+ CLAUDE.local.md",
         "+ .moai-cli/*",
         "+ .moai-cli/local/",
         "+ !.moai-cli/specs/",
         "+ !.moai-cli/tools/",
         "+ !.moai-cli/evals/",
+        "+ .moai.rust-*/",
     ] {
         assert!(detail.lines().any(|l| l == line), "{line:?} in:\n{detail}");
     }

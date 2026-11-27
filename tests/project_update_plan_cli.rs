@@ -7,6 +7,7 @@
 
 mod common;
 use common::CleanEnv;
+use moai_cli::{launcher_init::STATE_STOP, state_root::EARLIER_PROJECT_DIR};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
@@ -145,6 +146,44 @@ impl Fx {
 
     /// [`Fx::with_profile`] with `extra` keys merged into the profile.
     fn with_profile_extra(&self, extra: Value) {
+        let (digest, plan) = self.profile_plan(extra);
+        self.call(&self.profile_apply(&digest), &plan);
+    }
+
+    /// [`Fx::with_profile`] for a Go project that has no earlier state folder yet. The apply
+    /// is refused with nothing written (REQ-1 of the state-write stop), and with the folder
+    /// there the same profile is written as before (REQ-3).
+    fn with_go_profile(&self) {
+        let (digest, plan) = self.profile_plan(json!({}));
+        let before = self.tree();
+        let v = self.run(&self.profile_apply(&digest), &plan);
+        assert_eq!(v["ok"], json!(false), "{v}");
+        assert_eq!(v["error"]["kind"], json!("invalid_input"), "{v}");
+        let message = v["error"]["message"].as_str().unwrap();
+        assert!(
+            message.starts_with(STATE_STOP) && message.contains("moai go-state-plan"),
+            "{message}"
+        );
+        assert_eq!(self.tree(), before, "a refused apply writes nothing");
+        fs::create_dir(self.root.join(EARLIER_PROJECT_DIR)).unwrap();
+        self.with_profile(false);
+    }
+
+    /// The `project-apply` words for the plan with this digest.
+    fn profile_apply<'a>(&'a self, digest: &'a str) -> [&'a str; 6] {
+        [
+            "project-apply",
+            self.p(),
+            "--plan-digest",
+            digest,
+            "--permission-reference",
+            REF,
+        ]
+    }
+
+    /// The detected facts, with `extra` keys merged, through `project-plan`: the plan's
+    /// digest and the bytes `project-apply` reads.
+    fn profile_plan(&self, extra: Value) -> (String, Vec<u8>) {
         let detect = self.call(&["project-detect", self.p()], b"");
         let mut profile = json!({
             "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
@@ -159,17 +198,7 @@ impl Fx {
             &serde_json::to_vec(&profile).unwrap(),
         );
         let digest = plan["plan_digest"].as_str().unwrap().to_string();
-        self.call(
-            &[
-                "project-apply",
-                self.p(),
-                "--plan-digest",
-                &digest,
-                "--permission-reference",
-                REF,
-            ],
-            &serde_json::to_vec(&plan).unwrap(),
-        );
+        (digest, serde_json::to_vec(&plan).unwrap())
     }
 
     /// A Go-generation project (the `tests/update_route.rs` fixture): recorded files the
@@ -640,9 +669,10 @@ fn the_settings_hold_names_the_keys_and_the_settings_step_does_not_say_current()
         "blocked",
         "held by .claude/settings.json (plansDirectory, statusLine); \
          .claude/settings.local.json (env); this update does not change those keys, so change \
-         or remove them yourself and run the update again; this update does not edit \
-         .claude/settings.local.json; edit or remove these keys yourself (env), then run \
-         `moai project-update-plan` again",
+         or remove them yourself and run the update again; `--rewrite-local-references` cannot \
+         move the folder yet: .claude/settings.json also names the folder and keeps it; then run \
+         `moai project-update-plan` again; a session never edits .claude/settings.local.json by \
+         hand",
     );
     assert!(
         !plan.to_string().contains("secret-name"),
@@ -2140,7 +2170,7 @@ fn the_hooks_step_needs_a_settings_move_receipt() {
         b"",
     );
     assert!(fx.root.join(".claude/settings.json").is_file());
-    fx.with_profile(false);
+    fx.with_go_profile();
     let plan = fx.plan();
     let hooks = step(&plan, "hooks");
     assert_eq!(hooks["state"], "blocked", "{hooks}");
@@ -2222,9 +2252,15 @@ fn the_settings_the_install_phase_wrote_are_not_moved_again() {
     assert!(fx.root.join(".claude/settings.json").is_file());
     let after = fx.plan();
     let go = step(&after, "go-state");
-    // The local settings still hold the Go folder (`blocked`, as before this change); what the
-    // install phase wrote is not offered for a second move.
-    assert_ne!(go["state"], "needs_decision", "{go}");
+    // The local settings still hold the Go folder: the only command offered carries the pick,
+    // and what the install phase wrote is not offered for a second move.
+    assert!(
+        go["apply"]["argv"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("--rewrite-local-references")),
+        "{go}"
+    );
     let settings = go["preview"]["items"]
         .as_array()
         .unwrap()
@@ -2239,6 +2275,58 @@ fn the_settings_the_install_phase_wrote_are_not_moved_again() {
         "{}",
         step(&after, "hooks")
     );
+}
+
+/// SPEC-20261126-go-local-settings-reference D-8: where only the pick is offered, the same
+/// preview prints it beside `ready` install commands. Run after the pick moved the state, each of
+/// those either refuses without a write or writes nothing into the earlier state folder.
+#[test]
+fn the_other_commands_of_the_preview_stay_safe_after_the_pick() {
+    let fx = Fx::new();
+    let status = json!({"statusLine": {
+        "type": "command",
+        "command": format!("{}/status.sh", moai_cli::state_root::MOAI_DIR),
+    }});
+    fx.go_project_moved(
+        &json!({"permissions": {"deny": ["x"]}}),
+        &format!("{status}\n"),
+        false,
+    );
+    fx.with_profile(false);
+    let preview = fx.plan();
+    let go = step(&preview, "go-state");
+    assert_eq!(go["state"], "needs_decision", "{go}");
+    let ready: Vec<&Value> = steps(&preview)
+        .into_iter()
+        .filter(|s| s["state"] == "ready")
+        .collect();
+    assert!(!ready.is_empty(), "{preview}");
+    let moved = fx.apply_step(go);
+    assert_eq!(moved["ok"], json!(true), "{moved}");
+    let earlier = fx.root.join(EARLIER_PROJECT_DIR);
+    let in_earlier = || -> Vec<(PathBuf, Node)> {
+        fx.tree()
+            .into_iter()
+            .filter(|(p, _)| p.starts_with(&earlier))
+            .collect()
+    };
+    for s in ready {
+        let (whole, kept) = (fx.tree(), in_earlier());
+        let out = fx.apply_step(s);
+        if out["ok"] == json!(true) {
+            for entry in in_earlier() {
+                assert!(
+                    kept.contains(&entry),
+                    "{}: wrote into the earlier state folder: {:?}",
+                    s["step"],
+                    entry.0
+                );
+            }
+        } else {
+            assert_eq!(fx.tree(), whole, "{}: a refusal writes nothing", s["step"]);
+        }
+        eprintln!("{}: ok={} {}", s["step"], out["ok"], out["error"]);
+    }
 }
 
 /// AC 13 (not committed): only a committed apply's receipt offers the hooks. A receipt that

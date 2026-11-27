@@ -2230,3 +2230,593 @@ fn a_home_moai_link_is_followed_and_the_value_as_written_is_kept() {
         "the folder the link leads out to changed"
     );
 }
+
+// SPEC-20261126-heavy-slot-cpu-free: the CPU headroom rule. The CPU reading comes from the
+// debug-only `MOAI_TEST_MACHINE` keys `cpu_free_pct` and `cpu_cores`; every case here uses a
+// temporary slot folder (`--dir`), a temporary HOME and the injected machine, never the real
+// slot folder, the real `limits.json` or the real CPU.
+
+/// The longest a case waits for the wrapper to print or to end: a bound for a failing run, not a
+/// pace (a passing run is much quicker).
+const CPU_BOUND: Duration = Duration::from_secs(20);
+/// How long a held-back caller is watched to see that it still has not started.
+const CPU_STAYS: Duration = Duration::from_secs(2);
+
+/// The injected machine: roomy disk and swap, `pct` percent of the CPU free, 8 cores.
+fn cpu_machine(pct: u32) -> String {
+    format!("{ROOMY},cpu_free_pct={pct},cpu_cores=8")
+}
+
+/// `heavy-slot-status` of `dir` on the injected `machine` (`None` leaves the variable unset),
+/// with a temporary HOME; the `result` object of the answer.
+fn cpu_status(dir: &Path, machine: Option<&str>) -> Value {
+    let home = tempfile::tempdir().unwrap();
+    let mut c = Command::new(EXE);
+    c.env("HOME", home.path())
+        .env("XDG_CACHE_HOME", home.path().join("cache"))
+        .args(["heavy-slot-status", "--dir"])
+        .arg(dir);
+    match machine {
+        Some(m) => c.env("MOAI_TEST_MACHINE", m),
+        None => c.env_remove("MOAI_TEST_MACHINE"),
+    };
+    let out = c.output().unwrap();
+    assert!(out.status.success(), "{out:?}");
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["operation"], "heavy_slot.status", "{v}");
+    v["result"].clone()
+}
+
+/// A real `heavy-slot-acquire --max 1 -- touch <marker>` whose stdout and stderr go to files, so
+/// a case can read what it printed while it still waits. The wrapper's group is killed on drop.
+struct CpuCaller {
+    run: Spawned,
+    out: PathBuf,
+    err: PathBuf,
+}
+
+/// A caller named `name` on the injected `machine` (a text, or `@<file>`), judged against the
+/// limits file already in `slots` (or none); logs and its temporary HOME live under `logs`.
+fn cpu_caller(slots: &Path, machine: &str, name: &str, marker: &Path, logs: &Path) -> CpuCaller {
+    let home = logs.join("home");
+    fs::create_dir_all(&home).unwrap();
+    let (out, err) = (
+        logs.join(format!("{name}.out")),
+        logs.join(format!("{name}.err")),
+    );
+    let mut c = Command::new(EXE);
+    c.env("MOAI_TEST_MACHINE", machine)
+        .env("HOME", &home)
+        .env("XDG_CACHE_HOME", home.join("cache"))
+        .args(["heavy-slot-acquire", "--max", "1", "--name", name, "--dir"])
+        .arg(slots)
+        .args(["--", "touch"])
+        .arg(marker)
+        .stdin(Stdio::null())
+        .stdout(fs::File::create(&out).unwrap())
+        .stderr(fs::File::create(&err).unwrap());
+    CpuCaller {
+        run: spawn(c),
+        out,
+        err,
+    }
+}
+
+impl CpuCaller {
+    fn stdout(&self) -> String {
+        fs::read_to_string(&self.out).unwrap_or_default()
+    }
+
+    fn stderr(&self) -> String {
+        fs::read_to_string(&self.err).unwrap_or_default()
+    }
+
+    /// Both streams, for a failure message.
+    fn shown(&self) -> String {
+        format!("stdout: {:?}\nstderr: {:?}", self.stdout(), self.stderr())
+    }
+
+    /// The wrapper's exit status when it has ended.
+    fn exited(&mut self) -> Option<std::process::ExitStatus> {
+        self.run.child.as_mut().unwrap().try_wait().unwrap()
+    }
+
+    /// The first stdout line holding `needle`, waiting (bounded) until it appears or the wrapper
+    /// ends; `None` when neither happened in time or the wrapper ended without printing it.
+    fn line_with(&mut self, needle: &str) -> Option<String> {
+        let start = Instant::now();
+        loop {
+            let found = self
+                .stdout()
+                .lines()
+                .find(|l| l.contains(needle))
+                .map(str::to_owned);
+            if found.is_some() || self.exited().is_some() || start.elapsed() > CPU_BOUND {
+                return found;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+
+    /// The wrapper's exit status, waiting (bounded) for it; `None` when it did not end in time.
+    fn end(&mut self) -> Option<std::process::ExitStatus> {
+        let start = Instant::now();
+        loop {
+            if let Some(s) = self.exited() {
+                return Some(s);
+            }
+            if start.elapsed() > CPU_BOUND {
+                return None;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+}
+
+/// Replaces the machine file in one step, so a reader never sees it half written.
+fn set_machine_file(file: &Path, text: &str) {
+    let next = file.with_extension("next");
+    fs::write(&next, text).unwrap();
+    fs::rename(&next, file).unwrap();
+}
+
+/// The seconds in `... waited <digits>s for CPU headroom ...`, `None` when the line has no such
+/// text.
+fn waited_secs(line: &str) -> Option<u64> {
+    let rest = line.split_once("waited ")?.1;
+    let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+    if digits.is_empty() || !rest[digits.len()..].starts_with("s for CPU headroom") {
+        return None;
+    }
+    digits.parse().ok()
+}
+
+/// AC-1 (REQ-1): the status carries the four keys; given readings come back as given and the
+/// limit is the default 0 when there is no limits file; nothing is held.
+#[test]
+fn cpu_ac1_status_reports_the_injected_cpu_reading_and_the_default_limit() {
+    let d = tempfile::tempdir().unwrap();
+    let v = cpu_status(d.path(), Some(&cpu_machine(37)));
+    assert_eq!(v["cpu_free_pct"], 37, "{v}");
+    assert_eq!(v["cpu_cores"], 8, "{v}");
+    assert_eq!(v["min_cpu_free_pct"], 0, "{v}");
+    assert_eq!(v["heavy_runs"], 0, "{v}");
+}
+
+/// AC-1 (REQ-1): a reading that is not given is `null` (the key is there), and the cores fall
+/// back to the machine's logical CPUs, the number the status already uses for `build_jobs_cap`.
+#[test]
+fn cpu_ac1_a_reading_that_is_not_given_is_null_and_the_cores_are_the_machines() {
+    let d = tempfile::tempdir().unwrap();
+    let v = cpu_status(d.path(), Some(ROOMY));
+    let keys = v.as_object().unwrap();
+    assert!(
+        keys.contains_key("cpu_free_pct"),
+        "no cpu_free_pct key: {v}"
+    );
+    assert!(v["cpu_free_pct"].is_null(), "{v}");
+    assert!(keys.contains_key("cpu_cores"), "no cpu_cores key: {v}");
+    assert!(v["cpu_cores"].is_u64(), "cpu_cores is not a number: {v}");
+    assert_eq!(v["cpu_cores"], v["build_jobs_cap"]["cpus"], "{v}");
+}
+
+/// AC-1 (REQ-1): a held slot counts in `heavy_runs`, and the count is back to 0 once it ends.
+#[test]
+fn cpu_ac1_a_held_slot_counts_in_heavy_runs() {
+    let d = tempfile::tempdir().unwrap();
+    let m = tempfile::tempdir().unwrap();
+    let (s1, r1) = (m.path().join("s1"), m.path().join("r1"));
+    let mut c = acquire(d.path(), "1", "holder", &["sh", "-c", &hold(&s1, &r1)]);
+    c.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let first = spawn(c);
+    wait_for("holder started", || s1.exists());
+    let v = cpu_status(d.path(), Some(&cpu_machine(37)));
+    assert_eq!(v["heavy_runs"], 1, "{v}");
+    fs::write(&r1, "").unwrap();
+    assert!(first.finish().status.success());
+    let v = cpu_status(d.path(), Some(&cpu_machine(37)));
+    assert_eq!(v["heavy_runs"], 0, "{v}");
+}
+
+/// AC-1 (REQ-1): `heavy_runs` counts every held slot, one whose recorded pid is dead included.
+#[test]
+fn cpu_ac1_a_slot_held_by_a_dead_pid_counts_in_heavy_runs() {
+    let d = tempfile::tempdir().unwrap();
+    let mut gone = Command::new("true").spawn().unwrap();
+    let dead = gone.id();
+    gone.wait().unwrap();
+    let _held = held_slot(d.path(), &format!(r#"{{"name":"gone","pid":{dead}}}"#));
+    let v = cpu_status(d.path(), Some(&cpu_machine(37)));
+    assert_eq!(v["heavy_runs"], 1, "{v}");
+}
+
+/// AC-2 (REQ-2, REQ-3): with a limit of 20 and a CPU free of 5 the caller prints a waiting line
+/// with the reading and the limit, starts nothing while the reading stays low, and after the
+/// reading rises to 90 it runs COMMAND, exits 0 and its exit line names the waited seconds.
+#[test]
+fn cpu_ac2_a_low_cpu_reading_holds_the_caller_back_until_it_rises() {
+    let (_d, slots) = limits_dir(r#"{"min_cpu_free_pct":20}"#);
+    let w = tempfile::tempdir().unwrap();
+    let (machine, marker) = (w.path().join("machine"), w.path().join("ran"));
+    set_machine_file(&machine, &cpu_machine(5));
+    let mut caller = cpu_caller(
+        &slots,
+        &format!("@{}", machine.display()),
+        "cpu2",
+        &marker,
+        w.path(),
+    );
+
+    let line = caller.line_with("waiting for CPU headroom");
+    let line = line.unwrap_or_else(|| panic!("no waiting line was printed\n{}", caller.shown()));
+    assert!(line.contains("cpu free 5%"), "{line}");
+    assert!(line.contains("below 20%"), "{line}");
+
+    std::thread::sleep(CPU_STAYS);
+    assert!(
+        caller.exited().is_none(),
+        "ended while low\n{}",
+        caller.shown()
+    );
+    assert!(!marker.exists(), "COMMAND ran while the CPU free was 5%");
+
+    set_machine_file(&machine, &cpu_machine(90));
+    let status = caller.end();
+    assert!(
+        status.is_some(),
+        "still waiting after the rise\n{}",
+        caller.shown()
+    );
+    assert_eq!(status.unwrap().code(), Some(0), "{}", caller.shown());
+    assert!(marker.exists(), "COMMAND did not run\n{}", caller.shown());
+    let err = caller.stderr();
+    let exit_line = err
+        .lines()
+        .find(|l| l.starts_with("heavy-slot: cpu2 exited 0; "))
+        .unwrap_or_else(|| panic!("no exit line\n{}", caller.shown()));
+    assert!(waited_secs(exit_line).is_some(), "{exit_line}");
+    let slot_line = err.lines().find(|l| l.contains("taken by cpu2"));
+    assert!(
+        slot_line.is_some_and(|l| l.contains("; cpu free 90% (limit 20%)")),
+        "{}",
+        caller.shown()
+    );
+}
+
+/// AC-2 (REQ-3): a caller that did not wait gets no extra text on any stream.
+#[test]
+fn cpu_ac2_a_caller_that_did_not_wait_gets_no_cpu_text() {
+    let (_d, slots) = limits_dir(r#"{"min_cpu_free_pct":20}"#);
+    let w = tempfile::tempdir().unwrap();
+    let marker = w.path().join("ran");
+    let mut caller = cpu_caller(&slots, &cpu_machine(90), "cpu2", &marker, w.path());
+    let status = caller.end();
+    assert!(status.is_some(), "did not end\n{}", caller.shown());
+    assert_eq!(status.unwrap().code(), Some(0), "{}", caller.shown());
+    assert!(marker.exists(), "COMMAND did not run\n{}", caller.shown());
+    assert!(
+        caller
+            .stderr()
+            .lines()
+            .any(|l| l.starts_with("heavy-slot: cpu2 exited 0; ")),
+        "no exit line\n{}",
+        caller.shown()
+    );
+    let (out, err) = (caller.stdout(), caller.stderr());
+    assert!(!out.contains("waiting for CPU headroom"), "{out}");
+    for (what, s) in [("stdout", &out), ("stderr", &err)] {
+        assert!(!s.contains("for CPU headroom"), "{what}: {s}");
+    }
+}
+
+/// AC-2 (REQ-2): on the real sampler a caller keeps waiting over many looks. macOS hands the
+/// same tick counters to calls that follow each other closely, and a look with no new tick must
+/// not read as headroom. One busy thread keeps the free share under the limit of 100. Ending a
+/// caller that still waits starts nothing, and the next caller clears what it left in `waiting`.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[test]
+fn cpu_ac2_the_real_reading_keeps_a_caller_waiting() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let (_d, slots) = limits_dir(
+        r#"{"min_free_gb":0,"max_swap_pct":100,"min_mem_free_pct":0,"min_cpu_free_pct":100}"#,
+    );
+    let w = tempfile::tempdir().unwrap();
+    let marker = w.path().join("ran");
+    let (out, err) = (w.path().join("out"), w.path().join("err"));
+    let stop = AtomicBool::new(false);
+    std::thread::scope(|s| {
+        s.spawn(|| {
+            let start = Instant::now();
+            while !stop.load(Ordering::Relaxed) && start.elapsed() < CPU_BOUND * 2 {
+                std::hint::spin_loop();
+            }
+        });
+        let mut c = Command::new(EXE);
+        c.env_remove("MOAI_TEST_MACHINE")
+            .env("HOME", w.path())
+            .args([
+                "heavy-slot-acquire",
+                "--max",
+                "1",
+                "--name",
+                "real",
+                "--dir",
+            ])
+            .arg(&slots)
+            .args(["--", "touch"])
+            .arg(&marker)
+            .stdin(Stdio::null())
+            .stdout(fs::File::create(&out).unwrap())
+            .stderr(fs::File::create(&err).unwrap());
+        let mut caller = CpuCaller {
+            run: spawn(c),
+            out: out.clone(),
+            err: err.clone(),
+        };
+        let said = caller.line_with("waiting for CPU headroom");
+        std::thread::sleep(CPU_STAYS);
+        let (ended, ran) = (caller.exited(), marker.exists());
+        stop.store(true, Ordering::Relaxed);
+        assert!(said.is_some(), "no waiting line\n{}", caller.shown());
+        assert!(
+            ended.is_none() && !ran,
+            "the wait ended while the limit was 100\n{}",
+            caller.shown()
+        );
+        // SAFETY: kill(2) on the wrapper this test started and has not reaped.
+        unsafe { libc::kill(caller.run.id() as i32, libc::SIGTERM) };
+        let status = caller.end();
+        assert_eq!(
+            status.and_then(|s| std::os::unix::process::ExitStatusExt::signal(&s)),
+            Some(libc::SIGTERM),
+            "{}",
+            caller.shown()
+        );
+        assert!(!marker.exists(), "COMMAND ran\n{}", caller.shown());
+    });
+    let left = || fs::read_dir(slots.join("waiting")).unwrap().count();
+    assert_eq!(left(), 1, "the ended caller's waiting file");
+    fs::write(slots.join("limits.json"), r#"{"min_cpu_free_pct":0}"#).unwrap();
+    let out = run(acquire(&slots, "1", "next", &["true"]));
+    assert!(out.status.success(), "{}", text(&out));
+    assert_eq!(left(), 0, "{}", text(&out));
+}
+
+/// AC-3 (REQ-5): with no limits file the limit is 0, so a CPU free of 1 runs at once.
+#[test]
+fn cpu_ac3_a_the_default_limit_is_0_and_nothing_waits() {
+    let d = tempfile::tempdir().unwrap();
+    let v = cpu_status(d.path(), Some(&cpu_machine(90)));
+    assert_eq!(v["min_cpu_free_pct"], 0, "{v}");
+
+    let w = tempfile::tempdir().unwrap();
+    let marker = w.path().join("ran");
+    let mut caller = cpu_caller(d.path(), &cpu_machine(1), "dflt", &marker, w.path());
+    let status = caller.end();
+    assert_eq!(status.and_then(|s| s.code()), Some(0), "{}", caller.shown());
+    assert!(marker.exists(), "COMMAND did not run\n{}", caller.shown());
+    assert!(
+        !caller.stdout().contains("waiting for CPU headroom"),
+        "waited\n{}",
+        caller.shown()
+    );
+}
+
+/// The slot line of an ended caller on the injected `machine`, with `body` as the limits file
+/// (`None`: no file).
+fn cpu_slot_line(body: Option<&str>, machine: &str) -> String {
+    let d = tempfile::tempdir().unwrap();
+    if let Some(body) = body {
+        fs::write(d.path().join("limits.json"), body).unwrap();
+    }
+    let w = tempfile::tempdir().unwrap();
+    let marker = w.path().join("ran");
+    let mut caller = cpu_caller(d.path(), machine, "seen", &marker, w.path());
+    let status = caller.end();
+    assert_eq!(status.and_then(|s| s.code()), Some(0), "{}", caller.shown());
+    caller
+        .stderr()
+        .lines()
+        .find(|l| l.contains("taken by seen"))
+        .unwrap_or_else(|| panic!("no slot line\n{}", caller.shown()))
+        .to_owned()
+}
+
+/// AC-8 (REQ-9): the slot line names the measured CPU free share and the limit it was held
+/// against, or `rule off` when there is none; a machine that gives no reading adds nothing.
+#[test]
+fn cpu_ac8_the_slot_line_names_the_measured_cpu_free_share() {
+    let off = cpu_slot_line(None, &cpu_machine(5));
+    assert!(off.ends_with("; cpu free 5% (rule off)"), "{off}");
+    let zero = cpu_slot_line(Some(r#"{"min_cpu_free_pct":0}"#), &cpu_machine(7));
+    assert!(zero.ends_with("; cpu free 7% (rule off)"), "{zero}");
+    let on = cpu_slot_line(Some(r#"{"min_cpu_free_pct":20}"#), &cpu_machine(90));
+    assert!(on.ends_with("; cpu free 90% (limit 20%)"), "{on}");
+    let none = cpu_slot_line(Some(r#"{"min_cpu_free_pct":20}"#), ROOMY);
+    assert!(!none.contains("cpu free"), "{none}");
+}
+
+/// AC-8 (REQ-9): with the rule off the real machine is read once and the slot line shows it.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[test]
+fn cpu_ac8_the_real_reading_is_on_the_slot_line_with_the_rule_off() {
+    let (_d, slots) = limits_dir(r#"{"min_free_gb":0,"max_swap_pct":100,"min_mem_free_pct":0}"#);
+    let mut c = acquire(&slots, "1", "seen", &["true"]);
+    c.env_remove("MOAI_TEST_MACHINE");
+    let out = run(c);
+    assert!(out.status.success(), "{}", text(&out));
+    let err = String::from_utf8_lossy(&out.stderr);
+    let line = err
+        .lines()
+        .find(|l| l.contains("taken by seen"))
+        .unwrap_or_default();
+    assert!(
+        line.contains("; cpu free ") && line.ends_with("% (rule off)"),
+        "{}",
+        text(&out)
+    );
+}
+
+/// AC-3 (REQ-5): a file value wins over the default.
+#[test]
+fn cpu_ac3_b_a_limits_file_value_is_the_limit() {
+    let (_d, slots) = limits_dir(r#"{"min_cpu_free_pct":30}"#);
+    let v = cpu_status(&slots, Some(&cpu_machine(90)));
+    assert_eq!(v["min_cpu_free_pct"], 30, "{v}");
+}
+
+/// AC-3 (REQ-2): the edge of the limit 20: a CPU free of 19 waits, 20 runs at once.
+#[test]
+fn cpu_ac3_c_a_cpu_free_of_19_waits_and_20_runs_at_once() {
+    let (_d, slots) = limits_dir(r#"{"min_cpu_free_pct":20}"#);
+    let w = tempfile::tempdir().unwrap();
+    let marker = w.path().join("ran-19");
+    let mut low = cpu_caller(&slots, &cpu_machine(19), "edge19", &marker, w.path());
+    let line = low.line_with("waiting for CPU headroom");
+    let line = line.unwrap_or_else(|| panic!("19 did not wait\n{}", low.shown()));
+    assert!(line.contains("cpu free 19%"), "{line}");
+    assert!(line.contains("below 20%"), "{line}");
+    std::thread::sleep(CPU_STAYS);
+    assert!(low.exited().is_none(), "19 ended\n{}", low.shown());
+    assert!(!marker.exists(), "COMMAND ran at a CPU free of 19%");
+    drop(low);
+
+    let marker = w.path().join("ran-20");
+    let mut edge = cpu_caller(&slots, &cpu_machine(20), "edge20", &marker, w.path());
+    let status = edge.end();
+    assert!(status.is_some(), "20 did not end\n{}", edge.shown());
+    assert_eq!(status.unwrap().code(), Some(0), "{}", edge.shown());
+    assert!(marker.exists(), "COMMAND did not run\n{}", edge.shown());
+    assert!(
+        !edge.stdout().contains("waiting for CPU headroom"),
+        "20 waited\n{}",
+        edge.shown()
+    );
+}
+
+/// AC-3 (REQ-2): a limit of 0 switches the rule off; a CPU free of 1 still runs at once.
+#[test]
+fn cpu_ac3_d_a_limit_of_0_switches_the_rule_off() {
+    let (_d, slots) = limits_dir(r#"{"min_cpu_free_pct":0}"#);
+    let w = tempfile::tempdir().unwrap();
+    let marker = w.path().join("ran");
+    let mut caller = cpu_caller(&slots, &cpu_machine(1), "off", &marker, w.path());
+    let status = caller.end();
+    assert!(status.is_some(), "did not end\n{}", caller.shown());
+    assert_eq!(status.unwrap().code(), Some(0), "{}", caller.shown());
+    assert!(marker.exists(), "COMMAND did not run\n{}", caller.shown());
+    assert!(
+        !caller.stdout().contains("waiting for CPU headroom"),
+        "waited\n{}",
+        caller.shown()
+    );
+}
+
+/// Runs one caller on a roomy machine with `body` as its limits file and returns it ended, with
+/// the marker path it would touch.
+fn cpu_limit_run(body: &str, name: &str, w: &Path) -> (CpuCaller, PathBuf, PathBuf) {
+    let d = w.join(format!("{name}-folder"));
+    let slots = d.join("slots");
+    fs::create_dir_all(&slots).unwrap();
+    fs::write(slots.join("limits.json"), body).unwrap();
+    let marker = w.join(format!("{name}-ran"));
+    let logs = w.join(format!("{name}-logs"));
+    fs::create_dir_all(&logs).unwrap();
+    let mut caller = cpu_caller(&slots, &cpu_machine(100), name, &marker, &logs);
+    let _ = caller.end();
+    (caller, marker, slots)
+}
+
+/// AC-3 (REQ-6): the edge of the range: 100 is read (a CPU free of 100 is not below it) and
+/// runs, 101 is refused with 125 before anything runs or is written.
+#[test]
+fn cpu_ac3_e_a_limit_of_100_is_read_and_101_is_refused() {
+    let w = tempfile::tempdir().unwrap();
+    let (mut ok, marker, _) = cpu_limit_run(r#"{"min_cpu_free_pct":100}"#, "n100", w.path());
+    assert_eq!(
+        ok.exited().and_then(|s| s.code()),
+        Some(0),
+        "{}",
+        ok.shown()
+    );
+    assert!(marker.exists(), "100 did not run\n{}", ok.shown());
+
+    let (mut bad, marker, slots) = cpu_limit_run(r#"{"min_cpu_free_pct":101}"#, "n101", w.path());
+    assert_eq!(
+        bad.exited().and_then(|s| s.code()),
+        Some(125),
+        "{}",
+        bad.shown()
+    );
+    let err = bad.stderr();
+    assert!(
+        err.contains("min_cpu_free_pct") && err.contains("COMMAND did not run"),
+        "{}",
+        bad.shown()
+    );
+    assert!(!marker.exists(), "101 ran anyway");
+    assert!(!slots.join("slot-0").exists(), "slot written");
+    assert!(!slots.join("waiting").exists(), "queue written");
+}
+
+/// AC-3 (REQ-6): a negative number and a text are refused like 101 (125, nothing run), while the
+/// same file shape with a valid value runs.
+#[test]
+fn cpu_ac3_f_a_negative_or_text_limit_is_refused() {
+    let w = tempfile::tempdir().unwrap();
+    let (mut ok, marker, _) = cpu_limit_run(r#"{"min_cpu_free_pct":20}"#, "valid", w.path());
+    assert_eq!(
+        ok.exited().and_then(|s| s.code()),
+        Some(0),
+        "{}",
+        ok.shown()
+    );
+    assert!(marker.exists(), "a valid value did not run\n{}", ok.shown());
+
+    for (i, body) in [
+        r#"{"min_cpu_free_pct":-1}"#,
+        r#"{"min_cpu_free_pct":"high"}"#,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let (mut bad, marker, slots) = cpu_limit_run(body, &format!("bad{i}"), w.path());
+        assert_eq!(
+            bad.exited().and_then(|s| s.code()),
+            Some(125),
+            "{body}: {}",
+            bad.shown()
+        );
+        let err = bad.stderr();
+        assert!(
+            err.contains("min_cpu_free_pct") && err.contains("COMMAND did not run"),
+            "{body}: {}",
+            bad.shown()
+        );
+        assert!(!marker.exists(), "{body}: ran anyway");
+        assert!(!slots.join("slot-0").exists(), "{body}: slot written");
+    }
+}
+
+/// AC-6 (REQ-8): the module documentation names the CPU rule's limit key, the 300-second cap and
+/// the waited seconds.
+#[test]
+fn cpu_ac6_the_module_documentation_names_the_cpu_rule_the_cap_and_the_waited_seconds() {
+    let src = include_str!("../src/heavy_slot.rs");
+    let head: String = src
+        .lines()
+        .take_while(|l| l.starts_with("//!"))
+        .map(|l| l.trim_start_matches("//!"))
+        .collect::<Vec<_>>()
+        .join(" ")
+        .replace(|c: char| !c.is_ascii(), " ");
+    for needle in ["min_cpu_free_pct", "waited"] {
+        assert!(head.contains(needle), "the module doc lacks {needle:?}");
+    }
+    // "300" and the word "cap" are said together, not only somewhere in the same text.
+    let together = head.match_indices("300").any(|(at, _)| {
+        let (lo, hi) = (at.saturating_sub(100), (at + 103).min(head.len()));
+        head[lo..hi].to_ascii_lowercase().contains("cap")
+    });
+    assert!(together, "the module doc names no cap of 300 seconds");
+}

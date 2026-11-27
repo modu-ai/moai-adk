@@ -1506,3 +1506,75 @@ fn ac6_a_sync_stopped_after_the_move_is_closed_by_the_same_call() {
     assert_eq!(again["writes"], json!(false), "{again}");
     assert_eq!(w.snap(), before);
 }
+
+/// SPEC-20261127-guard-repoint-followups AC-4 (REQ-4): the guard record names `integ` and the
+/// profile names the existing branch `other`. `card land-sync` merges the source into the recorded
+/// branch as it did before (one guarded move, `other` stays, the record is not rewritten) and its
+/// answer carries `guard_record_stale` with the record and the profile's branch.
+#[test]
+fn guard_record_stale_sync_moves_the_recorded_branch_and_reports_the_record() {
+    let w = World::new();
+    let (tip, src) = w.diverge();
+    w.point("other", &w.c0);
+    let moai_dir = w.project.join(".git/moai");
+    fs::create_dir_all(&moai_dir).unwrap();
+    fs::write(moai_dir.join("integration-branch"), "refs/heads/integ\n").unwrap();
+    // The profile names `other`. `card_with` writes the fixture's own profile before every call,
+    // so this call is made with `run` after the profile below is written.
+    let cfg = moai_cli::state_root::path(&w.project, "project.yaml");
+    fs::create_dir_all(cfg.parent().unwrap()).unwrap();
+    fs::write(
+        &cfg,
+        serde_json::to_vec(&json!({
+            "schema_version": 1, "project_id": "demo", "purpose": "fixture", "tools": ["rust"],
+            "development_methods": ["sdd"], "hosts": ["claude"],
+            "work_flow": {
+                "flow": "m-flow", "integration_branch": "other", "sync_sources": [SOURCE]
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let out = w.run(
+        Some(S_LEAD),
+        &[
+            "card",
+            "land-sync",
+            SOURCE,
+            "--spec",
+            SPEC,
+            "--by",
+            "leader",
+            "--project",
+            &w.p,
+        ],
+    );
+    let r = result(&out);
+    // Everything the sync did before this SPEC.
+    let merge = r["merge"].as_str().expect("a merge commit").to_string();
+    assert_eq!(r["action"], json!("land-sync"), "{r}");
+    assert_eq!(r["moved"], json!(true), "{r}");
+    assert_eq!(r["to_tip"], json!(merge), "{r}");
+    assert_eq!(r["profile_disagrees"], json!("other"), "{r}");
+    assert_eq!(w.integ(), merge);
+    assert_eq!(w.parents(&merge), vec![tip, src]);
+    assert_eq!(
+        w.rev("refs/heads/other"),
+        w.c0,
+        "the profile's branch is not the one that moves"
+    );
+    assert_eq!(
+        fs::read(moai_dir.join("integration-branch")).unwrap(),
+        b"refs/heads/integ\n".to_vec(),
+        "a sync never writes the record"
+    );
+    // The observation.
+    let stale = &r["guard_record_stale"];
+    assert!(stale.is_object(), "guard_record_stale is missing: {r}");
+    assert_eq!(stale["record"], json!("integ"), "{r}");
+    assert_eq!(stale["profile_branch"], json!("other"), "{r}");
+    assert_eq!(stale["worktree"], json!("primary"), "{r}");
+    assert_eq!(stale["would_refuse"], json!(true), "{r}");
+    assert_eq!(stale["repoint"], json!("moai card guard-repoint"), "{r}");
+    assert!(stale.get("note").is_none(), "{r}");
+}

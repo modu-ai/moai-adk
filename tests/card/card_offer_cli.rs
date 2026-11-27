@@ -537,6 +537,37 @@ fn a_new_offer_replaces_the_earlier_one() {
     assert_eq!(w.one_owner(&card).as_deref(), Some(S_D));
 }
 
+/// A refusal's text with the clock reading taken out: the reclaim refusal says `(now <seconds>)`,
+/// and the two readings of this test are taken at different moments, one second apart whenever
+/// they straddle a second boundary. Everything else in the text, the lease end included, stays.
+fn without_clock(message: String) -> String {
+    let Some(start) = message.find("(now ") else {
+        return message;
+    };
+    let digits_from = start + "(now ".len();
+    let digits = message[digits_from..]
+        .chars()
+        .take_while(char::is_ascii_digit)
+        .count();
+    format!(
+        "{}(now <clock>{}",
+        &message[..start],
+        &message[digits_from + digits..]
+    )
+}
+
+#[test]
+fn the_clock_reading_is_the_only_thing_taken_out_of_a_refusal() {
+    assert_eq!(
+        without_clock(
+            "the lease runs until 1795787597 (now 1795773198); only an ended lease".into()
+        ),
+        "the lease runs until 1795787597 (now <clock>); only an ended lease"
+    );
+    assert_eq!(without_clock("no clock here".into()), "no clock here");
+    assert_eq!(without_clock("ends (now ".into()), "ends (now <clock>");
+}
+
 /// AC-9 (REQ-8): while an offer waits, take, reclaim and adopt answer for the card as they do
 /// without an offer, and the offer is still good afterwards.
 #[test]
@@ -548,6 +579,9 @@ fn an_open_offer_does_not_change_take_reclaim_or_adopt() {
         let reclaim = refusal(&w.reclaim(S_C, &card, "1"));
         let adopt = refusal(&w.card(Some(S_C), &["adopt", &card, "--generation", "1"]));
         vec![take, reclaim, adopt]
+            .into_iter()
+            .map(|(kind, message)| (kind, without_clock(message)))
+            .collect()
     };
     let without = answers(&w);
     let before = w.dump();

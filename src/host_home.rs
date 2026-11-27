@@ -143,7 +143,7 @@ impl Place {
     }
 }
 
-/// `rel` (for example `skills/moai`, `agents`, `output-styles/MoAI-Easy.md`) below the host
+/// `rel` (for example `skills/moai`, `agents`, `output-styles/MoAI-Style.md`) below the host
 /// folder of `home`. When the host folder is relocated and the first part of `rel` is a link to
 /// a folder there (a dangling link counts), the link is followed only when it resolves to that same folder under `home`'s
 /// default host folder (both real paths equal): the place is then that default folder (user

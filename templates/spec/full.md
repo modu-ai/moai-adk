@@ -18,6 +18,10 @@ Why this change is needed and who it serves, in a few sentences.
 
 ## Requirements
 
+<!--
+Rule 1: exactly one `shall` per requirement line; a second behavior goes on its own REQ line (spec check refuses it as req_gears).
+Rule 2: every When requirement needs an IF/THEN requirement that names it in parentheses, or its line ends with "· failure: none — reason" (spec check refuses it as req_failure_path).
+-->
 <!-- If this SPEC adds a check that blocks, it starts in observe: record the would-block count and the false positives in the Result, and leave the switch to enforce to a recorded decision. -->
 - REQ-1: When <trigger>, the <subject> shall <behavior>.
 - REQ-2 (REQ-1): IF <the step REQ-1 needs fails>, THEN the <subject> shall <safe behavior>.

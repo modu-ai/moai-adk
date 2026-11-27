@@ -424,7 +424,9 @@ pub fn new_request_id(operation: &str, plan_digest: &str) -> String {
 /// Best-effort clone/workspace identity of the project root (01-A). Identity is
 /// recorded for traceability; a resolver failure never fails the apply.
 fn identity_fields(root: &Path) -> (Option<String>, Option<String>) {
-    match identity::identity(root) {
+    // The environment HOME is read here, as `claim::journal_root` reads it, so a HOME whose state
+    // root is refused keeps being refused (SPEC-20261124-identity-home-arg D-13).
+    match identity::identity_in(root, crate::layout::environment_home().as_deref()) {
         Ok(v) if v["identity_status"] == "ok" => (
             v["clone_id"].as_str().map(str::to_string),
             v["workspace_id"].as_str().map(str::to_string),
@@ -920,5 +922,43 @@ mod tests {
             );
         }
         assert_eq!(code_lines(body, list), 2, "both uses sit in the test body");
+    }
+
+    /// SPEC-20261124-identity-home-arg AC-18 (REQ-20, REQ-21, REQ-29): the receipt resolves the
+    /// identity with the environment HOME. Under a HOME whose state root is a symlink the
+    /// resolver refuses and both ids are recorded as null; under a sound HOME both are there.
+    /// The test re-runs itself in a child process once per HOME.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_rest_apply_receipt_records_no_ids_under_a_linked_home() {
+        use crate::layout::home_arg_tests::{
+            child_var, init_repo, run_in_child_of, symlinked_home,
+        };
+        const CHILD_PROJECT: &str = "MOAI_APPLY_TEST_PROJECT";
+        const CHILD_EXPECT: &str = "MOAI_APPLY_TEST_EXPECT";
+        let test = "home_arg_rest_apply_receipt_records_no_ids_under_a_linked_home";
+        let (Some(project), Some(expect)) = (child_var(CHILD_PROJECT), child_var(CHILD_EXPECT))
+        else {
+            let dir = tempfile::tempdir().unwrap();
+            let project = dir.path().join("project");
+            fs::create_dir(&project).unwrap();
+            init_repo(&project);
+            let linked = symlinked_home(dir.path());
+            let sound = dir.path().join("sound");
+            fs::create_dir(&sound).unwrap();
+            for (home, expect) in [(&linked, "none"), (&sound, "ids")] {
+                run_in_child_of(
+                    module_path!(),
+                    test,
+                    Some(&std::ffi::OsString::from(home.as_os_str())),
+                    &[(CHILD_PROJECT, &project), (CHILD_EXPECT, Path::new(expect))],
+                );
+            }
+            return;
+        };
+        let receipt = Receipt::new("req-1", "apply.test", &project);
+        let ids = (receipt.clone_id.is_some(), receipt.workspace_id.is_some());
+        let want = expect == Path::new("ids");
+        assert_eq!(ids, (want, want), "{expect:?}: {receipt:?}");
     }
 }

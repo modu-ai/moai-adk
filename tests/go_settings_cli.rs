@@ -9,6 +9,7 @@
 //! does not record the settings file) and H (it does, and a Rust settings receipt owns a key).
 //! A preview leaves the whole tree byte for byte as it was.
 
+// check-affected: every-source-change
 #![cfg(unix)]
 
 mod common;
@@ -358,7 +359,7 @@ fn shape_h_plan_apply_replan() {
 #[test]
 fn after_the_go_state_move_claude_settings_leaves_the_new_status_line() {
     let fx = shape_g();
-    fx.with_profile();
+    fx.with_go_profile();
     let up = fx.update_plan();
     // The install steps wait behind the backup phase while a clean-up is to be applied.
     assert_eq!(
@@ -813,36 +814,47 @@ fn the_local_settings_are_byte_identical_after_apply_and_revert() {
     fx.write(LOCAL, LOCAL_WITH_GO_REFS);
     let local = read(&fx, LOCAL);
     let p = plan(&fx);
-    // The step says the local file's keys are the user's to change, before the apply.
+    // Before the apply the step says what holds the folder and that no session edits the local
+    // file.
     let up = fx.update_plan();
     let why = step_in(&up, 0, "go-state")["reason"]
         .as_str()
         .unwrap()
         .to_string();
-    assert!(
-        why.contains(
-            "this update does not edit .claude/settings.local.json; edit or remove these keys \
-             yourself (plansDirectory, statusLine), then run `moai project-update-plan` again"
-        ),
-        "{why}"
-    );
+    for needle in [
+        "held by .claude/settings.json",
+        ".claude/settings.local.json (plansDirectory, statusLine)",
+        "`--rewrite-local-references` cannot move the folder yet: .claude/settings.json also \
+         names the folder and keeps it",
+        "a session never edits .claude/settings.local.json by hand",
+    ] {
+        assert!(why.contains(needle), "{needle:?}: {why}");
+    }
     let out = apply(&fx, &p);
     assert_eq!(out["ok"], json!(true), "{out}");
     assert_eq!(read(&fx, LOCAL), local);
     let id = out["result"]["receipt"].as_str().unwrap().to_string();
     assert_eq!(revert(&fx, &id)["ok"], json!(true));
     assert_eq!(read(&fx, LOCAL), local);
-    // The local file still names `.moai/`, so go-state keeps waiting on it after the clean-up.
+    // The local file still names `.moai/`, so after the clean-up go-state waits for the user's
+    // pick and prints only the command that carries it.
     let out = apply(&fx, &plan(&fx));
     assert_eq!(out["ok"], json!(true), "{out}");
     let up = fx.update_plan();
     let state = step_in(&up, 0, "go-state");
-    assert_eq!(state["state"], "blocked", "{state}");
+    assert_eq!(state["state"], "needs_decision", "{state}");
+    assert!(
+        state["apply"]["argv"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("--rewrite-local-references")),
+        "{state}"
+    );
     assert!(
         state["reason"]
             .as_str()
             .unwrap()
-            .contains(".claude/settings.local.json (plansDirectory, statusLine)"),
+            .contains(".claude/settings.local.json holds the Go folder"),
         "{state}"
     );
     assert_eq!(read(&fx, LOCAL), local);

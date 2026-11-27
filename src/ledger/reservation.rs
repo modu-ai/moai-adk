@@ -104,6 +104,10 @@ pub enum ReserveError {
         holder: String,
         generation: i64,
     },
+    /// The card has a HOLD in force or a prerequisite that is not done, found inside the
+    /// reservation transaction by the gate of `card take` (the two sweeping entry points). The
+    /// text is the refusal `card take` also gives before it reserves, so both read the same.
+    HoldGate(String),
     /// The ledger itself failed (busy, unavailable, constraint ...).
     Ledger(LedgerError),
 }
@@ -116,6 +120,7 @@ impl ReserveError {
             ReserveError::CardNotFound(_) => "card_not_found",
             ReserveError::CardNotReady { .. } => "card_not_ready",
             ReserveError::AlreadyHeld { .. } => "already_held",
+            ReserveError::HoldGate(_) => "hold_gate",
             ReserveError::Ledger(e) => e.code(),
         }
     }
@@ -144,6 +149,7 @@ impl std::fmt::Display for ReserveError {
                 f,
                 "reservation conflict in card: already held by {holder:?} at generation {generation}"
             ),
+            ReserveError::HoldGate(why) => f.write_str(why),
             ReserveError::Ledger(e) => e.fmt(f),
         }
     }
@@ -185,8 +191,12 @@ pub enum FenceError {
     WrongHolder {
         held_by: String,
     },
-    /// The current reservation's lease ended at `lease_until` (DB clock `now`).
+    /// The current reservation's lease ended at `lease_until` (DB clock `now`). The caller is the
+    /// holder (the holder check comes first), so `card renew` of this card and generation keeps
+    /// the reservation (SPEC-20261127-waiting-card-lease REQ-4).
     LeaseExpired {
+        card_id: i64,
+        generation: i64,
         lease_until: i64,
         now: i64,
     },
@@ -254,9 +264,16 @@ impl std::fmt::Display for FenceError {
                 f,
                 "reservation conflict in card: the current reservation is held by {held_by:?}"
             ),
-            FenceError::LeaseExpired { lease_until, now } => write!(
+            FenceError::LeaseExpired {
+                card_id,
+                generation,
+                lease_until,
+                now,
+            } => write!(
                 f,
-                "reservation conflict in card: the lease ended at {lease_until} (now {now})"
+                "reservation conflict in card: the lease ended at {lease_until} (now {now}); \
+                 the holder keeps the card at this generation with `moai card renew C-{card_id} \
+                 --generation {generation}`, no reclaim needed"
             ),
             FenceError::CardInReview {
                 card_id,
@@ -430,6 +447,22 @@ pub fn current(conn: &Connection, card_id: i64) -> Result<Option<Reservation>, L
         &format!("card_id = ?1 AND status IN {ACTIVE_STATUSES}"),
         [card_id],
     )
+}
+
+/// [`current`] for every card: each reservation that holds a card now, by card number.
+/// Read-only: it works on a [`ReadLedger::conn`] too.
+pub fn current_all(conn: &Connection) -> Result<Vec<Reservation>, LedgerError> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT card_id FROM reservation WHERE status IN {ACTIVE_STATUSES} ORDER BY card_id"
+    ))?;
+    let cards: Vec<i64> = stmt
+        .query_map([], |r| r.get(0))?
+        .collect::<Result<_, _>>()?;
+    let mut out = Vec::with_capacity(cards.len());
+    for card_id in cards {
+        out.extend(current(conn, card_id)?);
+    }
+    Ok(out)
 }
 
 /// The heartbeat of the reservation of `holder` on a card (SPEC-20261119-live-lease-takeover
@@ -638,6 +671,7 @@ pub fn reserve(
         worktree,
         branch,
         None,
+        false,
     )
 }
 
@@ -671,6 +705,7 @@ pub fn reserve_sweeping(
         worktree,
         branch,
         Some(grace_secs),
+        true,
     )
 }
 
@@ -691,7 +726,9 @@ pub fn reserve_own_scope(
     check_lease(lease_secs).map_err(ReserveError::InvalidInput)?;
     check_optional("worktree", worktree).map_err(ReserveError::InvalidInput)?;
     check_optional("branch", branch).map_err(ReserveError::InvalidInput)?;
-    reserve_in_tx(w, card_id, holder, None, lease_secs, worktree, branch, None)
+    reserve_in_tx(
+        w, card_id, holder, None, lease_secs, worktree, branch, None, false,
+    )
 }
 
 /// [`reserve_own_scope`] that sweeps first, as [`reserve_sweeping`] does.
@@ -717,12 +754,18 @@ pub fn reserve_own_scope_sweeping(
         worktree,
         branch,
         Some(grace_secs),
+        true,
     )
 }
 
 /// The transaction of [`reserve`] and [`reserve_own_scope`]: `scope` is the checked scope the
 /// caller gave, or `None` for the card's own, read here. With `sweep_grace_secs` an `active`
-/// card whose `held` lease ended at least that long ago is swept first, in this transaction.
+/// card whose `held` lease ended at least that long ago is swept first, in this transaction. With
+/// `gate` the HOLD and the unfinished prerequisites of the card are read here too, after the
+/// `ready` check and before any write, so a hold or a prerequisite that lands between the early
+/// check of `card take` and this transaction still refuses the take
+/// (SPEC-20261127-card-prereq-remove REQ-11). Only the two sweeping entry points, which `card
+/// take` uses, pass it; `adopt` and the plain entry points keep their behaviour.
 #[allow(clippy::too_many_arguments)]
 fn reserve_in_tx(
     w: &mut WriteLedger,
@@ -733,6 +776,7 @@ fn reserve_in_tx(
     worktree: Option<&str>,
     branch: Option<&str>,
     sweep_grace_secs: Option<i64>,
+    gate: bool,
 ) -> Result<Reservation, ReserveError> {
     w.with_write_tx(|tx, now| {
         let Some((mut state, generation)) = card_row(tx, card_id)? else {
@@ -796,6 +840,11 @@ fn reserve_in_tx(
                 state,
                 withdraw_reason,
             }));
+        }
+        if gate {
+            if let Some(why) = super::workflow::hold_gate_refusal(tx, card_id)? {
+                return Ok(Err(ReserveError::HoldGate(why)));
+            }
         }
         let next = generation + 1;
         tx.execute(
@@ -897,6 +946,8 @@ fn evaluate(
     }
     if need_live && lease_ended(row.lease_until, now) {
         return Ok(Err(FenceError::LeaseExpired {
+            card_id,
+            generation: current,
             lease_until: row.lease_until,
             now,
         }));
@@ -996,6 +1047,76 @@ pub fn renew(
                 .ok_or_else(|| LedgerError::Sql("the renewed reservation cannot be read".into()))
         },
     )
+}
+
+/// The new values `card repair` sets: each `Some` replaces what the reservation recorded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RepairChange<'a> {
+    pub branch: Option<&'a str>,
+    pub worktree: Option<&'a str>,
+}
+
+/// Corrects the branch or the worktree path recorded on the current `held` reservation of
+/// `holder` at `generation` (SPEC-20261127-reservation-repair REQ-2). Only those columns and
+/// `updated_at` change; the scope, the lease, the generation and the holder stay. One
+/// `card.repair` event, signed by `by`, names the old and the new value of each changed field,
+/// the generation, the holder and `reason`. The lease must still hold: a holder whose lease
+/// ended renews first. A refusal writes nothing, not even the `fence_reject` event the other
+/// fenced calls leave. The answer is the reservation as it is now.
+pub fn repair(
+    w: &mut WriteLedger,
+    card_id: i64,
+    holder: &str,
+    generation: i64,
+    change: &RepairChange<'_>,
+    by: &str,
+    reason: &str,
+) -> Result<Reservation, FenceError> {
+    check_holder(holder).map_err(FenceError::InvalidInput)?;
+    if change.branch.is_none() && change.worktree.is_none() {
+        return Err(FenceError::InvalidInput(
+            "repair needs a branch or a worktree".into(),
+        ));
+    }
+    check_optional("branch", change.branch).map_err(FenceError::InvalidInput)?;
+    check_optional("worktree", change.worktree).map_err(FenceError::InvalidInput)?;
+    check_text("by", by, MAX_HOLDER_LEN).map_err(FenceError::InvalidInput)?;
+    check_text("reason", reason, MAX_REASON_LEN).map_err(FenceError::InvalidInput)?;
+    if reason.trim().is_empty() {
+        return Err(FenceError::InvalidInput("reason is blank".into()));
+    }
+    w.with_write_tx(
+        |tx, now| match evaluate(tx, card_id, holder, generation, now, true)? {
+            Err(e) => Ok(Err(e)),
+            Ok(row) => {
+                let branch = change.branch.map(str::to_string).or(row.branch.clone());
+                let worktree = change.worktree.map(str::to_string).or(row.worktree.clone());
+                tx.execute(
+                    "UPDATE reservation SET branch = ?1, worktree = ?2, updated_at = ?3 \
+                     WHERE reservation_id = ?4",
+                    params![branch, worktree, now, row.reservation_id],
+                )?;
+                tx.execute(
+                    "UPDATE card SET updated_at = ?2 WHERE card_id = ?1",
+                    params![card_id, now],
+                )?;
+                let mut payload = json!({
+                    "generation": generation, "holder": holder, "by": by, "reason": reason,
+                });
+                if let Some(to) = change.branch {
+                    payload["branch"] = json!({"from": row.branch, "to": to});
+                }
+                if let Some(to) = change.worktree {
+                    payload["worktree"] = json!({"from": row.worktree, "to": to});
+                }
+                add_event(tx, now, by, card_id, "card.repair", &payload)?;
+                let repaired = load_reservation(tx, card_id, generation)?.ok_or_else(|| {
+                    LedgerError::Sql("the repaired reservation cannot be read".into())
+                })?;
+                Ok(Ok(repaired))
+            }
+        },
+    )?
 }
 
 /// How long a card in `review` keeps its lease from the moment it is sent there, in seconds: the
@@ -2321,6 +2442,8 @@ mod tests {
             ),
             (
                 FenceError::LeaseExpired {
+                    card_id: 1,
+                    generation: 1,
                     lease_until: 1,
                     now: 2,
                 },
@@ -2356,6 +2479,8 @@ mod tests {
         }
         .is_recorded());
         assert!(FenceError::LeaseExpired {
+            card_id: 1,
+            generation: 1,
             lease_until: 1,
             now: 2
         }

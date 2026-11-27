@@ -20,8 +20,11 @@ pub struct Args {
 pub const OPERATION: &str = "baseline.inventory";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
+    // An empty HOME stays a path: its entries are then looked up in the working folder.
+    let home = std::env::var_os("HOME").map(PathBuf::from);
     moai_cli::baseline::inventory(
         &args.project,
+        home.as_deref(),
         args.go_baseline_commit.as_deref(),
         args.go_repo.as_deref(),
     )

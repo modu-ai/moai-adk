@@ -4,6 +4,7 @@
 //! repository whose integration branch is `integ`; the lane works in a linked worktree on `lane`.
 //! The long check is replaced by a debug-only test program (`MOAI_TEST_SUBMIT_CHECK`).
 
+// check-affected: when-changed src/card/work.rs
 use crate::common;
 
 use common::home::TempHome;

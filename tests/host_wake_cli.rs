@@ -11,6 +11,7 @@ use common::home::TempHome;
 use serde_json::{json, Value};
 use std::{
     fs,
+    path::{Path, PathBuf},
     process::{Output, Stdio},
 };
 use tempfile::TempDir;
@@ -362,4 +363,49 @@ fn ac7_a_linked_sessions_folder_and_a_linked_config_root_are_followed() {
     ]));
     assert_eq!(v["shape"], json!("queued"), "root link: {v}");
     assert_eq!(v["socket_write"], json!(true), "root link: {v}");
+}
+
+/// SPEC-20261124-home-env-readers AC-20 (REQ-16): without `--config-dir` the registry is looked
+/// up under `CLAUDE_CONFIG_DIR` when it is set, else under HOME's `.claude`, and an unset or
+/// empty HOME leaves the relative `.claude` of the working folder. The refusal names the folder
+/// it looked in.
+#[test]
+fn host_wake_default_config_dir() {
+    let home = TempHome::new();
+    let cwd = TempDir::new().unwrap();
+    let set = TempDir::new().unwrap();
+    let looked_in = |config: Option<&Path>, home_value: Option<&Path>| -> String {
+        let mut cmd = home.command(&["host-wake", "leader", "--text", "a verdict landed"]);
+        cmd.current_dir(cwd.path());
+        match home_value {
+            Some(value) => cmd.env("HOME", value),
+            None => cmd.env_remove("HOME"),
+        };
+        if let Some(dir) = config {
+            cmd.env("CLAUDE_CONFIG_DIR", dir);
+        }
+        let v = ok(&cmd.output().unwrap());
+        assert_eq!(v["shape"], json!("refused"), "{v}");
+        v["reason"].as_str().unwrap().to_string()
+    };
+    let refusal = |sessions: PathBuf| {
+        format!(
+            "wake refused: the sessions registry {} is missing or unreadable",
+            sessions.display()
+        )
+    };
+    let under_set = refusal(set.path().join("sessions"));
+    assert_eq!(looked_in(Some(set.path()), Some(home.path())), under_set);
+    assert_eq!(looked_in(Some(set.path()), None), under_set);
+    assert_eq!(
+        looked_in(Some(Path::new("")), Some(home.path())),
+        refusal(PathBuf::from("sessions"))
+    );
+    assert_eq!(
+        looked_in(None, Some(home.path())),
+        refusal(home.path().join(".claude").join("sessions"))
+    );
+    let relative = refusal(Path::new(".claude").join("sessions"));
+    assert_eq!(looked_in(None, Some(Path::new(""))), relative);
+    assert_eq!(looked_in(None, None), relative);
 }

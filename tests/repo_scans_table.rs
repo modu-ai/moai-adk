@@ -18,7 +18,7 @@
 mod common;
 
 use common::git::{git_ok, git_raw};
-use moai_cli::repo_scans::checks_of;
+use moai_cli::repo_scans::{checks_of, is_target_name};
 use serde_json::{json, Value};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -172,7 +172,9 @@ fn built_checks(scan: &Value) -> Vec<String> {
     checks_of(scan).unwrap_or_else(|e| panic!("{}: {e}", id(scan)))
 }
 
-/// Every file below `dir` (recursive), as paths relative to the repository root with `/`.
+/// Every file below `dir` (recursive), as paths relative to the repository root with `/`. A
+/// `.claude/worktrees` folder is not entered: it holds other checkouts, not this tree
+/// (SPEC-20261122-worktree-place D-13).
 fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
@@ -181,6 +183,7 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
         let path = entry.path();
         // A link is never followed: the walk reads the checked-in tree, not what it points to.
         match entry.file_type() {
+            Ok(t) if t.is_dir() && path.ends_with(".claude/worktrees") => {}
             Ok(t) if t.is_dir() => walk(&path, out),
             Ok(t) if t.is_file() => out.push(path),
             _ => {}
@@ -757,6 +760,20 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         "names of files in the temporary project it builds (a planted link target, the launch text)",
     ),
     (
+        "tests/gitignore_block_cli.rs",
+        &[
+            ".moai-cli/manifests",
+            ".moai-cli/manifests/generation.json",
+            ".moai-cli/manifests/profile-baseline.json",
+            ".moai-cli/project.yaml",
+            ".moai/project.yaml",
+            ".moai/specs",
+            "CLAUDE.md",
+            "skills/moai/workflows",
+        ],
+        "names of files in the temporary projects it builds; its one read of the checkout is the source scan, covered by the reads-gitignore-block-cli scan",
+    ),
+    (
         "tests/ops_table_gen_cli.rs",
         &["src/main.rs", "src/lib.rs"],
         "the shared file names it looks for in the research table text",
@@ -810,6 +827,11 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         "tests/worktree_cli.rs",
         &["src/lib.rs"],
         "path names in the overlap lists",
+    ),
+    (
+        "tests/worktree_place_cli.rs",
+        &[".gitignore", "README.md"],
+        "both are written into the temporary repositories it builds (`fs::write`, then `git add` there) and looked for in the worktrees made from them",
     ),
 ];
 
@@ -1544,31 +1566,6 @@ fn test_targets_are_sorted_unique_and_one_per_line() {
     );
 }
 
-/// REQ-9: the scans of a table that name `test_targets`.
-fn scans_naming_test_targets(scans: &[Value]) -> Vec<String> {
-    scans
-        .iter()
-        .filter(|s| s.get("test_targets").is_some())
-        .map(id)
-        .collect()
-}
-
-#[test]
-fn the_checked_in_table_names_no_test_targets_before_the_conversion() {
-    let scans = [
-        json!({"id": "reads-zz", "test_targets": ["a_cli"]}),
-        json!({"id": "other", "checks": ["cargo test --offline --locked --test a_cli"]}),
-    ];
-    assert_eq!(scans_naming_test_targets(&scans), ["reads-zz"]);
-    assert_eq!(
-        scans_naming_test_targets(&load()),
-        Vec::<String>::new(),
-        "tools/repo_scans.json names `test_targets`: an installed moai that does not read the \
-         field skips those targets without a word; the table is converted by the follow-up card \
-         after a build that reads both forms is installed, and that card removes this test"
-    );
-}
-
 /// The table text with one scan whose `test_targets` hold `names`, one name per line.
 fn table_with_targets(names: &[&str]) -> String {
     let lines: Vec<String> = names.iter().map(|n| format!("        \"{n}\"")).collect();
@@ -1654,4 +1651,211 @@ fn two_branches_adding_different_targets_merge_without_conflict() {
         &table_with_command(&plus("h_cli")),
     );
     assert!(!merged, "the one-line form is the case that conflicts");
+}
+
+// ---- the conversion (SPEC-20261125-repo-scans-convert-test-targets) ----
+
+/// REQ-3: a `checks` command that is one plain `cargo test --offline --locked --test <t> …` list,
+/// the form that belongs in `test_targets`: the words of `^cargo test --offline --locked( --test
+/// [a-z0-9_]+)+$`, each `--test` followed by one target name, single spaces, nothing else.
+fn is_plain_target_command(command: &str) -> bool {
+    let Some(rest) = command.strip_prefix("cargo test --offline --locked") else {
+        return false;
+    };
+    let mut words = rest.split(' ');
+    if words.next() != Some("") {
+        return false;
+    }
+    let mut pairs = 0;
+    loop {
+        match (words.next(), words.next()) {
+            (None, _) => break,
+            (Some("--test"), Some(name)) if is_target_name(name) => pairs += 1,
+            _ => return false,
+        }
+    }
+    pairs > 0
+}
+
+/// REQ-3: one line per plain `--test` list in the `checks` of `scans`: the scan id, then the
+/// command.
+fn plain_target_commands(scans: &[Value]) -> Vec<String> {
+    let mut out = Vec::new();
+    for scan in scans {
+        for command in strings(scan.get("checks").unwrap_or(&Value::Null)) {
+            if is_plain_target_command(&command) {
+                out.push(format!("{}: {command}", id(scan)));
+            }
+        }
+    }
+    out
+}
+
+/// REQ-3 (AC-2): the checked-in table keeps no plain `--test` list in `checks`: the names go to
+/// the scan's sorted `test_targets` array, one per line, so that two branches that add a test do
+/// not edit the same line. A command with a filter, a `--lib`, a `--` or another tool stays in
+/// `checks`.
+#[test]
+fn no_check_is_a_plain_target_list() {
+    let plain = "cargo test --offline --locked --test a_cli --test b_cli";
+    let scans = [
+        json!({"id": "one", "checks": [plain, "cargo test --offline --locked --lib state_dir"]}),
+        json!({"id": "two", "test_targets": ["d_cli"], "checks": [
+            "cargo test --offline --locked --test c_cli card_x:: -- y::",
+            "cargo test --offline --locked --test c_cli",
+            "python3 -m unittest tests.x_test"]}),
+        json!({"id": "three", "test_targets": ["e_cli"]}),
+    ];
+    assert_eq!(
+        plain_target_commands(&scans),
+        [
+            format!("one: {plain}"),
+            "two: cargo test --offline --locked --test c_cli".to_string()
+        ]
+    );
+    // the edges of the shape: each of these stays a listed command
+    for kept in [
+        "cargo test --offline --locked",
+        "cargo test --offline --locked --test",
+        "cargo test --offline --locked --test a_cli ",
+        "cargo test --offline --locked --test  a_cli",
+        "cargo test --offline --locked --test A_cli",
+        "cargo test --offline --locked --test a-cli",
+        "cargo test --offline --locked --test a_cli --lib b",
+        "cargo test --offline --locked --test a_cli b::",
+        "cargo test --offline --locked --test a_cli -- b::",
+        "cargo test --offline --locked --lib a",
+        "cargo test --locked --offline --test a_cli",
+        "cargo test --offline --locked --test a_cli && true",
+    ] {
+        assert!(!is_plain_target_command(kept), "{kept}");
+    }
+    assert!(is_plain_target_command(
+        "cargo test --offline --locked --test a"
+    ));
+    let found = plain_target_commands(&load());
+    let shown: Vec<String> = found
+        .iter()
+        .map(|line| line.chars().take(110).collect::<String>() + "...")
+        .collect();
+    assert!(
+        found.is_empty(),
+        "tools/repo_scans.json keeps {} plain `--test` list(s) in `checks`; move the names into \
+         the scan's sorted `test_targets` array (one name per line), which is the form two \
+         branches merge without a conflict:\n{}",
+        found.len(),
+        shown.join("\n")
+    );
+}
+
+/// The line numbers of the names of the `test_targets` array of scan `scan` in the table text, as
+/// `(first name line, closing bracket line)`; or the reason the scan has none.
+fn test_targets_span(lines: &[&str], scan: &str) -> Result<(usize, usize), String> {
+    let marker = format!("\"id\": \"{scan}\"");
+    let at = lines
+        .iter()
+        .position(|l| l.trim().trim_end_matches(',') == marker)
+        .ok_or_else(|| format!("the table has no scan {scan}"))?;
+    for (i, line) in lines.iter().enumerate().skip(at + 1) {
+        let line = line.trim();
+        if line.starts_with("\"id\":") {
+            break;
+        }
+        if line == "\"test_targets\": [" {
+            let close = lines[i + 1..]
+                .iter()
+                .position(|l| matches!(l.trim(), "]" | "],"))
+                .ok_or_else(|| format!("scan {scan}: the `test_targets` array is never closed"))?;
+            return Ok((i + 1, i + 1 + close));
+        }
+    }
+    Err(format!(
+        "scan {scan} has no `test_targets` array: the table is not converted yet"
+    ))
+}
+
+/// The names of the lines `first..close` of the table text.
+fn target_names(lines: &[&str], first: usize, close: usize) -> Vec<String> {
+    lines[first..close]
+        .iter()
+        .map(|l| {
+            one_quoted_target(l.trim())
+                .unwrap_or_else(|| panic!("`{l}` is not one quoted target name on a line"))
+        })
+        .collect()
+}
+
+/// The table text with `name` added to the `test_targets` of scan `scan`, in its sorted place,
+/// one name per line; the rest of the text is kept byte for byte.
+fn with_added_target(text: &str, scan: &str, name: &str) -> Result<String, String> {
+    let lines: Vec<&str> = text.lines().collect();
+    let (first, close) = test_targets_span(&lines, scan)?;
+    let mut names = target_names(&lines, first, close);
+    names.push(name.to_string());
+    names.sort();
+    let indent: String = lines[first]
+        .chars()
+        .take_while(|c| c.is_whitespace())
+        .collect();
+    let body: Vec<String> = names.iter().map(|n| format!("{indent}\"{n}\"")).collect();
+    let mut out: Vec<String> = lines[..first].iter().map(|l| l.to_string()).collect();
+    out.push(body.join(",\n"));
+    out.extend(lines[close..].iter().map(|l| l.to_string()));
+    Ok(out.join("\n") + "\n")
+}
+
+/// REQ-5 (AC-4): two branches of the checked-in table that each add one target name to the
+/// `test_targets` of `reads-skills`, one near the start of the array and one near its end, merge
+/// without a conflict and keep both; the merged text still has one sorted name per line.
+#[test]
+fn two_branches_adding_targets_to_the_checked_in_table_merge_without_conflict() {
+    let scan = "reads-skills";
+    let base = read_lossy(&root().join("tools/repo_scans.json"));
+    let lines: Vec<&str> = base.lines().collect();
+    let span = test_targets_span(&lines, scan);
+    assert!(
+        span.is_ok(),
+        "the checked-in table cannot show the merge: {}; the conversion moves the plain `--test` \
+         list of {scan} into `test_targets`",
+        span.as_ref().err().map(String::as_str).unwrap_or("")
+    );
+    let (first, close) = span.unwrap();
+    let names = target_names(&lines, first, close);
+    assert!(
+        names.len() >= 6,
+        "{scan} has {} names: too few for two additions that are not neighbours",
+        names.len()
+    );
+    // a name that sorts right after the first one, and one that sorts after the last one
+    let near_start = format!("{}_a", names[0]);
+    let near_end = format!("{}_z", names[names.len() - 1]);
+    assert!(
+        names[0] < near_start && near_start < names[1] && !names.contains(&near_start),
+        "{near_start} does not sort between {} and {}",
+        names[0],
+        names[1]
+    );
+    assert!(!names.contains(&near_end), "{near_end} is a name already");
+    let one = with_added_target(&base, scan, &near_start).unwrap();
+    let two = with_added_target(&base, scan, &near_end).unwrap();
+    assert_ne!(one, base);
+    assert_ne!(two, base);
+    let (merged, text) = merge_two(&base, &one, &two);
+    assert!(
+        merged,
+        "the merge of two additions to {scan} (after {} and after {}) conflicted",
+        names[0],
+        names[names.len() - 1]
+    );
+    for name in [&near_start, &near_end] {
+        assert!(
+            text.contains(&format!("\"{name}\"")),
+            "the merged table lost {name}"
+        );
+    }
+    assert_eq!(
+        test_targets_violations(&text),
+        Vec::<String>::new(),
+        "the merged table"
+    );
 }

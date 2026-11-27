@@ -29,7 +29,9 @@ pub struct Args {
 pub const OPERATION: &str = "host.wake";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
-    let config_dir = args.config_dir.unwrap_or_else(default_config_dir);
+    let config_dir = args
+        .config_dir
+        .unwrap_or_else(|| default_config_dir(std::env::var("HOME").ok()));
     let wake = moai_cli::host_wake::Wake {
         addressee: args.name,
         text: args.text,
@@ -84,14 +86,14 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     }))
 }
 
-/// The default config root: `CLAUDE_CONFIG_DIR` when set, else `~/.claude`
+/// The default config root: `CLAUDE_CONFIG_DIR` when set, else `.claude` under the HOME the
+/// caller read, relative when there is none or it is empty
 /// (the runtime's own rule; the account separation is the config dir).
-fn default_config_dir() -> PathBuf {
+fn default_config_dir(home: Option<String>) -> PathBuf {
     if let Ok(dir) = std::env::var("CLAUDE_CONFIG_DIR") {
         return PathBuf::from(dir);
     }
-    let home = std::env::var("HOME").unwrap_or_default();
-    PathBuf::from(home).join(".claude")
+    PathBuf::from(home.unwrap_or_default()).join(".claude")
 }
 
 fn shape_name(shape: &moai_cli::host_wake::SendShape) -> &'static str {

@@ -11,8 +11,10 @@ use common::home::TempHome;
 use std::{fs, path::Path};
 
 /// The card actions the WORK workflow uses. A lane lands nothing (C-493), so `land` is not one of
-/// them; it submits, takes a card back for a repair and records a verdict when it audits.
-const ACTIONS: [&str; 9] = [
+/// them; it submits, takes a card back for a repair and records a verdict when it audits. It
+/// renews its own lease before a wait, and the route names `reclaim` as what a holder does not use
+/// on its own card (SPEC-20261127-waiting-card-lease).
+const ACTIONS: [&str; 11] = [
     "next",
     "take",
     "check",
@@ -22,6 +24,8 @@ const ACTIONS: [&str; 9] = [
     "review",
     "reopen",
     "verdict",
+    "renew",
+    "reclaim",
 ];
 
 fn workflow(name: &str) -> String {

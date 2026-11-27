@@ -283,6 +283,28 @@ pub(super) fn previous_json(previous: &Option<Reservation>) -> Value {
     }
 }
 
+/// The `ref` that `--evidence-note` names: a value of the `note:<card>:<hash>` shape as given, or a
+/// note number (the `note_id` that `card note` and `card show` print) of this card turned into its
+/// `ref`. A number of another card, or of a note without a `ref`, is not found, so the check that
+/// follows refuses it as it refuses an unknown `ref` (C-314).
+fn note_reference(conn: &rusqlite::Connection, card_id: i64, given: &str) -> Result<String> {
+    if given.is_empty() || !given.bytes().all(|b| b.is_ascii_digit()) {
+        return Ok(given.to_string());
+    }
+    let Ok(number) = given.parse::<i64>() else {
+        return Ok(given.to_string());
+    };
+    let found: Option<Option<String>> = conn
+        .query_row(
+            "SELECT ref FROM card_note WHERE card_id = ?1 AND note_id = ?2",
+            rusqlite::params![card_id, number],
+            |r| r.get(0),
+        )
+        .optional()
+        .map_err(|e| LedgerError::from(e).to_string())?;
+    Ok(found.flatten().unwrap_or_else(|| given.to_string()))
+}
+
 /// `card finish C-n`: see the module comment. Every refusal leaves the ledger as it was.
 pub fn finish(
     project: &Path,
@@ -354,7 +376,7 @@ pub fn finish(
                 path: report_path(project, home, path)?,
             },
             (None, Some(reference)) => Proven::Note {
-                reference: reference.to_string(),
+                reference: note_reference(ledger.conn(), card_id, reference)?,
             },
             _ => {
                 return Err(unchanged(format!(

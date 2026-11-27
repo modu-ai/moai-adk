@@ -25,6 +25,8 @@ Commands
     go-state-apply         Move a previewed Go-era .moai folder
     go-state-revert-plan   Preview undoing a Go-era folder move
     go-state-revert        Undo a Go-era folder move
+    go-residue-apply       Move the chosen Go-generation leftovers to a backup
+    go-residue-revert      Put a go-residue move back
     home-state-plan        Preview moving the Go-era ~/.moai folder
     home-state-apply       Move a previewed Go-era ~/.moai folder
     home-state-revert      Undo a ~/.moai folder move
@@ -37,7 +39,7 @@ Commands
     key-import-plan        Preview importing an old key file
     key-import-apply       Import a previewed old key file
   Diagnose
-    claude-doctor          Check that Claude Code reads AGENTS.md
+    claude-doctor          Check that Claude Code reads your own AGENTS.md
     install-inspect        Show the installed MoAI binaries
     identity               Show where a path sits in its clone
     worktree-report        Report the space worktrees use

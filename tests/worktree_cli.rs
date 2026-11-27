@@ -363,6 +363,12 @@ fn worktree_one_writer_per_task() {
     assert_eq!(env["result"]["decision"], "conflict", "{env}");
     assert_eq!(env["result"]["reason"], "task_has_worktree");
     assert!(!f.repo.join("elsewhere").exists());
+    // SPEC-20261122-worktree-place REQ-2: `elsewhere` is outside the project place; the plan
+    // goes on and says so.
+    assert_eq!(
+        other["would_refuse"]["code"], "path_outside_place",
+        "{other}"
+    );
 }
 
 #[test]
@@ -1387,6 +1393,11 @@ fn without_a_home_the_project_place_still_plans() {
     let env = envelope(&bare(&["--path", "/tmp/elsewhere-wt"]));
     assert_eq!(env["ok"], true, "{env}");
     assert_eq!(env["result"]["path"], "/tmp/elsewhere-wt");
+    // SPEC-20261122-worktree-place REQ-2: the path goes on as given and is named as outside.
+    assert_eq!(
+        env["result"]["would_refuse"]["code"], "path_outside_place",
+        "{env}"
+    );
 }
 
 /// #2934 S3 (#2930 R-3): `worktree-plan` refuses a path inside a Cargo build folder — one
@@ -1447,6 +1458,7 @@ fn worktree_plan_refuses_a_path_inside_a_cargo_build_folder() {
     // and no tag is not a build folder either.
     let plain_target = base.join("notes/target");
     fs::create_dir_all(&plain_target).unwrap();
+    let mut outside = Vec::new();
     for good in [
         base.join("wt-ok"),
         krate.join("src-wt"),
@@ -1467,6 +1479,12 @@ fn worktree_plan_refuses_a_path_inside_a_cargo_build_folder() {
                 &f.source,
             ),
         );
-        assert_eq!(envelope(&out)["ok"], true, "{path}");
+        let env = envelope(&out);
+        assert_eq!(env["ok"], true, "{path}");
+        outside.push((path, env["result"]["would_refuse"]["code"].clone()));
+    }
+    // SPEC-20261122-worktree-place REQ-2: each of them is outside the project place.
+    for (path, code) in outside {
+        assert_eq!(code, "path_outside_place", "{path}");
     }
 }

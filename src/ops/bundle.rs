@@ -65,8 +65,10 @@ enum Action {
     /// `no_merge_base` (an unrelated history; the other heads are still judged), `not_on_origin`,
     /// `already_merged`, `audit_missing` (the changed paths `<tip>...<head>` set an
     /// audit floor of 1 or more and no note of the card is a `PASS` verdict naming exactly the
-    /// head; the nearest `PASS` on an ancestor is shown), `trailers`, `spec`, `result_missing`
-    /// and `conflict` (each head with the tip and with every earlier head, by the text merge
+    /// head; the nearest `PASS` on an ancestor is shown), `trailers`, `spec`, `result_missing`,
+    /// `ac_unverified` (a SPEC criterion with neither a `verify:` command nor a `manual:` check,
+    /// which `card land` refuses) and `conflict` (each head with the tip and with every earlier
+    /// head, by the text merge
     /// GitHub runs). `ok` is false when anything was found. `warnings` lists, without changing
     /// `ok`, `findings` or the exit status, a READY note that has no `guard-mutant:` line
     /// (`mutant_line_missing`, also when no note names the head), a line that fits neither form

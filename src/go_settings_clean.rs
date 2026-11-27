@@ -145,7 +145,7 @@ fn is_go_status_line(v: &Value) -> bool {
 
 /// Whether any object in `bytes` repeats a key. Parsing into a map keeps only the last one, so a
 /// rewrite would merge them silently (#3111 audit N1).
-fn repeats_a_key(bytes: &[u8]) -> bool {
+pub(crate) fn repeats_a_key(bytes: &[u8]) -> bool {
     use serde::de::{Deserialize, Deserializer, Error, MapAccess, SeqAccess, Visitor};
     struct Strict;
     impl<'de> Deserialize<'de> for Strict {
@@ -205,7 +205,7 @@ fn repeats_a_key(bytes: &[u8]) -> bool {
 /// differently (#3111 audit B4): a number whose text is not what `serde_json` prints for the
 /// value it reads (an integer beyond 64 bits that becomes a float, `-0`, `1E2`, `1.10`). Names
 /// only. `bytes` is JSON that already parsed as an object.
-fn numbers_that_change(bytes: &[u8]) -> Vec<String> {
+pub(crate) fn numbers_that_change(bytes: &[u8]) -> Vec<String> {
     struct Scan<'a> {
         b: &'a [u8],
         i: usize,

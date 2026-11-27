@@ -11,7 +11,7 @@
 //! are not installed. HOME itself and the file-system root are never initialized. Without git
 //! on PATH the launcher stops with the install guidance for this OS.
 use crate::generation::{generation_apply, generation_plan, GenerationRequest};
-use crate::{identity::identity, profile};
+use crate::{identity::identity_in, profile};
 use serde_json::{json, Value};
 use std::{
     fs::{self, OpenOptions},
@@ -47,10 +47,45 @@ pub struct Prepared {
     pub git_pending: bool,
 }
 
+/// Start of the one line [`state_write_stop`] answers.
+pub const STATE_STOP: &str = "moai: no MoAI state is created here";
+
+/// SPEC-20261126-no-state-folder-writes D-1: the one line a state writer answers for a project
+/// it must not write into: no earlier state folder in any form, and the resolver does not answer
+/// `.moai` (a `go`, `mixed`, `interrupted` or `refuse` verdict). Writing there would create the
+/// earlier folder anew. `None` when writing is as before. Reads only.
+pub fn state_write_stop(root: &Path) -> Option<String> {
+    let earlier = crate::state_root::EARLIER_PROJECT_DIR;
+    if fs::symlink_metadata(root.join(earlier)).is_ok()
+        || crate::state_root::dir(root) == crate::state_root::MOAI_DIR
+    {
+        return None;
+    }
+    let state = crate::state_root::classify(root);
+    let shown = root.display();
+    let next = match state.generation {
+        "go" => format!(
+            "run the read-only preview `moai go-state-plan {shown}` and decide from what it shows"
+        ),
+        "interrupted" => format!(
+            "run the read-only preview `moai go-state-revert-plan {shown} --backup <UTC>` \
+             (a folder name under .moai/backups/); with no such folder, you decide what happens \
+             to {}",
+            state.interrupted.join(", ")
+        ),
+        _ => "you decide what happens to .moai; MoAI moves nothing here".to_string(),
+    };
+    Some(format!(
+        "{STATE_STOP}: this project has no {earlier} and its .moai state is `{}` ({}). Next: {next}",
+        state.generation, state.reason
+    ))
+}
+
 /// Initializes `cwd` for a launch on `host` (`claude` or `glm`). Refuses — before any
 /// write — when git is missing from PATH, or when `cwd` is not a repository and is HOME itself
-/// or the file-system root. Under `dry_run` it writes nothing and reports the plan. A missing
-/// skill copy for the host ([`missing_skill`]) adds its warning as a second line of the note.
+/// or the file-system root. Under `dry_run` it writes nothing and reports the plan. A project
+/// [`state_write_stop`] names is not initialized at all; its line is the note. A missing skill
+/// copy for the host ([`missing_skill`]) adds its warning as a second line of the note.
 pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String> {
     let mut prepared = prepare_project(cwd, host, dry_run)?;
     if let Some(warning) = missing_skill(host) {
@@ -95,15 +130,24 @@ fn skill_warning(name: &str, root: Result<PathBuf, String>) -> Option<String> {
     ))
 }
 
+/// The answer for a project that gets nothing written: `line` as the note.
+fn stopped(line: String) -> Prepared {
+    Prepared {
+        note: Some(line),
+        git_pending: false,
+    }
+}
+
 fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String> {
     // An identity error (a git failure, a refused path) initializes nothing and leaves the
     // launch as it was before #2481: numbering reports its own error, other launches go on.
-    let Ok(id) = identity(cwd) else {
+    // The HOME the vault uses, as it is returned (not canonicalized): `identity_in` compares it
+    // with the environment HOME as written (SPEC-20261124-identity-home-arg D-11).
+    let raw_home = crate::key_vault::home().ok();
+    let Ok(id) = identity_in(cwd, raw_home.as_deref()) else {
         return Ok(Prepared::default());
     };
-    let home = crate::key_vault::home()
-        .ok()
-        .and_then(|h| h.canonicalize().ok());
+    let home = raw_home.as_deref().and_then(|h| h.canonicalize().ok());
     let guard = |dir: &Path| home_or_root(dir, home.as_deref());
     match id["identity_status"].as_str() {
         Some("git_unavailable") => Err(install_guidance()),
@@ -117,6 +161,10 @@ fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, St
                     dir.display()
                 ));
             }
+            // Before `git init`: such a project gets nothing at all (REQ-2).
+            if let Some(line) = state_write_stop(&dir) {
+                return Ok(stopped(line));
+            }
             if dry_run {
                 return Ok(Prepared {
                     note: Some(format!(
@@ -128,7 +176,7 @@ fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, St
                     git_pending: true,
                 });
             }
-            git_init(&dir)?;
+            git_init(&dir, raw_home.as_deref())?;
             let mut done = vec!["git init".to_string()];
             done.extend(settings(&dir, &dir.join(".git"), host)?);
             Ok(Prepared {
@@ -182,6 +230,10 @@ fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, St
                     )),
                     git_pending: false,
                 });
+            }
+            // Before `settings()`: no `.init-pending` marker, profile or CLAUDE.md (REQ-2).
+            if let Some(line) = state_write_stop(&top) {
+                return Ok(stopped(line));
             }
             if dry_run {
                 let agents = if instruction_file(&top).is_some() {
@@ -245,7 +297,7 @@ fn wait_for_initializer(lock: &Path) {
 /// `git init -q` in `dir` with the same variable scrub as every other git subprocess. A
 /// concurrent launch may have initialized the folder meanwhile: a failed `init` that leaves a
 /// repository behind is accepted.
-fn git_init(dir: &Path) -> Result<(), String> {
+fn git_init(dir: &Path, home: Option<&Path>) -> Result<(), String> {
     // Concurrent first launches in one folder (Issue #2489): two `git init` runs race on
     // `.git/config`; the loser fails while the winner is still writing, so a re-check right
     // after the failure can still see "not a repository". Serialize the init on a lock that
@@ -253,7 +305,7 @@ fn git_init(dir: &Path) -> Result<(), String> {
     // neither the folder nor HOME gets an extra file — and re-check under the lock: a launch
     // that waited finds the repository the first one made and runs no `git init` itself.
     let lock = init_lock(dir);
-    if identity(dir).is_ok_and(|id| id["identity_status"] == "ok") {
+    if identity_in(dir, home).is_ok_and(|id| id["identity_status"] == "ok") {
         drop(lock);
         return Ok(());
     }
@@ -266,7 +318,7 @@ fn git_init(dir: &Path) -> Result<(), String> {
         .stderr(Stdio::null())
         .status()
         .is_ok_and(|s| s.success());
-    let ready = ok || identity(dir).is_ok_and(|id| id["identity_status"] == "ok");
+    let ready = ok || identity_in(dir, home).is_ok_and(|id| id["identity_status"] == "ok");
     drop(lock);
     if ready {
         Ok(())
@@ -598,5 +650,27 @@ mod tests {
         assert_eq!(primary_name(Path::new("/x/example.git/.git")), "example");
         assert_eq!(primary_name(Path::new("/x/plain/.git")), "plain");
         assert_eq!(primary_name(Path::new("/x/bare.git")), "bare");
+    }
+
+    /// SPEC-20261124-identity-home-arg AC-15 (REQ-13, REQ-14): the environment HOME holds a
+    /// symlinked home state root, so the identity of a folder that is no repository is refused and
+    /// the first launch runs no `git init` and creates no project file.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_rest_a_linked_home_initializes_nothing() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_rest_a_linked_home_initializes_nothing",
+            |folders| {
+                let prepared = prepare_project(&folders.scratch, "claude", false).unwrap();
+                assert_eq!(prepared.note, None);
+                assert!(!prepared.git_pending);
+                assert_eq!(
+                    fs::read_dir(&folders.scratch).unwrap().count(),
+                    0,
+                    "the folder was initialized"
+                );
+            },
+        );
     }
 }

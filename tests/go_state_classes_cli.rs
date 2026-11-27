@@ -11,6 +11,7 @@
 
 mod common;
 use common::CleanEnv;
+use moai_cli::state_root::MOAI_DIR;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
@@ -833,12 +834,16 @@ fn apply_then_revert_restores_the_tree_links_by_body() {
         fs::read_to_string(area.join("root-files/CLAUDE.md")).unwrap(),
         "# rules\n"
     );
-    // O1: the user's data folder is restored; a Rust-named Go folder is not.
+    // O1: the user's data folder is restored; so is a file the Go manifest does not record in
+    // any other folder (SPEC-20261126-go-state-restore-rule).
     assert_eq!(
         fs::read_to_string(fx.root.join(".moai/plans/p.md")).unwrap(),
         "# plan\n"
     );
-    assert!(!fx.root.join(".moai/decisions/d.md").exists());
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".moai/decisions/d.md")).unwrap(),
+        "# go decision\n"
+    );
     let r = fx.receipt(&backup);
     assert_eq!(moved(&r, ".agents/skills/moai-a")["kind"], json!("link"));
     assert_eq!(
@@ -1074,13 +1079,17 @@ fn user_data_folders_are_restored_and_removed_again_on_revert() {
         .collect();
     assert_eq!(
         froms,
-        [".moai-backup/reports/r.md", ".moai-backup/research/n.md"],
+        [
+            ".moai-backup/reports/r.md",
+            ".moai-backup/research/n.md",
+            ".moai-backup/state/s.json"
+        ],
         "{p}"
     );
     let before = fx.project_tree();
     let (_, backup) = fx.apply_ok();
     assert!(fx.root.join(".moai/reports/r.md").is_file());
-    assert!(!fx.root.join(".moai/state/s.json").exists());
+    assert!(fx.root.join(".moai/state/s.json").is_file());
     let r = fx.receipt(&backup);
     assert!(
         r["restored"].to_string().contains(".moai/research/n.md"),
@@ -1592,11 +1601,12 @@ fn a_root_file_of_exactly_the_file_limit_moves_and_one_byte_more_stays() {
 
 // ---- B2: what the skill tells an agent to say ----
 
-/// The PROJECT workflow must not tell an agent that `CLAUDE.md` and `AGENTS.md` stay in the
+/// The workflow that carries the go-state move (`update.md`, since the move steps left
+/// `project.md`) must not tell an agent that `CLAUDE.md` and `AGENTS.md` stay in the
 /// root: after the apply they are moved into the backup's `root-files/` (`action` `move`).
 #[test]
 fn the_project_workflow_says_the_root_instruction_files_are_moved() {
-    let workflow = include_str!("../skills/moai/workflows/project.md");
+    let workflow = include_str!("../skills/moai/workflows/update.md");
     for sentence in [
         "the root instruction files `CLAUDE.md`, `AGENTS.md` and `AGENTS.local.md` are moved to `.moai/backups/<UTC>/root-files/`",
         "A `root_files` row with `action` `move` is no longer in the project root after the apply",
@@ -1607,13 +1617,13 @@ fn the_project_workflow_says_the_root_instruction_files_are_moved() {
         "`counterparts` and `after_move`, and read them out before asking",
         "Apply only after the user picked the move in the selection that followed that preview",
     ] {
-        assert!(workflow.contains(sentence), "project.md lacks: {sentence}");
+        assert!(workflow.contains(sentence), "update.md lacks: {sentence}");
     }
     for stale in [
         "`CLAUDE.md` and `AGENTS.md` themselves stay as they are",
         "the copies of `CLAUDE.md` and `AGENTS.md` go to",
     ] {
-        assert!(!workflow.contains(stale), "project.md still says: {stale}");
+        assert!(!workflow.contains(stale), "update.md still says: {stale}");
     }
 }
 
@@ -1651,21 +1661,22 @@ fn the_product_path_rows_describe_the_move_of_the_root_files() {
     }
 }
 
-/// #2966 N2: the PROJECT workflow says what the restore check really reads. "secrets
-/// excluded" read wider than the check: a document is passed on its name and size only.
+/// #2966 N2: the workflow that carries the move (`update.md`) says what the restore check really
+/// reads. "secrets excluded" read wider than the check: a document is passed on its name and
+/// size only.
 #[test]
 fn the_project_workflow_names_what_the_restore_check_really_reads() {
-    let workflow = include_str!("../skills/moai/workflows/project.md");
+    let workflow = include_str!("../skills/moai/workflows/update.md");
     for sentence in [
         "a secret name is never opened",
         "a config-shaped file (`.json`, `.toml`, `.yaml`, `.yml`) and anything under `specs` is also read for content that looks like a credential",
         "any other document is checked by its name and size only, never by its content",
     ] {
-        assert!(workflow.contains(sentence), "project.md lacks: {sentence}");
+        assert!(workflow.contains(sentence), "update.md lacks: {sentence}");
     }
     assert!(
         !workflow.contains("secrets excluded"),
-        "project.md still claims the restore excludes secrets in general"
+        "update.md still claims the restore excludes secrets in general"
     );
 }
 
@@ -2677,9 +2688,80 @@ fn a_backups_gitignore_that_does_not_ignore_stops_the_apply_before_any_write() {
     );
 }
 
-/// Condition 1, the preview: `go-state-plan` names the file and a backup path git would offer,
-/// the digest does not depend on it (preview-only), and in `project-update-plan` the `go-state`
-/// step reads `needs_decision` with no command, so every install step waits behind it.
+/// Every step of the project's current `project-update-plan` preview.
+fn update_steps(fx: &Fx) -> Vec<Value> {
+    let update = fx.run(&["project-update-plan", fx.p()]);
+    assert_eq!(update["ok"], json!(true), "{update}");
+    update["result"]["phases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|ph| ph["steps"].as_array().unwrap())
+        .cloned()
+        .collect()
+}
+
+fn go_state_of(steps: &[Value]) -> &Value {
+    steps.iter().find(|s| s["step"] == "go-state").unwrap()
+}
+
+/// The steps behind a blocked one all wait for the backup phase.
+fn assert_install_waits(steps: &[Value]) {
+    let install: Vec<&Value> = steps
+        .iter()
+        .filter(|s| s["step"] != "go-state" && s["state"] == "blocked")
+        .collect();
+    assert!(!install.is_empty(), "{steps:?}");
+    assert!(
+        install
+            .iter()
+            .all(|s| s["reason"] == json!("re-run after the backup phase")),
+        "{steps:?}"
+    );
+}
+
+/// SPEC-20261126-go-local-settings-reference REQ-9: where the local settings hold the Go folder
+/// the step prints the picked command. Its backups go to the new folder's area, so the printed
+/// command succeeds, leaves the ignore file the user wrote as it was and offers git no backup
+/// line that was not offered before.
+fn assert_pick_keeps_backups_from_git(fx: &Fx, go: &Value) {
+    assert_eq!(go["state"], json!("needs_decision"), "{go}");
+    assert_eq!(go["preview"]["backup_ignore"], Value::Null, "{go}");
+    let words: Vec<&str> = go["apply"]["argv"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .skip(1)
+        .map(|w| w.as_str().unwrap())
+        .map(|w| {
+            if w == "<permission-reference>" {
+                REF
+            } else {
+                w
+            }
+        })
+        .collect();
+    assert!(words.contains(&"--rewrite-local-references"), "{go}");
+    let offered = backup_lines_offered_to_git(fx);
+    let ignore = fs::read(fx.root.join(BACKUPS_IGNORE)).unwrap();
+    let local = fs::read(fx.root.join(".claude/settings.local.json")).unwrap();
+    let v = fx.run(&words);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(v["result"]["state"], json!("committed"), "{v}");
+    // The copy exists, so the git question below is about a real file.
+    let backup = v["result"]["backup"].as_str().unwrap();
+    let copy = fx
+        .area(backup)
+        .join("root-files/.claude/settings.local.json");
+    assert_eq!(fs::read(copy).unwrap(), local, "{v}");
+    assert_eq!(backup_lines_offered_to_git(fx), offered, "{v}");
+    assert_eq!(fs::read(fx.root.join(BACKUPS_IGNORE)).unwrap(), ignore);
+}
+
+/// Condition 1, the preview: `go-state-plan` names the file and a backup path git would offer and
+/// the digest does not depend on it (preview-only). The local settings hold the folder here, so
+/// the `go-state` step of `project-update-plan` offers the picked move and every install step
+/// waits behind it.
 #[test]
 fn the_preview_names_the_ignore_file_that_does_not_cover_the_backups() {
     let (fx, _) = staying_with_backups_ignore("# mine\n!keep-me\n");
@@ -2707,16 +2789,36 @@ fn the_preview_names_the_ignore_file_that_does_not_cover_the_backups() {
     );
     let digest = p["plan_digest"].clone();
 
-    let update = fx.run(&["project-update-plan", fx.p()]);
-    assert_eq!(update["ok"], json!(true), "{update}");
-    let update = &update["result"];
-    let steps: Vec<&Value> = update["phases"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .flat_map(|ph| ph["steps"].as_array().unwrap())
-        .collect();
-    let go = steps.iter().find(|s| s["step"] == "go-state").unwrap();
+    // Once the file ignores the area, the field is gone and the digest is the same.
+    fx.write(BACKUPS_IGNORE, "*\n");
+    let ok = fx.plan();
+    assert!(ok.get("backup_ignore").is_none(), "{ok}");
+    assert_eq!(ok["plan_digest"], digest, "the field is preview-only");
+
+    fx.write(BACKUPS_IGNORE, "# mine\n!keep-me\n");
+    let steps = update_steps(&fx);
+    assert_install_waits(&steps);
+    assert_pick_keeps_backups_from_git(&fx, go_state_of(&steps));
+}
+
+/// The same file where something other than the local settings keeps the folder: the `go-state`
+/// step of `project-update-plan` reads `needs_decision` with no command, so every install step
+/// waits behind it.
+#[test]
+fn an_uncovered_backup_area_prints_no_update_command_where_the_folder_stays() {
+    let (fx, _) = cycle_fx(false, false);
+    common::git::git_ok(&fx.root, &["init", "-q"]);
+    fx.write(
+        &format!("{MOAI_DIR}/vendor/.git/HEAD"),
+        "ref: refs/heads/main\n",
+    );
+    fx.write(BACKUPS_IGNORE, "# mine\n!keep-me\n");
+    let p = fx.plan();
+    assert_eq!(p["layout"], json!("folder_stays"), "{p}");
+    assert_eq!(p["backup_ignore"]["state"], json!("not_ignored"), "{p}");
+
+    let steps = update_steps(&fx);
+    let go = go_state_of(&steps);
     assert_eq!(go["state"], json!("needs_decision"), "{go}");
     assert_eq!(go["apply"], Value::Null, "no command is printed: {go}");
     assert_eq!(
@@ -2728,23 +2830,7 @@ fn the_preview_names_the_ignore_file_that_does_not_cover_the_backups() {
         go["reason"].as_str().unwrap().contains(BACKUPS_IGNORE),
         "{go}"
     );
-    let install: Vec<&&Value> = steps
-        .iter()
-        .filter(|s| s["step"] != "go-state" && s["state"] == "blocked")
-        .collect();
-    assert!(!install.is_empty(), "{update}");
-    assert!(
-        install
-            .iter()
-            .all(|s| s["reason"] == json!("re-run after the backup phase")),
-        "{update}"
-    );
-
-    // Once the file ignores the area, the field is gone and the digest is the same.
-    fx.write(BACKUPS_IGNORE, "*\n");
-    let ok = fx.plan();
-    assert!(ok.get("backup_ignore").is_none(), "{ok}");
-    assert_eq!(ok["plan_digest"], digest, "the field is preview-only");
+    assert_install_waits(&steps);
 }
 
 /// Condition 1, the boundary table: git's own rules judge, never a look at the text. Each case
@@ -3084,14 +3170,8 @@ fn an_ignore_file_that_covers_nothing_does_not_stop_a_preview_with_nothing_to_mo
         "nothing is left to move: {p}"
     );
     assert!(p.get("backup_ignore").is_none(), "{p}");
-    let update = fx.run(&["project-update-plan", fx.p()]);
-    let go = update["result"]["phases"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .flat_map(|ph| ph["steps"].as_array().unwrap())
-        .find(|s| s["step"] == "go-state")
-        .unwrap()
-        .clone();
-    assert_ne!(go["state"], json!("needs_decision"), "{go}");
+    // The local settings still hold the folder, so the step offers the picked move; the file
+    // above is not on its way.
+    let steps = update_steps(&fx);
+    assert_pick_keeps_backups_from_git(&fx, go_state_of(&steps));
 }

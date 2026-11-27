@@ -36,6 +36,8 @@ Assume no conversation context beyond this block. Do not start other agents.
 
 - Write scope: only the paths in `scope`, inside the worktree you were given. Never touch the real HOME, keys, global settings or another worktree; your builds stay in your own worktree's build folder (`workflows/run.md`, step 1).
 - Tools: read, search, edit, and run the project's own build and test commands. Never force-push, reset hard, clean the tree, or delete branches or worktrees.
+- File writes: write tracked files and in-scope files with the host's file tools (Write, Edit) from the first write, never with a shell heredoc, `sed -i` or a redirect.
+- Run each mutant without a script: change the code with Edit, run the test with one command, and change the code back with Edit; never use a script that holds `git apply`, `git checkout` or `sed -i`.
 - Do not commit, push, or open a pull request unless the task says so.
 - The core rules (`internal/core-rules`) hold at every step.
 - Never delete or weaken a test, an assertion or a SPEC that the task does not name; a test you cannot make pass is reported, not removed (`internal/change-claims`, `internal/quality`).

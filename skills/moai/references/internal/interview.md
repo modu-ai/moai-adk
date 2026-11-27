@@ -2,10 +2,10 @@
 
 When to read: before you ask the user about a project, in the PROJECT route or when a plan needs facts only the user has.
 
-This note is the procedure only; the PROJECT workflow (`workflows/project.md`) runs it. The question bank is the three tables below: what is asked, what is confirmed, and what is never asked (redesigned by SPEC-20261124-moai-project-interview). How a question reaches the user is in `internal/questions`: read it before the first ask.
+This note is the procedure only; the PROJECT workflow (`workflows/project.md`) runs it. The question bank is the tables below: what is asked, what is confirmed, what is never asked (redesigned by SPEC-20261124-moai-project-interview), and the two NeXT-Flow follow-ups (SPEC-20261126-project-next-flow-setup). How a question reaches the user is in `internal/questions`: read it before the first ask.
 
 1. Read first. Run `moai project-detect` and read the repository and the profile; never ask what the files, the build and test commands, CI, an existing profile or an existing `CLAUDE.md` already answer.
-2. Ask only what reading cannot tell: the purpose, and the four languages. Nothing else is asked.
+2. Ask only what reading cannot tell: the purpose, and the four languages. Nothing else is asked; the one exception is the section `NeXT-Flow follow-ups`, asked only after the user has picked that flow.
 3. Show everything reading found in one confirmation and ask a follow-up only for the values the user marks wrong.
 4. Record the operating rules (what must not be touched, what review must stop, what may run without asking, what done means) as the generic defaults below, without asking.
 5. Show the plan before anything is written: the files that would be created with their first lines, and the difference for each file that would change (`project-plan`). Write only after the user approves the plan, and only through `project-apply`. A later run reports hand edits as differences and never overwrites them.
@@ -13,7 +13,7 @@ This note is the procedure only; the PROJECT workflow (`workflows/project.md`) r
 
 ## Asked
 
-These are the only questions of the interview. A row of the bank is skipped when reading already answered it (skip every row that reading already answered); the purpose is never skipped for a project whose profile has none, and the four languages are asked every run.
+These are the only questions of the interview, apart from the section `NeXT-Flow follow-ups` for a user who picked that flow. A row of the bank is skipped when reading already answered it (skip every row that reading already answered); the purpose is never skipped for a project whose profile has none, and the four languages are asked every run.
 
 | id | Ask when | Question | Options | Goes to |
 | --- | --- | --- | --- | --- |
@@ -58,9 +58,18 @@ What the chosen autonomy level still reserves for the user, which `internal/deci
 
 ## Git work flow (SPEC-20261117-mflow-project)
 
-The `work_flow` row fills `work_flow` with `{"flow": "next-flow" | "github-flow" | "trunk-based" | "git-flow", "integration_branch": "<branch>"}`; name the integration branch from the repository (the profile value first, then the remote default branch, then the current branch) as the first option of a follow-up selection, and leave it out when there is none. GitHub flow is the recommended default; a stored `m-flow` reads as the same flow as next-flow. When you offer the options, describe the local flow to the user in plain words ("when several AI agents work at the same time on one project") and keep the SPEC, worktree, audit and leader words below until the user has picked it. The four flows:
+The `work_flow` row fills `work_flow` with `{"flow": "next-flow" | "github-flow" | "trunk-based" | "git-flow", "integration_branch": "<branch>"}`; name the integration branch from the repository (the profile value first, then the remote default branch, then the current branch) as the first option of a follow-up selection, and leave it out when there is none. The one case that puts another option first is a first NeXT-Flow setup: while the profile names no integration branch and the current branch is the default branch, a new dedicated integration branch comes first (for example `integration`), so the user's own checkout is not locked, and the remote default branch and the current branch follow it (the default branch is the remote default branch; where none is recorded, `main` or `master`); otherwise the profile value stays first. GitHub flow is the recommended default; a stored `m-flow` reads as the same flow as next-flow. When you offer the options, describe the local flow to the user in plain words ("when several AI agents work at the same time on one project") and keep the SPEC, worktree, audit and leader words below until the user has picked it. The four flows:
 
 - **next-flow — NeXT-Flow**, MoAI's local work flow: one integration branch; each SPEC gets its own worktree and branch `spec/<slug>-<yyyymmdd>` (the older `spec/<yyyymmdd>-<slug>` is still read) started from the integration branch's HEAD (never the remote default branch when it differs, so Claude Code sessions need `worktree.baseRef: head`) — one SPEC, one branch, one landing, and no card number in a branch, a commit or a pull request; tests first; the lane only commits, and the lane submits head and base and never re-merges a moved tip; an agent other than the author audits the exact head; the leader lands after a PASS and closes the card; the local cards stay each person's own todo list. The name's meaning and the flow's steps are in `flows/next-flow`. The old value `m-flow` selects the same flow: M-Flow is the old name of NeXT-Flow.
 - **GitHub flow** — short branches from the default branch, a pull request per change, merge after review and CI, the default branch always deployable; the recommended default.
 - **trunk-based** — everyone commits to one trunk in small steps, often directly or through very short branches; unfinished work hides behind flags.
 - **git-flow** — `develop` for integration, `feature/*` branches from it, `release/*` and `hotfix/*` branches, and `main` holding only released versions.
+
+## NeXT-Flow follow-ups
+
+Asked only after the user has picked the local flow (SPEC-20261126-project-next-flow-setup), in one follow-up call of three questions or fewer, together with the integration branch selection when that one is asked (`workflows/project.md`, step 3). They stand outside the `Asked` table, and the interview asks them for no other flow. No option is preselected, and an unanswered or cancelled question records nothing. A value the profile already holds is shown in the confirmation and asked again only when the user marks it wrong. Say the question and the options in the user's conversation language; the key names and recorded values of the last column are never shown.
+
+| Follow-up | Question | Options | Goes to |
+| --- | --- | --- | --- |
+| Remote copy | When work is merged, should a copy also go to the remote? | No, keep it local (recommended); Yes, copy the merged branch to the remote after each merge | profile `remote_copy`: `false` for no, `true` for yes |
+| Landing check | Should the stricter check before merging be turned on? A merge that finishes a task needs a passed check by another agent whichever you pick. | Turn it on (recommended): also refuse a merge of part of an unfinished task when no check that counts has passed or the check cannot be read, and any merge that lacks the results of the whole-project checks your project lists or cannot read that list; Leave it off: those cases are only reported and the merge goes on | profile `work_flow.land_verdict`: `enforce` for on, `observe` for off |
