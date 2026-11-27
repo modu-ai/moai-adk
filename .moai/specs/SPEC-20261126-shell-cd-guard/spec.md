@@ -1,14 +1,9 @@
 ---
 id: SPEC-20261126-shell-cd-guard
 title: "A MoAI session keeps its shell folder: a cd inside a linked worktree, or from the main checkout into one, is refused with the other way in one line"
-status: approved
-revision: 4
+status: draft
+revision: 5
 created: 2026-11-26
-approval:
-  by: user
-  at: 2026-11-27
-  basis: "USER-APPROVAL 노트 10711 (개정 4, 사용자가 직접 골랐어요 2026-11-27, 리더 세션의 질문 도구 \"기본값으로 승인 (Recommended)\"; 리더가 노트에 적었고 레인은 그 노트를 인용만 해요). 승인은 개정 4 의 글 그대로예요: D-12 등록된 레인도 예외 없음, D-14 객체만 쓰는 git 명령은 지금처럼 거절, D-11 읽을 수 없는 목표는 허용, D-13 탈출구 없음. 앞 개정의 근거는 노트 10637"
-  digest: "sha256:74287255680dae72001282c283db8daedf2325f913715623ef49e3b0429b729d"
 ---
 
 # A MoAI session keeps its shell folder: a cd inside a linked worktree, or from the main checkout into one, is refused with the other way in one line
@@ -67,7 +62,7 @@ approval:
 - REQ-8 (REQ-6): IF the `cd` runs in a subshell, a command substitution or a shell string given to another shell, THEN the hook shall allow the call under REQ-6, as REQ-3 does for the worktree session.
 - REQ-9 (revision 4): The reason of REQ-1 shall add, in the same line, how a session that started in the main checkout and was moved by a shell `cd` gets out: end the session and start it again from the main checkout; the sentence names `EnterWorktree` as the way in, adds no `git -C`, no subshell `cd` and no new backticked form (D-8, D-13).
 - REQ-10 (REQ-6): By the default of D-12 the hook shall not exempt a registered lane or leader session from REQ-6.
-- REQ-11 (revision 4, default of D-14): The boundary's `git-state` deny shall keep refusing `commit-tree`, `hash-object`, `mktree`, `mktag` and `write-tree` that `-C`, `--git-dir` or `--work-tree` aim at a checkout that is not the session's own (AC-12 pins that answer).
+- REQ-11 (revision 4, default of D-14): The boundary's `git-state` deny, which only a session that skips permission prompts (`bypassPermissions`) gets, shall keep refusing `commit-tree`, `hash-object`, `mktree`, `mktag` and `write-tree` that `-C`, `--git-dir` or `--work-tree` aim at a checkout that is not the session's own (AC-12 pins that answer).
 
 ## Acceptance
 
@@ -82,7 +77,7 @@ approval:
 - AC-9 (REQ-7, REQ-8): 같은 세션에서 `cd src`, `cd .`, `cd <주>/src`, `cd <연결 워크트리가 아닌 폴더>`, `cd "$W"`, `cd $W`, `cd -`, `cd`, `(cd <wt-own> && ls)`, `v=$(cd <wt-own> && pwd)`, `bash -c 'cd <wt-own>'`, `echo "cd <wt-own>"`, `git -C <wt-own> status`, 다른 저장소의 연결 워크트리로 가는 `cd` 는 REQ-6 으로 거절되지 않아요 · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_main_checkout_cd_that_does_not_enter_a_worktree_is_allowed)'`
 - AC-10 (REQ-9): 카드 기준 2 예요. 연결 워크트리 세션의 `cd src` 거절 이유가 한 줄이고, 셸 `cd` 로 옮겨진 세션이 세션을 끝내고 주 체크아웃에서 다시 띄우라는 말과 `EnterWorktree` 를 담고, `git -C`·서브셸 `( cd`·`pushd` 를 권하지 않고, 백틱 안의 꼴은 cargo 꼴 하나뿐이에요. AC-7 의 cargo 확인은 이 글에도 그대로 통과해요 · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(the_session_cd_refusal_tells_a_moved_session_how_to_get_out)'`
 - AC-11 (REQ-10): 카드 기준 1 의 뒤쪽이에요. 같은 임시 HOME 의 세션 등록부에 살아 있는 `agent` 항목(같은 세션 id)을 두어도 AC-8 의 `cd <wt-own>` 은 거절돼요(기본 선택의 동작을 고정; D-12 에서 다른 선택을 고르면 이 시험이 그 선택의 예외 시험으로 바뀌어요) · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(a_registered_session_is_not_exempt_from_the_entering_cd_rule)'`
-- AC-12 (REQ-11): 카드 기준 3 이에요. 연결 워크트리 세션에서 `git -C <주> commit-tree -m x HEAD^{tree}`, `git -C <주> hash-object -w x`, `git -C <주> mktree`, `git -C <주> mktag`, `git -C <주> write-tree` 가 `default` 와 `bypassPermissions` 모드에서 `moai-boundary/git-state` 로 거절되고, 같은 하위 명령을 `-C` 없이 쓰는 줄은 거절되지 않아요(기본 선택의 동작을 고정; D-14 에서 B·C 를 고르면 이 시험이 그 선택의 허용 시험으로 바뀌어요) · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(an_objects_only_git_command_toward_another_checkout_stays_denied)'`
+- AC-12 (REQ-11): 카드 기준 3 이에요. 연결 워크트리 세션에서 `git -C <주> commit-tree -m x HEAD^{tree}`, `git -C <주> hash-object -w x`, `git -C <주> mktree`, `git -C <주> mktag`, `git -C <주> write-tree` 가 `bypassPermissions` 모드에서 `moai-boundary/git-state` 로 거절되고, 같은 하위 명령을 `-C` 없이 쓰는 줄은 거절되지 않아요(기본 선택의 동작을 고정; D-14 에서 B·C 를 고르면 이 시험이 그 선택의 허용 시험으로 바뀌어요) · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(an_objects_only_git_command_toward_another_checkout_stays_denied)'`
 - AC-13 (REQ-1, REQ-2, REQ-3): 위 "Read forms" 표의 허용 줄 전부가 해당 세션에서 개정 4 코드로도 거절되지 않아요(`git -C` 읽기 줄, 자기 체크아웃의 쓰기 줄, `MOVES`·`STAYS` 표) · verify: `cargo nextest run --test hooks_cd_guard_cli -E 'test(the_read_forms_stay_allowed)'`
 
 ## Scope
