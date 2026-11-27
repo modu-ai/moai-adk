@@ -787,6 +787,123 @@ fn a_notice_without_a_warning_has_no_warning_mark() {
     assert_eq!(prefix(None), prefix(Some(true)));
 }
 
+const ROUTING_FILE: &str = "/home/u/.claude/rules/moai.md";
+
+/// A preview whose routing rows are the default folder's row (`default_action`) and, when
+/// `with_profile`, a profile folder's `linked` row; a linked row carries the path of the
+/// default row (`home_routing::rules::consumer_folder` clones it).
+fn routing_preview(default_action: &str, with_profile: bool) -> Value {
+    let mut v = fixture("preview-changes");
+    let mut hosts = vec![serde_json::json!({
+        "host": "claude", "config_dir": "/home/u/.claude",
+        "file": ROUTING_FILE, "preflight": "ok", "blocked_reason": null,
+        "section": {"path": ROUTING_FILE, "action": default_action, "detail": null},
+        "flow": null
+    })];
+    if with_profile {
+        hosts.push(serde_json::json!({
+            "host": "claude", "config_dir": "/home/u/.orca",
+            "file": "/home/u/.orca/rules/moai.md", "preflight": "ok", "blocked_reason": null,
+            "section": {"path": ROUTING_FILE, "action": "linked", "detail": "reached through a link"},
+            "flow": null
+        }));
+    }
+    v["routing"]["hosts"] = serde_json::Value::Array(hosts);
+    v
+}
+
+/// The routing line of a preview (wide enough not to wrap) and the marks before its first file name.
+fn routing_line(p: &Value, lang: Lang) -> (String, String) {
+    let q = question(p, &view(lang, Look::Ascii, 400, None)).replace('\u{a0}', " ");
+    let line = q
+        .lines()
+        .find(|l| l.contains("moai.md"))
+        .unwrap_or_else(|| panic!("no routing line: {q}"))
+        .to_string();
+    let mark = line.split("moai.md").next().unwrap().to_string();
+    (line, mark)
+}
+
+/// SPEC-20261127-update-linked-profile-display AC-1 (REQ-1, REQ-2): a profile's `linked` routing
+/// row is the default row's entry with a note, so one file is not two; when the default row is a
+/// conflict the profile row shows the default row's mark and word and no note.
+#[test]
+fn a_linked_profile_routing_row_is_the_default_entry_with_a_note() {
+    for (lang, up_to_date, note, conflict) in [
+        (
+            Lang::En,
+            "up to date",
+            "(this folder is read through a link)",
+            "conflict",
+        ),
+        (Lang::Ko, "최신", "(이 프로필은 링크로 읽어요)", "충돌"),
+    ] {
+        let (alone, alone_mark) = routing_line(&routing_preview("unchanged", false), lang);
+        let (line, mark) = routing_line(&routing_preview("unchanged", true), lang);
+        assert_eq!(line.matches("moai.md").count(), 1, "{lang:?}: {line}");
+        assert!(
+            line.contains(&format!("moai.md {up_to_date} {note}")),
+            "{lang:?}: {line}"
+        );
+        assert_eq!(
+            mark, alone_mark,
+            "{lang:?}: the mark stays Ok: {line} / {alone}"
+        );
+
+        let (alone, alone_mark) = routing_line(&routing_preview("conflict", false), lang);
+        let (line, mark) = routing_line(&routing_preview("conflict", true), lang);
+        assert!(!line.contains(note), "{lang:?}: {line}");
+        assert!(
+            line.contains(&format!("moai.md {conflict}")),
+            "{lang:?}: {line}"
+        );
+        assert_eq!(mark, alone_mark, "{lang:?}: {line} / {alone}");
+        assert_eq!(line.matches("moai.md").count(), 2, "{lang:?}: {line}");
+    }
+}
+
+/// SPEC-20261127-update-linked-profile-display AC-2 (REQ-3, REQ-4): a `not_linked` profile row is
+/// a warning with its file name, its reason and next step (the row's detail), never 'skipped';
+/// a row without a detail gives one plain sentence.
+#[test]
+fn a_not_linked_profile_row_shows_its_reason_as_a_warning() {
+    let reason = "moai keeps the one copy in /home/u/.claude; it writes none here. link /home/u/.orca/rules to /home/u/.claude/rules";
+    for (lang, word, skipped, plain) in [
+        (
+            Lang::En,
+            "not linked",
+            "skipped",
+            "moai keeps one copy in the default folder and writes none in this folder",
+        ),
+        (
+            Lang::Ko,
+            "링크 안 됨",
+            "건너뜀",
+            "moai는 기본 폴더에 사본 하나만 두고 이 폴더에는 쓰지 않아요",
+        ),
+    ] {
+        let (_, warn_mark) = routing_line(&routing_preview("conflict", false), lang);
+        for (detail, shown) in [
+            (serde_json::json!(reason), reason),
+            (serde_json::Value::Null, plain),
+            (serde_json::json!(""), plain),
+        ] {
+            let mut p = routing_preview("unchanged", true);
+            let row = &mut p["routing"]["hosts"][1];
+            row["section"]["path"] = "/home/u/.orca/rules/moai.md".into();
+            row["section"]["action"] = "not_linked".into();
+            row["section"]["detail"] = detail;
+            let (line, mark) = routing_line(&p, lang);
+            assert!(
+                line.contains(&format!("moai.md {word}: {shown}")),
+                "{lang:?}: {line}"
+            );
+            assert!(!line.contains(skipped), "{lang:?}: {line}");
+            assert_eq!(mark, warn_mark, "{lang:?}: the row is a warning: {line}");
+        }
+    }
+}
+
 /// SPEC-20261124-update-flat-agent-ownership REQ-10: an agents result that is `partial` (a flat
 /// file of the person's was kept) shows an agents row with the number kept and ends on Partly
 /// applied; the same run with nothing kept still ends on Done.

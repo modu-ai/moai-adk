@@ -48,6 +48,7 @@ pub mod query;
 pub mod ready_leftovers;
 pub mod ready_receipt;
 pub mod remote_copy;
+pub mod repair;
 pub mod roles;
 pub mod spec_link;
 pub mod stale;

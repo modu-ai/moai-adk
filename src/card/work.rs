@@ -25,6 +25,7 @@ use super::take_scope;
 use super::wip_limit;
 use crate::forge::connector::{HostConnector, HostKind, PrPhase, ProjectRef};
 use crate::ledger::close;
+use crate::ledger::partial;
 use crate::ledger::reservation;
 use crate::ledger::scope_return;
 use crate::ledger::workflow::{self, CriterionChange, PrTarget, SkipReason, WorkflowError};
@@ -74,7 +75,7 @@ fn offer(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> {
                 "action": "next", "project_id": id, "ledger": "absent", "holder": holder,
                 "next": null, "next_is": null,
                 "mine": [], "ready": [], "skipped": [], "warnings": [], "writes": false,
-                "landing": landed::absent_json(), "stale": [],
+                "landing": landed::absent_json(), "stale": [], "partial_landing": [],
             }));
         }
         Err(e) => return Err(e.to_string()),
@@ -214,12 +215,24 @@ fn offer(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> {
         .iter()
         .map(|c| json!({"name": input::card_name(c.card_id), "card_id": c.card_id, "title": c.title}))
         .collect();
+    // The cards that landed and keep open criteria, apart from `ready` and `skipped`: a marked
+    // slice is offered under `ready` too, and a plain landing is skipped as `already_landed`.
+    let partial_landing: Vec<Value> = partial::partial_landings(ledger.conn())
+        .map_err(|e| e.to_string())?
+        .iter()
+        .map(|p| {
+            json!({
+                "name": input::card_name(p.card_id), "card_id": p.card_id, "title": p.title,
+                "open_criteria": p.open_criteria, "head": p.head,
+            })
+        })
+        .collect();
     Ok(json!({
         "action": "next", "project_id": id, "ledger": "ready", "holder": holder,
         "now": found.now, "next": next, "next_is": next_is,
         "mine": mine, "ready": ready, "skipped": skipped, "warnings": warnings,
         "landing": landing.json(), "stale": stale, "writes": false,
-        "wip": wip.json(), "audit_needed": audit_needed,
+        "wip": wip.json(), "audit_needed": audit_needed, "partial_landing": partial_landing,
     }))
 }
 
@@ -271,9 +284,63 @@ pub struct NoteRequest<'a> {
     pub session: Option<&'a str>,
 }
 
+/// `--generation` on a command that needs no reservation (`card note`, `card spec`), as `card
+/// scope` takes it (card C-608): the other card commands take the option, so a lane gives it by
+/// habit. Given, the card's live reservation must be at that generation, else a `conflict` that
+/// names the generation the card has (or that it is not held); the holder and the lease are not
+/// asked, because these commands have no fence. `what` ends the refusal: the thing that needs no
+/// reservation. Read-only, so it works on a write transaction's connection too.
+pub fn check_generation(
+    conn: &rusqlite::Connection,
+    card_id: i64,
+    want: i64,
+    what: &str,
+) -> std::result::Result<(), String> {
+    use rusqlite::OptionalExtension;
+    let name = input::card_name(card_id);
+    match reservation::current(conn, card_id).map_err(|e| e.to_string())? {
+        Some(held) if held.generation == want => Ok(()),
+        Some(held) => Err(format!(
+            "card conflict in generation: {name} is at generation {}, not {want}; read the card \
+             again (`card show`), or leave --generation out: {what} needs no reservation",
+            held.generation
+        )),
+        None => {
+            let state: Option<String> = conn
+                .query_row(
+                    "SELECT state FROM card WHERE card_id = ?1",
+                    [card_id],
+                    |r| r.get(0),
+                )
+                .optional()
+                .map_err(|e| e.to_string())?;
+            match state {
+                None => Err(format!("card not found: there is no {name}")),
+                Some(state) => Err(format!(
+                    "card conflict in generation: {name} is `{state}` and not held, so there is \
+                     no generation {want}; leave --generation out: {what} needs no reservation"
+                )),
+            }
+        }
+    }
+}
+
 /// `card note C-n --kind K`: appends the text as one note. The line breaks and blanks a pipe
 /// leaves at the end are not part of the note.
 pub fn note(project: &Path, home: &Path, reference: &str, req: &NoteRequest<'_>) -> Result<Value> {
+    note_at(project, home, reference, req, None)
+}
+
+/// [`note`] with the `--generation` the caller read: given, the card's live reservation must be
+/// at it ([`check_generation`]) and nothing is written otherwise; left out, nothing is checked.
+/// A note stays unfenced: neither the holder nor the lease is asked.
+pub fn note_at(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    req: &NoteRequest<'_>,
+    generation: Option<i64>,
+) -> Result<Value> {
     let card_id = card_id("note", reference)?;
     let text = std::str::from_utf8(req.text)
         .map_err(|_| "card note refused: the note text on stdin is not UTF-8 text".to_string())?
@@ -320,6 +387,9 @@ pub fn note(project: &Path, home: &Path, reference: &str, req: &NoteRequest<'_>)
         (None, None) => actor(None, "note")?,
     };
     let (id, mut ledger) = open_for_write(project, home)?;
+    if let Some(want) = generation {
+        check_generation(ledger.conn(), card_id, want, "a note")?;
+    }
     let note = workflow::add_note(
         &mut ledger,
         card_id,

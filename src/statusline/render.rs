@@ -684,7 +684,18 @@ impl Renderer {
         .into_iter()
         .flatten()
         .collect();
+        // A landed card that keeps open criteria: the done icon with `~` (not wholly done), the
+        // number of cards and, in parentheses, the criteria they still keep open. It stands
+        // beside the road, so a narrow line keeps it like `⛔ ⏸️ 🙋`.
+        let partial = (f.partial > 0).then(|| {
+            piece(
+                t.issues,
+                icons::DONE,
+                format!("~{}({})", f.partial, f.partial_open),
+            )
+        });
         let beside: Group = [
+            partial,
             item(t.issues, icons::BLOCKED, f.blocked),
             item(t.issues, icons::PAUSED, f.paused),
             item(t.issues, icons::QUESTION, f.hold),
@@ -1021,6 +1032,8 @@ mod tests {
             submitted: 11,
             audited: 2,
             landed: 0,
+            partial: 0,
+            partial_open: 0,
             blocked: 3,
             hold: 7,
             paused: 0,
@@ -1855,6 +1868,8 @@ mod flow_line_tests {
             submitted: 11,
             audited: 2,
             landed: 1,
+            partial: 0,
+            partial_open: 0,
             blocked: 3,
             hold: 7,
             paused: 0,
@@ -2184,6 +2199,25 @@ mod flow_line_tests {
             "all three, in the order of the table"
         );
         assert_eq!(line(with(0, 0, 0)), chain);
+        // A partial landing stands beside the flow, before the three, with the number of cards
+        // and of open criteria; none of it without a card.
+        assert_eq!(
+            line(Flow {
+                partial: 2,
+                partial_open: 5,
+                ..with(3, 0, 7)
+            }),
+            format!("{chain} | {DONE} ~2(5) {BLOCKED} 3 {QUESTION} 7"),
+            "a partial landing is shown apart"
+        );
+        assert_eq!(
+            line(Flow {
+                partial: 1,
+                partial_open: 1,
+                ..with(0, 0, 0)
+            }),
+            format!("{chain} | {DONE} ~1(1)")
+        );
         // Nothing but cards waiting their turn: the one item.
         assert_eq!(
             line(Flow {

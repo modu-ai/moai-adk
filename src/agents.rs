@@ -536,7 +536,9 @@ pub fn is_generated_local(bytes: &[u8]) -> bool {
 /// (SPEC-20261120-moai-layout). The list is [`crate::state_root::KEPT`], one place; its order is
 /// the order of the block's `!` lines, so the earlier nine keep their places and a block written
 /// before a later line was added differs only by that line. Everything else in the folder is
-/// machine output under `local/` and is ignored.
+/// machine output under `local/` and is ignored. Three of the folders are allowed only by one
+/// pattern ([`crate::state_root::KEPT_NARROW`], SPEC-20261127-state-kept-narrowing): the block
+/// writes their narrow lines right after their `!` line.
 const STATE_KEPT: [&str; 11] = crate::state_root::KEPT;
 
 /// File names that never go to git anywhere under the state folder, `tools/` and `evals/`
@@ -602,8 +604,16 @@ const IGNORE_KIND_STATE_ONLY: &str = "agents:ignore-state";
 /// out of git), and the line `AGENTS.local.md` when the block already carried it (`keep_earlier`:
 /// that file is still the user's, and the block never drops a line that keeps it out of git).
 ///
-/// `allow` is the list of `!` paths the block carries, in order (see [`ignore_block`]).
-fn render_ignore(root: &Path, list_local: bool, keep_earlier: bool, allow: &[String]) -> String {
+/// `allow` is the list of `!` paths the block carries, in order (see [`ignore_block`]). `narrow`
+/// says whether the folders of [`state_root::KEPT_NARROW`] are allowed whole or only by their one
+/// pattern, and which tracked paths get an exact `!` line of their own.
+fn render_ignore(
+    root: &Path,
+    list_local: bool,
+    keep_earlier: bool,
+    allow: &[String],
+    narrow: &Narrowing,
+) -> String {
     let (begin, end) = markers(IGNORE_SECTION, "hash");
     let state = state_root::dir(root);
     let mut body = String::new();
@@ -623,6 +633,30 @@ fn render_ignore(root: &Path, list_local: bool, keep_earlier: bool, allow: &[Str
     body.push_str(&format!("{state}/{}/\n", state_root::LOCAL_DIR));
     for path in allow {
         // `ignore_block` refused a name that cannot be written, so the fallback is not reached.
+        let line = escape_ignore_path(path).unwrap_or_else(|| path.clone());
+        body.push_str(&format!("!{line}\n"));
+        // A narrowed folder is allowed again, then ignored below its own level, then allowed back
+        // by its one pattern (git reads the last matching line).
+        if let Some((folder, pattern)) = narrow
+            .on
+            .then(|| {
+                state_root::KEPT_NARROW
+                    .iter()
+                    .find(|(folder, _)| *path == format!("{state}/{folder}/"))
+            })
+            .flatten()
+        {
+            let base = format!("{state}/{folder}/");
+            let base = escape_ignore_path(&base).unwrap_or(base);
+            body.push_str(&format!("{base}*\n"));
+            if !narrow.skip_allow_back.contains(folder) {
+                body.push_str(&format!("!{base}{pattern}\n"));
+            }
+        }
+    }
+    // A tracked file the narrow lines would hide keeps its place: its exact path, after the
+    // ignore line of its folder.
+    for path in &narrow.exact {
         let line = escape_ignore_path(path).unwrap_or_else(|| path.clone());
         body.push_str(&format!("!{line}\n"));
     }
@@ -657,6 +691,21 @@ fn escape_ignore_path(path: &str) -> Option<String> {
         out.push_str("\\ ");
     }
     Some(out)
+}
+
+/// How the block treats the folders of [`state_root::KEPT_NARROW`] (SPEC-20261127-state-kept-
+/// narrowing).
+struct Narrowing {
+    /// The narrow lines are written. Off when git cannot list the tracked paths: the block then
+    /// allows every kept folder whole, as it did before the narrowing (REQ-11).
+    on: bool,
+    /// Folders whose allow-back line is left out because a rule of the user's already ignores the
+    /// paths of that shape: the block never changes what one of the user's rules does.
+    skip_allow_back: Vec<&'static str>,
+    /// Paths git tracks that the narrow lines would ignore, each with its folders below the kept
+    /// folder first (`<state>/manifests/sub/`, then `<state>/manifests/sub/y.json`), so no tracked
+    /// file becomes ignored (REQ-5). Sorted, no repeats.
+    exact: Vec<String>,
 }
 
 /// The rendered block and what the plan tells about how it was made.
@@ -712,7 +761,24 @@ fn ignore_block(root: &Path, list_local: bool, ignore_text: Option<&str>) -> Res
             asked.push(path.clone());
         }
     }
+    // The narrow lines allow one pattern back per folder; a path of that shape stands in the same
+    // question, so a rule of the user's that ignores it keeps its effect (that line is left out).
+    let probes: Vec<(&'static str, String)> = state_root::KEPT_NARROW
+        .iter()
+        .map(|(folder, pattern)| {
+            (
+                *folder,
+                format!("{state}/{folder}/{}", pattern.replace('*', "x")),
+            )
+        })
+        .collect();
+    asked.extend(probes.iter().map(|(_, probe)| probe.clone()));
     let hits = user_rule_hits(root, &user, &asked, &[], &mut notes)?;
+    let skip_allow_back: Vec<&'static str> = probes
+        .iter()
+        .filter(|(_, probe)| hits.iter().any(|h| h.path == *probe))
+        .map(|(folder, _)| *folder)
+        .collect();
     let mut shown: Vec<String> = Vec::new();
     for h in &hits {
         let line = match moved.iter().find(|(_, path)| *path == h.path) {
@@ -747,7 +813,16 @@ fn ignore_block(root: &Path, list_local: bool, ignore_text: Option<&str>) -> Res
     }
     // The block of an earlier version listed `AGENTS.local.md`: that line stays.
     let keep_earlier = ignore_text.is_some_and(|text| block_lists(text, LOCAL_NAMES[0]));
-    let rendered = render_ignore(root, list_local, keep_earlier, &allow);
+    let narrow = narrowing(
+        root,
+        state,
+        &user,
+        (list_local, keep_earlier),
+        &allow,
+        skip_allow_back,
+        &mut shown,
+    )?;
+    let rendered = render_ignore(root, list_local, keep_earlier, &allow, &narrow);
     let mut visible_notes: Vec<String> = Vec::new();
     shown.append(&mut newly_visible(
         root,
@@ -765,6 +840,158 @@ fn ignore_block(root: &Path, list_local: bool, ignore_text: Option<&str>) -> Res
     Ok(IgnoreBlock {
         rendered,
         notes: shown,
+    })
+}
+
+/// The narrowing of the block for this project (SPEC-20261127-state-kept-narrowing): the narrow
+/// lines on, and an exact `!` line for each path git tracks under a narrowed folder that they
+/// would ignore (REQ-5), named in `notes` as `now hidden: <path>` (REQ-6). What git tracks under
+/// the earlier state folder counts too when the update moves it into this one. Git answers which
+/// of the tracked paths each block ignores, as `user_rule_hits` asks it (a throw-away repository,
+/// `check-ignore --no-index`): the paths the narrow lines add to what the whole-folder block and
+/// the user's rules already ignore are the hidden ones. When git is missing the tracked paths
+/// cannot be listed, so the narrow lines stay off and the block is the whole-folder one (REQ-11).
+fn narrowing(
+    root: &Path,
+    state: &str,
+    user: &str,
+    (list_local, keep_earlier): (bool, bool),
+    allow: &[String],
+    skip_allow_back: Vec<&'static str>,
+    notes: &mut Vec<String>,
+) -> Result<Narrowing> {
+    let off = Narrowing {
+        on: false,
+        skip_allow_back: Vec::new(),
+        exact: Vec::new(),
+    };
+    let on = Narrowing {
+        on: true,
+        skip_allow_back,
+        exact: Vec::new(),
+    };
+    // The folders the narrow lines act on in this block (a user rule can have taken a `!` line).
+    let acts_on: Vec<String> = state_root::KEPT_NARROW
+        .iter()
+        .map(|(folder, _)| format!("{state}/{folder}/"))
+        .filter(|path| allow.contains(path))
+        .collect();
+    if acts_on.is_empty() {
+        return Ok(off);
+    }
+    let mut prefixes = vec![state.to_string()];
+    if state == state_root::MOAI_DIR {
+        prefixes.push(state_root::EARLIER_PROJECT_DIR.to_string());
+    }
+    let mut specs: Vec<String> = Vec::new();
+    for prefix in &prefixes {
+        for path in &acts_on {
+            specs.push(format!("{prefix}/{}", &path[state.len() + 1..]));
+        }
+    }
+    let mut args: Vec<&str> = vec!["ls-files", "-z", "--"];
+    args.extend(specs.iter().map(String::as_str));
+    let stdout = match git_output(root, &args, b"") {
+        Err(e) if e == GIT_UNAVAILABLE => {
+            note_git_missing(notes);
+            notes.push(
+                "the narrow lines for manifests/, workflows/ and decisions/ are left out: git is \
+                 not available to list the files it tracks there"
+                    .to_string(),
+            );
+            return Ok(off);
+        }
+        Err(e) => return Err(e),
+        Ok(out) if out.status.success() => out.stdout,
+        Ok(out)
+            if String::from_utf8_lossy(&out.stderr).contains(crate::identity::NOT_A_REPOSITORY) =>
+        {
+            return Ok(on);
+        }
+        Ok(out) => {
+            return Err(git_failure(
+                "which files git tracks in the folders the block narrows",
+                &out,
+            ))
+        }
+    };
+    // The tracked paths as they will stand in this state folder.
+    let mut candidates = std::collections::BTreeSet::new();
+    for path in stdout.split(|b| *b == 0).filter(|p| !p.is_empty()) {
+        let path = std::str::from_utf8(path).map_err(|_| {
+            format!("git tracks a name under {state}/ that is not UTF-8 text; rename it before the update")
+        })?;
+        let here = prefixes
+            .iter()
+            .find_map(|prefix| {
+                path.strip_prefix(prefix.as_str())
+                    .filter(|r| r.starts_with('/'))
+            })
+            .map(|rest| format!("{state}{rest}"));
+        candidates.insert(here.unwrap_or_else(|| path.to_string()));
+    }
+    if candidates.is_empty() {
+        return Ok(on);
+    }
+    let candidates: Vec<String> = candidates.into_iter().collect();
+    let ignored_by = |narrow: &Narrowing| -> Result<Vec<String>> {
+        let block = render_ignore(root, list_local, keep_earlier, allow, narrow);
+        let mut scratch: Vec<String> = Vec::new();
+        let hits = user_rule_hits(
+            root,
+            &format!("{user}\n{block}"),
+            &candidates,
+            &[],
+            &mut scratch,
+        )?;
+        Ok(hits.into_iter().map(|h| h.path).collect())
+    };
+    let whole = ignored_by(&off)?;
+    let narrow = ignored_by(&on)?;
+    let hidden: Vec<&String> = candidates
+        .iter()
+        .filter(|c| narrow.contains(*c) && !whole.contains(*c))
+        .collect();
+    if hidden.is_empty() {
+        return Ok(on);
+    }
+    let mut exact: Vec<String> = Vec::new();
+    for path in &hidden {
+        if escape_ignore_path(path).is_none() {
+            return Err(format!(
+                "git tracks {path}, a name a .gitignore line cannot hold (it has a line break); \
+                 rename it before the update"
+            ));
+        }
+        // The folders between the kept folder and the file: an ignored folder cannot hold a
+        // file that is allowed back, so each is allowed again first.
+        let kept_folder = acts_on
+            .iter()
+            .find(|folder| path.starts_with(folder.as_str()))
+            .map_or(0, |folder| folder.len());
+        for (at, _) in path.match_indices('/').filter(|(at, _)| *at >= kept_folder) {
+            let folder = format!("{}/", &path[..at]);
+            if at + 1 < path.len() && !exact.contains(&folder) {
+                exact.push(folder);
+            }
+        }
+        if !exact.contains(path) {
+            exact.push((*path).clone());
+        }
+    }
+    for path in hidden.iter().take(VISIBLE_NOTE_CAP) {
+        notes.push(format!("now hidden: {path}"));
+    }
+    if hidden.len() > VISIBLE_NOTE_CAP {
+        notes.push(format!(
+            "now hidden: and {} more files under {state}/",
+            hidden.len() - VISIBLE_NOTE_CAP
+        ));
+    }
+    Ok(Narrowing {
+        on: true,
+        skip_allow_back: on.skip_allow_back,
+        exact,
     })
 }
 

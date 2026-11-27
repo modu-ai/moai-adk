@@ -42,6 +42,11 @@ pub struct Plan {
     pub canonical_sha256: Option<String>,
     /// The sha256 of an existing `bin/moai`, if any.
     pub alias_sha256: Option<String>,
+    /// Earlier `moai-cli` names the plan found and leaves as they are: `bin/moai-cli` of this
+    /// version folder and a `moai-cli` in the link folder (`<state>/path/`), judged by their own
+    /// metadata. Listed so the reader knows what an earlier install left; never written or
+    /// removed (SPEC-20261127-installed-binary-name-moai REQ-8).
+    pub left_in_place: Vec<PathBuf>,
     pub plan_digest: String,
 }
 
@@ -59,9 +64,35 @@ impl Plan {
             "alias": text(&self.alias),
             "canonical_sha256": self.canonical_sha256,
             "alias_sha256": self.alias_sha256,
+            "left_in_place": self.left_in_place.iter().map(|p| p.to_string_lossy()).collect::<Vec<_>>(),
             "plan_digest": self.plan_digest,
         })
     }
+}
+
+/// The digest of a plan body, set last so it covers every field.
+fn seal(mut plan: Plan) -> Result<Plan> {
+    let mut body = plan.to_json();
+    body.as_object_mut().expect("object").remove("plan_digest");
+    plan.plan_digest = crate::digest(&serde_json::to_vec(&body).map_err(|_| "encode failed")?);
+    Ok(plan)
+}
+
+/// The `moai-cli` names an earlier install left, to be listed and never touched: `bin/moai-cli`
+/// of this version folder and `<state>/path/moai-cli` of the link folder. A name counts when it
+/// exists by its own metadata (a file, a link, even a dangling one).
+fn left_in_place_of(bin: &Path) -> Vec<PathBuf> {
+    let name = format!(
+        "{}{}",
+        crate::install::PRODUCT,
+        std::env::consts::EXE_SUFFIX
+    );
+    let mut found = vec![bin.join(&name)];
+    if let Some(state) = bin.parent().and_then(Path::parent).and_then(Path::parent) {
+        found.push(state.join("path").join(&name));
+    }
+    found.retain(|p| fs::symlink_metadata(p).is_ok());
+    found
 }
 
 fn finish(
@@ -72,19 +103,16 @@ fn finish(
     canonical_sha256: Option<String>,
     alias_sha256: Option<String>,
 ) -> Result<Plan> {
-    let mut plan = Plan {
+    seal(Plan {
         state,
         reason,
         canonical,
         alias,
         canonical_sha256,
         alias_sha256,
+        left_in_place: Vec::new(),
         plan_digest: String::new(),
-    };
-    let mut body = plan.to_json();
-    body.as_object_mut().expect("object").remove("plan_digest");
-    plan.plan_digest = crate::digest(&serde_json::to_vec(&body).map_err(|_| "encode failed")?);
-    Ok(plan)
+    })
 }
 
 /// The `versions` folder a binary's `bin/` folder sits in, when it sits exactly in the layout
@@ -143,6 +171,18 @@ fn is_this_build(first_line: Option<&str>) -> bool {
 /// Preview the two names for the executable `exe` (the running binary in the CLI). Reads
 /// only; an existing `bin/moai` that is not the same bytes is run once with `--version`.
 pub fn plan_for(home: &Path, exe: &Path) -> Result<Plan> {
+    let plan = plan_names(home, exe)?;
+    let Some(bin) = layout_bin(home, exe) else {
+        return Ok(plan);
+    };
+    seal(Plan {
+        left_in_place: left_in_place_of(&bin),
+        ..plan
+    })
+}
+
+/// The state of the two names, without the list of what an earlier install left.
+fn plan_names(home: &Path, exe: &Path) -> Result<Plan> {
     let Some(bin) = layout_bin(home, exe) else {
         return finish(
             "outside_layout",
@@ -162,6 +202,15 @@ pub fn plan_for(home: &Path, exe: &Path) -> Result<Plan> {
     let alias = bin.join(alias_name);
     let canonical_ok = fs::symlink_metadata(&canonical).is_ok_and(|m| m.file_type().is_file());
     if !canonical_ok {
+        // The shape of a new install: `bin/moai` is a regular file and there is no `bin/moai-cli`
+        // at all. Nothing to link and nothing to write (SPEC-20261127-installed-binary-name-moai
+        // REQ-5); a `moai-cli` that exists and is not a regular file is still blocked below.
+        if fs::symlink_metadata(&canonical).is_err()
+            && fs::symlink_metadata(&alias).is_ok_and(|m| m.file_type().is_file())
+        {
+            let sha = crate::install::sha256_file(&alias)?;
+            return finish("unchanged", None, None, Some(alias), None, Some(sha));
+        }
         if links_to_sibling(&canonical, &alias) {
             let sha = crate::install::sha256_file(&alias)?;
             return finish(

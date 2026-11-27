@@ -729,20 +729,56 @@ fn backup_area_keeps_a_plain_tree() {
 
 const AUDIT_HEAD: &str = "0123456789abcdef0123456789abcdef01234567";
 
-/// The audit clone plan of the project the child sees, with a repository address given so that
-/// no remote is read.
-fn audit_plan(seen: &Seen) -> Result<serde_json::Value, String> {
+/// The audit clone plan of `project` for the given HOME, with a repository address given so
+/// that no remote is read.
+fn audit_plan_for(
+    project: &Path,
+    tmp_root: &Path,
+    home: Option<&Path>,
+) -> Result<serde_json::Value, String> {
     moai_cli::audit_clone::plan(
-        &seen.project,
+        project,
         &moai_cli::audit_clone::Request {
             pr: 1,
             head: AUDIT_HEAD,
             head_branch: "feature",
             base_branch: "main",
             repo_url: Some("https://example.com/o/r.git"),
-            tmp_root: &seen.home,
+            tmp_root,
         },
+        home,
     )
+}
+
+/// The audit clone plan of the project the child sees, for the HOME it sees.
+fn audit_plan(seen: &Seen) -> Result<serde_json::Value, String> {
+    audit_plan_for(&seen.project, &seen.home, Some(&seen.home))
+}
+
+/// SPEC-20261124-identity-home-arg AC-17 (REQ-17, REQ-18): only the given HOME holds a
+/// symlinked state root; the environment HOME is sound.
+#[test]
+fn home_arg_rest_audit_plan_refuses_a_linked_given_home() {
+    let t = tree();
+    t.link_root();
+    assert_eq!(
+        audit_plan_for(&t.project, &t.home, Some(&t.home)),
+        Err(ROOT_REFUSED.to_string())
+    );
+}
+
+/// SPEC-20261124-identity-home-arg AC-17 (REQ-19): with no HOME a project that has a project id
+/// gets a null evidence folder and the reason, and the rest of the plan.
+#[test]
+fn home_arg_rest_audit_plan_without_a_home_is_home_unavailable() {
+    let t = tree();
+    let plan = audit_plan_for(&t.project, &t.home, None).unwrap();
+    assert!(plan["evidence_dir"].is_null(), "{plan}");
+    assert_eq!(
+        plan["evidence_reason"],
+        serde_json::json!("HOME unavailable")
+    );
+    assert_eq!(plan["head"], serde_json::json!(AUDIT_HEAD), "{plan}");
 }
 
 /// The plan succeeds, names no evidence folder and says why; nothing changed behind the link.
