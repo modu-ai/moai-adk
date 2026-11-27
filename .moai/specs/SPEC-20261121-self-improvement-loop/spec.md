@@ -220,3 +220,50 @@ Acceptance lines AC-1…AC-9 exist for REQ-1…REQ-11, the requirements of slice
 한 가림 단계만 빼는 뮤턴트(`redact_secret_shapes` 만 제거)는 `redact_outgoing` 이 같은 모양을 가려서 살아남아요. 두 단계가 겹치는 것이라 동작 차이가 없어서(같은 입력에 같은 출력) 테스트를 더하지 않았어요. 둘 다 빼면 위 네 번째 줄처럼 빨개져요.
 
 알려진 한계: 점검 실패의 종료 코드는 읽지 않아요(D8). 플레이키 횟수는 어림값이에요(D6, 출력에 표시). Windows 는 `not_run`(두 테스트 대상이 unix 전용이에요). `improve-note` 와 제안·평가·적용은 뒤 조각(S2~S4)이에요.
+
+### 조각 S2 (`improve-plan`, `improve-note`) 결과
+
+개정 2 의 REQ-26~REQ-36 과 AC-10~AC-18 을 구현한 결과예요. 이 브랜치(`spec/self-improvement-loop-20261121-r3`)에서 새로 구현했고 `tdd red` 가 `-plan` 접미사를 읽지 못해 브랜치 이름을 `-r3` 으로 바꿨어요.
+
+단계: RED 커밋 `1c6f2aee89`(`tests/improve_plan_cli.rs` 17개, `tests/improve_note_cli.rs` 8개, `moai tdd red` 기록), 이름 붙은 파이프 사례를 폴더 목록 비교로 바꾼 `6f747f2c71`(스냅샷이 파이프를 읽으며 멈춰서 `moai tdd reopen` 을 한 번 했고, 그래서 `moai tdd green` 은 기록하지 못했어요. GREEN 은 아래 verify 실행과 커밋 `ebc1a60288` 로 대신 보여요), 구현 `ebc1a60288`(`src/ops/improve_plan.rs`, `src/ops/improve_note.rs`, 운영 문서 둘, `src/help.rs` 행 둘과 예시, 도움말 골든 4개), 중복 링크 분기 정리 `dae647ddbb`(AC-18 뮤턴트 12 가 살아남아 고쳤어요), 스캔 표 등록 `7ca6cceb2f`(`tools/repo_scans.json` 줄 임대). verify 는 NeXT tip `d80ed2e7b6` 를 머지한 헤드 `cdbad671d0` 에서 적힌 그대로 슬롯 안에서 돌렸고, 그 뒤 바뀐 파일은 `tools/repo_scans.json` 하나예요.
+
+- AC-10: met — `cargo nextest run --locked --offline --test improve_plan_cli` 17개 통과(exit 0). `a_listed_project_skill_and_agent_are_planned_and_nothing_is_written`(매니페스트가 가진 프로젝트 스킬·에이전트는 계획되고 아무것도 쓰지 않아요), `a_target_the_manifest_does_not_own_as_a_project_file_is_refused_not_allowed`(목록에 없는 파일, 설치된 `moai` 스킬, `.claude/settings.json`, 훅 파일, `.mcp.json`, `CLAUDE.md`, `CLAUDE.local.md`, `..`, 절대 경로, 링크, 폴더, 다른 종류 섹션, 매니페스트 없음 모두 `not_allowed`), `a_target_in_a_test_or_the_evaluation_set_lists_both_reasons`(`tests/` 와 `improve/evals/` 아래 파일), `a_link_in_the_manifest_or_in_the_path_is_never_followed`(경로 중간의 링크).
+- AC-11: met — 같은 17개 중 `one_two_or_three_items_pass_and_zero_or_four_are_refused`, `an_item_needs_its_fields_in_their_limits`, `the_merge_adds_replaces_and_retires_by_id_inside_the_block_only`(블록 밖 바이트 그대로). `cargo nextest run --locked --offline --bin moai-cli improve_plan` 8개 통과(exit 0): `improve_plan_merge_keeps_every_byte_outside_the_block` 외.
+- AC-12: met — `the_line_budget_holds_at_n_and_refuses_at_n_plus_one_unless_one_trial_item_is_retired`(파일 종류별 줄 예산 N 통과, N+1 거절, `trial` 항목 하나를 은퇴시키면 통과), `the_description_budget_is_1024_characters`, 단위 `improve_plan_budgets_pass_at_n_and_refuse_at_n_plus_one`, `improve_plan_the_description_limit_is_1024_characters`. 예산: 스킬 500줄, 에이전트 파일 200줄, `description` 1,024자(32 KiB 예산은 두지 않았어요: leader 결정 노트 10802).
+- AC-13: met — `a_target_without_front_matter_with_a_name_and_a_description_is_refused`, `a_rule_that_names_a_missing_path_or_a_missing_command_is_drift`, `a_secret_shaped_word_in_an_item_is_refused_and_never_printed`, `every_failing_gate_is_listed_and_the_target_is_never_written`(실패한 게이트의 이유를 모두 나열하고 `TempHome::snapshot` 이 전후 같아요), `a_hand_edited_file_shows_conflict_and_a_generated_one_unchanged`. 결과에 `writes: false`. 시험 삭제·약화는 대상 경로로만 가려요(`test_weakening`).
+- AC-14: met — `the_same_input_gives_the_same_digest_in_any_folder_and_any_change_gives_another`(항목, 대상 바이트, 기준선이 각각 다른 digest 를 줘요), 단위 `improve_plan_the_digest_is_a_function_of_its_inputs_only`. 도메인 문자열 `improve-plan@1`.
+- AC-15: met — `cargo nextest run --locked --offline --test improve_note_cli` 8개 통과(exit 0): `a_note_is_one_d7_line_made_when_the_folder_and_file_are_absent`, `a_note_is_appended_after_the_earlier_ones_and_improve_signals_reads_it_as_its_class`(`improve-signals` 가 `<kind>:<key>` 부류로 읽어요), `a_file_that_does_not_end_with_a_newline_gets_one_before_the_new_line`, `the_kind_the_key_the_text_and_the_observer_are_held_to_their_limits`(80 통과 81 거절, 200 통과 201 거절), `an_append_that_would_take_the_file_over_one_mebibyte_is_refused`(한도에 딱 맞으면 통과), `a_secret_shaped_word_is_written_as_redacted_in_the_key_the_text_and_the_observer`.
+- AC-16: met — `a_link_or_a_special_file_on_the_way_is_refused_and_never_followed`: 실제 바이너리를 임시 프로젝트에서 돌려 `improve/` 링크, `improve/notes.jsonl` 링크와 이름 붙은 파이프, 상태 폴더 링크가 모두 거절되고 링크 대상과 그 밖의 파일이 그대로예요. 단위 `improve_note_a_link_and_a_pipe_are_refused_by_name` 외 5개(`cargo nextest run --locked --offline --bin moai-cli improve_note` 6개 통과).
+- AC-17: met — `cargo nextest run --locked --offline --bin moai-cli operations_doc_matches_code help_table_names_every_command_once every_command_has_examples` 3개 통과, `cargo nextest run --locked --offline --test help_layout` 11개 통과(골든 4개를 `MOAI_HELP_GOLDEN_WRITE=1` 로 머지된 트리에서 다시 만들었어요). `the_command_is_listed_in_the_help_and_has_an_example`, `the_command_is_listed_in_the_help_and_has_its_operations_document`.
+- AC-18: met — 뮤턴트 26개를 하나씩 걸고 이름 붙은 테스트를 슬롯에서 돌린 뒤 `git restore` 로 되돌렸고 마지막에 `git status --short` 가 비어 있어요. 아래 표에 요약했고 줄 단위 기록은 READY 노트에 있어요.
+
+| 뮤턴트 | 빨갛게 만든 테스트 | 종료 코드 |
+| --- | --- | --- |
+| 허용 목록의 소유 확인 제거 | `a_target_the_manifest_does_not_own_as_a_project_file_is_refused_not_allowed` | 101 |
+| `prj-*` 경로 모양 확인 제거 | `a_target_in_a_test_or_the_evaluation_set_lists_both_reasons` 외 둘 | 101 |
+| 시험 경로 게이트 제거 | `a_target_in_a_test_or_the_evaluation_set_lists_both_reasons` 외 하나 | 101 |
+| 항목 수 확인 제거 | `one_two_or_three_items_pass_and_zero_or_four_are_refused` 외 하나 | 101 |
+| 없는 경로를 `drift` 로 안 봄 | `a_rule_that_names_a_missing_path_or_a_missing_command_is_drift` | 101 |
+| 없는 `moai` 명령을 `drift` 로 안 봄 | `a_rule_that_names_a_missing_path_or_a_missing_command_is_drift` | 101 |
+| `secret` 게이트가 걸리지 않음 | `a_secret_shaped_word_in_an_item_is_refused_and_never_printed` 외 하나 | 101 |
+| `front_matter` 게이트 제거 | `a_target_without_front_matter_with_a_name_and_a_description_is_refused` 외 둘 | 101 |
+| 스킬 줄 예산 500 → 501 | 단위 `improve_plan_budgets_pass_at_n_and_refuse_at_n_plus_one` | 101 |
+| 에이전트 줄 예산 200 → 201 | `the_line_budget_holds_at_n_and_refuses_at_n_plus_one_unless_one_trial_item_is_retired` | 101 |
+| digest 입력에서 기준선 제거 | `the_same_input_gives_the_same_digest_in_any_folder_and_any_change_gives_another` | 101 |
+| 경로 중간 폴더가 링크여도 통과 | `a_link_in_the_manifest_or_in_the_path_is_never_followed` | 101 (첫 시도는 살아남아 exit 0 이었어요: 링크를 따로 거절하던 분기는 뒤의 "파일도 폴더도 아님" 검사가 같은 링크를 같은 이유로 거절해서 있으나 마나였어요. 그 분기를 지우는 커밋 `dae647ddbb` 뒤 다시 걸었을 때 101) |
+| 읽기 한도 확인 제거 | `a_target_over_the_read_limit_is_refused_by_the_size_budget` | 101 |
+| 은퇴 대상이 `trial` 인지 확인 제거 | `the_merge_adds_replaces_and_retires_by_id_inside_the_block_only` | 101 |
+| `description` 한도 1024 → 1025 | `the_description_budget_is_1024_characters` | 101 |
+| 항목 글 한도 200 → 201 | `an_item_needs_its_fields_in_their_limits` | 101 |
+| 기준선과 비교하지 않고 항상 `unchanged` | `a_hand_edited_file_shows_conflict_and_a_generated_one_unchanged` | 101 |
+| `improve-note` 상태 폴더 링크 거절 제거 | `a_link_or_a_special_file_on_the_way_is_refused_and_never_followed` | 101 |
+| 1 MiB 한도 `<=` → `<` | `an_append_that_would_take_the_file_over_one_mebibyte_is_refused` | 101 |
+| 개행 없는 파일 뒤 개행 삽입 제거 | `a_file_that_does_not_end_with_a_newline_gets_one_before_the_new_line` | 101 |
+| 비밀 가리기 제거 | `a_secret_shaped_word_is_written_as_redacted_in_the_key_the_text_and_the_observer` | 101 |
+| 제어 문자 거절 제거 | `the_kind_the_key_the_text_and_the_observer_are_held_to_their_limits` | 101 |
+| key 한도 80 → 81 | `the_kind_the_key_the_text_and_the_observer_are_held_to_their_limits` | 101 |
+| text 한도 200 → 201 | `the_kind_the_key_the_text_and_the_observer_are_held_to_their_limits` | 101 |
+| 폴더 링크 사전 거절 분기 끔 | `a_link_or_a_special_file_on_the_way_is_refused_and_never_followed` | 101 |
+| `O_NOFOLLOW` 제거 | 단위 `improve_note_a_link_and_a_pipe_are_refused_by_name` | 101 |
+
+알려진 한계와 알려 둘 것: 변이를 걸지 않은 테스트는 단순 성공 경로와 도움말·운영 문서 목록 테스트예요(가드가 아니에요). `improve-note` 의 `kind` 허용 목록과 `by` 한도는 같은 테스트(`the_kind_the_key_the_text_and_the_observer_are_held_to_their_limits`)가 지키지만 이 둘만 따로 변이를 걸지는 않았어요. 뮤턴트 9 는 통합 테스트 대상을 걸지 않고 단위 테스트로만 확인했어요. `source` 신호 id 는 모양(1~120자, 한 줄)만 검사하고 장부에 있는지는 보지 않아요. SPEC 개정 2 의 `generation-plan` 미리보기 말은 구현하지 않았고 매니페스트의 `owned_files` 로만 대상을 가려요(매니페스트가 정본이라서요). Windows·Linux 는 `not_run`(두 테스트 대상이 unix 전용이에요).
