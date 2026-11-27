@@ -1041,4 +1041,29 @@ mod tests {
         put(root, ".moai-backup/.update.lock", &"x".repeat(5000));
         assert!(survey(root, "rust").is_empty());
     }
+
+    /// REQ-7: a lock moves by one hard link, which works on one device only, so the verdict is a
+    /// real device compare. Two paths of one folder share a device (the backup area need not exist
+    /// yet), a missing item is never on the same one, and with the project root `/` the area is
+    /// `/` itself, which is another device than `/dev`.
+    #[cfg(unix)]
+    #[test]
+    fn same_filesystem_compares_the_device_of_the_item_and_of_the_backup_area() {
+        use std::os::unix::fs::MetadataExt;
+        let tmp = project();
+        let root = tmp.path();
+        put(root, "item.txt", "x");
+        assert!(same_filesystem(root, "item.txt"), "the area is not there");
+        fs::create_dir_all(root.join(state_root::MOAI_DIR).join("backups")).unwrap();
+        assert!(same_filesystem(root, "item.txt"), "the area is there");
+        assert!(!same_filesystem(root, "missing"));
+
+        let top = fs::symlink_metadata("/").unwrap();
+        let dev = fs::symlink_metadata("/dev").unwrap();
+        if top.dev() == dev.dev() {
+            // This machine has no second device at hand to tell apart; the case is not tested.
+            return;
+        }
+        assert!(!same_filesystem(Path::new("/"), "dev"));
+    }
 }

@@ -1385,3 +1385,136 @@ fn leftover_apply_moves_nothing_when_the_receipt_cannot_be_saved() {
     let done = run_printed(&fx, &argv);
     assert_eq!(done["ok"], json!(true), "{done}");
 }
+
+/// The `state` word of a leftovers receipt, read from the disk.
+fn receipt_state(fx: &GoFx, stamp: &str) -> String {
+    let receipt: Value = serde_json::from_slice(&fs::read(receipt_path(fx, stamp)).unwrap())
+        .expect("the receipt is JSON");
+    receipt["state"].as_str().unwrap_or_default().to_string()
+}
+
+/// AC-3, AC-5 (REQ-17, REQ-20): a revert never puts an item on a place that something else has
+/// taken. With a folder and a lock archived and each original place occupied again, the revert
+/// answers `ok` with the state `conflict` and the outcome `conflict` for both items (an error
+/// that stopped half way would be another answer), the new files and the archived copies stay
+/// byte for byte as they were and the receipt stays `committed`; once the places are free the
+/// same revert puts both back.
+#[test]
+fn leftover_revert_leaves_a_taken_place_and_the_archive_as_they_are() {
+    let fx = settled();
+    fx.write(&format!("{BACKUPS}note.txt"), "an earlier backup\n");
+    fx.write(&state_lock(), &lock_body());
+    let plan = fx.update_plan();
+    assert_steps_settled(&plan);
+    let paths = [BACKUPS.to_string(), state_lock()];
+    let done = run_printed(&fx, &apply_argv(&fx, &plan, &paths));
+    assert_eq!(done["ok"], json!(true), "{done}");
+    let stamp = receipt_of(&done);
+
+    // Something else has come to each original place since the apply.
+    let taken_folder_file = format!("{BACKUPS}new.txt");
+    fx.write(&taken_folder_file, "new folder content\n");
+    fx.write(&state_lock(), "a new lock\n");
+    let archive_before: Vec<BTreeMap<String, Seen>> = paths
+        .iter()
+        .map(|p| snapshot_of(&archived(&fx, &stamp, p)))
+        .collect();
+    let receipt_before = fs::read(receipt_path(&fx, &stamp)).unwrap();
+    let before = snapshot(&fx);
+
+    let back = fx.run(&revert_args(&fx, &stamp));
+    assert_eq!(back["ok"], json!(true), "{back}");
+    assert_eq!(back["result"]["state"], json!("conflict"), "{back}");
+    for p in &paths {
+        assert_eq!(outcome(&back["result"], p), "conflict", "{p}: {back}");
+    }
+    assert_unchanged(&fx, &before, "a taken place");
+    assert_eq!(
+        fs::read_to_string(fx.root.join(&taken_folder_file)).unwrap(),
+        "new folder content\n"
+    );
+    assert_eq!(
+        fs::read_to_string(fx.root.join(state_lock())).unwrap(),
+        "a new lock\n"
+    );
+    for (p, snap) in paths.iter().zip(&archive_before) {
+        assert_eq!(&snapshot_of(&archived(&fx, &stamp, p)), snap, "{p}");
+    }
+    assert_eq!(receipt_state(&fx, &stamp), "committed");
+    assert_eq!(
+        fs::read(receipt_path(&fx, &stamp)).unwrap(),
+        receipt_before,
+        "the receipt is not rewritten"
+    );
+
+    // Control: with the places free again the same revert puts both items back.
+    fs::remove_file(fx.root.join(&taken_folder_file)).unwrap();
+    fs::remove_dir(fx.root.join(rel_of(BACKUPS))).unwrap();
+    fs::remove_file(fx.root.join(state_lock())).unwrap();
+    let again = fx.run(&revert_args(&fx, &stamp));
+    assert_eq!(again["ok"], json!(true), "{again}");
+    assert_eq!(again["result"]["state"], json!("reverted"), "{again}");
+    for p in &paths {
+        assert_eq!(outcome(&again["result"], p), "restored", "{p}: {again}");
+    }
+    assert_eq!(receipt_state(&fx, &stamp), "reverted");
+}
+
+/// AC-3, AC-5 (REQ-17, REQ-20): a revert puts a folder back only while its archived top-level
+/// listing is the receipt's digest. After an entry is added to the archived folder, or one of its
+/// files changes size, the revert answers `ok` with the state `conflict` and the outcome
+/// `conflict` (the second look inside the move would end in an error, which is another answer),
+/// the original place stays empty, the archive is untouched and the receipt stays `committed`;
+/// with the archive as recorded the same revert puts the folder back.
+#[test]
+fn leftover_revert_refuses_an_archive_that_differs_from_the_receipt() {
+    let fx = settled();
+    let note = "an earlier backup\n";
+    fx.write(&format!("{BACKUPS}note.txt"), note);
+    let plan = fx.update_plan();
+    assert_steps_settled(&plan);
+    let done = run_printed(&fx, &apply_argv(&fx, &plan, &[BACKUPS.to_string()]));
+    assert_eq!(done["ok"], json!(true), "{done}");
+    let stamp = receipt_of(&done);
+    let archive = archived(&fx, &stamp, BACKUPS);
+    let original = fx.root.join(rel_of(BACKUPS));
+
+    // The archive is tampered with, then one revert: nothing may move, whatever the tamper.
+    let refused_revert = |what: &str| {
+        let archive_before = snapshot_of(&archive);
+        let before = snapshot(&fx);
+        let back = fx.run(&revert_args(&fx, &stamp));
+        assert_eq!(back["ok"], json!(true), "{what}: {back}");
+        assert_eq!(back["result"]["state"], json!("conflict"), "{what}: {back}");
+        assert_eq!(
+            outcome(&back["result"], BACKUPS),
+            "conflict",
+            "{what}: {back}"
+        );
+        assert!(
+            fs::symlink_metadata(&original).is_err(),
+            "{what}: the original place is not empty"
+        );
+        assert_eq!(snapshot_of(&archive), archive_before, "{what}");
+        assert_unchanged(&fx, &before, what);
+        assert_eq!(receipt_state(&fx, &stamp), "committed", "{what}");
+    };
+
+    // A new top-level entry.
+    fs::write(archive.join("added.txt"), "added").unwrap();
+    refused_revert("an added entry");
+    fs::remove_file(archive.join("added.txt")).unwrap();
+
+    // Another size of a top-level file.
+    fs::write(archive.join("note.txt"), format!("{note}and more\n")).unwrap();
+    refused_revert("another file size");
+    fs::write(archive.join("note.txt"), note).unwrap();
+
+    // Control: the archive as recorded goes back.
+    let back = fx.run(&revert_args(&fx, &stamp));
+    assert_eq!(back["ok"], json!(true), "{back}");
+    assert_eq!(back["result"]["state"], json!("reverted"), "{back}");
+    assert_eq!(outcome(&back["result"], BACKUPS), "restored", "{back}");
+    assert_eq!(fs::read_to_string(original.join("note.txt")).unwrap(), note);
+    assert_eq!(receipt_state(&fx, &stamp), "reverted");
+}

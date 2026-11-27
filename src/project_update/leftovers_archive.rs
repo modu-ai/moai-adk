@@ -800,4 +800,127 @@ mod tests {
         assert_eq!(fs::read(root.join("moved/a.txt")).unwrap(), b"a");
         assert!(fs::symlink_metadata(&from).is_err());
     }
+
+    /// A project folder and a folder beside it that a link can point to; both are inside one
+    /// temporary folder, so a move that wrongly follows a link still stays inside it.
+    #[cfg(unix)]
+    fn project_and_outside() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+        let (tmp, base) = project();
+        let root = base.join("project");
+        let outside = base.join("outside");
+        fs::create_dir_all(&root).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        (tmp, root, outside)
+    }
+
+    /// REQ-13, REQ-20: the look right before a write or a move refuses an item whose path passes
+    /// through a link. The item is built by hand, as `apply` never builds one: its folder is
+    /// reached through a linked parent, so neither `listing_digest` (it only reads the last
+    /// component with `lstat`) nor the rename refuses it, and its digest is the real one. Only the
+    /// path guard stops it, and nothing is written or moved.
+    #[cfg(unix)]
+    #[test]
+    fn an_item_behind_a_link_is_refused_by_the_look_before_a_move() {
+        let (_tmp, root, outside) = project_and_outside();
+        fs::create_dir_all(outside.join("sub")).unwrap();
+        fs::write(outside.join("sub/a.txt"), "outside").unwrap();
+        std::os::unix::fs::symlink(&outside, root.join("via")).unwrap();
+        let item = Item {
+            path: "via/sub/".into(),
+            kind: Kind::Backups,
+            fact: String::new(),
+            sha256: Some(leftovers::listing_digest(&outside.join("sub")).unwrap()),
+            archive: Ok(()),
+        };
+        // The precondition: nothing but the path guard tells this item from a real one.
+        assert_eq!(
+            leftovers::listing_digest(&root.join("via/sub")).ok(),
+            item.sha256
+        );
+
+        let err = still_as_planned(&root, &item).unwrap_err();
+        assert!(err.contains("passes through a link"), "{err}");
+        let err = apply_items(&root, STAMP, std::slice::from_ref(&item), "d", "ref").unwrap_err();
+        assert!(err.contains("passes through a link"), "{err}");
+        assert!(
+            fs::symlink_metadata(root.join(MOAI_DIR)).is_err(),
+            "nothing was written: {err}"
+        );
+        assert_eq!(fs::read(outside.join("sub/a.txt")).unwrap(), b"outside");
+        assert!(root.join("via/sub").is_dir(), "the folder was not moved");
+    }
+
+    /// REQ-13, REQ-20: the place an item would take in the archive is guarded too. With the state
+    /// folder a link to another folder, the archive place of an ordinary item passes through it:
+    /// the apply refuses before the receipt is saved or anything is moved; with the link gone the
+    /// same item passes the same checks.
+    #[cfg(unix)]
+    #[test]
+    fn an_archive_place_behind_a_link_is_refused_before_the_receipt_is_saved() {
+        let (_tmp, root, outside) = project_and_outside();
+        let folder = root.join("sub");
+        fs::create_dir_all(&folder).unwrap();
+        fs::write(folder.join("a.txt"), "a").unwrap();
+        std::os::unix::fs::symlink(&outside, root.join(MOAI_DIR)).unwrap();
+        let item = Item {
+            path: "sub/".into(),
+            kind: Kind::Backups,
+            fact: String::new(),
+            sha256: Some(leftovers::listing_digest(&folder).unwrap()),
+            archive: Ok(()),
+        };
+
+        let err = preflight(&root, STAMP, std::slice::from_ref(&item)).unwrap_err();
+        assert!(err.contains("backup place"), "{err}");
+        let err = apply_items(&root, STAMP, std::slice::from_ref(&item), "d", "ref").unwrap_err();
+        assert!(err.contains("backup place"), "{err}");
+        assert_eq!(fs::read(folder.join("a.txt")).unwrap(), b"a");
+        assert_eq!(
+            fs::read_dir(&outside).unwrap().count(),
+            0,
+            "nothing was written"
+        );
+
+        fs::remove_file(root.join(MOAI_DIR)).unwrap();
+        preflight(&root, STAMP, std::slice::from_ref(&item)).unwrap();
+    }
+
+    /// REQ-13, REQ-20: `apply` refuses a named item that is a link, or behind one, with that
+    /// reason and before it reads the plan: the digest is the fresh plan's, so no stale-plan
+    /// answer comes first, and the refusal is the path guard's own sentence, not the survey's
+    /// ("not listed" or "cannot be archived").
+    #[cfg(unix)]
+    #[test]
+    fn apply_names_a_pick_behind_a_link_as_such() {
+        let (_tmp, root, outside) = project_and_outside();
+        let body =
+            json!({"pid": dead_pid(), "started_at": "2026-11-01T00:00:00Z", "hostname": "h"})
+                .to_string();
+        fs::write(outside.join(".update.lock"), &body).unwrap();
+        fs::write(outside.join("note.txt"), "outside").unwrap();
+        std::os::unix::fs::symlink(&outside, root.join(leftovers::GO_BACKUPS)).unwrap();
+        std::os::unix::fs::symlink(&outside, root.join(state_root::GO_BACKUP)).unwrap();
+        let generation = state_root::classify(&root).generation;
+        let digest = leftovers::plan_digest(&leftovers::survey(&root, generation));
+
+        for pick in [
+            format!("{}/", leftovers::GO_BACKUPS),
+            format!("{}/.update.lock", state_root::GO_BACKUP),
+        ] {
+            let err = apply(&root, &digest, "ref", std::slice::from_ref(&pick)).unwrap_err();
+            assert!(
+                err.contains(&format!("{pick} passes through a link")),
+                "{pick}: {err}"
+            );
+        }
+        assert!(
+            fs::symlink_metadata(root.join(MOAI_DIR)).is_err(),
+            "nothing was written"
+        );
+        assert_eq!(
+            fs::read(outside.join(".update.lock")).unwrap(),
+            body.as_bytes()
+        );
+        assert_eq!(fs::read(outside.join("note.txt")).unwrap(), b"outside");
+    }
 }
