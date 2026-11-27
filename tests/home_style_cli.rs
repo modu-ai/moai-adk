@@ -793,6 +793,10 @@ fn a_blocked_second_folder_names_the_way_out_without_internal_words() {
         );
         assert!(d.contains("next:"), "{d}");
         assert!(
+            d.contains("this HOME is still set up by an earlier moai"),
+            "says the block belongs to this HOME's earlier setup: {d}"
+        );
+        assert!(
             d.contains("env -u CLAUDE_CONFIG_DIR moai update"),
             "the way out without the variable: {d}"
         );
