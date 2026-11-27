@@ -21,6 +21,8 @@ mod common;
 mod go_project_real_run;
 
 use go_project_real_run::{step_in, GoFx, Node, REF};
+use moai_cli::project_update::PERMISSION_PLACEHOLDER;
+use moai_cli::state_root::{EARLIER_PROJECT_DIR, GO_BACKUP, MOAI_DIR};
 use moai_cli::status_line::RUST_HELP_LINE;
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
@@ -161,6 +163,9 @@ struct Walk {
     order: Vec<String>,
     /// What each executed step printed, in the same order.
     applied: Vec<(String, Value)>,
+    /// The leftovers the loop answered with their printed `keep` command, in order (never part
+    /// of `order`: a leftover is no step).
+    kept: Vec<String>,
     /// The plan that ended the loop.
     last: Value,
 }
@@ -194,16 +199,59 @@ fn open_steps(plan: &Value) -> Vec<(String, String)> {
         .collect()
 }
 
-/// The loop of the UPDATE flow. Every command is the printed one, and must succeed.
+/// The open leftovers of a plan: the entries that print a `keep` command and are not kept yet, as
+/// `(path, argv)`. An entry without a `keep` (a `CLAUDE.md` fact) is no question.
+fn open_leftovers(plan: &Value) -> Vec<(String, Vec<String>)> {
+    plan["leftovers"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|l| l["kept"] != json!(true))
+        .filter_map(|l| {
+            let argv = l["keep"]
+                .as_array()?
+                .iter()
+                .map(|w| w.as_str().map(String::from))
+                .collect::<Option<Vec<_>>>()?;
+            Some((l["path"].as_str()?.to_string(), argv))
+        })
+        .collect()
+}
+
+/// Runs a printed command as printed, the permission placeholder filled; returns the envelope.
+fn run_printed_argv(fx: &GoFx, argv: &[String]) -> Value {
+    assert_eq!(argv[0], "moai", "{argv:?}");
+    let args: Vec<&str> = argv[1..]
+        .iter()
+        .map(|w| {
+            if w == PERMISSION_PLACEHOLDER {
+                REF
+            } else {
+                w.as_str()
+            }
+        })
+        .collect();
+    fx.run(&args)
+}
+
+/// The loop of the UPDATE flow. Every command is the printed one, and must succeed. A leftover
+/// that is still open when no step prints a command is answered with its printed `keep` command.
 fn walk(fx: &GoFx) -> Walk {
+    walk_with(fx, true)
+}
+
+/// [`walk`], with the leftovers answered only when `answer_leftovers` says so.
+fn walk_with(fx: &GoFx, answer_leftovers: bool) -> Walk {
     let mut order = Vec::new();
     let mut applied = Vec::new();
+    let mut kept = Vec::new();
     for _ in 0..MAX_STEPS {
         let plan = fx.update_plan();
         if plan["all_unchanged"] == json!(true) {
             return Walk {
                 order,
                 applied,
+                kept,
                 last: plan,
             };
         }
@@ -212,11 +260,23 @@ fn walk(fx: &GoFx) -> Walk {
             .find(|s| s["apply"].is_object())
             .cloned()
         else {
-            return Walk {
-                order,
-                applied,
-                last: plan,
+            let open = if answer_leftovers {
+                open_leftovers(&plan)
+            } else {
+                Vec::new()
             };
+            let Some((path, argv)) = open.into_iter().next() else {
+                return Walk {
+                    order,
+                    applied,
+                    kept,
+                    last: plan,
+                };
+            };
+            let out = run_printed_argv(fx, &argv);
+            assert_eq!(out["ok"], json!(true), "keep {path}: {out}");
+            kept.push(path);
+            continue;
         };
         let name = step["step"].as_str().unwrap().to_string();
         let out = fx.apply_step(&step);
@@ -301,6 +361,8 @@ fn assert_walks_to_the_end(fx: &GoFx, expected: &[&str]) -> Walk {
     assert_eq!(w.order, expected, "{:?}", open_steps(&w.last));
     assert_eq!(w.last["all_unchanged"], json!(true), "{}", w.last);
     assert!(open_steps(&w.last).is_empty(), "{}", w.last);
+    // Every leftover that asks was answered with its printed keep command.
+    assert!(open_leftovers(&w.last).is_empty(), "{}", w.last);
     // The Rust marker is the last thing a migration writes: this generation owns `.moai/` now.
     let state = &w.last["state_root"];
     assert_eq!(state["generation"], json!("rust"), "{state}");
@@ -310,6 +372,7 @@ fn assert_walks_to_the_end(fx: &GoFx, expected: &[&str]) -> Walk {
     // Done is done: a second loop executes nothing and still reads `all_unchanged`.
     let again = walk(fx);
     assert!(again.order.is_empty(), "{:?}", again.order);
+    assert!(again.kept.is_empty(), "{:?}", again.kept);
     assert_eq!(again.last["all_unchanged"], json!(true), "{}", again.last);
     w
 }
@@ -360,6 +423,16 @@ fn shape_g_reaches_all_unchanged() {
     assert!(fact.contains("empty folder"), "{fact}");
     assert!(fx.root.join(".moai-cli").is_dir());
     assert!(fx.root.join(".moai-backup/manifest.json").is_file());
+    // The end is reached by the user's answer to the one open leftover: its printed keep command
+    // ran, and the plan reads the item as kept.
+    let earlier = format!("{EARLIER_PROJECT_DIR}/");
+    assert_eq!(w.kept, [earlier.as_str()], "{}", w.last);
+    assert_eq!(
+        leftover(&w.last, &earlier)["kept"],
+        json!(true),
+        "{}",
+        w.last
+    );
     assert!(
         fx.root.join(".moai/plans/a.md").is_file(),
         "the plans were moved, not deleted"
@@ -425,12 +498,180 @@ fn shape_e_reaches_all_unchanged() {
     );
 
     let w = assert_walks_to_the_end(&fx, &ORDER);
-    // The lock went into the Go backup with the folder; nothing deleted it. The earlier receipt
-    // folder of the first half move is still in the earlier state folder.
+    // The lock went into the Go backup with the folder; nothing deleted it, and it is a leftover
+    // of its own there (a second one beside the earlier state folder), answered with its printed
+    // keep command like the folder. The earlier receipt folder of the first half move is still in
+    // the earlier state folder.
     assert!(fx.root.join(".moai-backup/.update.lock").is_file());
-    assert_eq!(leftover_paths(&w.last), [".moai-cli/"], "{}", w.last);
-    let fact = leftover(&w.last, ".moai-cli/")["fact"].as_str().unwrap();
+    let earlier = format!("{EARLIER_PROJECT_DIR}/");
+    let both = [earlier.as_str(), ".moai-backup/.update.lock"];
+    assert_eq!(leftover_paths(&w.last), both, "{}", w.last);
+    assert_eq!(w.kept, both, "{}", w.last);
+    let fact = leftover(&w.last, &earlier)["fact"].as_str().unwrap();
     assert!(fact.contains("still holds 1 entries (backups)"), "{fact}");
+    let fact = leftover(&w.last, ".moai-backup/.update.lock")["fact"]
+        .as_str()
+        .unwrap();
+    assert!(fact.contains("not running"), "{fact}");
+}
+
+/// The step names of the printed undo order, first row first.
+fn undo_rows(plan: &Value) -> Vec<&str> {
+    plan["undo_order"]["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["step"].as_str().unwrap())
+        .collect()
+}
+
+/// One printed command of the undo order, run as printed: every placeholder of `fills` replaced,
+/// the digest of the plan that came just before it put in, no placeholder left, the first word
+/// (`moai`) dropped. A plan's digest is kept for the command after it.
+fn run_undo_line(fx: &GoFx, line: &str, fills: &[(&str, String)], digest: &mut String) -> Value {
+    let mut line = line.to_string();
+    for (placeholder, value) in fills {
+        line = line.replace(placeholder, value);
+    }
+    line = line.replace("<digest of that plan>", digest);
+    assert!(!line.contains('<'), "a placeholder is left: {line}");
+    let args: Vec<&str> = line.split_whitespace().skip(1).collect();
+    let out = fx.run(&args);
+    if let Some(d) = out["result"]["plan_digest"].as_str() {
+        *digest = d.to_string();
+    }
+    out
+}
+
+/// AC-16 (REQ-7, REQ-22): the Go update lock the go-state step carried into the Go backup folder
+/// is archived by its printed action; the printed undo order then begins with the leftovers
+/// revert, because `go-state-revert` refuses (nothing written) while the lock is missing from
+/// the backup folder, and works after the leftovers revert.
+#[test]
+fn shape_e_backup_lock_needs_the_leftovers_revert_first() {
+    let (fx, _pid) = shape_e();
+    let state_lock = format!("{MOAI_DIR}/.update.lock");
+    let backup_lock = format!("{GO_BACKUP}/.update.lock");
+    let original = fs::read(fx.root.join(&state_lock)).unwrap();
+    // The steps run (no leftover is answered); the lock is inside the Go backup folder now.
+    let w = walk_with(&fx, false);
+    assert_eq!(w.order, ORDER, "{:?}", open_steps(&w.last));
+    assert_eq!(fs::read(fx.root.join(&backup_lock)).unwrap(), original);
+    let plan = fx.update_plan();
+    assert!(
+        !undo_rows(&plan).contains(&"leftovers"),
+        "no archive yet, no leftovers row: {}",
+        plan["undo_order"]
+    );
+    let archive = plan["leftovers"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|l| l["path"] == backup_lock.as_str())
+        .and_then(|l| l["action"].as_array())
+        .and_then(|a| {
+            a.iter()
+                .map(|w| w.as_str().map(String::from))
+                .collect::<Option<Vec<_>>>()
+        });
+    assert!(
+        archive.is_some(),
+        "the lock in the Go backup folder is listed with an action: {}",
+        plan["leftovers"]
+    );
+
+    // Archive it: the lock leaves the backup folder, and the undo order starts with its revert.
+    let archived = run_printed_argv(&fx, &archive.unwrap());
+    assert_eq!(archived["ok"], json!(true), "{archived}");
+    let receipt = archived["result"]["receipt"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    assert!(!receipt.is_empty(), "{archived}");
+    assert!(!fx.root.join(&backup_lock).exists(), "{archived}");
+    let after = fx.update_plan();
+    // The printed order always lists the go-residue revert between the move of the Go folder and
+    // the generation step, as in `the_printed_undo_order_takes_the_chain_back_to_the_start_bytes`.
+    let mut forward = ORDER.to_vec();
+    forward.insert(2, "go-residue");
+    let mut expected = vec!["leftovers"];
+    expected.extend(forward.iter().rev());
+    assert_eq!(undo_rows(&after), expected, "{}", after["undo_order"]);
+
+    let id = |step: &str, key: &str| applied(&w, step)[key].as_str().unwrap().to_string();
+    let fills = [
+        ("<receipt of the hooks step>", id("hooks", "receipt")),
+        (
+            "<agents_receipt of the project harness step>",
+            id("generation", "agents_receipt"),
+        ),
+        (
+            "<receipt of the project harness step>",
+            id("generation", "receipt"),
+        ),
+        ("<backup of the go-state step>", id("go-state", "backup")),
+        ("<receipt of the leftovers step>", receipt),
+        ("<reference>", REF.to_string()),
+        ("<PROJECT>", fx.p().to_string()),
+    ];
+    let rows = after["undo_order"]["steps"].as_array().unwrap();
+    let commands = |step: &str| -> Vec<String> {
+        rows.iter().find(|s| s["step"] == step).unwrap()["commands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c.as_str().unwrap().to_string())
+            .collect()
+    };
+    let mut digest = String::new();
+    // The rows before the go-state revert that do not depend on the lock. No go-residue apply ran
+    // (its two hook scripts are in use and stay), so its printed revert has no receipt to name.
+    for name in ["hooks", "generation"] {
+        for cmd in commands(name) {
+            let out = run_undo_line(&fx, &cmd, &fills, &mut digest);
+            assert_eq!(out["ok"], json!(true), "{name}: {cmd}: {out}");
+        }
+    }
+    // The go-state revert reads the backup folder's digest: without the lock it refuses, and a
+    // refusal writes nothing.
+    let go = commands("go-state");
+    assert_eq!(go.len(), 2, "{go:?}");
+    let planned = run_undo_line(&fx, &go[0], &fills, &mut digest);
+    assert_eq!(planned["ok"], json!(true), "{planned}");
+    let before = project_nodes(&fx);
+    let refused = run_undo_line(&fx, &go[1], &fills, &mut digest);
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    assert_eq!(
+        project_nodes(&fx),
+        before,
+        "a refused revert writes nothing"
+    );
+    // The refusal changed nothing, so the printed order still starts with the leftovers revert.
+    let still = fx.update_plan();
+    assert_eq!(
+        undo_rows(&still).first(),
+        Some(&"leftovers"),
+        "{}",
+        still["undo_order"]
+    );
+    let first_row = commands("leftovers");
+    assert_eq!(first_row.len(), 1, "{first_row:?}");
+    assert!(
+        first_row[0].contains("project-update-leftovers-revert")
+            && first_row[0].contains("<receipt of the leftovers step>"),
+        "{first_row:?}"
+    );
+    // The leftovers revert puts the lock back byte for byte, and the go-state revert then works.
+    for cmd in commands("leftovers") {
+        let out = run_undo_line(&fx, &cmd, &fills, &mut digest);
+        assert_eq!(out["ok"], json!(true), "{cmd}: {out}");
+    }
+    assert_eq!(fs::read(fx.root.join(&backup_lock)).unwrap(), original);
+    let planned = run_undo_line(&fx, &go[0], &fills, &mut digest);
+    assert_eq!(planned["ok"], json!(true), "{planned}");
+    let reverted = run_undo_line(&fx, &go[1], &fills, &mut digest);
+    assert_eq!(reverted["ok"], json!(true), "{reverted}");
+    assert_eq!(fs::read(fx.root.join(&state_lock)).unwrap(), original);
 }
 
 // ---- the local settings file ----
@@ -532,10 +773,16 @@ fn project_nodes(fx: &GoFx) -> BTreeMap<String, Node> {
         .collect()
 }
 
+/// The one record the walk's answer to the open earlier-state-folder leftover writes (its printed
+/// keep command); an undo does not take it away. Named exactly, never as a wildcard.
+fn kept_record() -> String {
+    format!("{EARLIER_PROJECT_DIR}/manifests/update-declined.json")
+}
+
 /// What the chain adds and an undo does not take away: the receipts, the set-aside folder of the
-/// Rust state.
+/// Rust state, and the one record of the kept earlier state folder.
 fn may_stay_behind(rel: &str) -> bool {
-    rel.starts_with(".moai-cli/receipts") || rel.starts_with(".moai.rust-")
+    rel.starts_with(".moai-cli/receipts") || rel.starts_with(".moai.rust-") || rel == kept_record()
 }
 
 fn applied<'a>(w: &'a Walk, step: &str) -> &'a Value {

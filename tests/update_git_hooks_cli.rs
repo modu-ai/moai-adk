@@ -817,3 +817,103 @@ fn update_notice_names_a_stale_record() {
     let from_linked = env.preview(&linked);
     assert!(repoint_notices(&from_linked).is_empty(), "{from_linked}");
 }
+
+// --- a stale record in a linked worktree (SPEC-20261127-guard-repoint-followups) -------------
+
+/// A Go-generation `pre-commit` hook (with its hash file) in the hooks folder `hooks`, which is
+/// created when it is missing: the hooks folder of a linked worktree is its own git folder's.
+fn put_go_hook_in(hooks: &Path) {
+    fs::create_dir_all(hooks).expect("hooks folder");
+    let path = hooks.join("pre-commit");
+    fs::write(&path, GO_PRE_COMMIT).expect("write hook");
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).expect("chmod");
+    fs::write(
+        hooks.join(".moai-pre-commit.sha256"),
+        format!("{}  pre-commit\n", sha_hex(GO_PRE_COMMIT.as_bytes())),
+    )
+    .expect("write hash file");
+}
+
+/// SPEC-20261127-guard-repoint-followups AC-5 (REQ-5), the linked-worktree half of
+/// `update_offers_the_guard_hook_not_for_a_stale_record`: in a linked worktree whose guard record
+/// (in the common git folder) names another ref than the integration branch of the linked
+/// worktree's own profile, `moai update` withholds the guard hook from the plan and from the
+/// confirmed apply, the plan token is the one the apply accepts, the record is not rewritten and
+/// the preview adds no notice there. With a current record the same linked worktree is offered
+/// the hook, so the withholding follows the record and not the worktree kind.
+#[test]
+fn update_offers_the_guard_hook_not_for_a_stale_record_in_a_linked_worktree() {
+    let (dir, root) = make_repo();
+    write_guard_profile(&root, Some("NeXT"));
+    write_guard_record(&root, CURRENT_RECORD);
+    // One commit first, so the linked worktree below has a HEAD.
+    common::git::git_ok(
+        &root,
+        &[
+            "-c",
+            "user.name=fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "--allow-empty",
+            "-q",
+            "-m",
+            "init",
+        ],
+    );
+    let linked = dir.path().join("linked");
+    common::git::git_ok(
+        &root,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "--detach",
+            linked.to_str().unwrap(),
+        ],
+    );
+    write_guard_profile(&linked, Some("NeXT"));
+    let linked_git = root.join(".git").join("worktrees").join("linked");
+    assert!(linked_git.is_dir(), "the linked worktree's own git folder");
+    let env = GuardUpdate::new();
+    // The direction that stays open: a current record offers the guard hook in the linked worktree.
+    let current = env.preview(&linked);
+    assert_eq!(installs(&current), [GUARD_HOOK], "{current}");
+    // The record goes stale: the linked worktree's profile names `NeXT`, the record names `main`.
+    write_guard_record(&root, STALE_RECORD);
+    let preview = env.preview(&linked);
+    assert!(
+        preview["result"]["git_hooks"].is_null(),
+        "a stale record offers nothing to install in a linked worktree: {preview}"
+    );
+    assert!(
+        repoint_notices(&preview).is_empty(),
+        "a linked worktree still adds no notice: {preview}"
+    );
+    // Beside a retiring Go hook of the linked worktree the plan offers the other two names and
+    // not the guard hook, and the apply accepts the plan's token.
+    put_go_hook_in(&linked_git.join("hooks"));
+    let preview = env.preview(&linked);
+    assert_eq!(installs(&preview), ["pre-commit", "pre-push"], "{preview}");
+    let token = token_of(&preview);
+    let applied = env.run(
+        &linked,
+        &["update", "--json", "--confirm-git-hooks", &token],
+    );
+    assert_eq!(applied["ok"], true, "the plan token is accepted: {applied}");
+    let result = &applied["result"]["git_hooks_result"];
+    assert_eq!(result["state"], "applied", "{applied}");
+    assert!(
+        !linked_git.join("hooks").join(GUARD_HOOK).exists(),
+        "the guard hook is withheld from the linked worktree while the record is stale"
+    );
+    assert!(
+        !hooks_dir(&root).join(GUARD_HOOK).exists(),
+        "and nothing is installed into the primary worktree's hooks either"
+    );
+    assert_eq!(
+        fs::read_to_string(guard_record(&root)).expect("record"),
+        STALE_RECORD,
+        "the update never rewrites the record"
+    );
+}

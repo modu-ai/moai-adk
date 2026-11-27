@@ -26,6 +26,10 @@ use std::{fs, path::Path};
 /// The choice steps the user declined (SPEC-20261125-update-declined-steps).
 pub mod declined;
 pub mod guide;
+/// What earlier generations leave behind, each with an archive action or a keep reason.
+pub mod leftovers;
+/// The archive apply of the leftovers and its revert.
+pub mod leftovers_archive;
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -2118,130 +2122,38 @@ fn agents_local_merge_step(root: &Path, shown: &str) -> Result<Step> {
     })
 }
 
-/// What every leftover says it is not (#2936 L2b).
-const LEFTOVER_NOTE: &str = "not removed by update";
-/// The Go tool's update lock, relative to the project.
-const GO_UPDATE_LOCK: &str = ".moai/.update.lock";
-/// A lock file is a few lines of JSON; this only refuses absurd inputs.
-const LOCK_LIMIT: u64 = 4096;
-/// How many entry names the `.moai-cli/` fact lists.
-const LEFTOVER_NAMES: usize = 8;
-
-fn leftover(path: &str, fact: String) -> Value {
-    json!({"path": path, "fact": fact, "note": LEFTOVER_NOTE})
-}
-
-/// #2936 L2b (completion condition 3 of the Issue): what earlier generations leave behind that no
-/// step of this update removes, as facts (path, one line, and that the update does not remove
-/// it). Read only, no deletion offered: the user decides. A fact needs its proof:
-///
-/// - `.moai-cli/`: a real folder while the state already lives in `.moai/` (state_root `rust`).
-///   Before that it is the live state folder (or moves with the go-state step) and is no leftover.
-/// - `CLAUDE.md`: a regular file with Go proof (the Go manifest records it, or it holds a Go
-///   curator block) and no managed section of this generation, while the Go `.moai/` folder is
-///   not there for the go-state step to move it with.
-/// - `.moai/.update.lock`: the Go tool's lock file whose recorded process is not running
-///   (`kill -0`; a process that cannot be judged, or a lock that cannot be read, is not stated).
-fn leftovers(root: &Path, generation: &str) -> Vec<Value> {
-    let mut out = Vec::new();
-    if generation == "rust" {
-        if let Ok(m) = fs::symlink_metadata(root.join(state_root::EARLIER_PROJECT_DIR)) {
-            if m.is_dir() {
-                let mut names: Vec<String> =
-                    fs::read_dir(root.join(state_root::EARLIER_PROJECT_DIR))
-                        .map(|rd| {
-                            rd.flatten()
-                                .map(|e| e.file_name().to_string_lossy().into_owned())
-                                .collect()
-                        })
-                        .unwrap_or_default();
-                names.sort();
-                let held = match names.len() {
-                    0 => "is an empty folder".to_string(),
-                    n => {
-                        // File names are the project's, not ours (AUDIT #3117 E4): a long one is
-                        // cut and a control or direction character shows as `?`.
-                        let shown = names
-                            .iter()
-                            .take(LEFTOVER_NAMES)
-                            .map(|n| crate::card::input::echo(n))
-                            .collect::<Vec<_>>()
-                            .join(", ");
-                        let more = n.saturating_sub(LEFTOVER_NAMES);
-                        if more > 0 {
-                            format!("still holds {n} entries ({shown}, and {more} more)")
-                        } else {
-                            format!("still holds {n} entries ({shown})")
-                        }
-                    }
-                };
-                out.push(leftover(
-                    &format!("{}/", state_root::EARLIER_PROJECT_DIR),
-                    format!(
-                        "the earlier generation's state folder {held}; this generation's state \
-                         is in .moai/"
-                    ),
-                ));
-            }
-        }
-    }
-    if generation != "go" {
-        if let Some(proof) = go_state::go_claude_md_proof(root) {
-            let how = if proof == "manifest" {
-                "the Go manifest records it"
-            } else {
-                "it holds a Go curator block"
-            };
-            out.push(leftover(
-                "CLAUDE.md",
-                format!("a Go-generation instruction file ({how}) is still in the project root"),
-            ));
-        }
-    }
-    if let Some(fact) = dead_update_lock(root) {
-        out.push(leftover(GO_UPDATE_LOCK, fact));
-    }
-    out
-}
-
-/// The fact for a Go update lock whose recorded process is not running; `None` for no lock, a
-/// link, a lock that cannot be read as the Go payload `{pid, started_at, hostname}`, or a process
-/// that is alive or cannot be judged.
-fn dead_update_lock(root: &Path) -> Option<String> {
-    let path = root.join(GO_UPDATE_LOCK);
-    let m = fs::symlink_metadata(&path).ok()?;
-    if !m.is_file() || m.len() > LOCK_LIMIT || crate::apply::target(root, GO_UPDATE_LOCK).is_err() {
-        return None;
-    }
-    let payload: Value = serde_json::from_slice(&fs::read(&path).ok()?).ok()?;
-    let pid = payload["pid"]
-        .as_i64()
-        .filter(|p| *p > 0 && *p <= i64::from(i32::MAX))?;
-    if crate::home_state::pid_alive(pid)? {
-        return None;
-    }
-    // The time is shown only when it looks like one: the file is not trusted text.
-    let since = payload["started_at"]
-        .as_str()
-        .filter(|s| {
-            s.len() <= 32
-                && s.chars()
-                    .all(|c| c.is_ascii_digit() || matches!(c, '-' | ':' | 'T' | 'Z' | '.' | '+'))
-        })
-        .map(|s| format!(" (started {s})"))
-        .unwrap_or_default();
-    Some(format!(
-        "the Go update lock names process {pid}{since}, which is not running"
-    ))
-}
-
 /// #2936 E1 (AUDIT #3117): how to take the update chain back, last applied first. Printed with
 /// every preview, because the order is not a matter of taste: `go-state-revert` refuses while the
 /// generation step's `CLAUDE.md` is still in place ("revert refused: CLAUDE.md is conflict"), and
 /// the generation step's instruction file is a second receipt (`agents_receipt`) that its own undo does
 /// not cover. Run in this order the project is back to its start bytes (what the steps added —
 /// receipts and `.moai.rust-<UTC>/` — stays). Each id is printed by the apply result of its step.
-fn undo_order() -> Value {
+///
+/// While a leftovers archive receipt that is not `reverted` exists under the state folder, the
+/// order begins with the leftovers revert (SPEC-20261127-update-leftovers-action REQ-22): an
+/// archived Go update lock must be back in the Go backup folder before `go-state-revert` reads
+/// that folder's digest. With no such receipt the rows are exactly the ones below.
+fn undo_order(root: &Path) -> Value {
+    let mut order = undo_order_rows();
+    if leftovers_archive::open_receipt_exists(root) {
+        if let Some(steps) = order["steps"].as_array_mut() {
+            steps.insert(0, leftovers_undo_row());
+        }
+    }
+    order
+}
+
+/// The first row of the undo order while a leftovers archive is not reverted.
+fn leftovers_undo_row() -> Value {
+    json!({"step": "leftovers", "commands": [
+        format!(
+            "moai {} <PROJECT> --receipt <receipt of the leftovers step> --permission-reference <reference>",
+            leftovers_archive::REVERT_OPERATION
+        ),
+    ], "note": "only while a leftovers apply is not reverted; it puts the archived leftovers back from their backup (a lock archived out of the Go backup folder must be back before go-state-revert reads that folder) and leaves an item as a conflict when its place is taken"})
+}
+
+fn undo_order_rows() -> Value {
     json!({
         "rule": "undo the step applied last first; every command needs its own permission reference",
         "steps": [
@@ -2417,11 +2329,20 @@ pub fn plan(project: &Path) -> Result<Value> {
     // The retired hosts are always in the preview, whatever the profile or the backup phase says.
     install.extend(host_steps(&root));
     let merge = merge_steps(&root, &shown, &backup, pick_only, &install);
+    // SPEC-20261127-update-leftovers-action: the leftovers of the five kinds, each with an archive
+    // action or a keep reason. One that is neither archived nor kept for its current source holds
+    // `all_unchanged` false (`CLAUDE.md` is no such kind). A record that cannot be read changes
+    // nothing.
+    let classified = state_root::classify(&root);
+    let record = declined::read(&root).unwrap_or_default();
+    let leftovers = leftovers::view(&root, classified.generation, others_pending, &record);
+    let open_leftovers = leftovers::open(&leftovers);
     let all_unchanged = backup
         .iter()
         .chain(&install)
         .chain(&merge)
-        .all(|s| matches!(s.state, "unchanged" | "skip" | "optional"));
+        .all(|s| matches!(s.state, "unchanged" | "skip" | "optional"))
+        && open_leftovers.is_empty();
     let phase = |name: &str, reason: &str, steps: &[Step]| {
         json!({
             "phase": name,
@@ -2436,20 +2357,19 @@ pub fn plan(project: &Path) -> Result<Value> {
         .chain(&merge)
         .map(Step::fact)
         .collect();
-    let (ask, chain, finish) = guide::overview(&facts, all_unchanged);
-    let classified = state_root::classify(&root);
+    let (ask, chain, finish) = guide::overview(&facts, all_unchanged, &open_leftovers);
     Ok(json!({
         "project": shown,
         "detected": detected.ok(),
         "state_root": classified.to_json(),
-        "leftovers": leftovers(&root, classified.generation),
+        "leftovers": leftovers,
         "phases": [
             phase("backup", BACKUP_REASON, &backup),
             phase("install", INSTALL_REASON, &install),
             phase("merge", MERGE_REASON, &merge),
         ],
         "all_unchanged": all_unchanged,
-        "undo_order": undo_order(),
+        "undo_order": undo_order(&root),
         "ask": ask,
         "chain": chain,
         "finish": finish,

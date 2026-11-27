@@ -133,11 +133,11 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md). You do not need to follow the internal 
 
 ## Relation to Anthropic and Claude Code
 
-- MoAI ADK runs Claude Code, which you install and sign in to yourself.
+- MoAI ADK runs Claude Code, which you install yourself and connect to your Claude account or to another provider such as GLM.
 - MoAI ADK is not an Anthropic product: Anthropic has not built, endorsed or partnered with it.
 - It does not use the Claude Code or Anthropic name or logo as its own name or logo.
 - It does not modify the Claude Code executable; it starts Claude Code as Anthropic publishes it.
-- It does not ask for, store or relay your Claude account credentials or session tokens; signing in stays with Claude Code.
+- It does not ask for, store or relay your Claude account credentials or session tokens; signing in stays with Claude Code. A provider key you choose to use, such as a GLM key, is kept in moai's own key vault (`moai key-set glm`).
 
 ## License
 
