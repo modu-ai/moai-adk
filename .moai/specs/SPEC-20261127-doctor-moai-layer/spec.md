@@ -178,3 +178,19 @@ CLI = 터미널 Claude 로그인, GW = `ANTHROPIC_BASE_URL` 이 다른 호스트
 ### 상태줄 입력(뒤 조각용 기록)
 
 `statusLine` 의 `command` 는 셸에서 돌고 stdin 으로 세션 JSON 을 받아요(`model.display_name`, `workspace.current_dir`, `context_window.used_percentage`, `session_id` 등); 종료 코드 0 일 때만 출력을 쓰고, 신뢰 대화상자 전에는 비어요. 시간 상한 값은 문서에 없어요(unverified). `system/init` 의 `skills: string[]` 필드는 있지만 그 안에 무엇이 들어가는지는 문서에 없어요(unverified).
+
+## Result
+
+첫 조각(REQ-1~8, REQ-13~15; AC-1~5, AC-9)을 2026-11-27 Mac 의 임시 HOME 과 가짜 `claude` 로 확인했어요. 브랜치 `spec/doctor-moai-layer-20261127`, base `aadb78141a`(레인은 새 NeXT 끝을 따라가지 않았어요). 커밋: 승인 기록 `bd084da1e7`, RED `4c60a7570f`(`moai tdd red`: `moai_doctor_cli` 가 단언 실패 exit 101), 구현 `dbbe7946d8`. RED 뒤에 테스트 결함 둘(호출 기록을 비교 대상 트리 안에 둠, 표에 없는 행을 below 로 셈)을 `moai tdd reopen` 으로 고쳤고 그 뒤 `tdd green` 은 다시 기록하지 않았어요(사이클이 reopen 에서 끝나 있어요). 이어서 체크 결과가 막은 것 셋을 고쳤어요(`6ab91b100a` 포맷·상태 폴더 글자, `d868bbdaa7` clippy `vec!`, `fc03d3d6e0` 옛 파일 이름이 든 행 이름). 체크 결과 `check affected --card aadb78141a..fc03d3d6e0` 는 `result=PASS` 이지만 마지막 실행은 `d868bbdaa7` 의 실패한 한 테스트(`claude_md_layout_scan`)만 다시 돌린 `rerun_of` 예요; 그 앞의 전체 실행은 2733개 중 2732 통과, 1 실패였어요.
+
+- AC-1: met — `read_only_answer_has_the_fields_writes_nothing_and_prints_no_secret` 통과(`writes` false, HOME 트리 전후 같음, 심어 둔 값 다섯 개가 출력에 없음, 가짜 `claude` 호출은 `--version` 하나)
+- AC-2: met — `config_folder_` 세 개 통과(상대·빈 `CLAUDE_CONFIG_DIR` 는 fail 이고 변수 이름만, 폴더가 필요한 `login` 은 unknown, 버전 점검은 계속)
+- AC-3: met — `versions_` 여섯 개 통과(below 는 행 이름과 버전, 모두 ok, 알 수 없는 출력 unknown, `not_found`, `timeout`)
+- AC-4: met — `login_` 다섯 개 통과(변수 일곱 개, 자격 증명 파일 존재만, 우선순위, `--auth-status` 없이는 만료 unknown, 있으면 세 필드와 종료 코드만)
+- AC-5: met — `api_key_` 네 개 통과(없으면 ok, 키 변수·`apiKeyHelper` 는 warn 과 이름·문장)
+- AC-6: not_run — 관리 잠금 점검은 둘째 조각이에요
+- AC-7: not_run — `cross_session_inbound` 점검은 둘째 조각이에요
+- AC-8: not_run — 능력 표(`--table`)는 둘째 조각이에요
+- AC-9: met — `pointers_name_the_claude_code_checks_and_mark_each_against_the_docs` 통과(항목마다 `verified`·`unverified`, 가짜 `claude` 호출은 `--version` 하나)
+
+틈: 첫 조각만이에요(REQ-9~12 는 둘째 조각). Windows·Linux 는 `not_run`. 실제 `claude`·실제 설정 폴더는 읽지 않았어요. 버전 표의 Windows 행은 Mac 에서 `not_applicable` 로만 시험했어요. 가드 뮤턴트는 tier 2 가 아니라서 묻지 않았어요.
