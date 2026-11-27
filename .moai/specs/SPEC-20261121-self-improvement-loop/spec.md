@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261121-self-improvement-loop
 title: "Self-improvement loop: `moai improve` proposes small gated changes to project skills, agents and CLAUDE.local.md from observed signals; the first change adds the read-only `improve-signals`"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-21
+approval:
+  by: user
+  at: 2026-11-27
+  basis: "사용자가 직접 골랐어요(2026-11-27, 리더 세션의 질문 도구; 리더 노트 10683, 2026-11-27T06:28:45Z, 레인은 그 노트를 인용해 옮겨 적었어요): 개정 1 을 한 SPEC 으로 승인(D11), D1 개인 파일 쓰기 허용(관리 블록 안만, 미리보기와 선택 뒤), D4 평평한 이름(improve-signals·improve-plan·improve-eval·improve-apply·improve-revert, 스킬 입구 /moai improve), D6 어림 세기 받아들임(출력에 어림값 표시)"
+  digest: "sha256:4389671b0dcef6dd68fa1b833571c2b0c8f4f0171bb29a8aa1d287afd85098bb"
 ---
 
 # 자기 개선 루프 (`moai improve`)
