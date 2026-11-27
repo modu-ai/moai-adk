@@ -257,13 +257,46 @@ fn choice_shaped(row: &str) -> bool {
     bracket_question(row) || bracketed(body) || marked(body, true) || split_choice(body)
 }
 
-/// Whether a question row carries its own choices: a bracket question (`Overwrite? (y/N/a)`), or a
-/// choice shape in the tail after a question mark (`Do you want to proceed? Yes/No`, `… ?
-/// [Yes] [No]`, `… ? yes or no`). The question's own words are never read as a shape (`Would you
-/// like me to commit or push?` is a plain question), so only the text after a `?` counts. A row
-/// with no question mark (`are you sure Yes/No`) is read from each of its last three words on.
-fn question_tail_shaped(row: &str) -> bool {
-    if bracket_question(row) {
+/// Whether `text` holds a pair of alternatives: a `/` or `|` between two alphabetic words, with or
+/// without spaces (`yes/no`, `Allow | Deny`, `again / No`). A token that has a dot, a colon or a
+/// second slash in it is a path or a link, not a pair (`src/main.rs`, `https://host/x`). It is a
+/// shape, not a word list: `and/or` and `src/lib` read as pairs too, which costs a refusal on a
+/// question row only.
+fn slash_pair(text: &str) -> bool {
+    let tokens: Vec<&str> = text.split_whitespace().collect();
+    let edge = |c: char| !c.is_alphanumeric();
+    let pair_token = |token: &str| {
+        let parts: Vec<&str> = token.trim_matches(edge).split(['/', '|']).collect();
+        parts.len() >= 2
+            && parts
+                .iter()
+                .all(|p| !p.is_empty() && p.chars().all(char::is_alphabetic))
+    };
+    tokens.iter().any(|t| pair_token(t))
+        || tokens.windows(3).any(|w| {
+            matches!(w[1], "/" | "|")
+                && w[0]
+                    .trim_end_matches(edge)
+                    .chars()
+                    .next_back()
+                    .is_some_and(char::is_alphabetic)
+                && w[2]
+                    .trim_start_matches(edge)
+                    .chars()
+                    .next()
+                    .is_some_and(char::is_alphabetic)
+        })
+}
+
+/// Whether a question row carries its own choices: a bracket question (`Overwrite? (y/N/a)`), a
+/// pair of alternatives anywhere in it (`Yes/No: do you want to proceed?`, `… now yes/no please
+/// confirm it`, `… ? Yes, and don't ask again / No, tell Claude`), or a choice shape in the tail
+/// after a question mark (`Do you want to proceed? Yes/No`, `… ? [Yes] [No]`, `… ? yes or no`).
+/// The question's own words are never read as a shape (`Would you like me to commit or push?` is
+/// a plain question), so only the text after a `?` counts for the shapes. A row with no question
+/// mark (`are you sure Yes/No`) is read from each of its last three words on.
+fn question_row_shaped(row: &str) -> bool {
+    if bracket_question(row) || slash_pair(row) {
         return true;
     }
     if row.contains('?') {
@@ -431,9 +464,10 @@ pub fn classify(rows: &[String]) -> Seen {
     // below it, and no numbered Yes and No rows the reader could use (the choices are drawn in a
     // way it does not know, or in other words): Enter may pick the first choice, so the lane is
     // not `working` or `idle` whatever its footer says (leader R-N1, note 3256). The choices
-    // are there when the question row ends in a choice shape (`question_tail_shaped`: the tail
-    // after its question mark, R-B1, note 3433: `proceed? (yes/no)` is one row, and review note
-    // 10724: `Do you want to proceed? Yes/No`), when a choice-shaped row (`choice_shaped`: a
+    // are there when the question row carries them (`question_row_shaped`: a pair of alternatives
+    // anywhere in it, leader decision 10737, or a choice shape in the tail after its question
+    // mark, R-B1, note 3433: `proceed? (yes/no)` is one row, and review note 10724: `Do you want
+    // to proceed? Yes/No`), when a choice-shaped row (`choice_shaped`: a
     // bracket question, a button or list entry, a split of short words) is below it, when two or
     // more numbered rows are below it whatever they
     // say (R-N1, note 3433: `1. Allow once`, `3. Deny`), or when two bare words stand one to a
@@ -451,7 +485,7 @@ pub fn classify(rows: &[String]) -> Seen {
     if let Some((i, _)) = near_bottom.iter().find(|(i, row)| {
         let known = QUESTIONS.iter().any(|q| lower[*i].contains(q)) || bracket_question(row);
         known
-            && (question_tail_shaped(row)
+            && (question_row_shaped(row)
                 || rows[*i + 1..].iter().any(|r| choice_shaped(r))
                 || word_rows(&rows[*i + 1..])
                 || rows[*i + 1..]
@@ -1350,11 +1384,17 @@ mod tests {
             "Do you want to proceed? Yes/No?",
             "Do you want to proceed? 1. Yes 2. No",
             "Overwrite? (y/N/a)",
+            // A pair of alternatives anywhere in the row (leader decision 10737).
+            "Do you want to proceed? Yes, and don't ask again / No, tell Claude what to do differently",
+            "Yes/No: do you want to proceed?",
+            "Do you want to delete the build folder now yes/no please confirm it",
+            "Do you want to delete the build folder now (Yes | No) please confirm it",
+            "Are you sure you want to overwrite the whole build folder Allow/Deny",
             // No question mark: read from each of the last three words on.
             "Are you sure Yes/No",
             "Do you want to proceed [Yes] [No]",
         ] {
-            assert!(question_tail_shaped(row), "{row:?} carries its choices");
+            assert!(question_row_shaped(row), "{row:?} carries its choices");
         }
         for row in [
             "Do you want me to run the tests now?",
@@ -1364,8 +1404,12 @@ mod tests {
             "Do you want to continue? yes, go ahead",
             "Do you want to continue? allowed 3 lanes so far",
             "Are you sure about the plan",
+            // A path with an extension and a link are no pair.
+            "Do you want me to edit src/main.rs?",
+            "Do you want me to open https://example.com/docs/x?",
+            "Do you want me to run the build and then the tests?",
         ] {
-            assert!(!question_tail_shaped(row), "{row:?} is a plain question");
+            assert!(!question_row_shaped(row), "{row:?} is a plain question");
         }
         // The same rows on a screen: a refusal on a working and on a waiting one, a pass for the
         // plain questions.
