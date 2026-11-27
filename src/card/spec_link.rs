@@ -272,19 +272,8 @@ pub fn link(
             // An open card (not `done`, not `hold`) is not linked to a SPEC that already has
             // another open card; `--unlink` and the link of a closed or withdrawn card are free.
             if let Some(spec_id) = spec {
-                let state: String = tx.query_row(
-                    "SELECT state FROM card WHERE card_id = ?1",
-                    [card_id],
-                    |r| r.get(0),
-                )?;
-                if state != "done" && state != "hold" {
-                    let others: Vec<OpenCard> = open_cards_of(tx, spec_id)?
-                        .into_iter()
-                        .filter(|c| c.card_id != card_id)
-                        .collect();
-                    if let Some(why) = open_card_conflict("spec", spec_id, &others) {
-                        return Ok(Err(why));
-                    }
+                if let Some(why) = link_conflict(tx, card_id, spec_id)? {
+                    return Ok(Err(why));
                 }
             }
             tx.execute(
@@ -444,6 +433,36 @@ pub fn open_card_conflict(verb: &str, spec_id: &str, others: &[OpenCard]) -> Opt
          card criterion-add {first} --ac <text>`; nothing was changed",
         names.join(", "),
     ))
+}
+
+/// The refusal of `card spec` when it links `card_id` to `spec_id`, or `None`: the card already
+/// names that SPEC, the card is `done` or `hold` (not an open card), the card does not exist, or
+/// the SPEC has no other open card. Read only, so `spec take --card` asks it before it changes
+/// anything (SPEC-20261124-card-help-gates REQ-9, REQ-13).
+pub fn link_conflict(
+    conn: &Connection,
+    card_id: i64,
+    spec_id: &str,
+) -> rusqlite::Result<Option<String>> {
+    let Some((_, linked)) = kind_and_spec(conn, card_id)? else {
+        return Ok(None);
+    };
+    if linked.as_deref() == Some(spec_id) {
+        return Ok(None);
+    }
+    let state: String = conn.query_row(
+        "SELECT state FROM card WHERE card_id = ?1",
+        [card_id],
+        |r| r.get(0),
+    )?;
+    if state == "done" || state == "hold" {
+        return Ok(None);
+    }
+    let others: Vec<OpenCard> = open_cards_of(conn, spec_id)?
+        .into_iter()
+        .filter(|c| c.card_id != card_id)
+        .collect();
+    Ok(open_card_conflict("spec", spec_id, &others))
 }
 
 /// The refusal of `card ready` for a `hold` card: it names a SPEC with no relation and that SPEC
