@@ -721,3 +721,322 @@ fn guidance_tells_a_lane_to_read_hold_and_prerequisites_before_it_creates_a_work
         assert!(work.contains(phrase), "{phrase} missing in work.md");
     }
 }
+
+// ---- removable prerequisites, loops of any length, withdrawn prerequisites ---------------------
+// (SPEC-20261127-card-prereq-remove)
+
+impl Fixture {
+    /// `card prereq C-n --needs C-m --remove --by leader`.
+    fn remove_prereq(&self, card_id: i64, needs: i64) -> Output {
+        self.cli(&[
+            "card",
+            "prereq",
+            &format!("C-{card_id}"),
+            "--needs",
+            &format!("C-{needs}"),
+            "--remove",
+            "--by",
+            "leader",
+        ])
+    }
+
+    /// `card withdraw` and `card fold` take the project as a positional argument.
+    fn withdraw(&self, card_id: i64) -> Value {
+        result(&run(
+            &self.home,
+            &[
+                "card",
+                "withdraw",
+                &format!("C-{card_id}"),
+                &self.project,
+                "--reason",
+                "not needed any more",
+                "--by",
+                "leader",
+            ],
+        ))
+    }
+
+    fn fold(&self, card_id: i64, into: i64) -> Value {
+        result(&run(
+            &self.home,
+            &[
+                "card",
+                "fold",
+                &format!("C-{card_id}"),
+                &self.project,
+                "--into",
+                &format!("C-{into}"),
+                "--reason",
+                "the work moved",
+                "--by",
+                "leader",
+            ],
+        ))
+    }
+
+    /// Puts cards in a state without the transition guards a test ledger does not need (a card in
+    /// `hold` this way has no `card.withdraw` or `card.fold` event). One write for all of them:
+    /// reopening a ledger whose triggers were dropped makes a backup named by the second.
+    fn set_states(&self, states: &[(i64, &str)]) {
+        let mut w = ledger::open_write(self.home.path(), "demo").unwrap();
+        w.with_write_tx(|tx, _| {
+            tx.execute_batch(
+                "DROP TRIGGER IF EXISTS card_state_transition; \
+                 DROP TRIGGER IF EXISTS card_done_guard;",
+            )?;
+            for (card_id, state) in states {
+                tx.execute_batch(&format!(
+                    "UPDATE card SET state = '{state}', \
+                     closed_at = CASE WHEN '{state}' = 'done' THEN unixepoch() ELSE closed_at END \
+                     WHERE card_id = {card_id}"
+                ))?;
+            }
+            Ok(())
+        })
+        .unwrap();
+    }
+
+    fn unfinished(&self, card_id: i64) -> Vec<i64> {
+        let l = ledger::open_read_only(self.home.path(), "demo").unwrap();
+        workflow::unfinished_prerequisites(l.conn(), card_id).unwrap()
+    }
+
+    fn link_rows(&self) -> i64 {
+        self.count("SELECT count(*) FROM card_link WHERE kind = 'blocks'")
+    }
+}
+
+#[test]
+fn prereq_ac1_a_loop_of_any_length_is_refused_naming_every_card_and_writing_nothing() {
+    let f = Fixture::new();
+    let a = f.card("src/a.rs");
+    let b = f.card("src/b.rs");
+    let c = f.card("src/c.rs");
+    let d = f.card("src/d.rs");
+    let e = f.card("src/e.rs");
+    // a needs b, b needs c: `c needs a` would make c wait for a, a for b and b for c.
+    assert_eq!(f.needs(a, b), Ok(true));
+    assert_eq!(f.needs(b, c), Ok(true));
+    let (links, events) = (f.link_rows(), f.count("SELECT count(*) FROM event"));
+    let err = f.needs(c, a).unwrap_err();
+    assert!(
+        matches!(err, workflow::PrereqError::Cycle { .. }),
+        "{err:?}"
+    );
+    let words = err.to_string();
+    assert!(
+        words.contains(&format!("C-{c} -> C-{a} -> C-{b} -> C-{c}")),
+        "{words}"
+    );
+    assert_eq!(f.link_rows(), links);
+    assert_eq!(f.count("SELECT count(*) FROM event"), events);
+
+    // Four cards: c needs d, so `d needs a` closes d -> a -> b -> c -> d. An unrelated card is not
+    // named and is not refused.
+    assert_eq!(f.needs(c, d), Ok(true));
+    let (links, events) = (f.link_rows(), f.count("SELECT count(*) FROM event"));
+    let words = f.needs(d, a).unwrap_err().to_string();
+    assert!(
+        words.contains(&format!("C-{d} -> C-{a} -> C-{b} -> C-{c} -> C-{d}")),
+        "{words}"
+    );
+    assert!(!words.contains(&format!("C-{e}")), "{words}");
+    assert_eq!(f.link_rows(), links);
+    assert_eq!(f.count("SELECT count(*) FROM event"), events);
+    assert_eq!(f.needs(e, a), Ok(true));
+
+    // The two-card refusal keeps its words.
+    let two = f.needs(b, a).unwrap_err().to_string();
+    assert_eq!(
+        two,
+        format!("C-{a} already needs C-{b}, so they would wait for each other")
+    );
+}
+
+#[test]
+fn prereq_ac1_a_retired_link_does_not_close_a_loop() {
+    let f = Fixture::new();
+    let x = f.card("src/x.rs");
+    let y = f.card("src/y.rs");
+    let z = f.card("src/z.rs");
+    assert_eq!(f.needs(x, y), Ok(true));
+    assert_eq!(f.needs(y, z), Ok(true));
+    result(&f.remove_prereq(y, z));
+    // y no longer needs z, so z may need x.
+    assert_eq!(f.needs(z, x), Ok(true));
+}
+
+#[test]
+fn prereq_ac2_remove_retires_the_link_and_writes_one_event() {
+    let f = Fixture::new();
+    let a = f.card("src/a.rs");
+    let b = f.card("src/b.rs");
+    assert_eq!(f.needs(a, b), Ok(true));
+    let rows = f.link_rows();
+
+    let removed = result(&f.remove_prereq(a, b));
+    assert_eq!(removed["removed"], json!(true), "{removed}");
+    assert_eq!(removed["writes"], json!(true), "{removed}");
+    // The row stays; only its state changes.
+    assert_eq!(f.link_rows(), rows);
+    assert_eq!(
+        f.count(&format!(
+            "SELECT count(*) FROM card_link WHERE kind = 'blocks' AND state = 'retired' \
+             AND from_card = {b} AND to_card = {a}"
+        )),
+        1
+    );
+    let payload: String = {
+        let l = ledger::open_read_only(f.home.path(), "demo").unwrap();
+        l.conn()
+            .query_row(
+                "SELECT payload FROM event WHERE card_id = ?1 AND kind = 'card.prereq_remove'",
+                [a],
+                |r| r.get(0),
+            )
+            .unwrap()
+    };
+    let p: Value = serde_json::from_str(&payload).unwrap();
+    assert_eq!(p["needs"], json!(b), "{p}");
+    assert_eq!(p["by"], json!("leader"), "{p}");
+
+    // A second call finds no active link and writes nothing.
+    let events = f.count("SELECT count(*) FROM event");
+    let again = result(&f.remove_prereq(a, b));
+    assert_eq!(again["removed"], json!(false), "{again}");
+    assert_eq!(again["writes"], json!(false), "{again}");
+    assert_eq!(f.count("SELECT count(*) FROM event"), events);
+
+    // An unknown card and a missing `--by` are refused and write nothing.
+    let message = refusal(&f.remove_prereq(a, 999));
+    assert!(message.starts_with("card prereq refused: "), "{message}");
+    let no_by = f.cli(&[
+        "card",
+        "prereq",
+        &format!("C-{a}"),
+        "--needs",
+        &format!("C-{b}"),
+        "--remove",
+    ]);
+    assert!(!no_by.status.success());
+    assert_eq!(f.count("SELECT count(*) FROM event"), events);
+    assert_eq!(f.link_rows(), rows);
+}
+
+#[test]
+fn prereq_ac2_a_retired_link_is_added_again_as_the_same_row_after_the_loop_check() {
+    let f = Fixture::new();
+    let a = f.card("src/a.rs");
+    let b = f.card("src/b.rs");
+    assert_eq!(f.needs(a, b), Ok(true));
+    result(&f.remove_prereq(a, b));
+    let rows = f.link_rows();
+
+    // While the first link is retired the opposite one may be added ...
+    assert_eq!(f.needs(b, a), Ok(true));
+    // ... and then the first one would close a loop, so adding it again is refused.
+    assert!(matches!(
+        f.needs(a, b),
+        Err(workflow::PrereqError::Cycle { .. })
+    ));
+    result(&f.remove_prereq(b, a));
+
+    // With nothing in the way the same row becomes active again and no row is added.
+    assert_eq!(f.needs(a, b), Ok(true));
+    assert_eq!(f.link_rows(), rows + 1, "only the opposite pair is new");
+    assert_eq!(
+        f.count(&format!(
+            "SELECT count(*) FROM card_link WHERE kind = 'blocks' AND state = 'active' \
+             AND from_card = {b} AND to_card = {a}"
+        )),
+        1
+    );
+}
+
+#[test]
+fn prereq_ac3_removing_the_last_prerequisite_offers_the_card_and_take_goes_through() {
+    let f = Fixture::new();
+    let waits = f.card("src/a.rs");
+    let first = f.card("src/b.rs");
+    f.needs(waits, first).unwrap();
+    assert_eq!(skipped(&f.next(), waits)["reason"], json!("prerequisite"));
+    let message = refusal(&f.take(waits));
+    assert!(message.contains(&format!("C-{first}")), "{message}");
+
+    result(&f.remove_prereq(waits, first));
+    let next = f.next();
+    assert!(
+        names(&next["ready"]).contains(&format!("C-{waits}")),
+        "{next}"
+    );
+    assert_eq!(f.show(waits)["prerequisites"], json!([]));
+    result(&f.take(waits));
+}
+
+#[test]
+fn prereq_ac5_the_hold_read_goes_through_the_event_card_kind_index() {
+    let f = Fixture::new();
+    let id = f.card("src/a.rs");
+    f.hold(id, "money", "budget").unwrap();
+    let l = ledger::open_read_only(f.home.path(), "demo").unwrap();
+    let plan: Vec<String> = l
+        .conn()
+        .prepare(&format!("EXPLAIN QUERY PLAN {}", workflow::HOLD_READ_SQL))
+        .unwrap()
+        .query_map([id], |r| r.get::<_, String>(3))
+        .unwrap()
+        .map(Result::unwrap)
+        .collect();
+    let plan = plan.join(" | ");
+    assert!(plan.contains("event_card_kind"), "{plan}");
+    assert!(
+        !plan.contains("SCAN event"),
+        "the hold read must not scan the whole event table: {plan}"
+    );
+}
+
+#[test]
+fn prereq_ac3_only_a_withdrawn_prerequisite_stops_blocking() {
+    let f = Fixture::new();
+    let waits = f.card("src/w.rs");
+    let withdrawn = f.card("src/p1.rs");
+    let folded = f.card("src/p2.rs");
+    let plain_hold = f.card("src/p3.rs");
+    let active = f.card("src/p4.rs");
+    let review = f.card("src/p5.rs");
+    let done = f.card("src/p6.rs");
+    let target = f.card("src/t.rs");
+    for needs in [withdrawn, folded, plain_hold, active, review, done] {
+        f.needs(waits, needs).unwrap();
+    }
+    f.withdraw(withdrawn);
+    f.fold(folded, target);
+    result(&f.take(active));
+    f.set_states(&[(plain_hold, "hold"), (review, "review"), (done, "done")]);
+
+    // The withdrawn and the done card do not block; the other four still do.
+    assert_eq!(
+        f.unfinished(waits),
+        vec![folded, plain_hold, active, review],
+        "the withdrawn card must not block, the folded, plain hold, active and review ones must"
+    );
+    let next = f.next();
+    assert_eq!(
+        skipped(&next, waits)["needs"],
+        json!([
+            format!("C-{folded}"),
+            format!("C-{plain_hold}"),
+            format!("C-{active}"),
+            format!("C-{review}")
+        ]),
+        "{next}"
+    );
+
+    // A withdrawn card that is made ready again is work again, so it blocks again.
+    result(&f.cli(&["card", "ready", &format!("C-{withdrawn}")]));
+    assert_eq!(
+        f.unfinished(waits),
+        vec![withdrawn, folded, plain_hold, active, review]
+    );
+}
