@@ -5,10 +5,10 @@ status: approved
 revision: 2
 created: 2026-11-24
 approval:
-  by: leader
-  at: 2026-11-24
-  basis: "리더 결정 노트 8453 (2026-11-24T10:19:43Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8452 에 대한 답): revision 1 승인, head a34384ed05a565fb7a7e32dc81ac251913bf877a, D-6(유지를 기억하지 않음)과 D-7(conflict 만 있어도 질문)을 받아요; 리더가 노트에 적었고 레인은 그 노트를 옮겨 적었어요"
-  digest: "sha256:8e6bbf894a92e1f88ee900a0d11c67f5c92c2b1fbccb0242aad51474e3ae9649"
+  by: user
+  at: 2026-11-27
+  basis: "리더 노트 10755 (USER-APPROVAL revision 2, 2026-11-27): 사용자가 직접 골랐어요 — \"개정하고 규칙도 추가 (Recommended)\" (노트 10743, 리더 세션의 질문 도구). 리더가 커밋 ecf0b404ee 의 diff 를 읽어 선택과 같음을 확인했어요: Scope 의 두 줄만 바뀌고 요구와 기준은 그대로예요. 개정 1 의 승인은 노트 8453(리더 기록, 사용자 위임)이었어요."
+  digest: "sha256:17010c62418e8b3c20dccb53564086a9678bc795a1294b6aca5579dad58cc301"
 ---
 
 # moai update 가 평평한 에이전트 파일을 우리 것으로 알아보고, 진짜 사용자 수정은 고르게 하고, conflict 가 남으면 Partial 로 보여요
