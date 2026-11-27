@@ -78,3 +78,11 @@ created: 2026-11-20
 - AC-3: met — 같은 시험이 상대 HOME(`relative-home`)을 임시 작업 폴더에서 돌리고 그 폴더에 `relative-home` 이 없음을 확인해요(통과). 옛 시험 `a_home_that_is_relative_or_inside_the_project_blocks_the_move` 는 저장소 루트에서 풀리던 상대 HOME 사례를 빼고 프로젝트 안 HOME 만 남겼어요(이전 SPEC 의 검증 줄이 그 이름으로 돌려서 이름은 그대로 두고 주석에 적었어요).
 - AC-4: met — `cargo test --locked --offline --test reports_move_cli a_git_folder_in_any_letter_case_below_the_report_folder_blocks_the_move` 통과(`.GIT`·`.Git` 모두 막히고 파일과 HOME 그대로). 변이 "`eq_ignore_ascii_case` 를 `==` 로"에 실패했어요.
 - 확인: `reports_move_cli` 23개와 `--lib contract` 11개 통과. 전체 `moai check affected` 결과는 병합 준비 노트에 줄째로 적어요(이 SPEC 이 닫힌 뒤의 병합 커밋 위에서 돌려요).
+
+### 현재 팁 위에서 다시 확인(2026-11-27)
+
+이 작업은 착지하지 못한 채 남아 있었어요. 위 커밋 넷을 현재 통합 팁(a29036289b) 위의 새 가지 `spec/reports-move-follow-ups-20261120` 로 옮겨(체리픽, 충돌 없음) 그 헤드에서 다시 쟀어요.
+
+- AC-1·AC-3: `cargo test --locked --offline --test reports_move_cli every_blocked_apply_reports_invalid_input_through_the_cli` 종료 0, 1 passed(확인 명령 그대로).
+- AC-2: `cargo test --locked --offline --lib contract::tests::a_reports_move_blocked_message_is_invalid_input` 종료 0, 1 passed(확인 명령 그대로).
+- AC-4: 이름에 `git` 이 들어간 시험 이름을 단독으로 돌리는 확인 명령은 호스트의 워크트리 가드가 거절했어요(git 명령으로 읽은 것). 같은 시험은 `check affected` 의 시험 단계가 `reports_move_cli` 전체로 돌려요(READY 노트의 영수증).
