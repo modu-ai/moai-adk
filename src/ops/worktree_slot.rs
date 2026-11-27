@@ -8,7 +8,8 @@ use std::path::PathBuf;
 /// `plan` lists the slots `.claude/worktrees/lane-01..10`, `audit-1..3` and `seed` with their
 /// state and the caps, and writes nothing. `ensure` adds a missing slot detached at a commit
 /// and, when it has no `target/` while the seed has one, copies the seed's `target/` into it
-/// (an APFS clone on macOS); a present slot is left as it is. A slot is refused past the
+/// (an APFS clone on macOS); a present slot is left as it is. An added slot leaves the folder
+/// listed in the local exclude file unless git already ignores it. A slot is refused past the
 /// worktree cap or under the free-disk floor.
 #[derive(clap::Args)]
 pub struct Args {

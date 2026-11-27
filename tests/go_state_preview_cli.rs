@@ -7,6 +7,7 @@
 //! Every case builds a temporary project with an empty temporary HOME. A preview leaves the
 //! whole tree byte for byte as it was (AC-8).
 
+// check-affected: every-source-change
 #![cfg(unix)]
 
 mod common;

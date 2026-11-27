@@ -488,13 +488,16 @@ fn real_runner_receipt() {
     let req = request(&["cargo test --offline"], &[0], &head);
     // A separate target directory: the outer `cargo test` holds the lock on its own.
     let target = tempfile::TempDir::new().unwrap();
-    let mut child = Command::new(crate::common::MOAI_BIN)
+    let mut command = Command::new(crate::common::MOAI_BIN);
+    command
         .arg("run-verify")
         .arg(dir.path())
         .env("CARGO_TARGET_DIR", target.path())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+    // The runner starts cargo with the environment it gets: without the outer compiler wrapper.
+    let mut child = crate::common::cargo::without_wrapper(&mut command)
         .spawn()
         .unwrap();
     match child
@@ -542,6 +545,27 @@ fn real_runner_receipt() {
     assert!(r["tree_digest"].as_str().unwrap().starts_with("sha256:"));
     // Print the receipt so the run log carries it as evidence.
     println!("{}", serde_json::to_string_pretty(&env).unwrap());
+}
+
+/// SPEC-20261126-scratch-cargo-wrapper AC-1: the real runner build passes while the outer
+/// environment names a compiler wrapper that is not there. This binary runs the test above again
+/// in such an environment.
+#[test]
+fn a_missing_outer_wrapper_does_not_reach_the_run_verify_build() {
+    let mut again = Command::new(std::env::current_exe().unwrap());
+    again.args(["--exact", "real_runner_receipt", "--nocapture"]);
+    for name in crate::common::cargo::WRAPPER_VARS {
+        again.env(name, "/nonexistent/moai-no-wrapper");
+    }
+    let out = again.output().unwrap();
+    let text = format!(
+        "{}\n{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(out.status.success(), "{text}");
+    assert!(text.contains("test result: ok. 1 passed"), "{text}");
+    assert!(!text.contains("not_run:"), "{text}");
 }
 
 /// agent-2 FAIL on 5413e0221: a grandchild holding the pipes kept `run_check` waiting past the

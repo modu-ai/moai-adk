@@ -149,6 +149,9 @@ pub fn open_write(home: &Path, project_id: &str) -> Result<WriteLedger, LedgerEr
     let (mut conn, _) = open_at(&path, project_id, true)?;
     let done_guard_upgrade =
         migrate::upgrade_done_guard(&mut conn, &path)?.map(|upgraded| upgraded.backup);
+    // The index of events by card and kind (SPEC-20261126-card-next-speed): a ledger made before
+    // it gets it on the first writable open; nothing else is touched and no word is printed.
+    migrate::ensure_event_index(&conn)?;
     // One line, only when the upgrade really ran (a later open finds nothing to do): the person
     // learns that the ledger changed and where its backup is.
     if let Some(backup) = &done_guard_upgrade {
@@ -381,6 +384,12 @@ pub(crate) fn open_at_timeout(
         ),
         other => other,
     })?;
+    // A page cache that holds the whole `event` table of a long-lived ledger (about 7 MB at 18,000
+    // events): SQLite's default of 2 MB made every scan read the same pages again from the file
+    // (SPEC-20261126-card-next-speed REQ-3). The memory is taken page by page as pages are read.
+    // It is set after the identity check on purpose: the pragma reads the schema, and on a file
+    // with a leftover journal that read is what the check above has to meet first.
+    conn.pragma_update(None, "cache_size", -65536)?;
     Ok((conn, version))
 }
 

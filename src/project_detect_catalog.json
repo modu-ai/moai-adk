@@ -28,5 +28,28 @@
     {"language": "swift", "extensions": ["swift"]},
     {"language": "lua", "extensions": ["lua"]}
   ],
+  "database_dependencies": [
+    {"kind": "postgres", "dependencies": ["postgres", "tokio-postgres", "pg", "psycopg", "psycopg2", "psycopg2-binary", "asyncpg", "github.com/jackc/pgx/v5", "github.com/lib/pq"]},
+    {"kind": "mysql", "dependencies": ["mysql", "mysql2", "pymysql", "mysqlclient", "github.com/go-sql-driver/mysql"]},
+    {"kind": "sqlite", "dependencies": ["rusqlite", "sqlite3", "better-sqlite3"]},
+    {"kind": "mongodb", "dependencies": ["mongodb", "pymongo", "mongoose"]},
+    {"kind": "redis", "dependencies": ["redis", "ioredis"]}
+  ],
+  "language_servers": [
+    {"language": "rust", "server": "rust-analyzer", "plugin": "rust-analyzer-lsp", "executable": "rust-analyzer"},
+    {"language": "python", "server": "pyright", "plugin": "pyright-lsp", "executable": "pyright-langserver"},
+    {"language": "javascript", "server": "typescript-language-server", "plugin": "typescript-lsp", "executable": "typescript-language-server"},
+    {"language": "typescript", "server": "typescript-language-server", "plugin": "typescript-lsp", "executable": "typescript-language-server"},
+    {"language": "go", "server": "gopls", "plugin": "gopls-lsp", "executable": "gopls"},
+    {"language": "java", "server": "jdtls", "plugin": "jdtls-lsp", "executable": "jdtls"},
+    {"language": "kotlin", "server": "kotlin-lsp", "plugin": "kotlin-lsp", "executable": "kotlin-lsp"},
+    {"language": "ruby", "server": "ruby-lsp", "plugin": "ruby-lsp", "executable": "ruby-lsp"},
+    {"language": "php", "server": "intelephense", "plugin": "php-lsp", "executable": "intelephense"},
+    {"language": "c", "server": "clangd", "plugin": "clangd-lsp", "executable": "clangd"},
+    {"language": "cpp", "server": "clangd", "plugin": "clangd-lsp", "executable": "clangd"},
+    {"language": "csharp", "server": "csharp-ls", "plugin": "csharp-lsp", "executable": "csharp-ls"},
+    {"language": "swift", "server": "sourcekit-lsp", "plugin": "swift-lsp", "executable": "sourcekit-lsp"},
+    {"language": "lua", "server": "lua-language-server", "plugin": "lua-lsp", "executable": "lua-language-server"}
+  ],
   "skip_dirs": [".venv", "venv", "target", "node_modules", "dist", "build", "vendor"]
 }

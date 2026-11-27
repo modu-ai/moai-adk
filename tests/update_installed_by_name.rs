@@ -18,6 +18,7 @@ use sha2::{Digest, Sha256};
 use std::{
     fs,
     io::Write as _,
+    os::unix::fs::PermissionsExt as _,
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
     thread::sleep,
@@ -151,6 +152,34 @@ fn install(exe: &Path, f: &Fixture) {
     sleep(Duration::from_millis(1100));
 }
 
+/// Plans the fixture's package as `exe` and applies it; the raw output, whatever it says.
+fn apply_raw(exe: &Path, f: &Fixture) -> Output {
+    let p = plan(exe, f);
+    let digest = p["plan_digest"].as_str().unwrap().to_string();
+    run(
+        exe,
+        &f.home,
+        &[
+            "update-apply",
+            f.home.to_str().unwrap(),
+            f.stage.to_str().unwrap(),
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        Some(&p),
+    )
+}
+
+/// Applies a package that writes no file for the host: the run succeeds and the host's status is
+/// `status` (`unchanged`, or `conflict` for a host whose files are in conflict).
+fn apply_unchanged(exe: &Path, f: &Fixture, status: &str) -> Value {
+    let r = ok(&apply_raw(exe, f));
+    assert_eq!(host(&r)["status"], json!(status), "{r}");
+    r
+}
+
 fn host(v: &Value) -> &Value {
     v["hosts"]
         .as_array()
@@ -180,6 +209,22 @@ fn set_version(home: &Path, id: &str, version: &str) {
     let mut r: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
     r["package_version"] = json!(version);
     fs::write(&path, serde_json::to_vec_pretty(&r).unwrap()).unwrap();
+}
+
+fn set_status(home: &Path, id: &str, status: &str) {
+    let path = receipt_file(home, id);
+    let mut r: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    r["status"] = json!(status);
+    fs::write(&path, serde_json::to_vec_pretty(&r).unwrap()).unwrap();
+}
+
+fn receipt(home: &Path, id: &str) -> Value {
+    serde_json::from_slice(&fs::read(receipt_file(home, id)).unwrap()).unwrap()
+}
+
+/// The host's projected `SKILL.md` under the temporary HOME.
+fn skill_file(home: &Path) -> PathBuf {
+    home.join(".claude/skills/moai/SKILL.md")
 }
 
 /// The earlier folder `a`: a build run as `bin/moai` alone (so its receipts sit under the `moai`
@@ -251,6 +296,67 @@ fn the_screen_header_names_the_earlier_version_and_never_none() {
     assert!(!line.contains("none"), "{line}");
 }
 
+/// The header line (the one that names the installed version) of the screen drawn from the
+/// `preview-latest.json` fixture with `edit` applied to it.
+fn header_line(lang: Lang, edit: impl FnOnce(&mut Value)) -> String {
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/update_tux/preview-latest.json");
+    let mut result: Value = serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap();
+    edit(&mut result);
+    let view = View {
+        painter: Painter {
+            color: false,
+            unicode: true,
+            lang,
+        },
+        width: 100,
+        home: "/home/u".into(),
+        project: None,
+    };
+    let text = screen(&result, Asked::NotAsked, &view);
+    let marker = match lang {
+        Lang::En => "installed",
+        Lang::Ko => "설치본",
+    };
+    text.lines()
+        .find(|l| l.contains(marker))
+        .unwrap_or_else(|| panic!("{text}"))
+        .to_string()
+}
+
+// SPEC-20261125-update-installed-from-link AC-3 (REQ-3, REQ-9): the preview's `installed_version`
+// is the installed side of the header in English and in Korean; without it the header keeps the
+// receipt's source version.
+#[test]
+fn the_header_prefers_the_link_version_in_english_and_korean() {
+    let link = "4.2648.26";
+    let en = header_line(Lang::En, |r| r["installed_version"] = json!(link));
+    assert!(en.contains(&format!("installed {link} → package")), "{en}");
+    let ko = header_line(Lang::Ko, |r| r["installed_version"] = json!(link));
+    assert!(ko.contains(&format!("설치본 {link} → 패키지")), "{ko}");
+
+    // Without the key the receipt's source version stays, as the neighbouring test pins.
+    let source = "2026.11.0-rc.1";
+    let en = header_line(Lang::En, |_| {});
+    assert!(
+        en.contains(&format!("installed {source} = package")),
+        "{en}"
+    );
+    assert!(!en.contains(link), "{en}");
+    let ko = header_line(Lang::Ko, |_| {});
+    assert!(ko.contains(&format!("설치본 {source} = 패키지")), "{ko}");
+
+    // A receipt-less plan (no source version) with the key still shows the link's version.
+    let none = header_line(Lang::En, |r| {
+        r["plan"] = json!({"target_version": source});
+        r["installed_version"] = json!(link);
+    });
+    assert!(
+        none.contains(&format!("installed {link} → package")),
+        "{none}"
+    );
+}
+
 // AC-3 (REQ-3): both names of one folder hold a finished receipt; the newer one is the baseline
 // and the folder never ties with itself.
 #[test]
@@ -292,4 +398,209 @@ fn an_unreadable_receipt_under_the_moai_name_blocks_the_host() {
         "{p}"
     );
     assert!(h.get("adopt").is_none(), "{p}");
+}
+
+/// REQ-6: a no-write apply changes this installation's own receipt in its version, its finish
+/// time and its owned list only. In the cases that use this the baseline is that same receipt, so
+/// the owned list is equal too; every other field is as it was just before the apply.
+fn assert_own_receipt_updated(before: &Value, after: &Value) {
+    assert_eq!(
+        after["package_version"],
+        json!(moai_cli::BUILD_VERSION),
+        "{after}"
+    );
+    let changed: Vec<&str> = [
+        "entries",
+        "operation",
+        "version_before",
+        "status",
+        "backup",
+        "started_at",
+        "plan_digest",
+        "package_digest",
+        "schema_version",
+        "install_id",
+        "host",
+        "top_skills_existed_before",
+        "owned",
+    ]
+    .into_iter()
+    .filter(|field| after[*field] != before[*field])
+    .collect();
+    assert!(
+        changed.is_empty(),
+        "changed fields {changed:?}\nbefore: {before}\nafter: {after}"
+    );
+    assert!(
+        after["finished_at"].as_str() > before["finished_at"].as_str(),
+        "finished_at is not newer\nbefore: {before}\nafter: {after}"
+    );
+}
+
+// SPEC-20261125-update-installed-from-link AC-4 (REQ-4, REQ-6, REQ-7, REQ-12): an apply that
+// writes no file for a host leaves this build's version in the host's receipt and a newer finish
+// time; the rest of the receipt and the skill bytes stay. A `recovered` receipt counts like a
+// `committed` one and stays `recovered`, and the outcome reports the saved status.
+#[test]
+fn a_no_write_apply_leaves_this_builds_version_in_the_receipt() {
+    let f = fixture();
+    let exe = put(&f.home, "a", "moai");
+    install(&exe, &f);
+    let id = id_of(&exe);
+    let skill = fs::read(skill_file(&f.home)).unwrap();
+    assert_ne!(moai_cli::BUILD_VERSION, EARLIER);
+
+    for status in ["committed", "recovered"] {
+        set_version(&f.home, &id, EARLIER);
+        set_status(&f.home, &id, status);
+        let before = receipt(&f.home, &id);
+        // Receipts carry second-resolution timestamps.
+        sleep(Duration::from_millis(1100));
+        let r = apply_unchanged(&exe, &f, "unchanged");
+        assert_eq!(r["status"], json!("unchanged"), "{status}: {r}");
+        assert_own_receipt_updated(&before, &receipt(&f.home, &id));
+        assert_eq!(host(&r)["receipt_status"], json!(status), "{r}");
+        assert_eq!(fs::read(skill_file(&f.home)).unwrap(), skill, "{status}");
+    }
+}
+
+// AC-4 (REQ-4, D4): a host whose only difference is a user-edited owned file writes no file either;
+// its receipt takes this build's version and the user's bytes stay.
+#[test]
+fn a_conflict_only_no_write_apply_also_refreshes_the_receipt_version() {
+    let f = fixture();
+    let exe = put(&f.home, "a", "moai");
+    install(&exe, &f);
+    let id = id_of(&exe);
+    // The user edits an owned file and the package moves that same file on: a conflict.
+    let edited = b"---\nname: moai\ndescription: edited by the user\n---\n";
+    fs::write(skill_file(&f.home), edited).unwrap();
+    fs::write(
+        f.stage.join("SKILL.md"),
+        "---\nname: moai\ndescription: fixture package\n---\n# MoAI\nbody v2\n",
+    )
+    .unwrap();
+    set_version(&f.home, &id, EARLIER);
+    let before = receipt(&f.home, &id);
+
+    let r = apply_unchanged(&exe, &f, "conflict");
+    assert_eq!(r["status"], json!("conflict"), "{r}");
+    assert_eq!(fs::read(skill_file(&f.home)).unwrap(), edited);
+    assert_own_receipt_updated(&before, &receipt(&f.home, &id));
+    assert_eq!(host(&r)["receipt_status"], json!("committed"), "{r}");
+}
+
+// AC-4 (REQ-5): once the receipt names this build, the next no-write apply writes no receipt.
+#[test]
+fn a_second_no_write_apply_writes_no_receipt() {
+    let f = fixture();
+    let exe = put(&f.home, "a", "moai");
+    install(&exe, &f);
+    let id = id_of(&exe);
+    set_version(&f.home, &id, EARLIER);
+    apply_unchanged(&exe, &f, "unchanged");
+    let written = fs::read(receipt_file(&f.home, &id)).unwrap();
+    let finished = receipt(&f.home, &id)["finished_at"].clone();
+    assert!(finished.is_string(), "{finished}");
+
+    // Receipts carry second-resolution timestamps: a rewrite would change `finished_at`.
+    sleep(Duration::from_millis(1100));
+    apply_unchanged(&exe, &f, "unchanged");
+    assert_eq!(fs::read(receipt_file(&f.home, &id)).unwrap(), written);
+    assert_eq!(receipt(&f.home, &id)["finished_at"], finished);
+}
+
+// AC-4 (REQ-4, REQ-6): the reported case. A new version folder has no receipt of its own and its
+// apply writes no file: the earlier folder's receipt is the baseline, this build's version goes
+// into a receipt under the running build's installation id, and the earlier receipt stays.
+#[test]
+fn a_no_write_apply_over_an_earlier_folders_receipt_writes_this_installations_receipt() {
+    let f = fixture();
+    let earlier_id = id_of(&earlier_folder(&f));
+    let b = running_build(&f);
+    // `moai` beside the same build's `moai-cli` writes under the canonical name's id.
+    let own_id = id_of(&b.with_file_name("moai-cli"));
+    assert!(!receipt_file(&f.home, &own_id).exists());
+    let earlier = receipt(&f.home, &earlier_id);
+    let earlier_bytes = fs::read(receipt_file(&f.home, &earlier_id)).unwrap();
+    let skill = fs::read(skill_file(&f.home)).unwrap();
+
+    let r = apply_unchanged(&b, &f, "unchanged");
+
+    assert_eq!(host(&r)["receipt_status"], json!("committed"), "{r}");
+    let after = receipt(&f.home, &own_id);
+    assert_eq!(after["install_id"], json!(own_id), "{after}");
+    assert_eq!(
+        after["package_version"],
+        json!(moai_cli::BUILD_VERSION),
+        "{after}"
+    );
+    assert_eq!(after["version_before"], json!(EARLIER), "{after}");
+    assert_eq!(after["status"], json!("committed"), "{after}");
+    assert_eq!(after["owned"], earlier["owned"], "{after}");
+    // REQ-11: a new receipt holds nothing of the earlier apply.
+    assert_eq!(after["entries"], json!([]), "{after}");
+    assert!(after.get("backup").is_none_or(Value::is_null), "{after}");
+    assert_eq!(
+        fs::read(receipt_file(&f.home, &earlier_id)).unwrap(),
+        earlier_bytes
+    );
+    assert_eq!(fs::read(skill_file(&f.home)).unwrap(), skill);
+}
+
+/// Gives a folder its mode back when the test ends, even when an assertion failed first.
+struct ModeBack(PathBuf, u32);
+
+impl Drop for ModeBack {
+    fn drop(&mut self) {
+        let _ = fs::set_permissions(&self.0, fs::Permissions::from_mode(self.1));
+    }
+}
+
+// AC-5 (REQ-5, REQ-8): a pending host is blocked and writes no receipt; a receipt that is neither
+// committed nor recovered is left as it is; a failing save is an error, never `unchanged`.
+#[test]
+fn a_blocked_or_pending_host_writes_no_version_only_receipt() {
+    let f = fixture();
+    let exe = put(&f.home, "a", "moai");
+    install(&exe, &f);
+    let id = id_of(&exe);
+    let file = receipt_file(&f.home, &id);
+
+    // A pending receipt blocks the host in the plan, so the apply never reaches a receipt write.
+    set_version(&f.home, &id, EARLIER);
+    set_status(&f.home, &id, "pending");
+    let before = fs::read(&file).unwrap();
+    assert_eq!(host(&plan(&exe, &f))["preflight"], json!("blocked"));
+    let out = apply_raw(&exe, &f);
+    assert_eq!(fs::read(&file).unwrap(), before, "{out:?}");
+
+    // A receipt whose status is neither `committed` nor `recovered` plans without a block; the
+    // apply writes no file and leaves its receipt alone.
+    set_status(&f.home, &id, "failed");
+    let before = fs::read(&file).unwrap();
+    assert_eq!(host(&plan(&exe, &f))["preflight"], json!("ok"));
+    apply_unchanged(&exe, &f, "unchanged");
+    assert_eq!(fs::read(&file).unwrap(), before);
+
+    // The version-only save is an error when the receipt folder cannot take a file.
+    set_status(&f.home, &id, "committed");
+    let before = fs::read(&file).unwrap();
+    let dir = file.parent().unwrap().to_path_buf();
+    let mode = fs::metadata(&dir).unwrap().permissions().mode();
+    let _back = ModeBack(dir.clone(), mode);
+    fs::set_permissions(&dir, fs::Permissions::from_mode(0o555)).unwrap();
+    let probe = dir.join("probe");
+    if fs::File::create(&probe).is_ok() {
+        // A process that ignores folder modes (root) cannot make the save fail: not run.
+        fs::remove_file(&probe).unwrap();
+        eprintln!("not_run: the failing-save case, this process can write a read-only folder");
+        return;
+    }
+    let out = apply_raw(&exe, &f);
+    fs::set_permissions(&dir, fs::Permissions::from_mode(mode)).unwrap();
+    assert!(!out.status.success(), "{out:?}");
+    let v: Value = serde_json::from_slice(&out.stdout).expect("envelope JSON on stdout");
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(fs::read(&file).unwrap(), before);
 }

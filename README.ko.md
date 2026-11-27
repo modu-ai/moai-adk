@@ -37,18 +37,28 @@ host가 읽는 작업 흐름 원문은 [skills/moai/](skills/moai/SKILL.md)에 �
 | 언어 | Rust | Go |
 | 명령 | `moai`(별칭 `moai-cli`) | `moai` |
 | 버전 | `2026.11.0-rc.1` (prerelease, 미출시) | 최신 릴리스 `v3.1.2` |
-| 상태 폴더 | `.moai-cli/`(프로젝트), `~/.moai-cli/`(사용자) | `.moai/`, `~/.moai/` |
+| 상태 폴더 | `.moai/`(새 프로젝트. 이전 RC로 시작한 프로젝트는 `.moai-cli/`를 그대로 씀), `~/.moai/`(사용자. HOME에 이 세대의 마커가 있거나 상태 파일이 없을 때. 아니면 이전의 `~/.moai-cli/`) | `.moai/`, `~/.moai/` |
 | host 진입 | Claude Code `/moai <요청>`, Codex `$moai <요청>` | Claude Code의 `/moai` 명령 |
 
-두 세대는 상태 폴더를 따로 쓰고, 서로를 업데이트하지 않습니다. 두 세대 모두 명령 이름이 `moai`이므로 `moai --version`으로 구별합니다(릴리스 후보는 줄 끝에 `(rust)`가 붙습니다). 릴리스 후보는 별칭 `moai-cli`도 함께 빌드합니다. 별칭은 같은 `--version` 줄을 출력하고, 도움말에는 명령 이름이 `moai-cli`로 나옵니다.
+두 세대는 서로를 업데이트하지 않습니다. 둘 다 `.moai`라는 폴더를 쓸 수 있으므로, RC1은 그 폴더에 무엇이든 바꾸기 전에 안의 마커 파일을 읽어 누구의 폴더인지 가립니다. 두 세대 모두 명령 이름이 `moai`이므로 `moai --version`으로 구별합니다(릴리스 후보는 줄 끝에 `(rust)`가 붙습니다). 릴리스 후보는 별칭 `moai-cli`도 함께 빌드합니다. 별칭은 같은 `--version` 줄을 출력하고, 도움말에는 명령 이름이 `moai-cli`로 나옵니다.
 
 **RC1 목표 범위**는 Apple silicon macOS(`aarch64-apple-darwin`)에서 쓰는 Claude Code와 Codex입니다. 이것은 목표이지 지원 보증이 아닙니다. host가 skill을 읽는 종단 간 시험은 아직 돌리지 않았습니다. Linux, Intel macOS, Windows는 RC1 범위 밖입니다(일부는 CI에서 빌드와 시험만 합니다). 조합별 측정 상태는 [docs/support-matrix.md](docs/support-matrix.md)와 [docs/host-support-matrix.md](docs/host-support-matrix.md)에 있습니다.
 
 ## 설치
 
-### 릴리스로 설치 (아직 없음)
+### 릴리스로 설치 (Rust 릴리스는 아직 없음)
 
-RC1 릴리스 자산과 설치 도구는 게시되지 않았습니다. 게시되면 실제 명령을 이 절에 적습니다. 그 전까지 이 절의 명령은 `not_run`입니다. 릴리스 파일은 GitHub artifact attestation으로 검증할 수 있게 할 예정입니다([docs/release-attestation.md](docs/release-attestation.md)).
+트리에는 설치 스크립트 두 개가 있습니다. `install/install.sh`(macOS, Linux)와 `install/install.ps1`(Windows)입니다. 주소는 `https://adk.mo.ai.kr/install.sh`와 `https://adk.mo.ai.kr/install.ps1`이고, 한 줄 명령은 다음과 같습니다.
+
+```sh
+curl -fsSL https://adk.mo.ai.kr/install.sh | sh
+```
+
+```powershell
+irm https://adk.mo.ai.kr/install.ps1 | iex
+```
+
+Rust 릴리스는 아직 없습니다(2026-11-26에 `gh release list`가 보여 준 것은 Go 3.x 릴리스뿐입니다). 그래서 릴리스가 만들어지기 전까지 이 주소들은 Go 판 스크립트를 내려 줍니다. 지금 RC1을 쓰려면 아래의 소스 빌드를 따르세요. 스크립트가 하는 일과 옵션은 [install/README.md](install/README.md)에 있습니다. 릴리스 파일은 GitHub artifact attestation으로 검증할 수 있게 할 예정입니다([docs/release-attestation.md](docs/release-attestation.md)).
 
 > 💡 **비용을 줄이려면 — z.ai GLM 추천**: [이 링크](https://z.ai/subscribe?ic=1NDV03BGWU)로 z.ai에 가입하면 일정 토큰을 보너스로 받는다. 이 링크는 moai-adk 오픈소스 개발을 후원하는 경로이기도 하다. 무료 모델(GLM-4.7-Flash, GLM-4.5-Flash)도 있으니 [z.ai 요금제](https://docs.z.ai/guides/overview/pricing)를 참고한다.
 
@@ -68,12 +78,18 @@ cargo build --release --locked
 
 ## 첫 실행
 
-프로젝트 루트에서 연 host 세션에 자연어로 요청하는 것이 기본 진입입니다.
+설치 스크립트는 끝에 다음 단계를 이 순서로 출력합니다.
+
+1. `moai update`는 MoAI skill과 agent를 설치합니다(무엇을 쓰는지 보여 주고 나서 묻습니다). 이 단계는 skill이 아직 설치되지 않았을 때만 출력됩니다.
+2. 프로젝트 폴더에서 `moai cc`(또는 `moai glm`)로 세션을 시작합니다.
+3. 세션 안에서 `/moai project`를 실행해 프로젝트를 설정합니다.
+
+사용자 흐름 초안은 첫 요청을 프로젝트 루트에서 연 host 세션에 자연어로 하는 것으로도 적고 있습니다.
 
 - Claude Code: `/moai 이 프로젝트를 읽고 설정해 줘`
 - Codex: `$moai 이 프로젝트를 읽고 설정해 줘`
 
-프로젝트에 `moai` skill을 추가하는 일과 위의 첫 요청은 **아직 종단 간으로 시험하지 않았습니다**(`not_run`, RC1 출시 대기). 사용자 흐름 초안은 [docs/user-entry-draft.md](docs/user-entry-draft.md)에 있습니다.
+프로젝트에 `moai` skill을 추가하는 일과 위의 첫 단계와 요청은 **아직 종단 간으로 시험하지 않았습니다**(`not_run`, RC1 출시 대기). 사용자 흐름 초안은 [docs/user-entry-draft.md](docs/user-entry-draft.md)에 있습니다.
 
 `moai --help`는 작업 흐름이 부르는 내부 명령을 보여 줍니다. skill이 쓰는 부품이지 매일 직접 쓰는 화면은 아닙니다.
 
@@ -92,7 +108,7 @@ cargo build --release --locked
 ## 자주 묻는 질문
 
 **RC1은 Go 3.x와 무엇이 다른가요?**
-RC1은 Rust로 새로 만든 세대이고, Claude Code와 Codex가 함께 쓰는 공통 `moai` skill 하나를 둡니다. 상태는 `.moai-cli/`와 `~/.moai-cli/`에 두므로 Go 3.x 설정을 건드리지 않습니다. [docs/rust-product-path.md](docs/rust-product-path.md)를 보세요.
+RC1은 Rust로 새로 만든 세대이고, Claude Code와 Codex가 함께 쓰는 공통 `moai` skill 하나를 둡니다. 새 프로젝트는 `.moai/` 폴더로 시작하고, 이전 RC로 시작한 프로젝트는 자기 `.moai-cli/` 폴더를 그대로 씁니다. 사용자 상태는 HOME의 `.moai/` 폴더가 이 세대의 마커를 갖고 있거나 상태 파일이 없을 때 그 폴더이고, 아니면 이전의 `~/.moai-cli/` 폴더입니다. 평범한 RC1 명령은 Go 3.x의 `~/.moai/`에 쓰지 않으므로 Go 3.x 설정을 건드리지 않습니다. [docs/rust-product-path.md](docs/rust-product-path.md)를 보세요.
 
 **지금 바로 쓸 수 있나요?**
 소스에서 빌드하고 코드와 문서를 읽을 수는 있습니다. 아직 출시 전이고 host 종단 간 시험도 돌리지 않았습니다. 일상 작업에는 지금도 `main`의 Go 3.x가 안정적인 선택입니다.
@@ -101,7 +117,7 @@ RC1은 Rust로 새로 만든 세대이고, Claude Code와 Codex가 함께 쓰는
 아닙니다. 어느 host 하나만으로도 목표 범위에 듭니다. 같은 작업 흐름 원문을 두 host가 함께 쓰고, host별 차이는 [docs/host-support-matrix.md](docs/host-support-matrix.md)에 있습니다.
 
 **내 홈 폴더의 파일을 바꾸나요?**
-RC1은 자기 사용자 상태를 `~/.moai-cli/`에 두고 Go 세대의 `~/.moai/`는 바꾸지 않습니다. 관리 파일을 만들거나 적용하는 명령(예: 프로젝트 설정, host 설정, hook, skill 복사)은 plan → apply 짝으로 나뉩니다. plan 단계는 아무것도 쓰지 않고, apply 단계는 plan digest가 없으면 실행을 거부합니다. host의 skill 폴더에 skill을 설치하는 일도 이런 명시적 apply 단계 중 하나입니다.
+RC1은 HOME의 `.moai` 폴더가 이 세대의 마커를 갖고 있거나 HOME에 상태 파일이 없으면 그 폴더에, 아니면 이전의 `~/.moai-cli/` 폴더에 사용자 상태를 둡니다. 평범한 RC1 명령은 Go 세대의 `~/.moai/`에 쓰지 않습니다. 관리 파일을 만들거나 적용하는 명령(예: 프로젝트 설정, host 설정, hook, skill 복사)은 plan → apply 짝으로 나뉩니다. plan 단계는 아무것도 쓰지 않고, apply 단계는 plan digest가 없으면 실행을 거부합니다. host의 skill 폴더에 skill을 설치하는 일도 이런 명시적 apply 단계 중 하나입니다.
 
 **어떻게 기여하나요?**
 [CONTRIBUTING.md](CONTRIBUTING.md)를 읽어 주세요(영어). 내부의 작업 예약·감사 절차를 따를 필요는 없습니다. 외부 pull request에는 maintainer가 그 절차를 대신 처리합니다.
@@ -115,11 +131,11 @@ RC1은 자기 사용자 상태를 `~/.moai-cli/`에 두고 Go 세대의 `~/.moai
 
 ## Anthropic·Claude Code와의 관계
 
-- MoAI ADK는 사용자가 직접 설치하고 로그인한 Claude Code를 실행합니다.
-- MoAI ADK는 Anthropic 제품이 아닙니다. Anthropic이 만들거나 보증하거나 제휴한 도구가 아닙니다.
-- Claude Code나 Anthropic의 이름과 로고를 자기 이름이나 로고로 쓰지 않습니다.
+- MoAI ADK는 사용자가 직접 설치한 Claude Code를 실행합니다. Claude Code는 사용자의 Claude 계정이나 GLM 같은 다른 공급자에 연결해 씁니다.
+- MoAI ADK는 Anthropic 제품이 아닙니다. Anthropic이 만들거나 보증한 도구가 아니며, Anthropic과 제휴 관계도 없습니다.
+- Claude Code나 Anthropic의 이름과 로고를 자체 이름이나 로고로 쓰지 않습니다.
 - Claude Code 실행 파일을 바꾸지 않고, Anthropic이 배포한 그대로 실행합니다.
-- Claude 계정 자격 증명이나 세션 토큰을 묻거나 저장하거나 전달하지 않습니다. 로그인은 Claude Code가 맡습니다.
+- Claude 계정 자격 증명이나 세션 토큰을 요구하거나 저장하거나 전달하지 않습니다. 로그인은 Claude Code가 맡습니다. GLM 키처럼 사용자가 고른 공급자 키는 moai의 자체 키 보관소에 둡니다(`moai key-set glm`).
 
 ## 라이선스
 

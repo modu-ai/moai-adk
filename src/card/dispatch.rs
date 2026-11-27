@@ -59,7 +59,7 @@ pub fn check_receiver(to: &str) -> Result<()> {
 }
 
 /// The card's number; a host number (`#12`) needs a lookup, so the writing actions refuse it.
-fn card_id(action: &str, reference: &str) -> Result<i64> {
+pub(super) fn card_id(action: &str, reference: &str) -> Result<i64> {
     match input::parse_ref(reference).map_err(|e| format!("card {action} refused: {e}"))? {
         CardRef::Id(n) => Ok(n),
         CardRef::SourceNumber(_) => Err(format!(
@@ -200,32 +200,6 @@ fn no_criteria_refusal(
         "card {action} refused: {name} has no acceptance criterion that is not withdrawn, so it \
          could never be closed; add one with `moai card criterion-add {name} --ac <text>`; nothing \
          was changed"
-    )))
-}
-
-/// The refusal for a card with a HOLD in force or a prerequisite that is not done, or `None`.
-/// A free-text HOLD is never read: only the `card.hold` event and the `blocks` links are.
-fn hold_gate_refusal(
-    conn: &rusqlite::Connection,
-    card_id: i64,
-) -> rusqlite::Result<Option<String>> {
-    let name = input::card_name(card_id);
-    if let Some(hold) = crate::ledger::workflow::current_hold(conn, card_id)? {
-        return Ok(Some(format!(
-            "card take refused: {name} is on HOLD ({}): {}; lift it with `moai card unhold {name} \
-             --reason <why> --by <name>` only when the decision is made; nothing was taken",
-            hold.category, hold.reason
-        )));
-    }
-    let needs = crate::ledger::workflow::unfinished_prerequisites(conn, card_id)?;
-    if needs.is_empty() {
-        return Ok(None);
-    }
-    let names: Vec<String> = needs.iter().map(|c| input::card_name(*c)).collect();
-    Ok(Some(format!(
-        "card take refused: {name} waits for {}, which {} not done; nothing was taken",
-        names.join(", "),
-        if names.len() == 1 { "is" } else { "are" }
     )))
 }
 
@@ -544,7 +518,9 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
     if is_ready {
         // A HOLD or an unfinished prerequisite is refused before any reservation is written
         // (SPEC-20261121-card-hold-gate); `card next` asks the same two functions.
-        if let Some(why) = hold_gate_refusal(ledger.conn(), card_id).map_err(|e| e.to_string())? {
+        if let Some(why) = crate::ledger::workflow::hold_gate_refusal(ledger.conn(), card_id)
+            .map_err(|e| e.to_string())?
+        {
             return Err(why);
         }
         if let Some(why) =
@@ -638,6 +614,13 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
             input::card_name(card_id),
             names.join(", ")
         ));
+    }
+    // The worktree's hook settings may point at files it does not have (SPEC-20261125-card-
+    // worktree-hook-config); a read problem never blocks or warns.
+    if let Some(line) = worktree.and_then(|w| {
+        crate::go_hooks::missing_scripts_warning(&input::card_name(card_id), Path::new(w))
+    }) {
+        warnings.push(line);
     }
     for (entry, hit) in &left_out {
         warnings.push(take_scope::left_out_warning(
@@ -838,7 +821,7 @@ pub fn handoff(
 /// check `card note` uses; `card export` writes it out). The text is never repeated. The
 /// text is kept without its leading and trailing blanks; a line separator (U+2028, U+2029) or a
 /// control character anywhere in what was typed is refused.
-fn checked_reason(action: &str, reason: &str) -> Result<String> {
+pub(super) fn checked_reason(action: &str, reason: &str) -> Result<String> {
     let kept = reason.trim();
     if kept.is_empty()
         || kept.chars().count() > reservation::MAX_REASON_LEN
@@ -984,6 +967,13 @@ pub fn reclaim(
     add_scope_fill(&mut answer, out.scope_fill.as_ref());
     if let Some(kept) = kept {
         answer["kept_commits"] = kept;
+    }
+    // The worktree the reservation now records may have hook settings pointing at files it
+    // lacks (SPEC-20261125-card-worktree-hook-config).
+    if let Some(line) = out.reservation.worktree.as_deref().and_then(|w| {
+        crate::go_hooks::missing_scripts_warning(&input::card_name(card_id), Path::new(w))
+    }) {
+        answer["warnings"] = json!([line]);
     }
     Ok(answer)
 }

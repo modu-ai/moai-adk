@@ -28,7 +28,7 @@ Source: https://code.claude.com/docs/en/memory
 | `@...AGENTS.md` in one of those files, outside code fences and inline code spans (text between backticks, or after an unclosed one, is skipped) | The content still loads through the import: `loaded`, `load_path: import` |
 | `pluginConfigs.<id>.options.instructionFiles` in `~/.claude/settings.json` | From 2.1.285 `<id>` is `cc-plugin-agents-md@builtin` and an entry under the older `agents-md@builtin` is still read (the new id wins when both are set); before 2.1.285 only `agents-md@builtin`. `claude-md-or-agents-md` (default), `claude-md-and-agents-md` (`loaded` despite CLAUDE files), `claude-md` and `managed-only` (`unknown`, direct reading excluded). Project and local settings are ignored for this entry, as Claude Code does |
 
-Statuses: `loaded`, `suppressed_by_claude_md`, `unsupported_version`, `unknown`, with a `reason`. On `suppressed_by_claude_md` the result lists two proposals (an `@AGENTS.md` import, or the `claude-md-and-agents-md` setting) and applies neither (REQ-02B-05). `basis` is `predicted`; managed settings and `--settings` files are `not_checked`, so an organisation policy can make the prediction wrong.
+Statuses: `loaded`, `suppressed_by_claude_md`, `unsupported_version`, `unknown`, with a `reason`. On `suppressed_by_claude_md` the result lists one proposal (move the text of your `AGENTS.md` into `CLAUDE.md`; for a file of this project, `/moai update` offers the pick `move`) and applies nothing (REQ-02B-05). `basis` is `predicted`; managed settings and `--settings` files are `not_checked`, so an organisation policy can make the prediction wrong.
 
 ## Settings ownership
 

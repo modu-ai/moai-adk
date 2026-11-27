@@ -217,8 +217,8 @@ fn no_codex_projection_is_written() {
     }
     for claude in [
         ".claude/agents/moai/prj-fixer.md",
-        ".claude/skills/ref-b/SKILL.md",
-        ".claude/skills/prj-checks/SKILL.md",
+        ".claude/skills/moai-ref-b/SKILL.md",
+        ".claude/skills/moai-prj-checks/SKILL.md",
     ] {
         assert!(root.path().join(claude).exists(), "{claude}");
     }

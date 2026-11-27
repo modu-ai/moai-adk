@@ -5,19 +5,25 @@ use std::path::PathBuf;
 
 /// Preview moving this clone's worktrees
 ///
-/// Preview moving this clone's linked worktrees into `<root>/<project>-<name>` (#2723, #2835),
-/// the place `worktree-plan` creates new ones in. Lists every worktree with its `location`,
-/// `move`, `keep` (already in the root, in the earlier `~/.moai-cli/worktrees/<key>/` root or
-/// in the Go generation's `~/.moai/worktrees/projects/`) or `blocked` and its reasons:
-/// main worktree, missing, locked, submodules, uncommitted or untracked files, unpushed
-/// commits, a stash of its branch, a process inside it, a held branch, or the hold check not
-/// run (no `holds` observation). Writes nothing; the answer carries a `plan_digest`.
+/// Preview moving this clone's linked worktrees into `<root>/<project>-<name>` (#2723, #2835);
+/// without `--root` the root is the primary checkout's `.claude/worktrees`, where
+/// `worktree-plan` creates new ones. Lists every worktree with its `location`, `move`, `keep`
+/// (already in the root, in the earlier `~/.moai-cli/worktrees/<key>/` root or in the Go
+/// generation's `~/.moai/worktrees/projects/`; without `--root` also anything in the project's
+/// `.claude/worktrees` or the home worktree folder, and a worktree holding one of those places)
+/// or `blocked` and its reasons: main worktree, missing, locked, submodules, uncommitted or
+/// untracked files, unpushed commits, a stash of its branch, a process inside it, a held
+/// branch, or the hold check not run (no `holds` observation). A linked `.claude` or
+/// `.claude/worktrees` in the way of the place is answered as `would_refuse`. Writes nothing;
+/// the answer carries a `plan_digest`.
 #[derive(clap::Args)]
 pub struct Args {
     /// Any checkout of the repository (the primary one or a worktree).
     project: PathBuf,
-    /// Absolute folder the worktrees move into (default `<HOME>/.moai/worktrees`, #2835).
-    /// Must lie outside every worktree and every Cargo build folder (#2930 R-3).
+    /// Absolute folder the worktrees move into (default: the primary checkout's
+    /// `.claude/worktrees`; a call without it needs a readable HOME). Must lie outside every
+    /// Cargo build folder (#2930 R-3) and outside every worktree, the primary checkout's
+    /// `.claude/worktrees` itself excepted.
     #[arg(long)]
     root: Option<PathBuf>,
     /// JSON file: `schema_version` 1 and optional `holds` {source, branches [{branch,

@@ -1,4 +1,4 @@
-# MoAI-ADK installer (Rust edition) for PowerShell — served at https://adk.mo.ai.kr/install.ps1 (#2935).
+# MoAI-ADK installer (Rust edition) for PowerShell — served at https://adk.mo.ai.kr/install.ps1.
 #
 #   irm https://adk.mo.ai.kr/install.ps1 | iex
 #
@@ -14,7 +14,7 @@
 # touched: the script prints what to run next instead. Requires PowerShell 5.1 or later; on
 # macOS and Linux `pwsh` runs the same flow with the `.tar.xz` archive.
 #
-# The language of the conversation with the model (#2935 L1) comes from --language, else
+# The language of the conversation with the model comes from --language, else
 # MOAI_LANGUAGE, else (at a terminal) a numbered menu, else the locale, else English. After the
 # commands are linked the script runs `moai-cli language-set --home --if-absent <code>` once;
 # that records only when nothing is recorded yet, so a reinstall never overwrites an earlier
@@ -35,7 +35,7 @@ $RepoUrl = "https://github.com/modu-ai/moai-adk"
 $ReleaseBase = if ($env:MOAI_RELEASE_BASE) { $env:MOAI_RELEASE_BASE } else { "$RepoUrl/releases/download" }
 $ReleaseFeed = if ($env:MOAI_RELEASE_FEED) { $env:MOAI_RELEASE_FEED } else { "$RepoUrl/releases.atom" }
 $ReleaseApi = if ($env:MOAI_RELEASE_API) { $env:MOAI_RELEASE_API } else { "https://api.github.com/repos/modu-ai/moai-adk/releases?per_page=100" }
-$TagPrefix = "moai-cli-v"
+$TagPrefix = "moai-adk-v"
 $IsWin = ($IsWindows -or ($null -eq $IsWindows -and $env:OS -eq "Windows_NT"))
 $Exe = if ($IsWin) { ".exe" } else { "" }
 
@@ -87,7 +87,7 @@ function Test-Version([string]$V) {
     return ($V -match '^[0-9][0-9A-Za-z.+-]*$') -and ($V -notmatch '\.\.')
 }
 
-# The conversation language is one of the four codes the language module holds (#2935 L1, G6):
+# The conversation language is one of the four codes the language module holds:
 # en, ko, ja and zh, the same list the install menu offers and moai-cli accepts. Anything else —
 # a well-shaped code like fr or pt-BR included — is refused here, so nothing outside the list
 # reaches the binary or the recorded file.
@@ -143,7 +143,7 @@ function Read-LanguageChoice([string]$Default) {
     return $Default
 }
 
-# The supported platforms (user decision 2026-11-17, SPEC-20261117-supported-platforms): macOS on
+# The supported platforms (SPEC-20261117-supported-platforms): macOS on
 # Apple silicon, Linux x86_64 and Windows x86_64. Anything else stops before a download or a write.
 $SupportedPlatforms = "macOS arm64 (Apple silicon), Linux x86_64, Windows x86_64"
 
@@ -208,7 +208,7 @@ function Get-Url([string]$Url, [string]$OutFile) {
     }
 }
 
-# The first candidate (newest first) that is a moai-cli-v<version> release for the channel. A
+# The first candidate (newest first) that is a moai-adk-v<version> release for the channel. A
 # pre-release is told by the release's own mark; a `-` in the version marks one of the earlier
 # scheme only, because a HeadVer version has no suffix. The feed has no mark, so a HeadVer
 # pre-release cannot be told there and the newest tag is taken (docs/release-checklist.md).
@@ -224,11 +224,10 @@ function Select-Version($Candidates, [string]$Channel) {
     return $null
 }
 
-# The newest moai-cli-v<version> release. /releases/latest is the Go edition's (Rust final
+# The newest moai-adk-v<version> release. /releases/latest is the Go edition's (Rust final
 # releases are published with --latest=false). First the REST list (100 newest, with the draft
 # and prerelease fields); when it cannot be read (no network to the API, or the
-# unauthenticated limit is spent), the releases feed, which holds only the 10 newest entries
-# (audit #2943 B1).
+# unauthenticated limit is spent), the releases feed, which holds only the 10 newest entries.
 function Get-LatestVersion([string]$Channel) {
     $v = $null
     $api = Join-Path $script:TmpDir "releases.json"
@@ -379,7 +378,7 @@ function Main {
         if ($arg -in "--version", "-version") {
             if ($i + 1 -ge $Arguments.Count) { Fail "--version needs a value" }
             $given = [string]$Arguments[++$i]
-            # `v2026.11.0` and the tag `moai-cli-v2026.11.0` name the same version.
+            # `v2026.11.0` and the tag `moai-adk-v2026.11.0` name the same version.
             $Version = $given
             if ($Version.StartsWith($TagPrefix)) { $Version = $Version.Substring($TagPrefix.Length) }
             if ($Version.StartsWith("v")) { $Version = $Version.Substring(1) }
@@ -473,7 +472,7 @@ function Main {
     if (-not $IsWin) { & chmod 755 $newBin }
 
     # Ask the downloaded binary where its state lives and what `moai` on PATH is (read only).
-    # moai-cli reads HOME; Windows often has only USERPROFILE (codex review P1 on #2943).
+    # moai-cli reads HOME; Windows often has only USERPROFILE.
     if (-not $env:HOME -and $env:USERPROFILE) { $env:HOME = $env:USERPROFILE }
     try {
         $inspect = (& $newBin install-inspect 2>$null | Out-String) | ConvertFrom-Json
@@ -532,7 +531,7 @@ function Main {
                 $have = Get-Sha256 $link
                 if ($have -eq (Get-Sha256 $src)) { continue }
                 # A copy of a version this installer placed is its own and is replaced on an
-                # upgrade (codex review P2 on #2943); any other file is someone else's.
+                # upgrade; any other file is someone else's.
                 $owned = Get-ChildItem -LiteralPath (Join-Path $stateHome "versions") -Directory -ErrorAction SilentlyContinue |
                     Where-Object { $f = Join-Path (Join-Path $_.FullName "bin") $name; (Test-Path -LiteralPath $f) -and ((Get-Sha256 $f) -eq $have) }
                 if (-not $owned) { Print-Warning "$link is not a copy this installer placed; left as it is"; continue }
@@ -547,7 +546,7 @@ function Main {
             $current = "$($item.Target)"
             if ($current -eq $src) { continue }
             # Only a link into a version folder this installer placed is replaced; a link to the
-            # Go edition's moai, say, is someone else's (codex review P1 on #2943).
+            # Go edition's moai, say, is someone else's.
             if (-not $current.StartsWith($versionsPrefix)) {
                 Print-Warning "$link points to $current, not a version this installer placed; left as it is"
                 continue

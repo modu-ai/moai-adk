@@ -9,6 +9,7 @@
 //! real host starts and nothing outside the temporary folders is read or written. A preview
 //! leaves the whole tree byte for byte as it was.
 
+// check-affected: every-source-change
 #![cfg(unix)]
 
 mod common;

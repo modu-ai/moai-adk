@@ -405,6 +405,83 @@ fn a_legacy_key_file_is_never_read_or_touched() {
     );
 }
 
+/// Every path below `dir`, relative and sorted, with the bytes of each file.
+fn contents(dir: &Path) -> Vec<(PathBuf, Option<Vec<u8>>)> {
+    let mut out = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        for e in fs::read_dir(&d).unwrap() {
+            let p = e.unwrap().path();
+            let rel = p.strip_prefix(dir).unwrap().to_path_buf();
+            if p.is_dir() {
+                out.push((rel, None));
+                stack.push(p);
+            } else {
+                out.push((rel, Some(fs::read(&p).unwrap())));
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// SPEC-20261124-identity-home-arg AC-14 (REQ-12): with a symlinked home state root every key
+/// command refuses the project scope before it reads, writes or removes the entry behind the
+/// link.
+#[test]
+fn home_arg_rest_key_commands_refuse_a_linked_home_state_root() {
+    let (_d, home) = home();
+    let key = synthetic();
+    // A Go generation marker makes the earlier state folder the state root: a link at that place
+    // keeps being the state root, the resolver's answer is read back below.
+    let go = home.join(moai_cli::home_root::MOAI_DIR);
+    fs::create_dir_all(&go).unwrap();
+    fs::write(
+        go.join("user-assets.json"),
+        br#"{"schema_version": 1, "files": {}}"#,
+    )
+    .unwrap();
+    let repo = home.join("repo");
+    fs::create_dir(&repo).unwrap();
+    let init = common::git::command()
+        .args(["init", "-q"])
+        .current_dir(&repo)
+        .status()
+        .unwrap();
+    assert!(init.success());
+    // A project entry stored while the state root is a real folder.
+    let set = envelope(&run_in(&home, &repo, &["key-set", "glm"], Some(&key)), &key);
+    assert_eq!(set["result"]["scope"], "project", "{set}");
+    let state = moai_cli::home_root::path(&home);
+    let moved = home.join("state-fixture");
+    fs::rename(&state, &moved).unwrap();
+    std::os::unix::fs::symlink(&moved, &state).unwrap();
+    assert_eq!(moai_cli::home_root::path(&home), state);
+    let before = contents(&moved);
+
+    let other = format!("{key}-2");
+    for (args, stdin) in [
+        (vec!["key-status", "glm"], None),
+        (vec!["key-set", "glm"], Some(other.as_str())),
+        (vec!["key-remove", "glm", "--yes"], None),
+    ] {
+        let out = run_in(&home, &repo, &args, stdin);
+        let v = envelope(&out, &key);
+        assert_eq!(v["ok"], false, "{args:?}: {v}");
+        assert!(
+            v["error"]["message"]
+                .as_str()
+                .is_some_and(|m| m.contains("home state root is a symlink; refused")),
+            "{args:?}: {v}"
+        );
+        assert_eq!(
+            contents(&moved),
+            before,
+            "{args:?} changed something behind the link"
+        );
+    }
+}
+
 /// The key commands left `src/main.rs` for `src/ops/` (#2834 R3): each envelope still names
 /// its own operation.
 #[test]

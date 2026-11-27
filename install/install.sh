@@ -1,5 +1,5 @@
 #!/bin/sh
-# MoAI-ADK installer (Rust edition) — served at https://adk.mo.ai.kr/install.sh (#2935).
+# MoAI-ADK installer (Rust edition) — served at https://adk.mo.ai.kr/install.sh.
 #
 #   curl -fsSL https://adk.mo.ai.kr/install.sh | sh
 #
@@ -11,11 +11,11 @@
 #   <link dir>/moai-cli, <link dir>/moai          (symbolic links; default <state home>/path)
 #
 # <state home> is the `home_state_root` that `moai-cli install-inspect` reports, so the one
-# rule for it lives in the binary (#2871 I2), not here. The shell configuration and PATH are
+# rule for it lives in the binary, not here. The shell configuration and PATH are
 # never edited, and an existing Go-edition `moai` is never touched: the script prints what to
 # run next instead. POSIX sh, so it runs under `sh` and `bash` alike.
 #
-# The language of the conversation with the model (#2935 L1) comes from --language, else
+# The language of the conversation with the model comes from --language, else
 # MOAI_LANGUAGE, else (at a terminal) a numbered menu, else the locale, else English. After the
 # commands are linked the script runs `moai-cli language-set --home --if-absent <code>` once;
 # that records only when nothing is recorded yet, so a reinstall never overwrites an earlier
@@ -36,7 +36,7 @@ REPO_URL="https://github.com/modu-ai/moai-adk"
 RELEASE_BASE="${MOAI_RELEASE_BASE:-$REPO_URL/releases/download}"
 RELEASE_FEED="${MOAI_RELEASE_FEED:-$REPO_URL/releases.atom}"
 RELEASE_API="${MOAI_RELEASE_API:-https://api.github.com/repos/modu-ai/moai-adk/releases?per_page=100}"
-TAG_PREFIX="moai-cli-v"
+TAG_PREFIX="moai-adk-v"
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
     RED=$(printf '\033[0;31m'); GREEN=$(printf '\033[0;32m'); YELLOW=$(printf '\033[1;33m')
@@ -90,7 +90,7 @@ Examples:
 EOF
 }
 
-# The conversation language is one of the four codes the language module holds (#2935 L1, G6):
+# The conversation language is one of the four codes the language module holds:
 # en, ko, ja and zh, the same list the install menu offers and moai-cli accepts. Anything else —
 # a well-shaped code like fr or pt-BR included — is refused here, so nothing outside the list
 # reaches the binary or the recorded file, and no multi-line value can slip through.
@@ -221,7 +221,7 @@ valid_version() {
     return 1
 }
 
-# The supported platforms (user decision 2026-11-17, SPEC-20261117-supported-platforms): macOS on
+# The supported platforms (SPEC-20261117-supported-platforms): macOS on
 # Apple silicon, Linux x86_64 and Windows x86_64 (install.ps1). Anything else stops here, before a
 # download or a write.
 detect_target() {
@@ -253,7 +253,7 @@ detect_target() {
 # fetch URL FILE — curl first, wget second; file:// works with curl (tests use it).
 fetch() {
     if command -v curl >/dev/null 2>&1; then
-        # No redirect may leave https (audit #2943 note 2); file:// is for the tests.
+        # No redirect may leave https; file:// is for the tests.
         curl -fsSL --proto '=https,file' --proto-redir '=https' --connect-timeout 10 --max-time 300 "$1" -o "$2"
     elif command -v wget >/dev/null 2>&1; then
         wget -q --timeout=30 --tries=2 "$1" -O "$2"
@@ -263,7 +263,7 @@ fetch() {
 }
 
 # Takes the first candidate line `<tag> <draft> <prerelease>` (newest first) that is a
-# `moai-cli-v<version>` release for the channel. Sets VERSION, or leaves it empty.
+# `moai-adk-v<version>` release for the channel. Sets VERSION, or leaves it empty.
 pick_version() {
     while read -r tag draft pre; do
         case "$tag" in "$TAG_PREFIX"*) ;; *) continue ;; esac
@@ -282,12 +282,12 @@ pick_version() {
     return 0
 }
 
-# The newest `moai-cli-v<version>` release. `/releases/latest` cannot be used: the Rust
+# The newest `moai-adk-v<version>` release. `/releases/latest` cannot be used: the Rust
 # edition's final releases are published with `--latest=false` so the Go edition's updater
 # keeps its latest (docs/release-checklist.md). First the REST list (100 newest, with the
 # draft and prerelease fields); when it cannot be read (no network to the API, or the
 # unauthenticated limit of 60 requests an hour is spent), the releases feed, which is not
-# rate limited but holds only the 10 newest entries (audit #2943 B1).
+# rate limited but holds only the 10 newest entries.
 latest_version() {
     VERSION=""
     api_file="$TMP_DIR/releases.json"
@@ -308,7 +308,7 @@ EOF
         fi
         # The feed lists published releases only and has no prerelease field: a `-` in the
         # version marks a release candidate of the earlier scheme, and a HeadVer pre-release
-        # (no suffix) cannot be told here, so the newest `moai-cli-v*` is taken. Pin a version
+        # (no suffix) cannot be told here, so the newest `moai-adk-v*` is taken. Pin a version
         # with --version when the REST list is out of reach (docs/release-checklist.md).
         pick_version <<EOF
 $(tr '<' '\n' <"$feed_file" | tr '>' '\n' | tr '"' '\n' | sed -n "s|^.*/releases/tag/\\(${TAG_PREFIX}[^/?#]*\\)\$|\\1 false false|p")
@@ -431,11 +431,12 @@ place() {
     [ -z "$PARTS_ADDED" ] || print_success "With the release parts:$PARTS_ADDED"
 }
 
-# The hosts this machine has: the host's command on PATH, or its folder in HOME.
+# The hosts this machine has: the host's command on PATH, or its folder: CLAUDE_CONFIG_DIR when
+# that variable is set and not empty, else `.claude` in HOME.
 detect_hosts() {
     HOSTS=""
     for host in claude; do
-        if command -v "$host" >/dev/null 2>&1 || [ -d "$HOME/.$host" ]; then
+        if command -v "$host" >/dev/null 2>&1 || [ -d "${CLAUDE_CONFIG_DIR:-$HOME/.$host}" ]; then
             HOSTS="$HOSTS $host"
         fi
     done
@@ -456,7 +457,7 @@ install_skill() {
     detect_hosts
     echo ""
     if [ -z "$HOSTS" ]; then
-        print_warning "No Claude Code found (no claude command, no ~/.claude)."
+        print_warning "No Claude Code found (no claude command, no folder: CLAUDE_CONFIG_DIR when set, else ~/.claude)."
         print_info "Install it, then install the MoAI skill and agents with: moai update"
         return 0
     fi
@@ -600,7 +601,7 @@ main() {
         case "$1" in
             --version)
                 [ $# -ge 2 ] || die "--version needs a value"
-                # `v2026.11.0` and the tag `moai-cli-v2026.11.0` name the same version.
+                # `v2026.11.0` and the tag `moai-adk-v2026.11.0` name the same version.
                 VERSION="${2#"$TAG_PREFIX"}"
                 VERSION="${VERSION#v}"
                 valid_version "$VERSION" || die "Not a version: '$2'"

@@ -145,6 +145,9 @@ enum W {
     KeptMine,
     Linked,
     LinkedFile,
+    LinkedNote,
+    NotLinked,
+    NoCopyHere,
     ReferenceNote,
     Cleanup,
     Archive,
@@ -187,6 +190,9 @@ enum W {
     KeyImport,
     KeyInVault,
     KeyKeep,
+    Remaining,
+    RemainingNext,
+    NotMatching,
 }
 
 /// Whether a confirmed cleanup, when there is one, ended committed.
@@ -328,6 +334,27 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "그대로 둠"
             } else {
                 "keep"
+            }
+        }
+        Remaining => {
+            if ko {
+                "남은 부분"
+            } else {
+                "left to apply"
+            }
+        }
+        RemainingNext => {
+            if ko {
+                "원인을 고친 뒤 moai update 를 다시 실행하면 남은 부분만 이어서 적용해요"
+            } else {
+                "Fix the cause and run moai update again: it applies only what is left"
+            }
+        }
+        NotMatching => {
+            if ko {
+                "쓴 뒤 다시 읽은 내용이 달라요"
+            } else {
+                "read back differently from what was written"
             }
         }
         UpToDate => {
@@ -532,6 +559,27 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "링크로 이어짐(같은 파일)"
             } else {
                 "linked"
+            }
+        }
+        LinkedNote => {
+            if ko {
+                "(이 프로필은 링크로 읽어요)"
+            } else {
+                "(this folder is read through a link)"
+            }
+        }
+        NotLinked => {
+            if ko {
+                "링크 안 됨"
+            } else {
+                "not linked"
+            }
+        }
+        NoCopyHere => {
+            if ko {
+                "moai는 기본 폴더에 사본 하나만 두고 이 폴더에는 쓰지 않아요"
+            } else {
+                "moai keeps one copy in the default folder and writes none in this folder"
             }
         }
         ReferenceNote => {
@@ -821,6 +869,25 @@ fn counted(lang: Lang, word: W, n: usize) -> String {
     }
 }
 
+/// The label of a part the run receipt names.
+fn part_label(lang: Lang, part: &str) -> String {
+    let word = match part {
+        "skills" | "extra_skills" => W::Skills,
+        "agents" => W::Agents,
+        "routing" => W::Routing,
+        "style" => W::Style,
+        "bin_names" => W::BinNames,
+        "hooks" => W::Hooks,
+        "keys" => W::Keys,
+        "cleanup" => W::Cleanup,
+        "home" => W::Home,
+        "switch" => W::Switch,
+        "git_hooks" => W::GitHooks,
+        other => return other.to_string(),
+    };
+    w(lang, word).to_string()
+}
+
 // --- rows ----------------------------------------------------------------------------------
 
 /// The state a row shows: a symbol and a word, never color alone.
@@ -900,7 +967,7 @@ fn tally(files: &[Value]) -> (usize, usize, usize, usize, usize) {
         match f["action"].as_str().unwrap_or("") {
             "unchanged" => t.0 += 1,
             "create" | "append" | "merge" | "set" => t.1 += 1,
-            "update" | "replace" | "replace_copy" => t.2 += 1,
+            "update" | "replace" | "replace_copy" | "retire" => t.2 += 1,
             "conflict" => t.3 += 1,
             _ => t.4 += 1,
         }
@@ -1123,7 +1190,44 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
     let mut parts = Vec::new();
     let mut flow_notes: Vec<String> = Vec::new();
     let mut worst = Mark::Ok;
-    for h in v["routing"]["hosts"].as_array().into_iter().flatten() {
+    let routing_hosts: Vec<&Value> = v["routing"]["hosts"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .collect();
+    let action_of = |h: &Value| h["section"]["action"].as_str().unwrap_or("").to_string();
+    // `agents::section_plan`: create (new file), append (block added to an existing file),
+    // merge (owned block rewritten), unchanged, conflict.
+    let state = |action: &str| -> (Mark, &'static str) {
+        match action {
+            "unchanged" => (Mark::Ok, w(lang, W::UpToDate)),
+            "create" | "append" => (Mark::Update, w(lang, W::New)),
+            "merge" | "update" => (Mark::Update, w(lang, W::ToUpdate)),
+            "conflict" => (Mark::Warn, w(lang, W::Conflict)),
+            _ => (Mark::Warn, w(lang, W::Skipped)),
+        }
+    };
+    // A profile's `linked` row carries the path of the default folder's row (the one file moai
+    // keeps): the index of that default row, when it is in the list.
+    let default_row_of = |h: &Value| -> Option<usize> {
+        let path = h["section"]["path"].as_str().filter(|p| !p.is_empty())?;
+        routing_hosts.iter().position(|d| {
+            d["preflight"].as_str() == Some("ok")
+                && d["section"]["path"].as_str() == Some(path)
+                && !matches!(action_of(d).as_str(), "linked" | "not_linked")
+        })
+    };
+    // The default rows that carry the note of a profile read through a link: only a default row
+    // that is `Ok` does, so a problem on the one real copy is never shown as fine.
+    let mut noted = vec![false; routing_hosts.len()];
+    for h in &routing_hosts {
+        if h["preflight"].as_str() == Some("ok") && action_of(h) == "linked" {
+            if let Some(i) = default_row_of(h) {
+                noted[i] |= state(&action_of(routing_hosts[i])).0 == Mark::Ok;
+            }
+        }
+    }
+    for (idx, h) in routing_hosts.iter().enumerate() {
         let file = short(h["file"].as_str().unwrap_or(""));
         if h["preflight"].as_str() != Some("ok") {
             worst = worst.max(Mark::Error);
@@ -1134,19 +1238,38 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
             ));
             continue;
         }
-        // `agents::section_plan`: create (new file), append (block added to an existing file),
-        // merge (owned block rewritten), unchanged, conflict.
-        let (m, word) = match h["section"]["action"].as_str().unwrap_or("") {
-            "unchanged" => (Mark::Ok, w(lang, W::UpToDate)),
-            "create" | "append" => (Mark::Update, w(lang, W::New)),
-            "merge" | "update" => (Mark::Update, w(lang, W::ToUpdate)),
-            "conflict" => (Mark::Warn, w(lang, W::Conflict)),
-            // A link to the file moai keeps in the default folder: no second copy is written.
-            "linked" => (Mark::Ok, w(lang, W::LinkedFile)),
-            _ => (Mark::Warn, w(lang, W::Skipped)),
+        let action = action_of(h);
+        let mut folded = false;
+        let (m, word) = match action.as_str() {
+            // A link to the file moai keeps in the default folder: no second copy is written. It
+            // is that folder's entry with a note when that entry is `Ok`, else it shows the
+            // default entry's mark and word.
+            "linked" => match default_row_of(h) {
+                Some(i) => {
+                    let s = state(&action_of(routing_hosts[i]));
+                    folded = s.0 == Mark::Ok;
+                    s
+                }
+                None => (Mark::Ok, w(lang, W::LinkedFile)),
+            },
+            // A folder with its own `rules` folder: a warning with the row's reason and next step.
+            "not_linked" => (Mark::Warn, w(lang, W::NotLinked)),
+            other => state(other),
         };
         worst = worst.max(m);
-        parts.push(format!("{file} {word}"));
+        if action == "not_linked" {
+            let reason = h["section"]["detail"]
+                .as_str()
+                .filter(|d| !d.trim().is_empty())
+                .unwrap_or_else(|| w(lang, W::NoCopyHere));
+            parts.push(format!("{file} {word}: {reason}"));
+        } else if folded {
+            // Shown on the default entry.
+        } else if noted[idx] {
+            parts.push(format!("{file} {word} {}", w(lang, W::LinkedNote)));
+        } else {
+            parts.push(format!("{file} {word}"));
+        }
         // The flow rule's own detail, such as an earlier build's file left in place for the user
         // to delete, is a line of its own.
         if let Some(detail) = h["flow"]["detail"].as_str() {
@@ -1435,6 +1558,37 @@ impl Out<'_> {
         let line = format!("{}\n", self.p().paint(Token::Strong, w(self.lang(), word)));
         self.buf.push_str(&line);
     }
+    /// C-513 S7: what the run receipt says after the head: the written skill files that read back
+    /// as written, and the parts left to apply with the one command that continues the run.
+    fn run_lines(&mut self, run: &Value) {
+        if !run.is_object() {
+            return;
+        }
+        let lang = self.lang();
+        let checked = run["files_checked"].as_u64().unwrap_or(0) as usize;
+        if checked > 0 && run["files_not_matching"].as_u64() == Some(0) {
+            let line = if lang == Lang::Ko {
+                format!("쓴 스킬 파일 {checked}개를 다시 읽었고 해시가 모두 맞아요")
+            } else {
+                format!("{checked} written skill files read back, every hash matches")
+            };
+            self.muted(&line);
+        }
+        let mut left: Vec<String> = Vec::new();
+        for p in run["remaining"].as_array().into_iter().flatten() {
+            let label = part_label(lang, p.as_str().unwrap_or(""));
+            if !left.contains(&label) {
+                left.push(label);
+            }
+        }
+        if !left.is_empty() {
+            self.status(
+                Mark::Warn,
+                &format!("{}: {}", w(lang, W::Remaining), left.join(", ")),
+            );
+            self.muted(w(lang, W::RemainingNext));
+        }
+    }
     /// A status line at the left edge: mark, then the sentence.
     fn status(&mut self, m: Mark, text: &str) {
         let safe = visible(text);
@@ -1492,8 +1646,10 @@ impl Out<'_> {
         );
         self.buf.push_str(&line);
         let plan = &v["plan"];
-        let from = plan["source_version"]
+        // The version the execution link points to wins over the receipt's source version.
+        let from = v["installed_version"]
             .as_str()
+            .or_else(|| plan["source_version"].as_str())
             .unwrap_or(w(lang, W::NotInstalled));
         let to = plan["target_version"]
             .as_str()
@@ -2172,9 +2328,8 @@ impl Out<'_> {
 
 fn change_mark(action: &str) -> Option<Mark> {
     match action {
-        "create" | "append" | "merge" | "set" | "update" | "replace" | "replace_copy" => {
-            Some(Mark::Update)
-        }
+        "create" | "append" | "merge" | "set" | "update" | "replace" | "replace_copy"
+        | "retire" => Some(Mark::Update),
         "conflict" => Some(Mark::Warn),
         _ => None,
     }
@@ -2472,7 +2627,15 @@ fn applied(v: &Value, view: &View) -> String {
                     ),
                 ));
             }
-            Some("unchanged") | None => {}
+            // A host whose folder is blocked (a link) writes nothing and answers `unchanged`; its
+            // reason is on the row and the run ends partly applied, never on Done.
+            Some("unchanged") | None => {
+                if r["blocked"].as_array().is_some_and(|b| !b.is_empty()) {
+                    bad = true;
+                    let msg = r["reason"].as_str().unwrap_or("blocked");
+                    rows.push(row(Mark::Warn, label, msg.to_string()));
+                }
+            }
             Some("skipped") => rows.push(row(Mark::Skip, label, w(lang, W::Skipped).into())),
             Some(other) => {
                 bad = true;
@@ -2494,6 +2657,30 @@ fn applied(v: &Value, view: &View) -> String {
         let (label, text) = skipped_row(lang, s);
         rows.push(row(Mark::Skip, label, text));
     }
+    // C-513 S7: a written skill file that did not read back as written is named by its row.
+    let run = &v["run"];
+    for f in run["files"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|f| f["check"].as_str() != Some("match"))
+    {
+        bad = true;
+        rows.push(row(
+            Mark::Warn,
+            format!(
+                "{} {}",
+                part_label(lang, f["part"].as_str().unwrap_or("skills")),
+                f["host"].as_str().unwrap_or("")
+            ),
+            format!(
+                "{}: {} ({})",
+                f["path"].as_str().unwrap_or(""),
+                w(lang, W::NotMatching),
+                f["check"].as_str().unwrap_or("")
+            ),
+        ));
+    }
     rows.extend(notice_rows(lang, v));
     // A blank line after the answer typed at the question.
     o.blank();
@@ -2505,6 +2692,11 @@ fn applied(v: &Value, view: &View) -> String {
     bad |= !home_ok(v);
     bad |= !switch_ok(v);
     bad |= !git_hooks_ok(v);
+    // The run receipt has the last word on the head: a part left open or a file that does not
+    // read back as written ends the run partly applied.
+    if run.is_object() {
+        bad |= run["status"].as_str() != Some("complete");
+    }
     let head = if bad { W::Partial } else { W::Done };
     let m = if bad { Mark::Warn } else { Mark::Ok };
     let total = if lang == Lang::Ko {
@@ -2513,6 +2705,7 @@ fn applied(v: &Value, view: &View) -> String {
         format!("{total} {}", w(lang, W::Changed))
     };
     o.status(m, &format!("{} — {total}", w(lang, head)));
+    o.run_lines(run);
     // Last applied first, from the one order `update::revert_order` holds; the cleanup and home
     // commands are in it (their status rows follow, without a second revert line).
     let reverts: Vec<String> = crate::update::revert_order(&v["revert"])

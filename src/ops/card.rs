@@ -20,7 +20,9 @@ enum OrchestrateAction {
     /// Reads the ledger only. Print the plan of one round; nothing is sent, started or landed
     ///
     /// Reads the ledger only. Prints `window`, `lanes`, `actions` (`clear`, `dispatch`, `audit`,
-    /// `blocked`, each with a stable `key`), `land_queue`, `attention` and `host`. Two plans of
+    /// `blocked`, each with a stable `key`), `land_queue`, `superseded`
+    /// (passed heads that are no longer their card's current head, with no `card land` line),
+    /// `attention` and `host`. Two plans of
     /// an unchanged ledger and registry are equal. `--agents-json` reads a file in the shape of
     /// `claude agents --json`; without it the host is `not_read`. A project without a ledger has
     /// an empty plan (`ledger: "absent"`, exit 0) and nothing is created.
@@ -310,7 +312,9 @@ enum Action {
         /// else the SPEC's `write:` list, else its last reservation's scope).
         #[arg(long = "scope")]
         scope: Vec<String>,
-        /// The worktree the holder works in.
+        /// The worktree the holder works in: an absolute path is recorded as given, a relative
+        /// one is resolved against the folder the command runs in and recorded as the absolute
+        /// top of the checkout it names (refused when that folder is not the top of one).
         #[arg(long)]
         worktree: Option<String>,
         /// The branch the holder works on.
@@ -462,8 +466,14 @@ enum Action {
     /// Writes the ledger. One active `blocks` link runs from the needed card to this one and one
     /// `card.prereq` event records the by. `card next` lists this card as skipped with the
     /// reason `prerequisite` naming the cards that are not done, and `card take` refuses it
-    /// before any reservation. A second call for the same pair changes nothing (`created:
-    /// false`). A card that needs itself, or one the needed card already needs, is refused.
+    /// before any reservation (and again inside the reservation transaction). A second call for
+    /// the same pair changes nothing (`created: false`). A card that needs itself, or one the
+    /// needed card already needs through any number of cards, is refused and the answer names
+    /// the loop. A withdrawn card no longer counts as unfinished; a folded one still does.
+    /// `--remove` takes the link back: it becomes `retired` (the row stays), one
+    /// `card.prereq_remove` event records the by, and the answer has `removed` (`false` and
+    /// nothing written when there is no active link). Adding the pair again makes the same row
+    /// active after the loop check.
     Prereq {
         /// The card that waits (`C-12` or `#3066`).
         card: String,
@@ -473,6 +483,9 @@ enum Action {
         /// Who records it (one line, 1..=200 characters).
         #[arg(long)]
         by: String,
+        /// Take the link back instead of adding it.
+        #[arg(long)]
+        remove: bool,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -569,6 +582,10 @@ enum Action {
         /// Who does it (default `user`).
         #[arg(long)]
         by: Option<String>,
+        /// The generation the card has now (`card show` prints it); a card at another
+        /// generation, or one nobody holds, is a `conflict`. Left out, nothing is checked.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(1..))]
+        generation: Option<i64>,
         /// The project folder (its profile holds the project id; its `.moai/specs` holds the SPEC).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -712,6 +729,70 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Offer a taken card to one named session
+    ///
+    /// Writes the ledger. The holder offers the card to the session `--to`: one `card.offer` event
+    /// names the holder, the generation, the target, the end of the offer's validity
+    /// (`--valid-secs`, 60 to 86400, default 1800) and the optional `--handover` line. The
+    /// reservation, the generation and the card's state stay as they are, so the holder owns the
+    /// card until the target accepts. A new offer replaces the older one, and `--cancel` voids the
+    /// newest offer (`no_offer` when there is none). Fenced like `handoff`: only the holder at the
+    /// current generation with a live lease offers, and a refused holder call is recorded as one
+    /// `fence_reject`. The reclaim count of the card is untouched.
+    Offer {
+        /// `C-12`.
+        card: String,
+        /// The generation this session holds.
+        #[arg(long)]
+        generation: i64,
+        /// The session id of the session offered the card (hex digits and `-`, 8 to 64
+        /// characters).
+        #[arg(long, required_unless_present = "cancel", conflicts_with = "cancel")]
+        to: Option<String>,
+        /// Void the newest offer instead of making one.
+        #[arg(long)]
+        cancel: bool,
+        /// Seconds the offer stays valid, 60 to 86400 (default 1800).
+        #[arg(long, conflicts_with = "cancel")]
+        valid_secs: Option<i64>,
+        /// One line for the receiver: the work that is kept, the next step, open approvals and
+        /// remote requests (1 to 500 characters, kept in the ledger for good).
+        #[arg(long, conflicts_with = "cancel")]
+        handover: Option<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Accept a card another session offered you
+    ///
+    /// Writes the ledger. Run by the session the newest offer of the card names, at the offered
+    /// `--generation`: one transaction ends the old reservation as `released` and gives this
+    /// session the next generation with the same scope, worktree and branch and a new lease, and
+    /// writes one `card.accept` event. Refusals write nothing and each names its code in the
+    /// answer: the state of the card in the words `card reclaim` uses, `no_offer` (no offer at
+    /// that generation), `offer_cancelled`, `not_target` (another session was named),
+    /// `offer_expired` and `lease_expired` (the holder's lease ended: the card goes the reclaim
+    /// way). A session that is not named can never take a card this way. The new holder is this
+    /// session's own id, never typed.
+    Accept {
+        /// `C-12`.
+        card: String,
+        /// The generation the offer was made at (the card's current one).
+        #[arg(long)]
+        generation: i64,
+        /// Lease length of the new reservation in seconds, 60 to 86400 (default 14400).
+        #[arg(long)]
+        lease_secs: Option<i64>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Reads the ledger only. Show the card to work on next
     ///
     /// Reads the ledger only. Prints the cards this session holds (`mine`: generation, lease
@@ -752,6 +833,45 @@ enum Action {
         /// The author name of the leader's notes (default `leader`).
         #[arg(long)]
         leader: Option<String>,
+        /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Reads the ledger only. Answer many cards, the live reservations and notes by number in one call
+    ///
+    /// Reads the ledger only. Pick at least one of `--card`, `--reservations` and `--note`; the
+    /// answer is one JSON object with a `cards`, `reservations` and `notes` list for each asked
+    /// for. `--card C-12,C-13` (at most 50, `#n` is refused) gives each card's `head` (the head of
+    /// its newest hand-back note while that note belongs to its present work, else null), its
+    /// newest `verdict` on any head, its `head_verdict` (the newest verdict on that head), the
+    /// count of its criteria by status and its open criteria; `--notes N` (0 to 20, needs
+    /// `--card`) adds the headers of its newest N notes with the first line cut to 200
+    /// characters. A card with a verdict row that does not read has no verdict and counts it as
+    /// `verdicts_unreadable`. `--reservations` lists every reservation that holds a card (held,
+    /// expired candidate or held for review) by card, with its session, worktree, branch and
+    /// whether its lease has ended. `--note 10436,10437` (at most 10) gives each note whole. A
+    /// card or a note that does not exist refuses the call and nothing partial is printed. Text is
+    /// shown as stored, as `card show` does. `card land` still decides what may land.
+    Query {
+        /// Cards, each `C-12`, comma separated.
+        #[arg(
+            long = "card",
+            value_delimiter = ',',
+            required_unless_present_any = ["reservations", "note"]
+        )]
+        card: Vec<String>,
+        /// List every reservation that holds a card.
+        #[arg(long)]
+        reservations: bool,
+        /// Note numbers to show whole, comma separated.
+        #[arg(long = "note", value_delimiter = ',', value_name = "ID")]
+        note: Vec<i64>,
+        /// Also show the headers of the newest N notes of each card, 0 to 20 (needs `--card`).
+        #[arg(long, requires = "card", allow_negative_numbers = true)]
+        notes: Option<i64>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
         /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
         #[arg(long)]
         home: Option<PathBuf>,
@@ -847,6 +967,10 @@ enum Action {
         /// needs it.
         #[arg(long)]
         by: Option<String>,
+        /// The generation the card has now (`card show` prints it); a card at another
+        /// generation, or one nobody holds, is a `conflict`. Left out, nothing is checked.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(1..))]
+        generation: Option<i64>,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -1337,6 +1461,34 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the git folder only with `--apply` or `--revert`. Show a stale guard record and re-point it
+    ///
+    /// The guard record is the file `moai/integration-branch` in the common git folder. After the
+    /// profile's integration branch changes it still names the old branch, so the new branch is
+    /// not guarded. The plain view writes nothing: it answers `state` (`stale`, `current`,
+    /// `no_record`, `no_profile_branch` or `linked_worktree`) and, for `stale`, a plan digest and
+    /// the exact `--apply` command. `--apply` needs `--plan-digest` and `--permission-reference`
+    /// naming the user's yes: it rewrites the record under a lock, writes a receipt under
+    /// `moai/record-repoint/` and answers the receipt, its stamp and the `--revert` command.
+    /// `--revert <stamp>` restores the old bytes only while the record still equals the receipt's
+    /// new bytes. The old branch is not guarded after the re-point; the preview says so.
+    GuardRepoint {
+        /// Make the re-point; needs `--plan-digest` and `--permission-reference`.
+        #[arg(long, conflicts_with = "revert")]
+        apply: bool,
+        /// Put the old record back from the receipt of this stamp; needs `--permission-reference`.
+        #[arg(long)]
+        revert: Option<String>,
+        /// The `plan_digest` of the preview of the same record.
+        #[arg(long)]
+        plan_digest: Option<String>,
+        /// The reference of the user's yes (1 to 80 letters, digits or . _ : / -).
+        #[arg(long)]
+        permission_reference: Option<String>,
+        /// The project folder (its profile holds the integration branch).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+    },
     /// Writes the git folder only. Guard the integration branch (run by git, never typed)
     ///
     /// Run by the `reference-transaction` hook, never by hand: git runs it with the state of a
@@ -1366,8 +1518,8 @@ enum Action {
     /// Writes the ledger. Extend the lease of a taken card
     ///
     /// Writes the ledger. The lease of this session's reservation at `--generation` ends
-    /// `--lease-secs` from now, never earlier than it already did. Needs a lease that has not
-    /// ended; the generation stays the same.
+    /// `--lease-secs` from now, never earlier than it already did. The holder renews its own reservation whether or not the lease has
+    /// ended, at the same generation, until another session reclaims it or a sweep returns the card.
     Renew {
         /// `C-12`.
         card: String,
@@ -1377,6 +1529,41 @@ enum Action {
         /// Lease length in seconds from now, 60 to 86400 (default 14400).
         #[arg(long)]
         lease_secs: Option<i64>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Correct the branch or worktree a reservation recorded
+    ///
+    /// Writes the ledger. The holder of a live reservation (this session, at `--generation`, its
+    /// lease not ended) sets the recorded `--branch`, `--worktree` or both; one `card.repair`
+    /// event names the old value, the new value, `--by` and `--reason`, and nothing else of the
+    /// reservation changes. The new worktree is an absolute path to the top of a git checkout
+    /// that exists, the new branch a short name git accepts, and `--reason` one line of 1 to 500
+    /// characters. Another session's reservation is never repaired; a refusal writes nothing.
+    /// `card take` records a relative `--worktree` as the absolute top of the checkout it names,
+    /// resolved against the folder the command runs in.
+    Repair {
+        /// `C-12`.
+        card: String,
+        /// The generation `take` or `handoff` answered with.
+        #[arg(long)]
+        generation: i64,
+        /// The branch the reservation should record (a short name, no `refs/heads/`).
+        #[arg(long, allow_hyphen_values = true)]
+        branch: Option<String>,
+        /// The worktree the reservation should record: an absolute path to the top of a checkout.
+        #[arg(long)]
+        worktree: Option<String>,
+        /// Who repairs it (one line, 1..=80 characters).
+        #[arg(long)]
+        by: String,
+        /// Why (one line, 1..=500 characters).
+        #[arg(long)]
+        reason: String,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -1615,9 +1802,10 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             card,
             needs,
             by,
+            remove,
             project,
             home,
-        } => w::prereq(&project, &resolve_home(home)?, &card, &needs, &by),
+        } => w::prereq(&project, &resolve_home(home)?, &card, &needs, &by, remove),
         Action::HoldCandidates { project, home } => {
             moai_cli::card::hold_candidates::candidates(&project, &resolve_home(home)?)
         }
@@ -1658,20 +1846,30 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             require_approved_spec,
             project,
             home,
-        } => d::take(
-            &project,
-            &resolve_home(home)?,
-            &card,
-            &d::TakeRequest {
-                holder: &d::session_holder("take", env)?,
-                lease_secs,
-                scope: &scope,
-                worktree: worktree.as_deref(),
-                branch: branch.as_deref(),
-                require_approved_spec,
-                running_dir: std::env::current_dir().ok().as_deref(),
-            },
-        ),
+        } => {
+            // A relative `--worktree` is recorded as the absolute top of the checkout it names,
+            // resolved against the folder the command runs in
+            // (SPEC-20261127-reservation-repair REQ-1).
+            let running_dir = std::env::current_dir().ok();
+            let worktree = worktree
+                .as_deref()
+                .map(|w| moai_cli::card::repair::absolute_worktree(w, running_dir.as_deref()))
+                .transpose()?;
+            d::take(
+                &project,
+                &resolve_home(home)?,
+                &card,
+                &d::TakeRequest {
+                    holder: &d::session_holder("take", env)?,
+                    lease_secs,
+                    scope: &scope,
+                    worktree: worktree.as_deref(),
+                    branch: branch.as_deref(),
+                    require_approved_spec,
+                    running_dir: running_dir.as_deref(),
+                },
+            )
+        }
         Action::Assign {
             card,
             auditor,
@@ -1684,14 +1882,16 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             spec,
             unlink: _,
             by,
+            generation,
             project,
             home,
-        } => moai_cli::card::spec_link::link(
+        } => moai_cli::card::spec_link::link_at(
             &project,
             &resolve_home(home)?,
             &card,
             spec.as_deref(),
             by.as_deref(),
+            generation,
         ),
         Action::Release {
             card,
@@ -1775,6 +1975,44 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 },
             )
         }
+        Action::Offer {
+            card,
+            generation,
+            to,
+            cancel,
+            valid_secs,
+            handover,
+            project,
+            home,
+        } => moai_cli::card::offer::offer(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &moai_cli::card::offer::OfferRequest {
+                holder: &d::session_holder("offer", env)?,
+                generation,
+                to: to.as_deref(),
+                cancel,
+                valid_secs,
+                handover: handover.as_deref(),
+            },
+        ),
+        Action::Accept {
+            card,
+            generation,
+            lease_secs,
+            project,
+            home,
+        } => moai_cli::card::offer::accept(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &moai_cli::card::offer::AcceptRequest {
+                accepter: &d::session_holder("accept", env)?,
+                generation,
+                lease_secs,
+            },
+        ),
         Action::Next { project, home } => w::next(
             &project,
             &resolve_home(home)?,
@@ -1785,6 +2023,23 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             leader,
             home,
         } => moai_cli::card::inbox::inbox(&project, &resolve_home(home)?, leader.as_deref()),
+        Action::Query {
+            card,
+            reservations,
+            note,
+            notes,
+            project,
+            home,
+        } => moai_cli::card::query::query(
+            &project,
+            &resolve_home(home)?,
+            &moai_cli::card::query::QueryRequest {
+                cards: &card,
+                reservations,
+                note_ids: &note,
+                notes,
+            },
+        ),
         Action::Orchestrate {
             action:
                 OrchestrateAction::Plan {
@@ -1821,6 +2076,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             kind,
             reference,
             by,
+            generation,
             project,
             home,
         } => {
@@ -1838,7 +2094,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             // The one action that reads standard input (the help rule in `src/main.rs` reads
             // this arm).
             let text = w::read_note_text(std::io::stdin().lock())?;
-            w::note(
+            w::note_at(
                 &project,
                 &home,
                 &card,
@@ -1849,6 +2105,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                     by: by.as_deref(),
                     session: d::session_holder("note", env).ok().as_deref(),
                 },
+                generation,
             )
         }
         Action::Criterion {
@@ -2191,6 +2448,21 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 by: by.as_deref(),
             },
         ),
+        Action::GuardRepoint {
+            apply,
+            revert,
+            plan_digest,
+            permission_reference,
+            project,
+        } => moai_cli::card::guard::repoint::repoint(
+            &project,
+            &moai_cli::card::guard::repoint::RepointRequest {
+                apply,
+                revert: revert.as_deref(),
+                plan_digest: plan_digest.as_deref(),
+                permission_reference: permission_reference.as_deref(),
+            },
+        ),
         Action::Guard { state } => {
             let mut input = String::new();
             std::io::Read::read_to_string(&mut std::io::stdin(), &mut input)
@@ -2211,6 +2483,28 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &d::session_holder("renew", env)?,
             generation,
             lease_secs,
+        ),
+        Action::Repair {
+            card,
+            generation,
+            branch,
+            worktree,
+            by,
+            reason,
+            project,
+            home,
+        } => moai_cli::card::repair::repair(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &moai_cli::card::repair::RepairRequest {
+                holder: &d::session_holder("repair", env)?,
+                generation,
+                branch: branch.as_deref(),
+                worktree: worktree.as_deref(),
+                by: &by,
+                reason: &reason,
+            },
         ),
         Action::Check {
             card,

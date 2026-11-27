@@ -21,6 +21,8 @@
 //! (SPEC-20261124-ready-receipt-gate). `orchestrate` is the coordination window's read-only plan
 //! of one round: the lanes, the dispatches, the clears, the audit requests, the landing queue
 //! and what waits for the user (`card orchestrate plan`, SPEC-20261124-orchestrate-plan).
+//! `query` is the leader's read-only answer about many cards, the live reservations and notes by
+//! number in one call (`card query`, SPEC-20261126-card-read-queries).
 
 pub mod adopt;
 pub mod cleanup;
@@ -39,11 +41,14 @@ pub mod inbox;
 pub mod input;
 pub mod land;
 pub mod landed;
+pub mod offer;
 pub mod orchestrate;
 pub mod precheck;
+pub mod query;
 pub mod ready_leftovers;
 pub mod ready_receipt;
 pub mod remote_copy;
+pub mod repair;
 pub mod roles;
 pub mod spec_link;
 pub mod stale;

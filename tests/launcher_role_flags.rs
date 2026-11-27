@@ -2,8 +2,12 @@
 //! SPEC-20261124-launcher-retire-role-flags): `moai cc|glm -l|--leader` and `-a|--agent` start a
 //! named session in the permission bypass and hand the host the first input `/moai leader` or
 //! `/moai agent`. Every case runs in a temporary git project with a temporary HOME; no real host
-//! is started (a stub `claude` records its arguments). AC-5 (advisor and model defaults of `-a`)
-//! waits for the approval of revision 3 of the SPEC and is not in this file yet.
+//! is started (a stub `claude` records its arguments). The advisor tests are the `advisor_` ones
+//! (SPEC-20261126-lane-advisor-opt-in: `-a` passes no advisor unless `--advisor` or the user
+//! setting asks for one).
+//!
+//! SPEC-20261125-agent-names-bible replaces the first-free-name pick of `-a` with a pick at
+//! random among the free names of a list of 48 Biblical names; its tests are the `bible_` ones.
 #![cfg(unix)]
 
 mod common;
@@ -116,8 +120,8 @@ fn value_after(argv: &[String], flag: &str) -> Option<String> {
         .map(|i| argv[i + 1].clone())
 }
 
-/// AC-1 (SPEC-20261125-session-names-project-prefix REQ-1, REQ-5): `-l` and `--leader` name the
-/// session `<project name>-leader`, start in the bypass and hand `/moai leader` as the last
+/// AC-1 (SPEC-20261127-launcher-session-names REQ-3): `-l` and `--leader` name the
+/// session `leader-<project name>`, start in the bypass and hand `/moai leader` as the last
 /// argument; `--name` replaces the name; `glm` takes the same flags with its own effort.
 #[test]
 fn ac1_leader_names_the_session_bypasses_and_hands_the_first_input() {
@@ -130,7 +134,7 @@ fn ac1_leader_names_the_session_bypasses_and_hands_the_first_input() {
             [
                 "claude",
                 "--name",
-                "myproj-leader",
+                "leader-myproj",
                 "--model",
                 "opus",
                 "--effort",
@@ -140,12 +144,12 @@ fn ac1_leader_names_the_session_bypasses_and_hands_the_first_input() {
             ],
             "{flag}"
         );
-        assert_eq!(v["name"], "myproj-leader", "{flag}");
+        assert_eq!(v["name"], "leader-myproj", "{flag}");
     }
     let (code, v, said) = f.dry(&["glm", "-l"]);
     assert_eq!(code, 0, "{said}");
     let a = argv(&v);
-    assert_eq!(value_after(&a, "--name").as_deref(), Some("myproj-leader"));
+    assert_eq!(value_after(&a, "--name").as_deref(), Some("leader-myproj"));
     assert_eq!(value_after(&a, "--effort").as_deref(), Some("high"));
     assert!(
         a.contains(&"--dangerously-skip-permissions".to_string()),
@@ -169,7 +173,7 @@ fn ac1_the_project_name_comes_from_the_profile_else_the_folder() {
     let f = Fixture::new("some folder.name");
     let (code, v, said) = f.dry(&["cc", "-l"]);
     assert_eq!(code, 0, "{said}");
-    assert_eq!(v["name"], "some-folder.name-leader", "{said}");
+    assert_eq!(v["name"], "leader-some-folder.name", "{said}");
     let state = f.project.join(moai_cli::PROJECT_STATE_DIR);
     fs::create_dir_all(&state).unwrap();
     fs::write(
@@ -179,13 +183,16 @@ fn ac1_the_project_name_comes_from_the_profile_else_the_folder() {
     .unwrap();
     let (code, v, said) = f.dry(&["cc", "-l"]);
     assert_eq!(code, 0, "{said}");
-    assert_eq!(v["name"], "demo-id-leader", "{said}");
+    assert_eq!(v["name"], "leader-demo-id", "{said}");
     let (code, v, said) = f.dry(&["cc", "-a"]);
     assert_eq!(code, 0, "{said}");
-    assert_eq!(
-        v["name"],
-        format!("demo-id-agent-{}", moai_cli::session::AGENT_NAMES[0]),
-        "{said}"
+    let agent_name = v["name"].as_str().unwrap_or_default().to_string();
+    let tail = agent_name
+        .strip_prefix("agent-")
+        .unwrap_or_else(|| panic!("not `agent-<name>`: {said}"));
+    assert!(
+        moai_cli::session::AGENT_NAMES.contains(&tail),
+        "{tail} is not a name of the list: {said}"
     );
     // A random-form id names no project to a person: the folder name is used.
     fs::write(
@@ -198,25 +205,25 @@ fn ac1_the_project_name_comes_from_the_profile_else_the_folder() {
     ));
     let (code, v, said) = f.dry(&["cc", "-l"]);
     assert_eq!(code, 0, "{said}");
-    assert_eq!(v["name"], "some-folder.name-leader", "{said}");
-    // The longest session name stays within the registry's 64 characters.
+    assert_eq!(v["name"], "leader-some-folder.name", "{said}");
+    // The longest session name stays within the registry's 64 characters: only the leader name
+    // carries the project name now, after `leader-`.
     let long = Fixture::new(&"p".repeat(80));
-    for (flag, tail) in [("-l", "-leader"), ("-a", "-agent-")] {
+    for (flag, head) in [("-l", "leader-"), ("-a", "agent-")] {
         let (code, v, said) = long.dry(&["cc", flag]);
         assert_eq!(code, 0, "{said}");
         let name = v["name"].as_str().unwrap().to_string();
-        assert!(name.starts_with('p') && name.contains(tail), "{name}");
+        assert!(name.starts_with(head), "{name}");
         assert!(moai_cli::lane_registry::valid_name(&name), "{name}");
     }
-    let longest = moai_cli::session::AGENT_NAMES
-        .iter()
-        .map(|n| n.len())
-        .max()
-        .unwrap();
     let project = moai_cli::session::project_name(&long.project);
     assert!(
-        project.len() + "-agent-".len() + longest <= moai_cli::lane_registry::MAX_NAME_LEN,
+        "leader-".len() + project.len() <= moai_cli::lane_registry::MAX_NAME_LEN,
         "{project}"
+    );
+    assert!(
+        project.len() > 50,
+        "the project name is cut only as far as the leader name needs: {project}"
     );
 }
 
@@ -244,18 +251,18 @@ fn ac1_a_worktree_uses_the_primary_checkouts_name() {
         .output()
         .unwrap();
     let v: Value = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
-    assert_eq!(v["name"], "wtproj-leader", "{}", text(&out));
+    assert_eq!(v["name"], "leader-wtproj", "{}", text(&out));
 }
 
-/// AC-2 (REQ-15): a held live lock of `<project name>-leader` refuses the launch and starts no
+/// AC-2 (REQ-15): a held live lock of `leader-<project name>` refuses the launch and starts no
 /// host; once it is free the host starts and receives the first input.
 #[test]
 fn ac2_a_held_leader_lock_refuses_the_launch() {
     let f = Fixture::new("lockproj");
-    let held = f.hold("lockproj-leader");
+    let held = f.hold("leader-lockproj");
     let (out, seen) = f.run(&["cc", "-l"]);
     assert!(!out.status.success(), "{}", text(&out));
-    assert!(text(&out).contains("lockproj-leader"), "{}", text(&out));
+    assert!(text(&out).contains("leader-lockproj"), "{}", text(&out));
     assert!(seen.is_none(), "the host started: {seen:?}");
     drop(held);
     let (out, seen) = f.run(&["cc", "-l"]);
@@ -266,35 +273,73 @@ fn ac2_a_held_leader_lock_refuses_the_launch() {
         Some("/moai leader"),
         "{seen:?}"
     );
-    assert!(seen.contains(&"lockproj-leader".to_string()), "{seen:?}");
+    assert!(seen.contains(&"leader-lockproj".to_string()), "{seen:?}");
 }
 
-/// AC-2 (REQ-2, REQ-3, REQ-5): `-a` without `--name` takes the first `<project name>-agent-<name>`
-/// of the list that has no held live lock and no live registry entry, and `--name` replaces it.
-#[test]
-fn ac2_agent_takes_the_first_free_english_name() {
-    let names = moai_cli::session::AGENT_NAMES;
-    assert!(names.len() >= 12, "the list holds at least 12 names");
-    assert!(names
-        .iter()
-        .all(|n| moai_cli::lane_registry::valid_name(&format!("agentproj-agent-{n}"))));
-    let unique: std::collections::BTreeSet<_> = names.iter().collect();
-    assert_eq!(unique.len(), names.len(), "no name twice");
-    let f = Fixture::new("agentproj");
-    let (code, v, said) = f.dry(&["cc", "-a"]);
-    assert_eq!(code, 0, "{said}");
-    assert_eq!(v["name"], format!("agentproj-agent-{}", names[0]), "{said}");
-    // A held live lock skips a name.
-    let _first = f.hold(&format!("agentproj-agent-{}", names[0]));
-    let (_, v, said) = f.dry(&["cc", "--agent"]);
-    assert_eq!(v["name"], format!("agentproj-agent-{}", names[1]), "{said}");
-    // So does a live registry entry.
+/// The list of SPEC-20261125-agent-names-bible D-1, written out here on purpose: the test pins the
+/// decided list literally (R-4), so a change of the list changes this test with it.
+const BIBLE_NAMES: [&str; 48] = [
+    "adam",
+    "eve",
+    "noah",
+    "abraham",
+    "sarah",
+    "isaac",
+    "rebekah",
+    "jacob",
+    "rachel",
+    "leah",
+    "joseph",
+    "moses",
+    "aaron",
+    "miriam",
+    "joshua",
+    "deborah",
+    "gideon",
+    "samson",
+    "ruth",
+    "naomi",
+    "boaz",
+    "hannah",
+    "samuel",
+    "david",
+    "saul",
+    "solomon",
+    "elijah",
+    "elisha",
+    "isaiah",
+    "jeremiah",
+    "ezekiel",
+    "daniel",
+    "esther",
+    "jonah",
+    "mary",
+    "martha",
+    "lazarus",
+    "peter",
+    "andrew",
+    "james",
+    "john",
+    "thomas",
+    "matthew",
+    "luke",
+    "paul",
+    "timothy",
+    "lydia",
+    "priscilla",
+];
+
+/// The clock the registry's leases are measured on, in seconds.
+fn now_secs() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64)
+}
+
+/// Gives `name` a registry entry with a running lease, the way a started session does.
+fn register_running(f: &Fixture, name: &str) {
     let registered = Command::new(common::MOAI_BIN)
-        .args([
-            "session-register",
-            "--name",
-            &format!("agentproj-agent-{}", names[1]),
-        ])
+        .args(["session-register", "--name", name])
         .args(["--mode", "agent"])
         .arg(&f.project)
         .clean_env()
@@ -303,22 +348,157 @@ fn ac2_agent_takes_the_first_free_english_name() {
         .output()
         .unwrap();
     assert!(registered.status.success(), "{}", text(&registered));
-    let (_, v, said) = f.dry(&["cc", "-a"]);
-    assert_eq!(v["name"], format!("agentproj-agent-{}", names[2]), "{said}");
-    // `--name` is used as given.
-    let (_, v, said) = f.dry(&["cc", "-a", "--name", "scout"]);
-    assert_eq!(v["name"], "scout", "{said}");
 }
 
-/// AC-2 (REQ-4): a list that is used up refuses the launch with one message that names
-/// `--name` and starts no host; `--name` still works then.
+/// AC-1 (REQ-1, REQ-5): the list is pinned literally (48 names, lowercase ASCII, no duplicate, none
+/// over 9 characters) and the project name keeps room for `leader-`, so every `agent-<name>` and
+/// the longest `leader-<project name>` pass the registry's name check within its 64 characters
+/// (SPEC-20261127-launcher-session-names REQ-1, REQ-3).
 #[test]
-fn ac2_a_used_up_list_refuses_and_names_the_name_option() {
+fn bible_ac1_the_list_is_pinned_and_every_name_fits_the_registry() {
+    let names = &moai_cli::session::AGENT_NAMES[..];
+    assert_eq!(names, &BIBLE_NAMES[..], "the list of D-1, in this order");
+    assert_eq!(names.len(), 48);
+    for n in names {
+        assert!(
+            !n.is_empty() && n.bytes().all(|b| b.is_ascii_lowercase()),
+            "{n} is not lowercase ASCII letters"
+        );
+        assert!(n.len() <= 9, "{n} is longer than 9 characters");
+    }
+    let unique: std::collections::BTreeSet<_> = names.iter().collect();
+    assert_eq!(unique.len(), names.len(), "no name twice");
+    // The longest project name the launcher allows still leaves room for `leader-`.
+    let long = Fixture::new(&"p".repeat(80));
+    let project = moai_cli::session::project_name(&long.project);
+    assert_eq!(
+        project.len(),
+        moai_cli::lane_registry::MAX_NAME_LEN - "leader-".len(),
+        "{project}"
+    );
+    let leader = format!("leader-{project}");
+    assert!(
+        moai_cli::lane_registry::valid_name(&leader),
+        "the registry refuses {leader}"
+    );
+    assert!(
+        leader.len() <= 64,
+        "{leader} is {} characters long",
+        leader.len()
+    );
+    for n in names {
+        let full = format!("agent-{n}");
+        assert!(
+            moai_cli::lane_registry::valid_name(&full),
+            "the registry refuses {full}"
+        );
+    }
+}
+
+/// AC-2 (REQ-2, REQ-3): with an injected seed the pick reaches exactly the free names, in list
+/// order (`seed % free.len()` indexes the free names), and never a name whose live lock is held or
+/// whose registry entry has a running lease.
+#[test]
+fn bible_ac2_the_seeded_pick_reaches_exactly_the_free_names() {
+    let names = moai_cli::session::AGENT_NAMES;
+    let f = Fixture::new("seedproj");
+    let prefix = moai_cli::session::agent_prefix(&f.project);
+    let now = now_secs();
+    // Every name free: seeds 0..48 reach all 48 names, and the seed indexes the list.
+    let mut reached = std::collections::BTreeSet::new();
+    for seed in 0..names.len() as u64 {
+        let got = moai_cli::session::pick_agent_name_seeded(&f.project, now, seed).unwrap();
+        assert_eq!(
+            got,
+            format!("{prefix}{}", names[seed as usize]),
+            "seed {seed}"
+        );
+        reached.insert(got);
+    }
+    let all: std::collections::BTreeSet<String> =
+        names.iter().map(|n| format!("{prefix}{n}")).collect();
+    assert_eq!(reached, all, "the seeds reach every name");
+    let wrapped = moai_cli::session::pick_agent_name_seeded(&f.project, now, 48 + 5).unwrap();
+    assert_eq!(wrapped, format!("{prefix}{}", names[5]), "the seed wraps");
+    // Some names held by a live lock, some by a registry entry with a running lease.
+    let locked = [0usize, 7, 8, 47];
+    let registered = [1usize, 20, 33];
+    let _held: Vec<fs::File> = locked
+        .iter()
+        .map(|&i| f.hold(&format!("{prefix}{}", names[i])))
+        .collect();
+    for &i in &registered {
+        register_running(&f, &format!("{prefix}{}", names[i]));
+    }
+    let free: Vec<String> = (0..names.len())
+        .filter(|i| !locked.contains(i) && !registered.contains(i))
+        .map(|i| format!("{prefix}{}", names[i]))
+        .collect();
+    assert_eq!(free.len(), 48 - 7);
+    let mut seeds: Vec<u64> = (0..2 * free.len() as u64).collect();
+    seeds.extend([u64::MAX, u64::MAX - 1, 1 << 40]);
+    let mut reached = std::collections::BTreeSet::new();
+    for seed in seeds {
+        let got = moai_cli::session::pick_agent_name_seeded(&f.project, now, seed).unwrap();
+        assert_eq!(
+            got,
+            free[(seed % free.len() as u64) as usize],
+            "seed {seed}"
+        );
+        reached.insert(got);
+    }
+    let want: std::collections::BTreeSet<String> = free.iter().cloned().collect();
+    assert_eq!(reached, want, "the seeds reach exactly the free names");
+}
+
+/// AC-2 (REQ-3): with 47 names held, `moai cc -a --dry-run` prints the one free name.
+#[test]
+fn bible_ac2_the_binary_takes_the_one_free_name() {
+    let f = Fixture::new("onefree");
+    let names = moai_cli::session::AGENT_NAMES;
+    let free = 29;
+    let _held: Vec<fs::File> = names
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| *i != free)
+        .map(|(_, n)| f.hold(&format!("agent-{n}")))
+        .collect();
+    let (code, v, said) = f.dry(&["cc", "-a"]);
+    assert_eq!(code, 0, "{said}");
+    let want = format!("agent-{}", names[free]);
+    assert_eq!(v["name"], want, "{said}");
+    assert_eq!(value_after(&argv(&v), "--name"), Some(want), "{said}");
+}
+
+/// AC-2 (REQ-2): twenty unseeded picks in one process give at least two different names, so the
+/// pick is not the first free name every time.
+#[test]
+fn bible_ac2_unseeded_picks_vary() {
+    let f = Fixture::new("variedproj");
+    let now = now_secs();
+    let picked: std::collections::BTreeSet<String> = (0..20)
+        .map(|_| moai_cli::session::pick_agent_name(&f.project, now).unwrap())
+        .collect();
+    assert!(picked.len() >= 2, "20 picks gave one name only: {picked:?}");
+    let prefix = moai_cli::session::agent_prefix(&f.project);
+    for name in &picked {
+        let tail = name.strip_prefix(prefix.as_str()).unwrap_or(name.as_str());
+        assert!(moai_cli::session::AGENT_NAMES.contains(&tail), "{name}");
+    }
+}
+
+/// AC-3 (REQ-4): with every name held, `-a` is refused with one message that names `--name` and
+/// starts no host; `--name` still works then.
+#[test]
+fn bible_ac3_a_used_up_list_refuses_and_names_the_name_option() {
     let f = Fixture::new("fullproj");
     let held: Vec<fs::File> = moai_cli::session::AGENT_NAMES
         .iter()
-        .map(|n| f.hold(&format!("fullproj-agent-{n}")))
+        .map(|n| f.hold(&format!("agent-{n}")))
         .collect();
+    let (code, _, said) = f.dry(&["cc", "-a"]);
+    assert_ne!(code, 0, "{said}");
+    assert!(said.contains("--name"), "{said}");
     let (out, seen) = f.run(&["cc", "-a"]);
     assert!(!out.status.success(), "{}", text(&out));
     assert!(text(&out).contains("--name"), "{}", text(&out));
@@ -327,6 +507,16 @@ fn ac2_a_used_up_list_refuses_and_names_the_name_option() {
     assert_eq!(code, 0, "{said}");
     assert_eq!(v["name"], "extra");
     drop(held);
+}
+
+/// AC-4 (REQ-6): `--name` with `-a` is used as given and no name is chosen from the list.
+#[test]
+fn bible_ac4_name_is_used_as_given() {
+    let f = Fixture::new("agentproj");
+    let (code, v, said) = f.dry(&["cc", "-a", "--name", "scout"]);
+    assert_eq!(code, 0, "{said}");
+    assert_eq!(v["name"], "scout", "{said}");
+    assert_eq!(value_after(&argv(&v), "--name").as_deref(), Some("scout"));
 }
 
 /// AC-3 (REQ-6, REQ-11): `-l` and `-a` start in the bypass on both hosts and `--permissions`
@@ -463,18 +653,15 @@ fn pair(argv: &[String], flag: &str, value: &str) -> bool {
     argv.windows(2).any(|w| w[0] == flag && w[1] == value)
 }
 
-/// AC-5 (REQ-9, REQ-10, D-6, D-13): `-a` on `cc` passes `--advisor opus` unless the option, the
-/// setting or `--no-advisor` says otherwise; `-l`, a launch without a role flag and `glm` pass none.
+/// SPEC-20261126-lane-advisor-opt-in AC-1 and AC-4 (user decision 2026-11-26): `-a` passes no
+/// advisor unless it is asked for, whatever the main model, and its note says how to ask.
 #[test]
-fn ac5_agent_advisor_is_opus_unless_told_otherwise() {
+fn advisor_agent_launch_passes_none_unless_asked() {
     let f = Fixture::new("advproj");
-    let (_, v, said) = f.dry(&["cc", "-a"]);
-    assert!(pair(&argv(&v), "--advisor", "opus"), "{said}");
-    let (_, v, said) = f.dry(&["cc", "-a", "--no-advisor"]);
-    assert!(!argv(&v).contains(&"--advisor".to_string()), "{said}");
-    let (_, v, said) = f.dry(&["cc", "-a", "--advisor", "fable"]);
-    assert!(pair(&argv(&v), "--advisor", "fable"), "{said}");
     for args in [
+        &["cc", "-a"][..],
+        &["cc", "-a", "--model", "fable"][..],
+        &["cc", "-a", "--no-advisor"][..],
         &["cc", "-l"][..],
         &["cc"][..],
         &["glm", "-a"][..],
@@ -486,33 +673,66 @@ fn ac5_agent_advisor_is_opus_unless_told_otherwise() {
             !argv(&v).contains(&"--advisor".to_string()),
             "{args:?} passed an advisor: {said}"
         );
+        // No note about an advisor that was passed, or about a default that was left out.
+        let notes = v["notes"].to_string();
+        assert!(!notes.contains("usage credits"), "{args:?}: {said}");
+        assert!(
+            !notes.contains("ranks below the main model"),
+            "{args:?}: {said}"
+        );
     }
-    // D-13: the user setting beats the `-a` default, and `none` in it keeps no advisor.
-    f.user_launcher(r#"{"launcher":{"advisor":"fable"}}"#);
     let (_, v, said) = f.dry(&["cc", "-a"]);
-    assert!(pair(&argv(&v), "--advisor", "fable"), "{said}");
-    f.user_launcher(r#"{"launcher":{"advisor":"none"}}"#);
-    let (_, v, said) = f.dry(&["cc", "-a"]);
-    assert!(pair(&argv(&v), "--advisor", "opus"), "{said}");
-}
-
-/// AC-5 (D-14): a main model that ranks above the default advisor leaves the default out with
-/// one line of reason; an `--advisor` the person gave that ranks lower is refused as before.
-#[test]
-fn ac5_a_higher_main_model_drops_the_default_advisor_and_refuses_a_lower_given_one() {
-    let f = Fixture::new("rankproj");
-    let (code, v, said) = f.dry(&["cc", "-a", "--model", "fable"]);
-    assert_eq!(code, 0, "{said}");
-    assert!(!argv(&v).contains(&"--advisor".to_string()), "{said}");
     assert!(
         v["notes"]
             .to_string()
-            .contains("ranks below the main model"),
+            .contains("no advisor unless --advisor [model]"),
         "{said}"
     );
-    let (code, _, said) = f.dry(&["cc", "-a", "--model", "fable", "--advisor", "opus"]);
-    assert_ne!(code, 0, "{said}");
-    assert!(said.contains("advisor must rank at or above"), "{said}");
+    f.user_launcher(r#"{"launcher":{"advisor":"none"}}"#);
+    let (_, v, said) = f.dry(&["cc", "-a"]);
+    assert!(!argv(&v).contains(&"--advisor".to_string()), "{said}");
+}
+
+/// AC-2 and AC-4: `--advisor` without a model means `opus` wherever it stands, a given model
+/// stays, and a main model that ranks above `opus` refuses the launch before a host starts.
+#[test]
+fn advisor_option_without_a_model_means_opus() {
+    let f = Fixture::new("bareproj");
+    for args in [
+        &["cc", "-a", "--advisor"][..],
+        &["cc", "-a", "--advisor", "--name", "mine"][..],
+        &["cc", "--advisor", "-a"][..],
+        &["cc", "-l", "--advisor"][..],
+        &["cc", "--advisor"][..],
+    ] {
+        let (code, v, said) = f.dry(args);
+        assert_eq!(code, 0, "{args:?}: {said}");
+        assert!(pair(&argv(&v), "--advisor", "opus"), "{args:?}: {said}");
+        assert!(
+            v["notes"].to_string().contains("usage credits"),
+            "{args:?}: {said}"
+        );
+    }
+    let (_, v, said) = f.dry(&["cc", "-a", "--advisor", "fable"]);
+    assert!(pair(&argv(&v), "--advisor", "fable"), "{said}");
+    let (out, seen) = f.run(&["cc", "-a", "--model", "fable", "--advisor"]);
+    assert!(!out.status.success(), "{}", text(&out));
+    assert!(
+        text(&out).contains("advisor must rank at or above"),
+        "{}",
+        text(&out)
+    );
+    assert_eq!(seen, None, "a host started");
+}
+
+/// AC-4: the launcher help says the model of `--advisor` may be left out.
+#[test]
+fn advisor_help_says_the_model_may_be_left_out() {
+    let f = Fixture::new("helpproj");
+    for host in ["cc", "glm"] {
+        let said = text(&f.command(&[host, "--help"]).output().unwrap());
+        assert!(said.contains("--advisor [<MODEL>]"), "{host}: {said}");
+    }
 }
 
 /// AC-5 (REQ-28, D-12): `-a` starts the host with the saved agent choice, else the agent row of
@@ -567,13 +787,90 @@ fn ac5_agent_model_and_effort_come_from_the_agent_row() {
     }
 }
 
-/// The list of names lives in code and is checked by the registry's rule (REQ-3).
+/// The text of a repository file with every run of whitespace turned into one space, so a phrase
+/// the help goldens wrap over several lines still matches.
+fn flat_repo_text(path: &str) -> String {
+    let full = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(path);
+    let raw = fs::read_to_string(&full).unwrap_or_else(|e| panic!("{}: {e}", full.display()));
+    raw.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// The first `len` characters of `text` from byte offset `from`.
+fn window(text: &str, from: usize, len: usize) -> String {
+    text[from..].chars().take(len).collect()
+}
+
+/// Phrases of the old first-free-name pick that no live text may keep.
+const OLD_PICK_PHRASES: [&str; 5] = [
+    "first free name",
+    "first free `",
+    "첫 빈 이름",
+    "비어 있는 첫 이름",
+    "첫 이름",
+];
+
+/// AC-5 (REQ-7): each help golden says next to the `-a, --agent` description that the name is
+/// chosen at random, `docs/user-entry-draft.md` says it in every line that tells how `-a` takes
+/// its name (the word `무작위` or `random`), and none of them keeps the first-free-name wording.
 #[test]
-fn the_name_list_is_lowercase_single_words() {
-    for n in moai_cli::session::AGENT_NAMES {
+fn bible_ac5_help_and_docs_say_the_name_is_chosen_at_random() {
+    for golden in ["all.txt", "all-dumb.txt", "all-80.txt", "all-60.txt"] {
+        let path = format!("tests/fixtures/help/{golden}");
+        let flat = flat_repo_text(&path);
+        let at: Vec<usize> = flat.match_indices("-a, --agent").map(|(i, _)| i).collect();
+        assert!(!at.is_empty(), "{path} has no `-a, --agent` entry");
+        for i in at {
+            let near = window(&flat, i, 900);
+            assert!(
+                near.contains("random"),
+                "{path}: the `-a, --agent` entry does not say `random`: {near}"
+            );
+        }
+        for old in OLD_PICK_PHRASES {
+            assert!(!flat.contains(old), "{path} still says `{old}`");
+        }
+    }
+    let path = "docs/user-entry-draft.md";
+    let raw =
+        fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(path)).unwrap();
+    let telling: Vec<&str> = raw
+        .lines()
+        .filter(|l| l.contains("agent-<영어 이름>") && l.contains("목록"))
+        .collect();
+    assert!(
+        !telling.is_empty(),
+        "{path} has no line that tells how `-a` takes its name"
+    );
+    for line in telling {
         assert!(
-            !n.is_empty() && n.bytes().all(|b| b.is_ascii_lowercase()),
-            "{n}"
+            line.contains("무작위") || line.contains("random"),
+            "{path}: a line about the `-a` name does not say it is chosen at random: {line}"
         );
     }
+    let flat = flat_repo_text(path);
+    for old in OLD_PICK_PHRASES {
+        assert!(!flat.contains(old), "{path} still says `{old}`");
+    }
+}
+
+/// AC-6 (REQ-8): the decisions log carries one line that names this SPEC, `D-8` and the SPEC
+/// whose first-name rule it replaces.
+#[test]
+fn bible_ac6_the_decisions_log_carries_the_replacing_line() {
+    let log = fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/decisions-2026-11-08.md"),
+    )
+    .unwrap();
+    let hits = log
+        .lines()
+        .filter(|l| {
+            l.contains("SPEC-20261125-agent-names-bible")
+                && l.contains("D-8")
+                && l.contains("SPEC-20261125-agent-team-session-names")
+        })
+        .count();
+    assert_eq!(
+        hits, 1,
+        "one line must name the SPEC, D-8 and the replaced SPEC"
+    );
 }

@@ -26,6 +26,10 @@ use std::{fs, path::Path};
 /// The choice steps the user declined (SPEC-20261125-update-declined-steps).
 pub mod declined;
 pub mod guide;
+/// What earlier generations leave behind, each with an archive action or a keep reason.
+pub mod leftovers;
+/// The archive apply of the leftovers and its revert.
+pub mod leftovers_archive;
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -401,16 +405,85 @@ fn go_setting_names(step: &Step) -> String {
         .unwrap_or_default()
 }
 
+/// The go-state step. While the local settings hold the Go folder
+/// (SPEC-20261126-go-local-settings-reference REQ-9) it is the picked preview when that one moves
+/// the folder; otherwise it is the plain step, whose reason says why the folder stays and whose
+/// command [`plan`] withholds.
 fn go_state_step(
     root: &Path,
     shown: &str,
     plan: &go_state::GoStatePlan,
     settings: &Step,
 ) -> Result<Step> {
-    let pending = plan.items.iter().any(|i| i.action == "move")
+    if plan.local_references.is_none() {
+        return go_state_preview_step(root, shown, plan, settings);
+    }
+    let picked = go_state::plan_picked(root, &[], true)?;
+    let moves = picked
+        .items
+        .iter()
+        .any(|i| i.path == state_root::MOAI_DIR && i.action == "move");
+    if moves {
+        let mut step = go_state_preview_step(root, shown, &picked, settings)?;
+        if let Some((words, _)) = &mut step.apply {
+            words.push(go_state::REWRITE_PICK.into());
+            step.reason = format!(
+                "{}; {LOCAL_SETTINGS} holds the Go folder, so this command carries `{}`: it backs \
+                 that file up, points its project references at the Go backup folder and moves the \
+                 folder (preview.local_references, preview.warnings); a session never edits that \
+                 file by hand",
+                step.reason,
+                go_state::REWRITE_PICK
+            );
+        }
+        return Ok(step);
+    }
+    let mut step = go_state_preview_step(root, shown, plan, settings)?;
+    if let Some((_, reason)) = tied(root, plan, settings, Some(&picked)) {
+        step.reason = reason;
+    }
+    Ok(step)
+}
+
+/// Whether the step's command carries the local settings pick.
+fn carries_pick(step: &Step) -> bool {
+    step.apply
+        .as_ref()
+        .is_some_and(|(words, _)| words.iter().any(|w| w.as_str() == go_state::REWRITE_PICK))
+}
+
+/// REQ-9: while the local settings hold the Go folder, no go-state command without the pick is
+/// printed. It runs after the waits behind the other steps were decided, so the step keeps the
+/// state it had with that command.
+fn picked_command_only(plan: Option<&go_state::GoStatePlan>, mut state: Step) -> Step {
+    if plan.is_some_and(|p| p.local_references.is_some()) && !carries_pick(&state) {
+        state.apply = None;
+    }
+    state
+}
+
+/// Whether the plain preview moves or copies anything.
+fn has_move(plan: &go_state::GoStatePlan) -> bool {
+    plan.items.iter().any(|i| i.action == "move")
         || plan.state_moves.iter().any(|m| m.action == "move")
         || plan.root_files.iter().any(|f| f.action != "leave")
-        || plan.restores.iter().any(|r| r.action == "copy");
+        || plan.restores.iter().any(|r| r.action == "copy")
+}
+
+/// SPEC-20261126-go-local-settings-reference D-8: the go-state step offers the pick where the
+/// plain preview moves nothing. The later steps did not wait there, so they still do not.
+fn offers_only_the_pick(plan: Option<&go_state::GoStatePlan>, state: &Step) -> bool {
+    plan.is_some_and(|p| !has_move(p)) && carries_pick(state)
+}
+
+/// The step over one go-state preview.
+fn go_state_preview_step(
+    root: &Path,
+    shown: &str,
+    plan: &go_state::GoStatePlan,
+    settings: &Step,
+) -> Result<Step> {
+    let pending = has_move(plan);
     // #2936 S1b: how many items fall in each class, so the user sees the shape at a glance.
     let mut classes = std::collections::BTreeMap::<&str, u64>::new();
     for i in &plan.items {
@@ -436,6 +509,10 @@ fn go_state_step(
     if let Some(sm) = &plan.settings_move {
         preview["settings_move"] = encode(sm)?;
     }
+    // The local settings references that hold the folder, and the values the pick cannot rewrite.
+    if let Some(local) = &plan.local_references {
+        preview["local_references"] = encode(local)?;
+    }
     // #2936 S-AGENTS-STAY U1: the backup area's own `.gitignore` leaves the copies to git (or git
     // cannot tell). The apply would refuse before writing, so no command is offered: the user
     // fixes that file (the update never edits it) and previews again. The install steps wait
@@ -460,6 +537,20 @@ fn go_state_step(
             plan_digest: Some(plan.plan_digest.clone()),
         });
     }
+    // SPEC-20261126-tracked-state-move REQ-2, REQ-3: the move would hide tracked state, or git
+    // cannot say. The apply would refuse before writing, so no command is offered: the user
+    // changes the rules or stops tracking the files, then previews again.
+    if let Some(found) = &plan.ignored_tracked {
+        preview["ignored_tracked"] = encode(found)?;
+        return Ok(Step {
+            name: "go-state",
+            state: "needs_decision",
+            reason: found.reason.clone(),
+            preview,
+            apply: None,
+            plan_digest: Some(plan.plan_digest.clone()),
+        });
+    }
     Ok(if pending {
         Step {
             name: "go-state",
@@ -473,7 +564,7 @@ fn go_state_step(
             )),
             plan_digest: Some(plan.plan_digest.clone()),
         }
-    } else if let Some((state, reason)) = tied(root, plan, settings) {
+    } else if let Some((state, reason)) = tied(root, plan, settings, None) {
         Step {
             name: "go-state",
             state,
@@ -502,6 +593,7 @@ fn tied(
     root: &Path,
     plan: &go_state::GoStatePlan,
     settings: &Step,
+    picked: Option<&go_state::GoStatePlan>,
 ) -> Option<(&'static str, String)> {
     let state = state_root::classify(root);
     let held = |path: &str| {
@@ -533,10 +625,11 @@ fn tied(
             // #2936 L2a: the go-settings step above cleans the values the Go tool wrote.
             if why.starts_with("settings reference .moai/") {
                 let refs = moai_dir_references(root);
-                if !refs.is_empty() {
-                    // Values the step leaves: the ones it lists as kept. The local file is never
-                    // written (#2936 L2a, D1 condition 3); its keys get a sentence of their own
-                    // (#2936 L2b).
+                let local_pick = picked.map(local_pick_next);
+                if !refs.is_empty() || local_pick.is_some() {
+                    // Values the step leaves: the ones it lists as kept. The local file is only
+                    // written by the go-state pick (#2936 L2a, D1 condition 3, with that one
+                    // exception); it gets a sentence of its own (#2936 L2b).
                     let yours = settings.preview["kept"]
                         .as_array()
                         .is_some_and(|k| !k.is_empty());
@@ -566,13 +659,19 @@ fn tied(
                             .to_string(),
                         _ => String::new(),
                     };
-                    if let Some(keys) = &local_keys {
+                    if let Some(sentence) =
+                        local_pick.or_else(|| local_keys.as_deref().map(local_settings_next))
+                    {
                         if !next.is_empty() {
                             next.push_str("; ");
                         }
-                        next.push_str(&local_settings_next(keys));
+                        next.push_str(&sentence);
                     }
-                    why = format!("{why}; held by {}; {next}", moai_dir_reference_note(&refs));
+                    let held_by = match moai_dir_reference_note(&refs) {
+                        note if note.is_empty() => String::new(),
+                        note => format!("; held by {note}"),
+                    };
+                    why = format!("{why}{held_by}; {next}");
                 }
             }
             Some(("blocked", format!("the Go-generation .moai/ stays: {why}")))
@@ -588,11 +687,39 @@ fn tied(
     }
 }
 
-/// The local settings file, which this update never writes (#2936 L2a, D1 condition 3).
+/// The local settings file, which this update writes only through the go-state pick (#2936 L2a,
+/// D1 condition 3; SPEC-20261126-go-local-settings-reference D-3).
 const LOCAL_SETTINGS: &str = ".claude/settings.local.json";
 
-/// #2936 L2b: what to do about Go references in the local settings file: which file, which keys
-/// (names only), that this update does not edit it, and the command that follows the user's edit.
+/// Why the pick cannot move the folder now: each value the user has to edit, or what else keeps
+/// the folder once those references are rewritten.
+fn local_pick_next(picked: &go_state::GoStatePlan) -> String {
+    let pick = go_state::REWRITE_PICK;
+    let blocked = picked
+        .local_references
+        .as_ref()
+        .map(|l| l.blocked.join("; "))
+        .unwrap_or_default();
+    if !blocked.is_empty() {
+        return format!(
+            "`{pick}` cannot move the folder yet: {blocked}; then run `moai project-update-plan` \
+             again; a session never edits {LOCAL_SETTINGS} by hand"
+        );
+    }
+    let why = picked
+        .items
+        .iter()
+        .find(|i| i.path == state_root::MOAI_DIR)
+        .map_or("", |i| i.reason.as_str());
+    format!(
+        "`{pick}` rewrites {LOCAL_SETTINGS}, but the folder still stays: {why}; once that is \
+         resolved, run `moai project-update-plan` again; a session never edits that file by hand"
+    )
+}
+
+/// #2936 L2b: Go references in the local settings file that do not hold the folder (a name
+/// spelled with an escape): which keys (names only), that this update does not edit the file, and
+/// the command that follows the user's edit.
 fn local_settings_next(keys: &str) -> String {
     format!(
         "this update does not edit {LOCAL_SETTINGS}; edit or remove these keys yourself ({keys}), \
@@ -719,7 +846,7 @@ fn local_file(root: &Path, manifest: &Value) -> Result<&'static str> {
         .flatten()
         .find(|f| f["section_id"] == crate::agents::IGNORE_SECTION)
         .map(|f| crate::agents::ignore_kind_lists_local(f["kind"].as_str()));
-    let unknown = "the generation manifest does not tell whether AGENTS.local.md is tracked \
+    let unknown = "the generation manifest does not tell whether CLAUDE.local.md is tracked \
                    or ignored; ask the user and regenerate through /moai project";
     let user_rule_decides = || -> Result<&'static str> {
         let ignore = crate::apply::read_opt(&crate::apply::target(root, ".gitignore")?)?;
@@ -848,19 +975,12 @@ pub(crate) fn rebuilt_request(root: &Path) -> Result<GenerationRequest> {
 
 fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> {
     let manifest = read_generation_manifest(root)?;
-    // The user decides instead; nothing is planned.
-    let unrebuildable = unrebuildable_paths(&manifest);
-    if !unrebuildable.is_empty() {
-        return Ok(Step {
-            name: "generation",
-            state: "needs_decision",
-            reason: "the generation manifest owns project agent or skill files whose request is \
-                     not recorded; regenerate them through /moai project"
-                .into(),
-            preview: json!({"not_rebuilt": unrebuildable}),
-            plan_digest: None,
-            apply: None,
-        });
+    let kept: Vec<String> = unrebuildable_paths(&manifest)
+        .into_iter()
+        .map(String::from)
+        .collect();
+    if !kept.is_empty() {
+        return unrecorded_step(root, shown, profile, &manifest, kept);
     }
     // R3 (#2936): a profile that is still the first-launch placeholder cannot generate; the
     // interview comes first, so no apply is printed that `generation-apply` would refuse.
@@ -877,7 +997,79 @@ fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> 
         Err(reason) => return Ok(Step::waiting("generation", "needs_decision", &reason)),
     };
     let plan = generation::generation_plan(root, request.clone())?;
-    let choices = generation_choices(root, shown, &request, &plan)?;
+    planned_step(root, shown, &request, plan)
+}
+
+/// Why a manifest that owns project agent and skill files without a recorded request waits.
+const UNRECORDED: &str = "the generation manifest owns project agent or skill files whose request \
+                          is not recorded; regenerate them through /moai project";
+
+/// What the choice `keep-project-files` does.
+const KEEP_EFFECT: &str = "keep the project agent and skill files the manifest owns and their \
+                           manifest lines as they are; the other managed files are still written";
+
+/// The generation step for a manifest that owns project agent or skill files without a recorded
+/// request (SPEC-20261127-update-old-manifest-way): the request cannot be rebuilt from the
+/// record, so the rest of the generation is planned with the pick `keep-harness`, which leaves
+/// those files and their manifest lines as they are.
+///
+/// - `unchanged`: every row of that plan is current.
+/// - `conflict`: a managed part was edited by hand; the choices carry the pick too.
+/// - `needs_decision`: there are rows to write; the user picks `keep-project-files`, or
+///   regenerates the project files through `/moai project`.
+/// - The same state and sentence as before when no such plan can be built.
+fn unrecorded_step(
+    root: &Path,
+    shown: &str,
+    profile: &Profile,
+    manifest: &Value,
+    kept: Vec<String>,
+) -> Result<Step> {
+    let held = |kept: &[String]| Step {
+        name: "generation",
+        state: "needs_decision",
+        reason: UNRECORDED.into(),
+        preview: json!({"not_rebuilt": kept}),
+        plan_digest: None,
+        apply: None,
+    };
+    if profile.is_placeholder() {
+        return Ok(held(&kept));
+    }
+    let Ok(mut request) = generation_request(root, profile, manifest) else {
+        return Ok(held(&kept));
+    };
+    request.picks = vec![crate::agents::KEEP_HARNESS.to_string()];
+    let Ok(plan) = generation::generation_plan(root, request.clone()) else {
+        return Ok(held(&kept));
+    };
+    let mut step = planned_step(root, shown, &request, plan)?;
+    step.preview["not_rebuilt"] = json!(kept);
+    if step.state == "ready" {
+        let (words, stdin) = step.apply.take().expect("a ready step carries its command");
+        step.state = "needs_decision";
+        step.reason = UNRECORDED.into();
+        step.preview["choices"] = json!([{
+            "id": "keep-project-files",
+            "recommended": true,
+            "picks": request.picks,
+            "effect": KEEP_EFFECT,
+            "plan_digest": step.plan_digest,
+            "apply": {"argv": words, "stdin": stdin},
+        }]);
+    }
+    Ok(step)
+}
+
+/// The generation step for a plan that was built: its state, its files and the choices the
+/// plan's conflicts allow.
+fn planned_step(
+    root: &Path,
+    shown: &str,
+    request: &GenerationRequest,
+    plan: generation::GenerationPlan,
+) -> Result<Step> {
+    let choices = generation_choices(root, shown, request, &plan)?;
     let files: Vec<Value> = plan
         .files
         .iter()
@@ -970,7 +1162,13 @@ fn generation_choices(
     let mut out = Vec::new();
     for (id, picks, effect) in sets {
         let mut picked = request.clone();
-        picked.picks = picks.iter().map(|p| p.to_string()).collect();
+        // The picks the request already carries (`keep-harness`) stay with each choice.
+        picked.picks = picks
+            .iter()
+            .map(|p| p.to_string())
+            .chain(request.picks.iter().cloned())
+            .collect();
+        let all_picks = picked.picks.clone();
         let Ok(choice_plan) = generation::generation_plan(root, picked) else {
             continue;
         };
@@ -980,7 +1178,7 @@ fn generation_choices(
         out.push(json!({
             "id": id,
             "recommended": id == "append-managed",
-            "picks": picks,
+            "picks": all_picks,
             "effect": effect,
             "plan_digest": choice_plan.plan_digest,
             "apply": {
@@ -1502,10 +1700,11 @@ fn hooks_after_settings(steps: &mut [Step]) {
 /// Whether the backup phase still has something to do that makes the later previews stale: the
 /// go-state step wants a decision (a move, or a user fix it cannot print), or the go-settings
 /// step has a command to run (#2936 L2a). A held go-settings step (`needs_decision` without a
-/// command) changes nothing, so it does not count.
-fn backup_pending(backup: &[Step]) -> bool {
+/// command) changes nothing, so it does not count, and neither does a go-state step that only
+/// offers the local settings pick (`pick_only`, see [`offers_only_the_pick`]).
+fn backup_pending(backup: &[Step], pick_only: bool) -> bool {
     backup.iter().any(|s| match s.name {
-        "go-state" => s.state == "needs_decision",
+        "go-state" => s.state == "needs_decision" && !pick_only,
         "go-settings" => s.apply.is_some(),
         _ => false,
     })
@@ -1513,13 +1712,19 @@ fn backup_pending(backup: &[Step]) -> bool {
 
 /// The merge phase (#2936 R10): `AGENTS.local.md` into `AGENTS.md`. It waits while the backup
 /// phase has a move to make, and while the generation step has files to write.
-fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> Vec<Step> {
+fn merge_steps(
+    root: &Path,
+    shown: &str,
+    backup: &[Step],
+    pick_only: bool,
+    install: &[Step],
+) -> Vec<Step> {
     const NAME: &str = "agents-local-merge";
     const SETTINGS: &str = "claude-settings-merge";
     // A project without `AGENTS.md` and `AGENTS.local.md` has no pick to wait for.
     let holds_agents = fs::symlink_metadata(root.join("AGENTS.md")).is_ok()
         || fs::symlink_metadata(root.join("AGENTS.local.md")).is_ok();
-    if backup_pending(backup) {
+    if backup_pending(backup, pick_only) {
         let mut steps = Vec::new();
         if holds_agents {
             steps.push(Step::waiting(PICKS, "blocked", AFTER_BACKUP));
@@ -1917,130 +2122,38 @@ fn agents_local_merge_step(root: &Path, shown: &str) -> Result<Step> {
     })
 }
 
-/// What every leftover says it is not (#2936 L2b).
-const LEFTOVER_NOTE: &str = "not removed by update";
-/// The Go tool's update lock, relative to the project.
-const GO_UPDATE_LOCK: &str = ".moai/.update.lock";
-/// A lock file is a few lines of JSON; this only refuses absurd inputs.
-const LOCK_LIMIT: u64 = 4096;
-/// How many entry names the `.moai-cli/` fact lists.
-const LEFTOVER_NAMES: usize = 8;
-
-fn leftover(path: &str, fact: String) -> Value {
-    json!({"path": path, "fact": fact, "note": LEFTOVER_NOTE})
-}
-
-/// #2936 L2b (completion condition 3 of the Issue): what earlier generations leave behind that no
-/// step of this update removes, as facts (path, one line, and that the update does not remove
-/// it). Read only, no deletion offered: the user decides. A fact needs its proof:
-///
-/// - `.moai-cli/`: a real folder while the state already lives in `.moai/` (state_root `rust`).
-///   Before that it is the live state folder (or moves with the go-state step) and is no leftover.
-/// - `CLAUDE.md`: a regular file with Go proof (the Go manifest records it, or it holds a Go
-///   curator block) and no managed section of this generation, while the Go `.moai/` folder is
-///   not there for the go-state step to move it with.
-/// - `.moai/.update.lock`: the Go tool's lock file whose recorded process is not running
-///   (`kill -0`; a process that cannot be judged, or a lock that cannot be read, is not stated).
-fn leftovers(root: &Path, generation: &str) -> Vec<Value> {
-    let mut out = Vec::new();
-    if generation == "rust" {
-        if let Ok(m) = fs::symlink_metadata(root.join(state_root::EARLIER_PROJECT_DIR)) {
-            if m.is_dir() {
-                let mut names: Vec<String> =
-                    fs::read_dir(root.join(state_root::EARLIER_PROJECT_DIR))
-                        .map(|rd| {
-                            rd.flatten()
-                                .map(|e| e.file_name().to_string_lossy().into_owned())
-                                .collect()
-                        })
-                        .unwrap_or_default();
-                names.sort();
-                let held = match names.len() {
-                    0 => "is an empty folder".to_string(),
-                    n => {
-                        // File names are the project's, not ours (AUDIT #3117 E4): a long one is
-                        // cut and a control or direction character shows as `?`.
-                        let shown = names
-                            .iter()
-                            .take(LEFTOVER_NAMES)
-                            .map(|n| crate::card::input::echo(n))
-                            .collect::<Vec<_>>()
-                            .join(", ");
-                        let more = n.saturating_sub(LEFTOVER_NAMES);
-                        if more > 0 {
-                            format!("still holds {n} entries ({shown}, and {more} more)")
-                        } else {
-                            format!("still holds {n} entries ({shown})")
-                        }
-                    }
-                };
-                out.push(leftover(
-                    &format!("{}/", state_root::EARLIER_PROJECT_DIR),
-                    format!(
-                        "the earlier generation's state folder {held}; this generation's state \
-                         is in .moai/"
-                    ),
-                ));
-            }
-        }
-    }
-    if generation != "go" {
-        if let Some(proof) = go_state::go_claude_md_proof(root) {
-            let how = if proof == "manifest" {
-                "the Go manifest records it"
-            } else {
-                "it holds a Go curator block"
-            };
-            out.push(leftover(
-                "CLAUDE.md",
-                format!("a Go-generation instruction file ({how}) is still in the project root"),
-            ));
-        }
-    }
-    if let Some(fact) = dead_update_lock(root) {
-        out.push(leftover(GO_UPDATE_LOCK, fact));
-    }
-    out
-}
-
-/// The fact for a Go update lock whose recorded process is not running; `None` for no lock, a
-/// link, a lock that cannot be read as the Go payload `{pid, started_at, hostname}`, or a process
-/// that is alive or cannot be judged.
-fn dead_update_lock(root: &Path) -> Option<String> {
-    let path = root.join(GO_UPDATE_LOCK);
-    let m = fs::symlink_metadata(&path).ok()?;
-    if !m.is_file() || m.len() > LOCK_LIMIT || crate::apply::target(root, GO_UPDATE_LOCK).is_err() {
-        return None;
-    }
-    let payload: Value = serde_json::from_slice(&fs::read(&path).ok()?).ok()?;
-    let pid = payload["pid"]
-        .as_i64()
-        .filter(|p| *p > 0 && *p <= i64::from(i32::MAX))?;
-    if crate::home_state::pid_alive(pid)? {
-        return None;
-    }
-    // The time is shown only when it looks like one: the file is not trusted text.
-    let since = payload["started_at"]
-        .as_str()
-        .filter(|s| {
-            s.len() <= 32
-                && s.chars()
-                    .all(|c| c.is_ascii_digit() || matches!(c, '-' | ':' | 'T' | 'Z' | '.' | '+'))
-        })
-        .map(|s| format!(" (started {s})"))
-        .unwrap_or_default();
-    Some(format!(
-        "the Go update lock names process {pid}{since}, which is not running"
-    ))
-}
-
 /// #2936 E1 (AUDIT #3117): how to take the update chain back, last applied first. Printed with
 /// every preview, because the order is not a matter of taste: `go-state-revert` refuses while the
 /// generation step's `CLAUDE.md` is still in place ("revert refused: CLAUDE.md is conflict"), and
 /// the generation step's instruction file is a second receipt (`agents_receipt`) that its own undo does
 /// not cover. Run in this order the project is back to its start bytes (what the steps added —
 /// receipts and `.moai.rust-<UTC>/` — stays). Each id is printed by the apply result of its step.
-fn undo_order() -> Value {
+///
+/// While a leftovers archive receipt that is not `reverted` exists under the state folder, the
+/// order begins with the leftovers revert (SPEC-20261127-update-leftovers-action REQ-22): an
+/// archived Go update lock must be back in the Go backup folder before `go-state-revert` reads
+/// that folder's digest. With no such receipt the rows are exactly the ones below.
+fn undo_order(root: &Path) -> Value {
+    let mut order = undo_order_rows();
+    if leftovers_archive::open_receipt_exists(root) {
+        if let Some(steps) = order["steps"].as_array_mut() {
+            steps.insert(0, leftovers_undo_row());
+        }
+    }
+    order
+}
+
+/// The first row of the undo order while a leftovers archive is not reverted.
+fn leftovers_undo_row() -> Value {
+    json!({"step": "leftovers", "commands": [
+        format!(
+            "moai {} <PROJECT> --receipt <receipt of the leftovers step> --permission-reference <reference>",
+            leftovers_archive::REVERT_OPERATION
+        ),
+    ], "note": "only while a leftovers apply is not reverted; it puts the archived leftovers back from their backup (a lock archived out of the Go backup folder must be back before go-state-revert reads that folder) and leaves an item as a conflict when its place is taken"})
+}
+
+fn undo_order_rows() -> Value {
     json!({
         "rule": "undo the step applied last first; every command needs its own permission reference",
         "steps": [
@@ -2051,16 +2164,117 @@ fn undo_order() -> Value {
                 "moai apply-recover --receipt <agents_receipt of the project harness step> --permission-reference <reference> <PROJECT>",
                 "moai apply-recover --receipt <receipt of the project harness step> --permission-reference <reference> <PROJECT>",
             ], "note": "the instruction file has a receipt of its own; undo it before the workflow files"},
+            {"step": "go-residue", "commands": [
+                "moai go-residue-revert <PROJECT> --receipt <receipt of the go-residue step> --permission-reference <reference>",
+            ], "note": "only when a go-residue-apply ran (the user picked it); it puts the moved files back from their backup and leaves an item as a conflict when its place is taken"},
             {"step": "go-state", "commands": [
                 "moai go-state-revert-plan <PROJECT> --backup <backup of the go-state step>",
                 "moai go-state-revert --backup <backup of the go-state step> --plan-digest <digest of that plan> --permission-reference <reference> <PROJECT>",
-            ], "note": "refused while the project harness step's AGENTS.md is in place"},
+            ], "note": "refused while the project harness step's CLAUDE.md is in place"},
             {"step": "go-settings", "commands": [
                 "moai go-settings-revert --receipt <receipt of the go-settings step> --permission-reference <reference> <PROJECT>",
             ]},
         ],
         "stays": "what the commands above do not take away: the receipts under .moai-cli/receipts/, and the Rust state's set-aside folder .moai.rust-<UTC>/; remove those by hand only after reading them, nothing here deletes them",
         "other_steps": "a step not listed (profile, claude-settings, github, the merge steps) prints its own revert or receipt in its apply result",
+    })
+}
+
+/// The `go-residue` step (SPEC-20261121-go-residue-detect, SPEC-20261125-go-residue-apply):
+/// the files the Go generation left behind, proven against the first manifest the survey still
+/// finds. Every surveyed item is listed. The step returns one of two states: `optional` while a
+/// `go_same` or `go_changed` file is left to move (a file something still reads, or one kept
+/// because a reader could not be read, is not left to move), and `unchanged` otherwise: nothing
+/// is surveyed, or what remains is the user's own files, files in use, markers, folders or items
+/// another step owns. It never returns `needs_decision`: leaving the files where they are is a
+/// valid answer, and `needs_decision` would hold `all_unchanged` false for good. `optional`
+/// counts as nothing to do. The reason always gives the number of files in use and the number of
+/// readers that could not be read (SPEC-20261126-go-residue-in-use REQ-6).
+///
+/// The proven bundle has a printed `go-residue-apply` command; a changed file moves only when
+/// the user names it with `--pick`, so no command carries one. While another backup step still
+/// has a move to make, the command waits: that move would make this plan's digest stale.
+fn go_residue_step(root: &Path, shown: &str, others_pending: bool) -> Result<Step> {
+    let survey = crate::go_residue::survey(root);
+    let found = crate::go_residue_apply::candidates(&survey);
+    let proven = found.iter().filter(|c| c.class == "go_same").count();
+    let changed: Vec<&str> = found
+        .iter()
+        .filter(|c| c.class == "go_changed")
+        .map(|c| c.path.as_str())
+        .collect();
+    let proof = survey.proof.clone().unwrap_or_default();
+    let digest = crate::go_residue_apply::plan_digest(&proof, &found);
+    let others_listed = survey.items.iter().any(|i| i.suggested_action != "keep");
+    let apply = (proven > 0 && !others_pending).then(|| {
+        let mut words = argv("go-residue-apply", shown, &digest);
+        words.extend(["--bundle", "proven"].map(String::from));
+        (words, Value::Null)
+    });
+    let in_use = survey
+        .items
+        .iter()
+        .filter(|i| i.class == "go_in_use")
+        .count();
+    let unread = survey.unread.len();
+    let (state, reason) = if survey.items.is_empty() {
+        (
+            "unchanged",
+            "no Go residue is proven by any manifest this survey can find".into(),
+        )
+    } else if !found.is_empty() {
+        let how = if apply.is_some() {
+            "the printed command moves the proven files into a backup"
+        } else if proven > 0 {
+            "the command for the proven files is printed after the earlier backup steps have moved"
+        } else {
+            "no proven file is left"
+        };
+        (
+            "optional",
+            format!(
+                "{proven} proven and {} changed Go files the Go generation left behind are proven \
+                 by {proof}; {how}; a changed file moves only with `--pick <path>` (confirm with \
+                 the plan_digest below), and leaving the files where they are is fine",
+                changed.len(),
+            ),
+        )
+    } else if others_listed {
+        (
+            "unchanged",
+            format!(
+                "{} surveyed files are listed; none is a Go file to move now (files in use and \
+                 files kept for an unread reader stay; markers, earlier-generation folders and \
+                 files another step owns wait for their own step)",
+                survey.items.len(),
+            ),
+        )
+    } else {
+        (
+            "unchanged",
+            format!(
+                "{} surveyed files are the user's own and are kept; no Go residue needs a decision",
+                survey.items.len(),
+            ),
+        )
+    };
+    let reason = format!(
+        "{reason}; {in_use} files in use are kept in place, {unread} readers could not be read{}",
+        if unread > 0 {
+            " (every Go file stays where it is until they can be read; see unread_readers)"
+        } else {
+            ""
+        }
+    );
+    let mut preview = crate::go_residue::preview(&survey);
+    preview["bundles"] = json!({"proven": proven, "changed": changed});
+    Ok(Step {
+        name: "go-residue",
+        state,
+        reason,
+        preview,
+        plan_digest: (!found.is_empty()).then_some(digest),
+        apply,
     })
 }
 
@@ -2090,9 +2304,21 @@ pub fn plan(project: &Path) -> Result<Value> {
     if reports.apply.is_some() && state.apply.is_some() {
         state = Step::waiting("go-state", "blocked", AFTER_REPORTS);
     }
-    let backup = vec![settings, state, reports];
+    // SPEC-20261126-go-local-settings-reference: the final go-state command, before any later
+    // reader looks at it.
+    let state = picked_command_only(moves.as_ref().ok(), state);
+    let pick_only = offers_only_the_pick(moves.as_ref().ok(), &state);
+    // The go-residue step runs after the backup previews: it proves the Go files the generation
+    // left against the first manifest it finds. It reads `optional` or `unchanged`, so it never
+    // holds `all_unchanged` false or the install phase; its command waits while an earlier
+    // backup step still has one to run.
+    let others_pending = [&settings, &state, &reports]
+        .iter()
+        .any(|s| s.apply.is_some());
+    let residue = or_blocked("go-residue", go_residue_step(&root, &shown, others_pending));
+    let backup = vec![settings, state, reports, residue];
     // A move still to make: every install preview would be stale after it.
-    let mut install: Vec<Step> = if backup_pending(&backup) {
+    let mut install: Vec<Step> = if backup_pending(&backup, pick_only) {
         INSTALL
             .map(|n| Step::waiting(n, "blocked", AFTER_BACKUP))
             .into_iter()
@@ -2102,12 +2328,21 @@ pub fn plan(project: &Path) -> Result<Value> {
     };
     // The retired hosts are always in the preview, whatever the profile or the backup phase says.
     install.extend(host_steps(&root));
-    let merge = merge_steps(&root, &shown, &backup, &install);
+    let merge = merge_steps(&root, &shown, &backup, pick_only, &install);
+    // SPEC-20261127-update-leftovers-action: the leftovers of the five kinds, each with an archive
+    // action or a keep reason. One that is neither archived nor kept for its current source holds
+    // `all_unchanged` false (`CLAUDE.md` is no such kind). A record that cannot be read changes
+    // nothing.
+    let classified = state_root::classify(&root);
+    let record = declined::read(&root).unwrap_or_default();
+    let leftovers = leftovers::view(&root, classified.generation, others_pending, &record);
+    let open_leftovers = leftovers::open(&leftovers);
     let all_unchanged = backup
         .iter()
         .chain(&install)
         .chain(&merge)
-        .all(|s| matches!(s.state, "unchanged" | "skip" | "optional"));
+        .all(|s| matches!(s.state, "unchanged" | "skip" | "optional"))
+        && open_leftovers.is_empty();
     let phase = |name: &str, reason: &str, steps: &[Step]| {
         json!({
             "phase": name,
@@ -2122,20 +2357,19 @@ pub fn plan(project: &Path) -> Result<Value> {
         .chain(&merge)
         .map(Step::fact)
         .collect();
-    let (ask, chain, finish) = guide::overview(&facts, all_unchanged);
-    let classified = state_root::classify(&root);
+    let (ask, chain, finish) = guide::overview(&facts, all_unchanged, &open_leftovers);
     Ok(json!({
         "project": shown,
         "detected": detected.ok(),
         "state_root": classified.to_json(),
-        "leftovers": leftovers(&root, classified.generation),
+        "leftovers": leftovers,
         "phases": [
             phase("backup", BACKUP_REASON, &backup),
             phase("install", INSTALL_REASON, &install),
             phase("merge", MERGE_REASON, &merge),
         ],
         "all_unchanged": all_unchanged,
-        "undo_order": undo_order(),
+        "undo_order": undo_order(&root),
         "ask": ask,
         "chain": chain,
         "finish": finish,

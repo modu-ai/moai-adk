@@ -135,13 +135,13 @@ fn a_plain_session_gets_the_rename_line_and_the_short_id_fallback() {
     let cases = [
         (
             WORK,
-            "does not already start with `<project name>-agent-`",
-            "`/rename <project name>-agent-<english name>`",
+            "does not already start with `agent-`",
+            "`/rename agent-<english name>`",
         ),
         (
             LEADER,
-            "does not already end with `-leader`",
-            "`/rename <project name>-leader`",
+            "does not already start with `leader-`",
+            "`/rename leader-<project name>`",
         ),
     ];
     for (file, start, line) in cases {
@@ -363,8 +363,9 @@ fn the_agent_workflow_orders_registration_renewal_and_release() {
     );
 }
 
-/// A temporary clone whose folder is named `demo`, so the project name is `demo` and the lane names
-/// are `demo-agent-<name>`, and the folder of its session registry.
+/// A temporary clone whose folder is named `demo`, so the project name is `demo`; the lane names
+/// are `agent-<name>` (SPEC-20261127-launcher-session-names) and the earlier `demo-agent-<name>`
+/// still counts as taken; and the folder of its session registry.
 struct Demo {
     _dir: tempfile::TempDir,
     repo: std::path::PathBuf,
@@ -422,8 +423,10 @@ impl Demo {
         moai_cli::session::lock_named_live(&self.sessions, name).unwrap()
     }
 
+    /// The pick with seed 0: the first free name of the list, so each test names the exact name.
+    /// The unseeded pick is random among the free names (SPEC-20261125-agent-names-bible).
     fn pick(&self) -> Result<String, String> {
-        moai_cli::session::pick_agent_name(&self.repo, NOW)
+        moai_cli::session::pick_agent_name_seeded(&self.repo, NOW, 0)
     }
 }
 
@@ -442,11 +445,11 @@ fn ac3_the_pick_skips_a_name_whose_short_form_is_locked() {
     let d = demo();
     assert_eq!(
         d.pick().unwrap(),
-        long(0),
+        short(0),
         "an empty registry gives the first name"
     );
     let _held = d.lock(&short(0));
-    assert_eq!(d.pick().unwrap(), long(1));
+    assert_eq!(d.pick().unwrap(), short(1));
 }
 
 /// AC-3 (REQ-8): a live lease of the short form takes the name as well.
@@ -454,7 +457,7 @@ fn ac3_the_pick_skips_a_name_whose_short_form_is_locked() {
 fn ac3_the_pick_skips_a_name_whose_short_form_has_a_live_lease() {
     let d = demo();
     d.entry(&short(0), NOW + 1);
-    assert_eq!(d.pick().unwrap(), long(1));
+    assert_eq!(d.pick().unwrap(), short(1));
 }
 
 /// AC-3 (REQ-8): the first name that is free in both forms is the answer: the first is locked in
@@ -464,7 +467,7 @@ fn ac3_the_pick_returns_the_first_name_free_in_both_forms() {
     let d = demo();
     let _held = d.lock(&short(0));
     d.entry(&long(1), NOW + 1);
-    assert_eq!(d.pick().unwrap(), long(2));
+    assert_eq!(d.pick().unwrap(), short(2));
 }
 
 /// AC-3 (REQ-8), the edge: a lease that ends exactly at `now` is over, and a lock file nobody
@@ -474,14 +477,14 @@ fn ac3_an_ended_lease_or_an_unheld_lock_does_not_take_a_name() {
     let d = demo();
     d.entry(&short(0), NOW);
     d.entry(&long(0), NOW - 1);
-    assert_eq!(d.pick().unwrap(), long(0), "ended leases take nothing");
+    assert_eq!(d.pick().unwrap(), short(0), "ended leases take nothing");
     drop(d.lock(&short(0)));
     drop(d.lock(&long(0)));
     assert!(d.sessions.join(format!("{}.live", short(0))).exists());
-    assert_eq!(d.pick().unwrap(), long(0), "an unheld lock takes nothing");
+    assert_eq!(d.pick().unwrap(), short(0), "an unheld lock takes nothing");
     // A live lease in the short form alone takes the name again.
     d.entry(&short(0), NOW + 1);
-    assert_eq!(d.pick().unwrap(), long(1));
+    assert_eq!(d.pick().unwrap(), short(1));
 }
 
 /// AC-3 (REQ-8): with every english name taken, in either form, the pick refuses and names
@@ -502,5 +505,5 @@ fn ac3_with_every_name_taken_the_pick_refuses_naming_name() {
     assert!(err.contains(&format!("{count} names")), "{err}");
     // One name freed in both forms is the answer again.
     fs::remove_file(d.sessions.join(format!("{}.json", short(0)))).unwrap();
-    assert_eq!(d.pick().unwrap(), long(0));
+    assert_eq!(d.pick().unwrap(), short(0));
 }

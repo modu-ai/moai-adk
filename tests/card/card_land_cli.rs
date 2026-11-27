@@ -1478,6 +1478,235 @@ fn ac22_the_answer_reports_a_variant_and_a_disagreeing_profile() {
     assert_eq!(w.integ(), candidate);
 }
 
+// ---- SPEC-20261127-guard-repoint-followups AC-1: a stale guard record is observed ----------------
+//
+// The guard record (`moai/integration-branch` in the common git folder) can name another branch
+// than the integration branch the profile of the folder the command runs in names. `card land`
+// keeps landing on the recorded branch (the record wins) and only adds `guard_record_stale` to its
+// answer; it refuses nothing and rewrites no record.
+
+/// The profile of the fixture with its integration branch `branch`, or with no integration branch.
+fn profile_naming(branch: Option<&str>) -> Vec<u8> {
+    let text = String::from_utf8_lossy(MFLOW_PROFILE).into_owned();
+    match branch {
+        Some(name) => text.replace(
+            "\"integration_branch\": \"integ\"",
+            &format!("\"integration_branch\": \"{name}\""),
+        ),
+        None => text.replace(", \"integration_branch\": \"integ\"", ""),
+    }
+    .into_bytes()
+}
+
+/// Whether `value` names `branch` spelled short (`integ`), the form `branch` and `profile_disagrees`
+/// of the answer use. The full ref (`refs/heads/integ`) is a different spelling and is not accepted.
+fn is_short_name(value: &Value, branch: &str) -> bool {
+    *value == json!(branch)
+}
+
+impl World {
+    /// A branch `name` at the integration tip, so a profile can name an existing branch that is
+    /// not the one the record names.
+    fn branch_at_tip(&self, name: &str) {
+        git(
+            &self.project,
+            &["update-ref", &format!("refs/heads/{name}"), &self.tip],
+        );
+    }
+
+    /// The commit `refs/heads/<name>` points at now.
+    fn branch_head(&self, name: &str) -> String {
+        git(&self.project, &["rev-parse", &format!("refs/heads/{name}")])
+    }
+
+    /// The guard record, written by hand before any command seeds one from the profile.
+    fn write_record(&self, text: &str) {
+        fs::create_dir_all(self.common().join("moai")).unwrap();
+        fs::write(self.common().join("moai/integration-branch"), text).unwrap();
+    }
+
+    /// The bytes of the guard record, or none.
+    fn record_bytes(&self) -> Option<Vec<u8>> {
+        fs::read(self.common().join("moai/integration-branch")).ok()
+    }
+
+    /// `card land` of `head` as the lander, run for the folder `at` (a linked worktree of the
+    /// project) instead of the primary checkout: the independent PASS first, then the call.
+    fn land_in(&self, at: &Path, card: &str, head: &str) -> Output {
+        self.pass_of(card, head);
+        self.run(
+            Some(S_LEAD),
+            &[
+                "card",
+                "land",
+                card,
+                "--head",
+                head,
+                "--met",
+                "1=x",
+                "--by",
+                "leader",
+                "--project",
+                at.to_str().unwrap(),
+            ],
+        )
+    }
+}
+
+/// AC-1 (REQ-1): the record names `integ`, the profile names the existing branch `other`: the
+/// landing is what it was (`integ` moves, `other` stays, `profile_disagrees` names `other`) and the
+/// answer carries `guard_record_stale` with the record, the profile branch, the worktree kind,
+/// `would_refuse: true` and the command that re-points the record. A primary worktree adds no note.
+#[test]
+fn guard_record_stale_land_in_the_primary_worktree_observes_and_lands_as_before() {
+    let w = World::new();
+    w.branch_at_tip("other");
+    w.write_record("refs/heads/integ\n");
+    w.set_profile(&profile_naming(Some("other")));
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    let got = result(&w.land_pass(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    ));
+    // Everything a landing did before this SPEC.
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["branch"], json!("integ"), "{got}");
+    assert_eq!(got["to_tip"], json!(candidate), "{got}");
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["profile_disagrees"], json!("other"), "{got}");
+    assert_eq!(w.integ(), candidate);
+    assert_eq!(
+        w.branch_head("other"),
+        w.tip,
+        "the profile's branch is not the one that moves"
+    );
+    // The record is observed, never rewritten, and no re-point receipt is written.
+    assert_eq!(
+        w.record_bytes(),
+        Some(b"refs/heads/integ\n".to_vec()),
+        "a landing never writes the record"
+    );
+    assert!(
+        !w.common().join("moai/record-repoint").exists(),
+        "a landing writes no re-point receipt"
+    );
+    // The observation.
+    let stale = &got["guard_record_stale"];
+    assert!(stale.is_object(), "guard_record_stale is missing: {got}");
+    assert!(is_short_name(&stale["record"], "integ"), "{got}");
+    assert!(is_short_name(&stale["profile_branch"], "other"), "{got}");
+    assert_eq!(stale["worktree"], json!("primary"), "{got}");
+    assert_eq!(stale["would_refuse"], json!(true), "{got}");
+    assert_eq!(stale["repoint"], json!("moai card guard-repoint"), "{got}");
+    assert!(
+        stale.get("note").is_none(),
+        "only a linked worktree adds the primary-checkout sentence: {got}"
+    );
+}
+
+/// AC-1 (REQ-1, no difference): a record that equals the profile's integration branch adds no
+/// field and lands as before.
+#[test]
+fn guard_record_stale_land_with_an_equal_record_adds_no_field() {
+    let w = World::new();
+    w.write_record("refs/heads/integ\n");
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    let got = result(&w.land_pass(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    ));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["branch"], json!("integ"), "{got}");
+    assert_eq!(got["profile_disagrees"], Value::Null, "{got}");
+    assert_eq!(w.integ(), candidate);
+    assert!(got.get("guard_record_stale").is_none(), "{got}");
+}
+
+/// AC-1 (REQ-1, no difference): with no record the profile names the branch, so there is nothing
+/// to compare: the profile's branch (`other`) moves, `integ` stays and no field is added.
+#[test]
+fn guard_record_stale_land_with_no_record_adds_no_field() {
+    let w = World::new();
+    w.branch_at_tip("other");
+    w.set_profile(&profile_naming(Some("other")));
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    let got = result(&w.land_pass(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    ));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["branch"], json!("other"), "{got}");
+    assert_eq!(w.branch_head("other"), candidate);
+    assert_eq!(
+        w.integ(),
+        w.tip,
+        "the branch the profile does not name stays"
+    );
+    assert!(got.get("guard_record_stale").is_none(), "{got}");
+}
+
+/// AC-1 (REQ-1, no difference): a profile that names no integration branch gives nothing to
+/// compare the record with: the recorded branch moves as before and no field is added.
+#[test]
+fn guard_record_stale_land_with_a_profile_without_a_branch_adds_no_field() {
+    let w = World::new();
+    w.write_record("refs/heads/integ\n");
+    w.set_profile(&profile_naming(None));
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    let got = result(&w.land_pass(
+        &card,
+        &["--head", &candidate, "--met", "1=x", "--by", "leader"],
+    ));
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["branch"], json!("integ"), "{got}");
+    assert_eq!(got["profile_disagrees"], Value::Null, "{got}");
+    assert_eq!(w.integ(), candidate);
+    assert!(got.get("guard_record_stale").is_none(), "{got}");
+}
+
+/// AC-1 (REQ-2): the same difference seen from a linked worktree, which reads its own checkout's
+/// profile (the primary's profile here still names `integ`): the landing is as before and the
+/// field says `linked` and adds the sentence that `guard-repoint` refuses in a linked worktree and
+/// has to be run from the primary checkout.
+#[test]
+fn guard_record_stale_land_in_a_linked_worktree_adds_the_primary_checkout_sentence() {
+    let w = World::new();
+    w.branch_at_tip("other");
+    w.write_record("refs/heads/integ\n");
+    let linked = w.linked_worktree("wt-stale");
+    let state = linked.join(moai_cli::PROJECT_STATE_DIR);
+    fs::create_dir_all(&state).unwrap();
+    fs::write(state.join("project.yaml"), profile_naming(Some("other"))).unwrap();
+    let card = w.review_card(&["one"]);
+    let candidate = w.candidate();
+    let got = result(&w.land_in(&linked, &card, &candidate));
+    // Everything a landing did before this SPEC.
+    assert_eq!(got["moved"], json!(true), "{got}");
+    assert_eq!(got["branch"], json!("integ"), "{got}");
+    assert_eq!(w.integ(), candidate);
+    assert_eq!(w.branch_head("other"), w.tip);
+    assert_eq!(w.record_bytes(), Some(b"refs/heads/integ\n".to_vec()));
+    // The observation, with the linked worktree's own profile as the other side.
+    let stale = &got["guard_record_stale"];
+    assert!(stale.is_object(), "guard_record_stale is missing: {got}");
+    assert!(is_short_name(&stale["record"], "integ"), "{got}");
+    assert!(is_short_name(&stale["profile_branch"], "other"), "{got}");
+    assert_eq!(stale["worktree"], json!("linked"), "{got}");
+    assert_eq!(stale["would_refuse"], json!(true), "{got}");
+    assert_eq!(stale["repoint"], json!("moai card guard-repoint"), "{got}");
+    let note = stale["note"]
+        .as_str()
+        .unwrap_or_else(|| panic!("a linked worktree adds a note: {got}"))
+        .to_lowercase();
+    for needle in ["guard-repoint", "linked worktree", "primary checkout"] {
+        assert!(note.contains(needle), "the note lacks {needle:?}: {note}");
+    }
+}
+
 /// Links the moai under test as `bin/moai`, where the hook looks for it. The hook is a shell
 /// script, so the guard tests run on unix only.
 fn link_moai(bin: &Path) {

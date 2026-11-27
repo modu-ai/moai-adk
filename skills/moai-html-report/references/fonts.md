@@ -3,10 +3,9 @@
 The webfont CDN URLs, licenses and preconnect patterns of the html-report
 skill. This page is the source for font loading in all six mode templates.
 
-User decisions (2026-11-22): html files use Pretendard (jsDelivr) and
-JetBrains Mono (Google Fonts) in every mode, headings included; the artifact
-version uses the Noto Sans family of the report's language from Google Fonts
-(`artifact-contract.md` § 6).
+The html files use Pretendard (jsDelivr) and JetBrains Mono (Google Fonts) in
+every mode, headings included; the artifact version uses the Noto Sans family of
+the report's language from Google Fonts (`artifact-contract.md` § 6).
 
 ---
 

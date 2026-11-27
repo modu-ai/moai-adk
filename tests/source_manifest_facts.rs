@@ -4,9 +4,10 @@
 //! `json.dumps(indent=2, ensure_ascii=False)` plus a newline gives, and `.gitattributes` names
 //! the merge driver for it.
 //!
-//! The tool's own behaviour (check/write on temporary repositories, the merge driver) stays in
-//! the Python module until the tool itself is a `moai` command; this file reads only the checked-in
-//! tree and runs no tool, no shell and no git.
+//! The tool's own behaviour (check/write on temporary repositories) stays in the Python module
+//! until the tool itself is a `moai` command, and the merge driver is a `moai` command tested in
+//! `manifest_merge_driver_cli.rs`; this file reads only the checked-in tree and runs no tool, no
+//! shell and no git.
 //!
 //! Moved here from `source_manifest_test.py` (SPEC-20261123-rust-scans-before-ready).
 
@@ -341,7 +342,7 @@ fn this_repository_names_the_driver_for_the_manifest() {
     let attributes = fs::read_to_string(Path::new(ROOT).join(".gitattributes")).unwrap();
     assert_eq!(
         merge_attribute(&attributes, &path),
-        Ok(Merge::Driver("moai-manifest".into())),
+        Ok(Merge::Driver("moai-manifest-rs".into())),
         ".gitattributes does not leave the manifest driver on {path}"
     );
     // A `.gitattributes` in a folder on the way down would speak after the root one.

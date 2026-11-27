@@ -9,6 +9,7 @@
 mod common;
 use common::CleanEnv;
 
+use moai_cli::tidy::apply::{apply_with, Request, Step};
 use serde_json::Value;
 use std::{
     fs,
@@ -163,6 +164,8 @@ fn fixture() -> Fx {
     age_tree(&moai.join("run"), 400);
     fs::create_dir_all(moai.join("db")).unwrap();
     set_age(&moai.join("db"), 400);
+    fs::create_dir_all(moai.join("rescue")).unwrap();
+    set_age(&moai.join("rescue"), 400);
     // unknown writer (parent D-10) and a name in no table.
     put(&moai.join("logs/hook.log"), 5 * 1024);
     age_tree(&moai.join("logs"), 10);
@@ -245,6 +248,85 @@ fn text(v: &Value) -> &str {
 }
 
 // ---------------------------------------------------------------- inventory_
+
+/// Runs `program ARGS` in a macOS sandbox that kills the process the moment it opens one of
+/// `denied` (a folder with everything below it) to read its data. Listing a name and reading
+/// its own directory data stay allowed, so the signal tells an open call from a listing.
+#[cfg(target_os = "macos")]
+fn killed_on_open(denied: &[PathBuf], program: &str, args: &[&str]) -> std::process::Output {
+    let mut profile = String::from("(version 1)(allow default)");
+    for p in denied {
+        profile.push_str(&format!(
+            "(deny file-read-data (subpath \"{}\") (with send-signal SIGKILL))",
+            p.display()
+        ));
+    }
+    let own_home = TempDir::new().unwrap();
+    Command::new("/usr/bin/sandbox-exec")
+        .clean_env()
+        .env("HOME", own_home.path())
+        .arg("-p")
+        .arg(profile)
+        .arg(program)
+        .args(args)
+        .stdin(Stdio::null())
+        .output()
+        .unwrap()
+}
+
+/// The open calls of both operations, observed: no protected entry, no key of another product
+/// and nothing a link points at is ever opened. The stand-ins are readable here, so an open
+/// would reach the sandbox rule and not stop at the file mode.
+#[cfg(target_os = "macos")]
+#[test]
+fn inventory_and_plan_open_no_protected_entry() {
+    use std::os::unix::process::ExitStatusExt;
+    let fx = fixture();
+    let outside = fx.home.join("outside");
+    put(&outside.join("key.txt"), 16);
+    put(&outside.join("dir/key.txt"), 16);
+    symlink(outside.join("key.txt"), fx.moai.join("link-outside")).unwrap();
+    symlink(outside.join("dir"), fx.moai.join("reports/projA/link-dir")).unwrap();
+    for (name, mode) in [
+        (".env.glm", 0o644),
+        ("credentials.yaml", 0o644),
+        ("secrets", 0o755),
+        ("claude-profiles/p1/auth.json", 0o644),
+    ] {
+        fs::set_permissions(fx.moai.join(name), fs::Permissions::from_mode(mode)).unwrap();
+    }
+    put(&fx.moai.join("secrets/token"), 8);
+    put(&fx.moai.join("releases/v1/.env"), 8);
+    let denied: Vec<PathBuf> = [
+        ".env.glm",
+        "credentials.yaml",
+        "secrets",
+        "claude-profiles/p1/auth.json",
+        "pipe",
+        "releases/v1/.env",
+    ]
+    .iter()
+    .map(|n| fx.moai.join(n))
+    .chain([outside.clone()])
+    .collect();
+    // The probe itself: each denied path kills a program that does open it.
+    for p in &denied {
+        let program = if p.is_dir() { "/bin/ls" } else { "/bin/cat" };
+        let out = killed_on_open(&denied, program, &[p.to_str().unwrap()]);
+        assert_eq!(out.status.signal(), Some(9), "{}: {out:?}", p.display());
+    }
+    for op in ["tidy-inventory", "tidy-plan"] {
+        let out = killed_on_open(&denied, BIN, &[op, fx.home.to_str().unwrap()]);
+        assert!(
+            out.status.success(),
+            "{op} was stopped (signal {:?}): {}",
+            out.status.signal(),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(v["ok"], Value::Bool(true), "{op}: {v}");
+    }
+}
 
 #[test]
 fn inventory_lists_every_entry_with_class_size_newest_and_reason() {
@@ -537,7 +619,9 @@ fn plan_names_action_rule_and_reason_for_each_candidate() {
         assert!(!text(&i["reason"]).is_empty(), "{i}");
         assert!(i["kind"].is_string(), "{i}");
     }
-    assert_eq!(item(&p, "releases")["action"], "archive");
+    let kept = item(&p, "releases");
+    assert_eq!(kept["action"], "keep", "{kept}");
+    assert!(text(&kept["reason"]).contains("go_run_data_kept"), "{kept}");
     assert_eq!(item(&p, "run")["action"], "archive");
     // Never offered: another product, an unknown entry, an unknown writer, a protected entry.
     for (path, reason) in [
@@ -576,12 +660,12 @@ fn plan_the_only_delete_is_an_empty_folder_of_the_retired_tool_class() {
             .filter(|i| i["action"] == "delete")
             .map(|i| text(&i["path"]))
             .collect();
-        assert_eq!(deletes, vec!["db"], "{extra:?}");
+        assert_eq!(deletes, vec!["rescue"], "{extra:?}");
     }
     // The same folder with a file in it is archived, not deleted.
-    put(&fx.moai.join("db/leftover"), 3);
+    put(&fx.moai.join("rescue/leftover"), 3);
     let p = plan(&fx, &[]);
-    assert_eq!(item(&p, "db")["action"], "archive");
+    assert_eq!(item(&p, "rescue")["action"], "archive");
 }
 
 #[test]
@@ -693,13 +777,13 @@ impl Drop for Unlock {
     }
 }
 
-/// A home whose only entry is the retired-tool folder `releases` with a readable file.
+/// A home whose only entry is the retired-tool folder `cache` with a readable file.
 fn retired_tool_home() -> Fx {
     let tmp = TempDir::new().unwrap();
     let home = fs::canonicalize(tmp.path()).unwrap().join("home");
     let moai = home.join(MOAI);
-    put(&moai.join("releases/v1/bin"), 800);
-    age_tree(&moai.join("releases"), 400);
+    put(&moai.join("cache/v1/bin"), 800);
+    age_tree(&moai.join("cache"), 400);
     Fx {
         _tmp: tmp,
         home,
@@ -713,16 +797,16 @@ fn plan_a_retired_tool_folder_with_an_unreadable_part_is_kept_not_archived() {
     // The whole folder looks old and readable until the walk meets the one part it cannot list.
     let whole = plan(&fx, &[]);
     assert_eq!(
-        item(&whole, "releases")["action"],
+        item(&whole, "cache")["action"],
         "archive",
         "control: {whole}"
     );
-    put(&fx.moai.join("releases/v1/locked/f"), 5);
-    let locked = fx.moai.join("releases/v1/locked");
+    put(&fx.moai.join("cache/v1/locked/f"), 5);
+    let locked = fx.moai.join("cache/v1/locked");
     fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
     let _unlock = Unlock(locked);
     let p = plan(&fx, &[]);
-    let i = item(&p, "releases");
+    let i = item(&p, "cache");
     assert_eq!(
         i["action"], "keep",
         "archived what it could not read in full: {i}"
@@ -743,18 +827,18 @@ fn plan_a_retired_tool_folder_with_an_unreadable_part_is_kept_not_archived() {
 fn plan_a_retired_tool_folder_over_the_entry_limit_is_kept_not_archived() {
     let fx = retired_tool_home();
     for n in 0..12 {
-        put(&fx.moai.join(format!("releases/v1/f{n}")), 10);
+        put(&fx.moai.join(format!("cache/v1/f{n}")), 10);
     }
-    age_tree(&fx.moai.join("releases"), 400);
+    age_tree(&fx.moai.join("cache"), 400);
     let whole = plan(&fx, &[]);
     assert_eq!(
-        item(&whole, "releases")["action"],
+        item(&whole, "cache")["action"],
         "archive",
         "control: {whole}"
     );
     // A lowered limit stops the walk partway: the size is only what was seen.
     let p = plan(&fx, &["--entry-limit", "5"]);
-    let i = item(&p, "releases");
+    let i = item(&p, "cache");
     assert_eq!(
         i["action"], "keep",
         "archived a folder it only partly counted: {i}"
@@ -974,5 +1058,944 @@ fn help_the_operations_say_they_write_nothing() {
             "{op}: {}",
             out.stdout
         );
+    }
+}
+
+#[test]
+fn help_apply_and_restore_say_what_they_change() {
+    for (op, words) in [
+        (
+            "tidy-apply",
+            ["--confirm", "--permission-reference", "--pick", "Removes"],
+        ),
+        (
+            "tidy-restore",
+            [
+                "--archive",
+                "--permission-reference",
+                "--pick",
+                "overwrites",
+            ],
+        ),
+    ] {
+        let out = run(&[op, "--help"]);
+        assert!(out.ok, "{op}: {}", out.stderr);
+        for w in words {
+            assert!(out.stdout.contains(w), "{op} lacks {w}: {}", out.stdout);
+        }
+    }
+}
+
+// ---------------------------------------------- SPEC-20261126-home-tidy-apply
+
+/// The permission reference the tests hand to the operations that write.
+const PERMIT: &str = "test:picked";
+/// Lowers the report file count so the old reports of the fixture are offered.
+const OVER: [&str; 2] = ["--threshold", "reports.max_files=0"];
+
+fn all(out: &Out) -> String {
+    format!("{}{}", out.stdout, out.stderr)
+}
+
+fn token(fx: &Fx) -> String {
+    text(&plan(fx, &OVER)["digest"]).to_string()
+}
+
+/// `tidy-apply` over the fixture with the given picks, confirm token and permission reference.
+fn apply_args(fx: &Fx, picks: &[&str], confirm: &str, permit: &str) -> Vec<String> {
+    let mut args = vec![
+        "tidy-apply".to_string(),
+        fx.home.display().to_string(),
+        "--confirm".to_string(),
+        confirm.to_string(),
+        "--permission-reference".to_string(),
+        permit.to_string(),
+    ];
+    for p in picks {
+        args.push("--pick".to_string());
+        args.push((*p).to_string());
+    }
+    args.extend(OVER.iter().map(|s| s.to_string()));
+    args
+}
+
+fn restore_args(fx: &Fx, stamp: &str, picks: &[&str], permit: &str) -> Vec<String> {
+    let mut args = vec![
+        "tidy-restore".to_string(),
+        fx.home.display().to_string(),
+        "--archive".to_string(),
+        stamp.to_string(),
+        "--permission-reference".to_string(),
+        permit.to_string(),
+    ];
+    for p in picks {
+        args.push("--pick".to_string());
+        args.push((*p).to_string());
+    }
+    args
+}
+
+fn call(args: &[String]) -> Out {
+    run(&args.iter().map(String::as_str).collect::<Vec<_>>())
+}
+
+/// Applies the picks with the token of a fresh plan and returns the result.
+fn applied(fx: &Fx, picks: &[&str]) -> Value {
+    result(&call(&apply_args(fx, picks, &token(fx), PERMIT)))
+}
+
+fn read_json(p: &Path) -> Value {
+    serde_json::from_slice(&fs::read(p).unwrap_or_else(|e| panic!("{}: {e}", p.display()))).unwrap()
+}
+
+fn mode_of(p: &Path) -> u32 {
+    fs::symlink_metadata(p).unwrap().permissions().mode() & 0o7777
+}
+
+/// The archive folder of the item `path` in an apply answer.
+fn item_dir(answer: &Value, path: &str) -> PathBuf {
+    PathBuf::from(text(&answer["archive_root"])).join(text(&item(answer, path)["archive_item"]))
+}
+
+/// The fixture with a nested folder, an empty folder and files of distinct modes in `run`.
+fn apply_fixture() -> Fx {
+    let fx = fixture();
+    put(&fx.moai.join("run/deep/tool.sh"), 300);
+    fs::create_dir_all(fx.moai.join("run/deep/empty")).unwrap();
+    for (p, mode) in [
+        ("run/deep/tool.sh", 0o750),
+        ("run/pid", 0o600),
+        ("run/deep/empty", 0o750),
+    ] {
+        fs::set_permissions(fx.moai.join(p), fs::Permissions::from_mode(mode)).unwrap();
+    }
+    age_tree(&fx.moai.join("run"), 400);
+    fx
+}
+
+/// Every file below `p` as `(path below p, bytes)`, in path order.
+fn contents(p: &Path) -> Vec<(PathBuf, Vec<u8>)> {
+    fn walk(root: &Path, p: &Path, out: &mut Vec<(PathBuf, Vec<u8>)>) {
+        if fs::symlink_metadata(p).unwrap().is_dir() {
+            let mut kids: Vec<_> = fs::read_dir(p)
+                .unwrap()
+                .map(|e| e.unwrap().path())
+                .collect();
+            kids.sort();
+            for k in kids {
+                walk(root, &k, out);
+            }
+        } else {
+            out.push((
+                p.strip_prefix(root).unwrap().to_path_buf(),
+                fs::read(p).unwrap(),
+            ));
+        }
+    }
+    let mut out = Vec::new();
+    walk(p, p, &mut out);
+    out
+}
+
+// ------------------------------------------------------------------- apply_
+
+#[test]
+fn apply_runs_only_the_picked_items_and_leaves_the_rest() {
+    let fx = apply_fixture();
+    let old1 = snap(&fx.moai.join("reports/projA/old1.md"));
+    let rescue = snap(&fx.moai.join("rescue"));
+    let r = applied(&fx, &["run", "reports/projA/old2.md"]);
+    assert_eq!(r["state"], "committed", "{r}");
+    assert_eq!(item(&r, "run")["state"], "archived", "{r}");
+    assert_eq!(item(&r, "reports/projA/old2.md")["state"], "archived");
+    assert_eq!(r["items"].as_array().unwrap().len(), 2, "{r}");
+    assert!(!fx.moai.join("run").exists());
+    assert!(!fx.moai.join("reports/projA/old2.md").exists());
+    assert_eq!(snap(&fx.moai.join("reports/projA/old1.md")), old1);
+    assert_eq!(snap(&fx.moai.join("rescue")), rescue);
+    assert!(fx.moai.join("reports/projA/new.md").exists());
+}
+
+#[test]
+fn apply_refuses_before_any_write_and_names_the_cause() {
+    let fx = apply_fixture();
+    let good = token(&fx);
+    let cases: [(&[&str], &str, &str, &str); 6] = [
+        (&[], &good, PERMIT, "no item is picked"),
+        (&["run", "nope"], &good, PERMIT, "`nope`"),
+        (&["run", "mystery"], &good, PERMIT, "`mystery`"),
+        (&["run"], "sha256:00", PERMIT, "digest"),
+        (&["run"], &good, "", "permission reference"),
+        (&["run"], &good, "placeholder", "permission reference"),
+    ];
+    let before = snap(&fx.home);
+    for (picks, confirm, permit, cause) in cases {
+        let out = call(&apply_args(&fx, picks, confirm, permit));
+        assert!(!out.ok, "{cause}: {}", all(&out));
+        assert!(all(&out).contains(cause), "{cause}: {}", all(&out));
+        assert_eq!(snap(&fx.home), before, "{cause}: the home changed");
+    }
+    // The token of an earlier plan does not run a changed folder.
+    put(&fx.moai.join("run/later"), 5);
+    let before = snap(&fx.home);
+    let out = call(&apply_args(&fx, &["run"], &good, PERMIT));
+    assert!(!out.ok && all(&out).contains("digest"), "{}", all(&out));
+    assert_eq!(snap(&fx.home), before);
+}
+
+#[test]
+fn apply_refuses_an_archive_folder_that_is_a_link_or_a_file() {
+    for case in ["link_outside", "link_inside", "file"] {
+        let fx = apply_fixture();
+        let elsewhere = fx.home.join("elsewhere");
+        fs::create_dir_all(&elsewhere).unwrap();
+        match case {
+            "link_outside" => symlink(&elsewhere, fx.moai.join("archive")).unwrap(),
+            // A directory handle would follow this one: only the operation's own check stops it.
+            "link_inside" => symlink("handoffs", fx.moai.join("archive")).unwrap(),
+            _ => put(&fx.moai.join("archive"), 3),
+        }
+        let good = token(&fx);
+        let before = snap(&fx.home);
+        let out = call(&apply_args(&fx, &["run"], &good, PERMIT));
+        assert!(!out.ok, "{case}: {}", all(&out));
+        assert!(all(&out).contains("archive"), "{case}: {}", all(&out));
+        assert_eq!(snap(&fx.home), before, "{case}");
+    }
+}
+
+#[test]
+fn apply_refuses_a_moai_folder_that_is_a_link() {
+    let fx = apply_fixture();
+    let good = token(&fx);
+    let real = fx.home.join("real");
+    fs::rename(&fx.moai, &real).unwrap();
+    // A relative link: a handle of the home would follow it.
+    symlink("real", &fx.moai).unwrap();
+    let before = snap(&fx.home);
+    let out = call(&apply_args(&fx, &["run"], &good, PERMIT));
+    assert!(!out.ok && all(&out).contains("link"), "{}", all(&out));
+    assert_eq!(snap(&fx.home), before);
+    // The fixture restores modes below `moai`; give it the real folder back.
+    fs::remove_file(&fx.moai).unwrap();
+    fs::rename(&real, &fx.moai).unwrap();
+}
+
+// ----------------------------------------------------------------- archive_
+
+#[test]
+fn archive_writes_a_private_list_of_every_file_before_the_original_goes() {
+    let fx = apply_fixture();
+    let tool_mtime = fs::metadata(fx.moai.join("run/deep/tool.sh"))
+        .unwrap()
+        .modified()
+        .unwrap()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap();
+    let r = applied(&fx, &["run"]);
+    let root = PathBuf::from(text(&r["archive_root"]));
+    assert_eq!(root.parent().unwrap(), fx.moai.join("archive"));
+    assert_eq!(root.file_name().unwrap().to_str(), r["archive"].as_str());
+    let dir = item_dir(&r, "run");
+    assert_eq!(mode_of(&fx.moai.join("archive")), 0o700);
+    assert_eq!(mode_of(&root), 0o700);
+    assert_eq!(mode_of(&dir), 0o700);
+    for f in ["list.json", "data.tar.gz"] {
+        assert_eq!(mode_of(&dir.join(f)), 0o600, "{f}");
+    }
+    assert_eq!(mode_of(&root.join("receipt.json")), 0o600);
+    let list = read_json(&dir.join("list.json"));
+    assert_eq!(list["item"], "run", "{list}");
+    assert_eq!(list["compression"], "gzip", "{list}");
+    let rows = list["entries"].as_array().unwrap();
+    let mut paths: Vec<&str> = rows.iter().map(|e| text(&e["path"])).collect();
+    paths.sort();
+    assert_eq!(
+        paths,
+        [
+            "run",
+            "run/deep",
+            "run/deep/empty",
+            "run/deep/tool.sh",
+            "run/pid"
+        ]
+    );
+    let tool = rows
+        .iter()
+        .find(|e| e["path"] == "run/deep/tool.sh")
+        .unwrap();
+    assert_eq!(tool["type"], "file", "{tool}");
+    assert_eq!(tool["bytes"], 300, "{tool}");
+    assert_eq!(tool["mode"], 0o750, "{tool}");
+    assert_eq!(tool["sha256"], moai_cli::digest(&[b'x'; 300]), "{tool}");
+    assert_eq!(tool["mtime_secs"], tool_mtime.as_secs(), "{tool}");
+    assert!(!fx.moai.join("run").exists());
+    // A gzip stream.
+    let data = fs::read(dir.join("data.tar.gz")).unwrap();
+    assert_eq!(&data[..2], &[0x1f, 0x8b]);
+}
+
+// --------------------------------------------------------------- protected_
+
+#[test]
+fn protected_items_with_a_secret_name_a_link_or_a_pipe_are_skipped_whole() {
+    let fx = fixture();
+    let outside = fx.home.join("outside");
+    put(&outside.join("key.txt"), 16);
+    put(&fx.moai.join("cache/a"), 5);
+    put(&fx.moai.join("cache/deep/.env"), 5);
+    fs::set_permissions(
+        fx.moai.join("cache/deep/.env"),
+        fs::Permissions::from_mode(0o000),
+    )
+    .unwrap();
+    put(&fx.moai.join("run/b"), 5);
+    symlink(outside.join("key.txt"), fx.moai.join("run/link")).unwrap();
+    put(&fx.moai.join("scratch/c"), 5);
+    assert!(Command::new("mkfifo")
+        .arg(fx.moai.join("scratch/pipe"))
+        .status()
+        .unwrap()
+        .success());
+    put(&fx.moai.join("reports/projA/.env"), 5);
+    set_age(&fx.moai.join("reports/projA/.env"), 300);
+    // A report below a secret-named folder.
+    put(&fx.moai.join("reports/secrets/old.md"), 5);
+    set_age(&fx.moai.join("reports/secrets/old.md"), 300);
+    // A file that cannot be read.
+    put(&fx.moai.join("tmp-x/locked"), 5);
+    fs::set_permissions(
+        fx.moai.join("tmp-x/locked"),
+        fs::Permissions::from_mode(0o000),
+    )
+    .unwrap();
+    let picks = [
+        "cache",
+        "run",
+        "scratch",
+        "reports/projA/.env",
+        "reports/secrets/old.md",
+        "tmp-x",
+    ];
+    let kept =
+        |fx: &Fx| -> Vec<Vec<String>> { picks.iter().map(|p| snap(&fx.moai.join(p))).collect() };
+    let before = kept(&fx);
+    let away = snap(&outside);
+    let r = applied(&fx, &picks);
+    assert_eq!(r["state"], "partial", "{r}");
+    for (path, reason) in [
+        ("cache", "secret_name"),
+        ("run", "link"),
+        ("scratch", "special_file"),
+        ("reports/projA/.env", "secret_name"),
+        ("reports/secrets/old.md", "secret_name"),
+        ("tmp-x", "unreadable"),
+    ] {
+        let i = item(&r, path);
+        assert_eq!(i["state"], "skipped", "{path}: {i}");
+        assert!(text(&i["reason"]).starts_with(reason), "{path}: {i}");
+    }
+    assert_eq!(kept(&fx), before);
+    assert_eq!(snap(&outside), away);
+}
+
+/// AC-3 (REQ-5, leader decision 10422): private key and credential file names are secret-shaped
+/// too. The inventory protects them, and an item that holds one is skipped whole: nothing of it
+/// is archived or removed.
+#[test]
+fn protected_private_key_names_skip_their_item_whole() {
+    let fx = fixture();
+    put(&fx.moai.join("deploy.pem"), 5);
+    put(&fx.moai.join("cache/certs/deploy.pem"), 5);
+    put(&fx.moai.join("run/keys/id_ed25519"), 5);
+    put(&fx.moai.join("scratch/.netrc"), 5);
+    fs::set_permissions(
+        fx.moai.join("scratch/.netrc"),
+        fs::Permissions::from_mode(0o000),
+    )
+    .unwrap();
+    put(&fx.moai.join("reports/projA/server.key"), 5);
+    set_age(&fx.moai.join("reports/projA/server.key"), 300);
+    let inv = inventory(&fx, &[]);
+    let e = entry(&inv, "deploy.pem");
+    assert_eq!(e["class"], "protected", "{e}");
+    assert_eq!(e["reason"], "secret_name", "{e}");
+    let picks = ["cache", "run", "scratch", "reports/projA/server.key"];
+    let kept =
+        |fx: &Fx| -> Vec<Vec<String>> { picks.iter().map(|p| snap(&fx.moai.join(p))).collect() };
+    let before = kept(&fx);
+    let r = applied(&fx, &picks);
+    for path in picks {
+        let i = item(&r, path);
+        assert_eq!(i["state"], "skipped", "{path}: {i}");
+        assert!(text(&i["reason"]).starts_with("secret_name"), "{path}: {i}");
+        assert!(i["archive_item"].is_null(), "{path}: {i}");
+    }
+    assert_eq!(kept(&fx), before);
+    // Nothing was archived: no list and no data file anywhere below the archive folder.
+    let archive = fx.moai.join("archive");
+    if archive.exists() {
+        for (file, _) in contents(&archive) {
+            let name = file.file_name().unwrap().to_str().unwrap();
+            assert!(!["list.json", "data.tar.gz"].contains(&name), "{file:?}");
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn protected_private_keys_are_never_opened_by_the_apply() {
+    let fx = fixture();
+    let keys = [
+        "cache/certs/deploy.pem",
+        "run/keys/id_ed25519",
+        "scratch/.netrc",
+    ];
+    for key in keys {
+        put(&fx.moai.join(key), 5);
+    }
+    let denied: Vec<PathBuf> = keys.iter().map(|k| fx.moai.join(k)).collect();
+    let args = apply_args(&fx, &["cache", "run", "scratch"], &token(&fx), PERMIT);
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    let out = killed_on_open(&denied, BIN, &args);
+    assert!(
+        out.status.success(),
+        "signal {:?}: {}",
+        std::os::unix::process::ExitStatusExt::signal(&out.status),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    for key in keys {
+        assert!(fx.moai.join(key).exists(), "{key}");
+    }
+}
+
+#[test]
+fn protected_an_item_the_walk_could_not_finish_cannot_be_picked() {
+    let fx = apply_fixture();
+    // `run` holds more than one entry: the plan keeps it, so the apply refuses the pick.
+    let p = plan(&fx, &[OVER[0], OVER[1], "--entry-limit", "1"]);
+    assert_eq!(item(&p, "run")["action"], "keep", "{p}");
+    let mut args = apply_args(&fx, &["run"], text(&p["digest"]), PERMIT);
+    args.extend(["--entry-limit".to_string(), "1".to_string()]);
+    let before = snap(&fx.home);
+    let out = call(&args);
+    assert!(!out.ok && all(&out).contains("`run`"), "{}", all(&out));
+    assert_eq!(snap(&fx.home), before);
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn protected_files_are_never_opened_by_the_apply() {
+    let fx = fixture();
+    let outside = fx.home.join("outside");
+    put(&outside.join("key.txt"), 16);
+    put(&fx.moai.join("cache/deep/.env"), 5);
+    put(&fx.moai.join("run/b"), 5);
+    symlink(outside.join("key.txt"), fx.moai.join("run/link")).unwrap();
+    let denied = [fx.moai.join("cache/deep/.env"), outside.clone()];
+    let args = apply_args(&fx, &["cache", "run"], &token(&fx), PERMIT);
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    let out = killed_on_open(&denied, BIN, &args);
+    assert!(
+        out.status.success(),
+        "signal {:?}: {}",
+        std::os::unix::process::ExitStatusExt::signal(&out.status),
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+// ------------------------------------------------------------------- inuse_
+
+#[test]
+fn inuse_a_go_session_that_may_be_live_keeps_the_retired_items() {
+    let live = format!("[{{\"pid\": {}}}]", std::process::id());
+    for (registry, reason) in [(live.as_str(), "in_use"), ("not json", "in_use_unknown")] {
+        let fx = apply_fixture();
+        fs::create_dir_all(fx.moai.join("state")).unwrap();
+        fs::write(fx.moai.join("state/active-sessions.json"), registry).unwrap();
+        let run_before = snap(&fx.moai.join("run"));
+        let r = applied(&fx, &["run", "rescue", "reports/projA/old2.md"]);
+        for path in ["run", "rescue"] {
+            let i = item(&r, path);
+            assert_eq!(i["state"], "skipped", "{reason}: {i}");
+            assert_eq!(i["reason"], reason, "{i}");
+        }
+        assert_eq!(
+            item(&r, "reports/projA/old2.md")["state"],
+            "archived",
+            "{r}"
+        );
+        assert_eq!(snap(&fx.moai.join("run")), run_before);
+        assert!(fx.moai.join("rescue").is_dir());
+    }
+}
+
+// -------------------------------------------------------------------- kept_
+
+#[test]
+fn kept_go_run_data_is_listed_as_kept_and_cannot_be_picked() {
+    let fx = fixture();
+    put(&fx.moai.join("backups/b.tar"), 9);
+    put(&fx.moai.join("user-assets.json"), 9);
+    let p = plan(&fx, &[]);
+    for name in ["releases", "db", "backups", "user-assets.json"] {
+        let i = item(&p, name);
+        assert_eq!(i["action"], "keep", "{name}: {i}");
+        assert!(text(&i["reason"]).contains("go_run_data_kept"), "{i}");
+        let before = snap(&fx.home);
+        let out = call(&apply_args(&fx, &[name], &token(&fx), PERMIT));
+        assert!(!out.ok, "{name}: {}", all(&out));
+        assert!(all(&out).contains(name), "{}", all(&out));
+        assert_eq!(snap(&fx.home), before, "{name}");
+    }
+}
+
+// ------------------------------------------------------------------ delete_
+
+#[test]
+fn delete_removes_the_empty_retired_folder_and_archives_nothing_for_it() {
+    let fx = fixture();
+    let r = applied(&fx, &["rescue"]);
+    assert_eq!(r["state"], "committed", "{r}");
+    let i = item(&r, "rescue");
+    assert_eq!(i["action"], "delete", "{i}");
+    assert_eq!(i["state"], "deleted", "{i}");
+    assert!(!fx.moai.join("rescue").exists());
+    let names: Vec<_> = fs::read_dir(text(&r["archive_root"]))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(names, ["receipt.json"], "{names:?}");
+}
+
+// ----------------------------------------------------------------- restore_
+
+#[test]
+fn restore_puts_back_the_same_bytes_modes_and_times() {
+    let fx = apply_fixture();
+    let run = fx.moai.join("run");
+    let report = fx.moai.join("reports/projA/old2.md");
+    let before = (snap(&run), contents(&run));
+    let report_before = (snap(&report), fs::read(&report).unwrap());
+    let stamp = text(&applied(&fx, &["run", "reports/projA/old2.md"])["archive"]).to_string();
+    let r = result(&call(&restore_args(&fx, &stamp, &[], PERMIT)));
+    assert_eq!(r["state"], "restored", "{r}");
+    assert_eq!(item(&r, "run")["state"], "restored", "{r}");
+    assert_eq!((snap(&run), contents(&run)), before);
+    assert_eq!((snap(&report), fs::read(&report).unwrap()), report_before);
+    // The archive is kept.
+    let archive = fx.moai.join("archive").join(&stamp);
+    assert!(archive.join("receipt.json").exists());
+}
+
+#[test]
+fn restore_runs_only_the_picked_item() {
+    let fx = apply_fixture();
+    let stamp = text(&applied(&fx, &["run", "reports/projA/old2.md"])["archive"]).to_string();
+    let r = result(&call(&restore_args(
+        &fx,
+        &stamp,
+        &["reports/projA/old2.md"],
+        PERMIT,
+    )));
+    assert_eq!(r["items"].as_array().unwrap().len(), 1, "{r}");
+    assert!(fx.moai.join("reports/projA/old2.md").exists());
+    assert!(!fx.moai.join("run").exists());
+}
+
+#[test]
+fn restore_names_what_exists_and_fills_only_what_is_missing() {
+    let fx = apply_fixture();
+    let stamp = text(&applied(&fx, &["run"])["archive"]).to_string();
+    // As after a removal that stopped half way: one file is still there, with newer bytes.
+    put(&fx.moai.join("run/pid"), 3);
+    let r = result(&call(&restore_args(&fx, &stamp, &[], PERMIT)));
+    assert_eq!(r["state"], "partial", "{r}");
+    let i = item(&r, "run");
+    assert_eq!(i["existing"], serde_json::json!(["run", "run/pid"]), "{i}");
+    assert_eq!(fs::read(fx.moai.join("run/pid")).unwrap(), b"xxx");
+    assert_eq!(
+        fs::read(fx.moai.join("run/deep/tool.sh")).unwrap().len(),
+        300
+    );
+}
+
+#[test]
+fn restore_writes_nothing_of_an_item_whose_list_or_archive_does_not_check() {
+    for damage in [
+        "escape",
+        "secret",
+        "missing_row",
+        "flipped_byte",
+        "missing_list",
+        "linked_data",
+    ] {
+        let fx = apply_fixture();
+        let r = applied(&fx, &["run"]);
+        let stamp = text(&r["archive"]).to_string();
+        let dir = item_dir(&r, "run");
+        let mut list = read_json(&dir.join("list.json"));
+        let rows = list["entries"].as_array_mut().unwrap();
+        let file = rows.iter().position(|e| e["path"] == "run/pid").unwrap();
+        match damage {
+            "escape" => rows[file]["path"] = "run/../../escaped".into(),
+            "secret" => rows[file]["path"] = "run/.env".into(),
+            "missing_row" => {
+                rows.remove(file);
+            }
+            "flipped_byte" => flip(&dir.join("data.tar.gz")),
+            _ => {}
+        }
+        fs::write(dir.join("list.json"), serde_json::to_vec(&list).unwrap()).unwrap();
+        match damage {
+            "missing_list" => fs::remove_file(dir.join("list.json")).unwrap(),
+            "linked_data" => {
+                let copy = fx.home.join("data.copy");
+                fs::rename(dir.join("data.tar.gz"), &copy).unwrap();
+                symlink(&copy, dir.join("data.tar.gz")).unwrap();
+            }
+            _ => {}
+        }
+        let before = snap(&fx.home);
+        let r = result(&call(&restore_args(&fx, &stamp, &[], PERMIT)));
+        assert_eq!(r["state"], "partial", "{damage}: {r}");
+        assert_eq!(item(&r, "run")["state"], "failed", "{damage}: {r}");
+        assert_eq!(snap(&fx.home), before, "{damage}: something was written");
+    }
+}
+
+#[test]
+fn restore_follows_no_link_that_took_the_place_of_a_parent() {
+    for inside in [false, true] {
+        let fx = apply_fixture();
+        let stamp = text(&applied(&fx, &["reports/projA/old2.md"])["archive"]).to_string();
+        let outside = fx.home.join("outside");
+        fs::create_dir_all(&outside).unwrap();
+        fs::rename(fx.moai.join("reports/projA"), fx.home.join("moved")).unwrap();
+        // A link to a sibling folder: a directory handle would follow it.
+        let target = if inside {
+            fs::create_dir_all(fx.moai.join("reports/projB")).unwrap();
+            PathBuf::from("projB")
+        } else {
+            outside
+        };
+        symlink(target, fx.moai.join("reports/projA")).unwrap();
+        let before = snap(&fx.home);
+        let r = result(&call(&restore_args(&fx, &stamp, &[], PERMIT)));
+        assert_eq!(r["state"], "partial", "{inside}: {r}");
+        assert_eq!(item(&r, "reports/projA/old2.md")["state"], "failed", "{r}");
+        assert_eq!(snap(&fx.home), before, "{inside}: something was written");
+    }
+}
+
+#[test]
+fn restore_refuses_a_bad_pick_stamp_or_permission_before_any_write() {
+    let fx = apply_fixture();
+    let stamp = text(&applied(&fx, &["run"])["archive"]).to_string();
+    let before = snap(&fx.home);
+    for (stamp, picks, permit, cause) in [
+        (stamp.as_str(), vec!["nope"], PERMIT, "`nope`"),
+        ("../reports", vec![], PERMIT, "archive"),
+        ("20000101T000000Z", vec![], PERMIT, "archive"),
+        (stamp.as_str(), vec![], "null", "permission reference"),
+    ] {
+        let out = call(&restore_args(&fx, stamp, &picks, permit));
+        assert!(!out.ok, "{cause}: {}", all(&out));
+        assert!(all(&out).contains(cause), "{cause}: {}", all(&out));
+        assert_eq!(snap(&fx.home), before, "{cause}");
+    }
+    // An archive folder that is a link.
+    let archive = fx.moai.join("archive");
+    symlink(archive.join(&stamp), archive.join("20000101T000000Z")).unwrap();
+    let before = snap(&fx.home);
+    let out = call(&restore_args(&fx, "20000101T000000Z", &[], PERMIT));
+    assert!(!out.ok && all(&out).contains("archive"), "{}", all(&out));
+    assert_eq!(snap(&fx.home), before);
+}
+
+// ----------------------------------------------------------------- receipt_
+
+#[test]
+fn receipt_names_each_item_and_the_answer_has_the_free_bytes_without_any_command() {
+    let fx = apply_fixture();
+    let tools = TempDir::new().unwrap();
+    let bin = fs::canonicalize(tools.path()).unwrap();
+    let log = bin.join("calls.log");
+    for name in ["claude", "git", "tar", "gzip", "df", "rm"] {
+        let script = bin.join(name);
+        fs::write(
+            &script,
+            format!(
+                "#!/bin/sh\necho \"{name} $*\" >> \"{}\"\nexit 1\n",
+                log.display()
+            ),
+        )
+        .unwrap();
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    let args = apply_args(&fx, &["run", "rescue"], &token(&fx), PERMIT);
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    let r = result(&run_with(Some(&bin), &args));
+    assert!(r["free_bytes"]["before"].is_u64(), "{r}");
+    assert!(r["free_bytes"]["after"].is_u64(), "{r}");
+    let receipt = read_json(&PathBuf::from(text(&r["archive_root"])).join("receipt.json"));
+    assert_eq!(receipt["status"], "committed", "{receipt}");
+    assert_eq!(receipt["permission_reference"], PERMIT, "{receipt}");
+    assert_eq!(item(&receipt, "run")["state"], "archived", "{receipt}");
+    assert_eq!(item(&receipt, "rescue")["state"], "deleted", "{receipt}");
+    let stamp = text(&r["archive"]).to_string();
+    let args = restore_args(&fx, &stamp, &[], PERMIT);
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    result(&run_with(Some(&bin), &args));
+    assert!(!log.exists(), "{}", fs::read_to_string(&log).unwrap());
+}
+
+// ------------------------------------------- a run changed half way (SPEC D-4)
+
+/// Flips one byte in the middle of a file.
+fn flip(p: &Path) {
+    let mut data = fs::read(p).unwrap();
+    let at = data.len() / 2;
+    data[at] ^= 0xff;
+    fs::write(p, data).unwrap();
+}
+
+/// `tidy-apply` through the library over the temporary home, with `at` called at each step.
+fn stepped(fx: &Fx, picks: &[&str], at: &mut dyn FnMut(Step<'_>)) -> Value {
+    let opts = moai_cli::tidy::Options::new(
+        &[OVER[1].to_string()],
+        Vec::new(),
+        moai_cli::tidy::DEFAULT_ENTRY_LIMIT,
+        moai_cli::tidy::DEFAULT_TIME_LIMIT_SECS,
+    )
+    .unwrap();
+    let picks: Vec<String> = picks.iter().map(|p| (*p).to_string()).collect();
+    let confirm = token(fx);
+    let request = Request {
+        picks: &picks,
+        confirm: &confirm,
+        permission: PERMIT,
+    };
+    apply_with(&fx.home, &opts, &request, at).unwrap()
+}
+
+#[test]
+fn archive_a_changed_archive_or_source_removes_nothing_of_the_item() {
+    for damage in ["flipped_byte", "changed_source", "removed_source"] {
+        let fx = apply_fixture();
+        let run = fx.moai.join("run");
+        let mut then = None;
+        let mut folder = PathBuf::new();
+        let r = stepped(&fx, &["run", "reports/projA/old2.md"], &mut |step| {
+            if let Step::Written { item: "run", dir } = step {
+                folder = dir.to_path_buf();
+                match damage {
+                    "flipped_byte" => flip(&dir.join("data.tar.gz")),
+                    "changed_source" => put(&run.join("pid"), 11),
+                    _ => fs::remove_file(run.join("pid")).unwrap(),
+                }
+                then = Some((snap(&run), contents(&run)));
+            }
+        });
+        assert_eq!(item(&r, "run")["state"], "failed", "{damage}: {r}");
+        assert_eq!(r["state"], "partial", "{damage}: {r}");
+        assert_eq!(
+            Some((snap(&run), contents(&run))),
+            then,
+            "{damage}: the original changed"
+        );
+        // Only the unfinished files of this item are gone; the other item is archived.
+        assert!(!folder.exists(), "{damage}: {}", folder.display());
+        assert_eq!(item(&r, "reports/projA/old2.md")["state"], "archived");
+        assert!(item_dir(&r, "reports/projA/old2.md")
+            .join("data.tar.gz")
+            .exists());
+        let receipt = read_json(&folder.parent().unwrap().join("receipt.json"));
+        assert_eq!(item(&receipt, "run")["state"], "failed", "{receipt}");
+        assert_eq!(receipt["status"], "partial", "{receipt}");
+    }
+}
+
+#[test]
+fn archive_a_file_that_appears_after_the_listing_stays() {
+    let fx = apply_fixture();
+    let late = fx.moai.join("run/deep/late.txt");
+    let r = stepped(&fx, &["run"], &mut |step| {
+        if let Step::Written { .. } = step {
+            put(&late, 4);
+        }
+    });
+    assert_eq!(r["state"], "partial", "{r}");
+    let i = item(&r, "run");
+    assert_eq!(i["state"], "archived", "{i}");
+    assert_eq!(
+        i["left"],
+        serde_json::json!(["run", "run/deep", "run/deep/late.txt"]),
+        "{i}"
+    );
+    assert_eq!(fs::read(&late).unwrap(), b"xxxx");
+    for gone in ["run/pid", "run/deep/tool.sh", "run/deep/empty"] {
+        assert!(!fx.moai.join(gone).exists(), "{gone}");
+    }
+}
+
+#[test]
+fn archive_a_file_changed_just_before_its_removal_stays() {
+    let fx = apply_fixture();
+    let pid = fx.moai.join("run/pid");
+    let r = stepped(&fx, &["run"], &mut |step| {
+        if let Step::Removing { .. } = step {
+            put(&pid, 11);
+        }
+    });
+    assert_eq!(r["state"], "partial", "{r}");
+    let i = item(&r, "run");
+    assert_eq!(i["state"], "partly_removed", "{i}");
+    assert_eq!(i["left"], serde_json::json!(["run", "run/pid"]), "{i}");
+    assert_eq!(fs::read(&pid).unwrap().len(), 11);
+    assert!(!fx.moai.join("run/deep").exists());
+}
+
+#[test]
+fn protected_a_folder_swapped_for_a_link_is_not_followed_at_removal() {
+    // A link out of the home, and one to a sibling folder that a directory handle would follow.
+    for inside in [false, true] {
+        let fx = apply_fixture();
+        let target = if inside {
+            fx.moai.join("run/copy")
+        } else {
+            fx.home.join("outside")
+        };
+        let deep = fx.moai.join("run/deep");
+        let moved = fx.home.join("moved");
+        let mut away = Vec::new();
+        let r = stepped(&fx, &["run"], &mut |step| {
+            if let Step::Removing { .. } = step {
+                // The same names, bytes, mode and time as the listed ones.
+                fs::rename(&deep, &moved).unwrap();
+                put(&target.join("tool.sh"), 300);
+                fs::set_permissions(target.join("tool.sh"), fs::Permissions::from_mode(0o750))
+                    .unwrap();
+                let time = fs::metadata(moved.join("tool.sh"))
+                    .unwrap()
+                    .modified()
+                    .unwrap();
+                fs::File::open(target.join("tool.sh"))
+                    .unwrap()
+                    .set_modified(time)
+                    .unwrap();
+                fs::create_dir_all(target.join("empty")).unwrap();
+                let to = if inside {
+                    PathBuf::from("copy")
+                } else {
+                    target.clone()
+                };
+                symlink(to, &deep).unwrap();
+                away = snap(&target);
+            }
+        });
+        assert_eq!(item(&r, "run")["state"], "partly_removed", "{inside}: {r}");
+        assert_eq!(snap(&target), away, "{inside}");
+        assert!(moved.join("tool.sh").exists() && moved.join("empty").exists());
+        assert!(fs::symlink_metadata(&deep)
+            .unwrap()
+            .file_type()
+            .is_symlink());
+    }
+}
+
+#[test]
+fn delete_keeps_a_folder_that_got_a_file_just_before_the_removal() {
+    let fx = fixture();
+    let new = fx.moai.join("rescue/new");
+    let r = stepped(&fx, &["rescue"], &mut |step| {
+        if let Step::Removing { .. } = step {
+            put(&new, 2);
+        }
+    });
+    assert_eq!(r["state"], "partial", "{r}");
+    let i = item(&r, "rescue");
+    assert_eq!(i["state"], "kept", "{i}");
+    assert!(text(&i["reason"]).starts_with("not_empty"), "{i}");
+    assert_eq!(fs::read(&new).unwrap(), b"xx");
+}
+
+#[test]
+fn receipt_is_pending_before_the_first_removal() {
+    let fx = apply_fixture();
+    let run = fx.moai.join("run");
+    let before = snap(&run);
+    let mut seen = 0;
+    stepped(&fx, &["run", "rescue"], &mut |step| {
+        if let Step::Removing { run: folder, .. } = step {
+            if seen == 0 {
+                let receipt = read_json(&folder.join("receipt.json"));
+                assert_eq!(receipt["status"], "pending", "{receipt}");
+                assert!(fx.moai.join("rescue").is_dir());
+            }
+            seen += 1;
+        }
+    });
+    assert_eq!(seen, 2);
+    assert_ne!(snap_if_present(&run), before);
+}
+
+#[test]
+fn inuse_a_session_that_starts_just_before_the_removal_keeps_the_item() {
+    // One archive item and one delete item.
+    for pick in ["run", "rescue"] {
+        let fx = apply_fixture();
+        let before = snap(&fx.moai.join(pick));
+        let registry = fx.moai.join("state/active-sessions.json");
+        let live = format!("[{{\"pid\": {}}}]", std::process::id());
+        let mut folder = PathBuf::new();
+        let r = stepped(&fx, &[pick], &mut |step| {
+            if let Step::Removing { run, .. } = step {
+                folder = run.to_path_buf();
+                fs::create_dir_all(registry.parent().unwrap()).unwrap();
+                fs::write(&registry, &live).unwrap();
+            }
+        });
+        let i = item(&r, pick);
+        assert_eq!(i["state"], "skipped", "{r}");
+        assert_eq!(i["reason"], "in_use", "{i}");
+        assert!(i.get("archive_item").is_none(), "{i}");
+        assert_eq!(snap(&fx.moai.join(pick)), before);
+        // Nothing of the skipped item stays in the archive.
+        let names: Vec<_> = fs::read_dir(&folder)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, ["receipt.json"], "{names:?}");
+    }
+}
+
+fn snap_if_present(p: &Path) -> Vec<String> {
+    if p.exists() {
+        snap(p)
+    } else {
+        Vec::new()
+    }
+}
+
+#[test]
+fn inuse_a_held_session_lock_or_a_linked_state_folder_keeps_the_retired_items() {
+    for (case, reason) in [("held", "in_use"), ("linked", "in_use_unknown")] {
+        let fx = apply_fixture();
+        let mut lock = None;
+        if case == "held" {
+            put(&fx.moai.join("state/active-sessions.json.lock"), 0);
+            let f = fs::File::open(fx.moai.join("state/active-sessions.json.lock")).unwrap();
+            f.lock().unwrap();
+            lock = Some(f);
+        } else {
+            let elsewhere = fx.home.join("state");
+            fs::create_dir_all(&elsewhere).unwrap();
+            symlink(&elsewhere, fx.moai.join("state")).unwrap();
+        }
+        let r = applied(&fx, &["run"]);
+        assert_eq!(item(&r, "run")["reason"], reason, "{case}: {r}");
+        assert!(fx.moai.join("run/pid").exists(), "{case}");
+        drop(lock);
     }
 }
