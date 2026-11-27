@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261126-shell-cd-guard
 title: "A MoAI session keeps its shell folder: a cd inside a linked worktree, or from the main checkout into one, is refused with the other way in one line"
-status: draft
+status: approved
 revision: 5
 created: 2026-11-26
+approval:
+  by: user
+  at: 2026-11-27
+  basis: "USER-APPROVAL 노트 10744 (개정 5, 한 줄 개정, 사용자가 직접 골랐어요 2026-11-27, 리더 세션의 질문 도구 \"기준 글을 사실에 맞춤 (Recommended)\"; 리더가 노트에 적었고 레인은 그 노트를 인용만 해요). 승인 범위는 AC-12 의 모드 낱말을 `bypassPermissions` 로 바로잡는 것과 REQ-11 에 같은 한정을 두는 것뿐이에요(커밋 b125fa7bc1 과 952afdf4b3 의 두 줄); 다른 요구·기준·결정과 코드는 그대로예요. 개정 4 의 승인은 노트 10711 이고 그대로예요"
+  digest: "sha256:1cfd845493d88554e4a618e71d7105f07d9493cd38f7f0aba7ccf96228f370c6"
 ---
 
 # A MoAI session keeps its shell folder: a cd inside a linked worktree, or from the main checkout into one, is refused with the other way in one line
@@ -193,15 +198,19 @@ head 05ccfb5e13 은 옮기지 않는 `cd` 세 가지(`$( … )` 안 here-documen
 - AC-2, AC-3, AC-5, AC-6 와 `hooks_cd_guard_cli` 전체: `cargo nextest run --offline --locked --test hooks_cd_guard_cli --test hook_bash_boundary_cli` 45/45 통과(`hook_bash_boundary_cli` 38, `hooks_cd_guard_cli` 7), AC-4 `rg -c 'cd into it' src` 종료 1.
 - 가드 뮤턴트 1개: 글의 `cargo test --manifest-path` 에서 `test` 를 지우면(Edit, 되돌림) `the_session_cd_refusal_cargo_form_is_one_cargo_accepts` 종료 100.
 
-### 개정 4: 승인됨, 코드 쓰기 전
+### 개정 4·5: 구현 결과
 
-SPEC 글은 커밋 f47f5a33bb 이고 승인은 노트 10711(사용자가 직접 골랐어요, 개정 4 글 그대로)이에요. 승인 digest 는 그 커밋의 파일에서 `moai spec show` 로 읽은 값이에요. 이 줄을 쓸 때 코드와 시험은 아직 없어요. 개정 3 까지의 AC-1~AC-7 결과는 위 그대로이고 AC-3 문구만 좁혀졌어요.
+SPEC 글은 커밋 f47f5a33bb(개정 4, 승인 노트 10711)와 b125fa7bc1·952afdf4b3(개정 5, 승인 노트 10744: AC-12 의 모드 낱말과 REQ-11 의 같은 한정만)이에요. RED 커밋 c035539ea4(`moai tdd red`: 세 확인이 test-failure, 종료 101), 구현 커밋 8450c0dad4(`moai tdd green` 통과). 개정 3 까지의 AC-1~AC-7 결과는 위 그대로이고 AC-3 문구만 좁혀졌어요.
 
-- AC-8: not_run — 코드 없음(`a_main_checkout_cd_into_a_worktree_is_denied`)
-- AC-9: not_run — 코드 없음(`a_main_checkout_cd_that_does_not_enter_a_worktree_is_allowed`)
-- AC-10: not_run — 코드 없음(`the_session_cd_refusal_tells_a_moved_session_how_to_get_out`)
-- AC-11: not_run — 코드 없음(`a_registered_session_is_not_exempt_from_the_entering_cd_rule`)
-- AC-12: not_run — 코드 없음(`an_objects_only_git_command_toward_another_checkout_stays_denied`)
-- AC-13: not_run — 코드 없음(`the_read_forms_stay_allowed`)
+- AC-8: met — `cargo test --locked --offline --test hooks_cd_guard_cli` 13 passed(종료 0). RED 에서는 `a_main_checkout_cd_into_a_worktree_is_denied` 가 `allowed in default: "cd <wt-own>"` 로 실패, 종료 101.
+- AC-9: met — 같은 실행에서 `a_main_checkout_cd_that_does_not_enter_a_worktree_is_allowed` 통과. 이 시험은 RED 에서도 통과해서(허용 줄을 고정하는 시험) 구현이 허용 줄을 깨지 않는다는 쪽의 증거예요.
+- AC-10: met — `the_session_cd_refusal_tells_a_moved_session_how_to_get_out` 통과(한 줄, 백틱 한 쌍, cargo 확인 통과, "end the session"·"start it again from the main checkout" 포함). RED 에서는 들어가는 `cd` 가 허용이라 실패, 종료 101(복구 문장도 아직 없었어요).
+- AC-11: met — `a_registered_session_is_not_exempt_from_the_entering_cd_rule` 통과(등록부 항목을 두 곳에서 등록해도 거절). RED 에서 실패, 종료 101.
+- AC-12: met(개정 5 글대로) — `an_objects_only_git_command_toward_another_checkout_stays_denied` 통과: `bypassPermissions` 모드에서 대조군 `checkout x`, `commit-tree`, `hash-object -w`, `mktree`, `mktag`, `write-tree`, `--git-dir=<주>/.git commit-tree` 가 `moai-boundary/git-state` 로 거절되고 `-C` 없는 같은 하위 명령은 허용이에요(두 모드 모두 `-C` 없는 줄 허용). 이 시험은 RED 에서도 통과했어요(현재 동작을 고정). `default` 모드의 경계는 확인 창이라 deny 가 아니고 이 카드 이전부터 그랬어요(`src/hook_engine.rs` 의 bypass 분기; 개정 5 가 글을 사실에 맞췄어요).
+- AC-13: met — `the_read_forms_stay_allowed` 통과(주 체크아웃 세션의 읽기 줄·`git add`·`git fetch`·`cd` 허용 줄, 워크트리 세션의 `git -C` 읽기 줄, `STAYS` 표). RED 에서도 통과(허용 줄 고정).
+- 가드 뮤턴트 5개(Edit 한 곳, 같은 대상의 전체 `hooks_cd_guard_cli` 실행, 되돌림은 `git restore` 하나): 들어가는 쪽을 항상 허용으로(`return true`→`return false`) → AC-8·AC-10·AC-11 시험 셋이 종료 101; 같은 저장소 비교 제거(`&& here.common == own.common`) → AC-9 시험이 `cd <other-wt>` 거절로 종료 101; 복구 문장 삭제 → AC-10 시험 종료 101; `GIT_WRITE` 에서 `commit-tree` 제거 → AC-12 시험이 이유가 `moai-boundary/unreadable` 로 바뀌어 종료 101; 연결 워크트리 조건 제거(`!here.primary` 삭제) → AC-9·AC-13·옛 시험 둘 종료 101.
+- 읽은 것(2026-11-27, NeXT 8b6ab17634 와 0dbd34db49): `src/hook_bash_boundary.rs` 의 `own_checkout`·`session_cd`·`session_moves`·`enters_worktree`·`change_dir`·`classify_git`·`GIT_READ`·`GIT_WRITE`·`D5`, `src/hook_engine.rs` 의 `tool_preflight_deny`·`bypass_boundary_deny`, `src/lane_registry.rs` 의 `SessionEntry`·`mode_of`, 시험 표 `tests/hooks_cd_guard_cli.rs`.
+- 열린 점: AC-8 의 `~` 는 훅 프로세스의 `HOME` 으로 풀어요(호출부가 `HOME` 을 넘겨요). `src/hook_engine.rs` 는 호출부 한 곳(`HOME` 을 읽어 넘기는 줄)만 바꿨고, 같은 파일의 범위를 쥔 다른 카드(`card check` 의 `overlaps` 에 보인 것)와 같은 구역인지는 이 세션이 확인하지 못했어요.
+- not_run: 설치된 훅에 실제 명령을 넣는 확인(호스트 가드가 `HOME` 을 바꾸는 호출을 거절했어요), 훅 프로세스의 `CLAUDE_PROJECT_DIR` 값, 훅 입력 `session_id` 와 등록부 `session` 의 꼴 비교, Windows, Linux.
 - 읽은 것(2026-11-27, NeXT 8b6ab17634): `src/hook_bash_boundary.rs` 의 `own_checkout`·`session_cd`·`moves_session`·`change_dir`·`classify_git`·`GIT_READ`·`GIT_WRITE`·`D5`, `src/hook_engine.rs` 의 `tool_preflight_deny`, `src/lane_registry.rs` 의 `SessionEntry`·`mode_of`, 시험 표 `tests/hooks_cd_guard_cli.rs`·`tests/hook_bash_boundary_cli.rs`, 등록부 항목 넷(`jq`, 읽기만).
 - not_run: 설치된 훅에 실제 명령을 넣는 확인(호스트 가드가 `HOME` 을 바꾸는 호출을 거절했어요), 훅 프로세스의 `CLAUDE_PROJECT_DIR` 값, 훅 입력 `session_id` 와 등록부 `session` 의 꼴 비교.
