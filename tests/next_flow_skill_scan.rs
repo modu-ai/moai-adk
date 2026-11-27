@@ -2436,7 +2436,7 @@ const SELF_CHECK: &str = "references/internal/self-check.md";
 /// `FLOW_REF_LIMIT` stays the budget); the restored meanings fit inside it. Raised to 8153 by
 /// SPEC-20261127-guard-repoint-followups, which added the `guard-repoint` bullet to "Landing" and
 /// trimmed other lines to keep `FLOW_REF_LIMIT`.
-const FLOW_REF_TIP_BYTES: usize = 8153;
+const FLOW_REF_TIP_BYTES: usize = 8180;
 
 /// The first line of `text` that holds `marker`, a list item found by its first words so that a
 /// renumbered list does not break the pin.

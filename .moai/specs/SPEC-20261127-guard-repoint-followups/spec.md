@@ -161,6 +161,8 @@ next-flow.md 한도 (D-5 a): 8111 → 8153 바이트(한도 8192 두 곳은 그�
 
 첫 `check affected --card`(헤드 `5841f7e9b7`)는 FAIL 이었어요: `card::land::batch::tests::the_verify_section_and_the_flow_reference_name_the_new_order` 하나가 `every five landings` 를 못 찾았어요(`src/card/land/batch.rs:661`, 이 테스트가 두 문서를 `include_str!` 로 읽어요). 제 고정 문장 검색이 `src/` 를 빼고 `tests/` 만 봤던 탓이에요. 문장을 되살리고 위 백그라운드 문장을 줄여 고쳤어요; 이 줄 아래의 결과는 새 헤드로 다시 돌린 것이에요.
 
+리뷰 보수 (리뷰어 노트의 논블로킹 둘, 리더 요청): (1) `next-flow.md` 21행에서 목록 줄 둘이 줄바꿈 없이 붙어 있던 것을 나눴어요. (2) 위에서 지웠던 두 규칙을 되살렸어요. "백그라운드 세션은 푸시도 릴리스 풀 리퀘스트도 하지 않는다"는 `flows/landing-release.md` 의 레인 문장 바로 뒤에, "새 창은 있던 창을 되살릴 수 없을 때만 연다"는 `flows/team-messages.md` 의 채널 순서 끝에 넣었어요. `next-flow.md` 는 이 두 문서를 가리켜야 하므로 Landing 첫 줄의 명령 뒤에 `(`flows/landing-release`)` 를 더했고(`flows/team-messages` 는 이미 가리키고 있어요), 그래서 `next-flow.md` 는 8180 바이트이고 한도 8192 둘은 올리지 않았어요(팁 래칫 8180). 되살린 첫 문장은 원문의 "풀 리퀘스트"를 "릴리스 풀 리퀘스트"로 좁혔어요: 이 흐름에는 릴리스 풀 리퀘스트만 있고, 그 문서를 읽는 시험(`refs_sync_names_a_pull_request_only_for_a_release`)이 릴리스 말이 없는 풀 리퀘스트 문장을 막아요. 소스 매니페스트 해시 셋(`next-flow.md`, `landing-release.md`, `team-messages.md`)을 줄 임대로 고쳤어요. NeXT 끝 `e98798e41f` 를 가지에 합쳤고(커밋 `f8a361033d`), `card.md` 충돌은 이 카드가 늘린 `card guard-repoint` 줄과 끝이 다시 쓴 `card renew` 줄을 둘 다 남겨 풀었어요. 보수 뒤 슬롯 안 nextest: `next_flow_skill_scan`, `lane_team_names`, `run_sync_text`, `sync_marker_form`, `project_interview_minimal`, `repo_claude_md` 155 통과, 0 실패.
+
 알려진 빈틈과 사용자에게 남는 질문:
 
 - 기준 1(카드 본문의 글: "카드 land 가 낡은 기록이면 거절")은 이 SPEC 이 RC1 에서 관찰만 하므로 충족되지 않았어요(not met). 리더 결정(노트 10647)대로 글은 고치지 않았고, `card land --keep-open` 으로 올려야 해요.
