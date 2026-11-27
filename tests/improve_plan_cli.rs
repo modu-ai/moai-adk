@@ -156,7 +156,7 @@ fn refusal(out: &Output) -> (String, String, Vec<String>) {
         "{message}"
     );
     let reasons = message["improve-plan refused: reasons=".len()..]
-        .split(|c: char| c == ' ' || c == '·')
+        .split([' ', '·'])
         .next()
         .unwrap()
         .split(',')

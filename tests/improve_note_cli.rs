@@ -203,9 +203,7 @@ fn a_note_is_appended_after_the_earlier_ones_and_improve_signals_reads_it_as_its
         (json!(1), json!("observed_once"))
     );
     assert_eq!(s["skipped"]["bad_line"], json!(0), "{s}");
-    for kind in ["false_claim"] {
-        appended(&w.note(kind, "claim-1", "said fixed"));
-    }
+    appended(&w.note("false_claim", "claim-1", "said fixed"));
     assert!(w.signals()["classes"]
         .as_array()
         .unwrap()
