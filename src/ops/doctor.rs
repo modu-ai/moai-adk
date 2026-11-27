@@ -21,8 +21,10 @@ pub struct Args {
 pub const OPERATION: &str = "doctor";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
-    Ok(moai_cli::moai_doctor::run(&moai_cli::moai_doctor::Options {
-        project: args.project,
-        auth_status: args.auth_status,
-    }))
+    Ok(moai_cli::moai_doctor::run(
+        &moai_cli::moai_doctor::Options {
+            project: args.project,
+            auth_status: args.auth_status,
+        },
+    ))
 }

@@ -2,7 +2,7 @@
 //! Claude Code setup (first checks: the Claude config folder, the Claude Code version against
 //! the minimum-version table, the login source, the API key warning, and the pointers to Claude
 //! Code's own checks). Every case runs against a temporary HOME and a stand-in `claude` that
-//! records its calls; the real `~/.claude`, `~/.moai` and `claude` are never touched.
+//! records its calls; the real Claude config folder, the real home state folder and `claude` are never touched.
 #![cfg(unix)]
 
 mod common;
