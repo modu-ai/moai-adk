@@ -1013,7 +1013,7 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
-    /// Preview what `update` writes to host copies
+    /// Preview what update writes to host copies
     ///
     /// Read-only UPDATE preview over every host projection (04-B #1999; the command name
     /// is P06 HOLD). HOME is the user home root; STAGE is the package directory to apply.

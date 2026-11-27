@@ -23,7 +23,7 @@ fn the_update_plan_help_says_what_to_run_instead() {
     let home = TempHome::new();
     let text = help(&home, &["update-plan", "--help"]);
     for sentence in [
-        "Preview what `update` writes to host copies",
+        "Preview what update writes to host copies",
         "the low-level step under `update`",
         "to update MoAI run `update`",
         "to preview a project's own files run `project-update-plan`",
@@ -51,7 +51,7 @@ fn the_update_plan_name_and_arguments_are_unchanged() {
     );
     let all = help(&home, &["help", "--all"]);
     assert!(
-        all.contains("update-plan Preview what `update` writes to host copies"),
+        all.contains("update-plan Preview what update writes to host copies"),
         "the command list lacks the new line: {all}"
     );
 }
