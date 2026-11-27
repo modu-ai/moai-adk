@@ -1707,6 +1707,155 @@ fn a_reader_that_cannot_be_read_keeps_every_go_file() {
     }
 }
 
+// SPEC-20261127-go-residue-secret-readers: a reader whose project path holds a secret-shaped
+// name is never opened; it is an unread reader and the survey keeps every Go file.
+
+/// The reason the survey gives for a reader it did not open because of its name.
+const SECRET_REASON: &str = "has a secret-shaped name";
+
+/// The reason of the `unread_readers` entry for `file`, when it is listed.
+fn unread_reason(plan: &Value, file: &str) -> Option<String> {
+    unread_readers(plan)
+        .iter()
+        .find(|r| r["file"] == json!(file))
+        .and_then(|r| r["reason"].as_str().map(str::to_string))
+}
+
+/// REQ-1, REQ-2: every reader in `readers` is an unread reader for its name, no surveyed file
+/// is `go_in_use` (so none of the readers was opened and read for what it names), all of them
+/// are kept, no command is printed and the tree is as it was.
+fn assert_secret_readers_unread(fx: &Fx, readers: &[&str]) {
+    let before = fx.bytes(true);
+    let plan = fx.update_plan();
+    let found = step(&plan, "go-residue");
+    for path in UNREAD_FILES {
+        let item = item_at(&plan, path);
+        assert!(
+            matches!(item["class"].as_str(), Some("go_same" | "go_changed")),
+            "REQ-1: {path} was read through a secret-shaped reader: {item}"
+        );
+        assert_eq!(
+            item["suggested_action"],
+            json!("keep"),
+            "REQ-2: {path} is kept: {item}"
+        );
+    }
+    for reader in readers {
+        assert_eq!(
+            unread_reason(&plan, reader).as_deref(),
+            Some(SECRET_REASON),
+            "REQ-1: {reader} is not an unread reader for its name: {:?}",
+            unread_readers(&plan)
+        );
+    }
+    assert_eq!(
+        found["apply"],
+        json!(null),
+        "REQ-2: no command is printed: {found}"
+    );
+    assert_eq!(fx.bytes(true), before, "the tree changed");
+}
+
+/// AC-1 (REQ-1, REQ-2): `CLAUDE.md` imports a `.env` that is filled with bytes that are not UTF-8
+/// (opened, it would be unread for that reason), and another `.env` that is plain text naming a
+/// surveyed file (opened, that file would be in use): neither is opened.
+#[test]
+fn a_reader_with_a_secret_shaped_name_is_never_opened() {
+    let binary = unread_frame();
+    binary.write("CLAUDE.md", "# rules\n@.env\n");
+    fs::write(binary.root.join(".env"), [0xffu8, 0xfe, 0x00]).unwrap();
+    assert_secret_readers_unread(&binary, &[".env"]);
+
+    let text = unread_frame();
+    text.write("CLAUDE.md", "# rules\n@.env\n");
+    text.write(".env", &format!("{}\n", import_of("policies/core/a.md")));
+    assert_secret_readers_unread(&text, &[".env"]);
+}
+
+/// AC-2 (REQ-1, REQ-2): a script that settings name, a rules file and a script under a folder
+/// whose own name is secret-shaped each name a surveyed file in their text; none is opened.
+#[test]
+fn a_secret_shaped_script_or_rule_is_unread_and_names_no_file() {
+    let naming = format!("echo {}\n", st_at("policies/core/a.md"));
+    let cases: [(&str, bool); 3] = [
+        (".claude/hooks/credentials.sh", true),
+        (".claude/rules/credentials.md", false),
+        (".claude/hooks/secrets/run.sh", true),
+    ];
+    for (reader, by_settings) in cases {
+        let fx = unread_frame();
+        if by_settings {
+            fx.write(".claude/settings.json", &statusline_settings(reader));
+            fx.write(reader, &naming);
+        } else {
+            fx.write(
+                reader,
+                &format!("# a rule\n{}\n", import_of("policies/core/a.md")),
+            );
+        }
+        assert_secret_readers_unread(&fx, &[reader]);
+    }
+}
+
+/// AC-3 (REQ-3): an import and a script that name a secret-shaped path that does not exist are
+/// no reader: nothing is unread and the proven files are still offered.
+#[test]
+fn a_missing_secret_shaped_name_blocks_nothing() {
+    let fx = unread_frame();
+    fx.write("CLAUDE.md", "# rules\n@.env\n");
+    fx.write(
+        ".claude/settings.json",
+        &statusline_settings(".claude/hooks/credentials.sh"),
+    );
+    let plan = fx.update_plan();
+    assert_command_is_printed(&plan);
+    assert!(
+        unread_readers(&plan).is_empty(),
+        "REQ-3: a missing name blocks nothing: {:?}",
+        unread_readers(&plan)
+    );
+    assert_candidate(&plan, UNREAD_FILES[0]);
+    assert_candidate(&plan, UNREAD_FILES[1]);
+}
+
+/// AC-4 (REQ-4): the rule is the shared one, `go_state::has_secret_component`: a name only
+/// `home_state::is_secret` knows, a name only `worktree_include::secret_name` knows, and a
+/// secret-shaped folder on the way all stop a reader; a plain name beside them is still read.
+#[test]
+fn a_secret_shaped_name_follows_the_shared_rule() {
+    for reader in [
+        "credentials-handling.md",
+        "credentials.json",
+        "server.key",
+        "id_rsa",
+        ".npmrc",
+        "secrets/notes.md",
+    ] {
+        let fx = unread_frame();
+        fx.write("CLAUDE.md", &format!("# rules\n@{reader}\n"));
+        fx.write(
+            reader,
+            &format!("# notes\n{}\n", import_of("policies/core/a.md")),
+        );
+        assert_secret_readers_unread(&fx, &[reader]);
+    }
+
+    // The control: a plain name is read, so the file it names is in use.
+    let fx = unread_frame();
+    fx.write("CLAUDE.md", "# rules\n@notes.md\n");
+    fx.write(
+        "notes.md",
+        &format!("# notes\n{}\n", import_of("policies/core/a.md")),
+    );
+    let plan = fx.update_plan();
+    assert_in_use(&plan, UNREAD_FILES[0], &[("notes.md", "import")]);
+    assert!(
+        unread_readers(&plan).is_empty(),
+        "{:?}",
+        unread_readers(&plan)
+    );
+}
+
 /// A project to apply against: an unread proven file, a spare one, a proven and a changed file
 /// that `CLAUDE.md` imports, and a proven file nothing reads yet.
 fn apply_frame() -> Fx {
