@@ -165,6 +165,7 @@ pub const GROUPS: &[Group] = &[
         heading_ko: "진단",
         commands: &[
             ("claude-doctor", true),
+            ("doctor", true),
             ("install-inspect", true),
             ("identity", true),
             ("worktree-report", true),
@@ -313,6 +314,7 @@ pub const GROUPS: &[Group] = &[
             ("branch-gc-plan", false),
             ("branch-gc-apply", false),
             ("worktree-slot", false),
+            ("worktree-new", false),
             ("worktree-install-plan", false),
             ("hygiene-plan", false),
             ("hygiene-apply", false),
@@ -472,6 +474,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("keys-revert", &["keys-revert --receipt <keys-id> --permission-reference <ref> ~"]),
     ("models-revert", &["models-revert --receipt <models-id> --permission-reference <ref> ~"]),
     ("claude-doctor", &["claude-doctor ."]),
+    ("doctor", &["doctor", "doctor --auth-status"]),
     ("install-inspect", &["install-inspect"]),
     ("identity", &["identity ."]),
     ("worktree-report", &["worktree-report ."]),
@@ -683,6 +686,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("branch-gc-plan", &["branch-gc-plan --integration-ref v2026.11.0 .", "branch-gc-apply --integration-ref v2026.11.0 --plan-digest <digest> --permission-reference <ref> ."]),
     ("branch-gc-apply", &["branch-gc-apply --integration-ref v2026.11.0 --plan-digest <digest> --permission-reference <ref> ."]),
     ("worktree-slot", &["worktree-slot plan","worktree-slot ensure lane-01 --at origin/main"]),
+    ("worktree-new", &["worktree-new lane-a --branch spec/<slug>-<yyyymmdd>"]),
     ("worktree-install-plan", &["worktree-install-plan --scope web ."]),
     ("hygiene-plan", &["hygiene-plan --integration-ref origin/main ."]),
     ("hygiene-apply", &["hygiene-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
@@ -980,6 +984,7 @@ pub const ABOUT_KO: &[(&str, &str)] = &[
         "claude-doctor",
         "Claude Code 가 기존 AGENTS.md 를 읽는지 확인",
     ),
+    ("doctor", "Claude Code 설정에서 moai 층을 읽기만 하고 진단"),
     ("install-inspect", "설치된 MoAI 실행 파일 보기"),
     ("identity", "경로가 클론 안 어디에 있는지 보기"),
     ("worktree-report", "worktree 가 쓰는 공간 보고"),
@@ -1722,6 +1727,10 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
         "Claude Code 를 읽기만 하고 확인해요: PROJECT 에서 시작한 세션이 기존 AGENTS.md 를 읽는지.",
     ),
     (
+        "doctor",
+        "Claude Code 설정에서 moai 층만 읽기 전용으로 진단해요: 설정 폴더, Claude Code 버전과 moai 가 쓰는 기능의 최소 버전, 로그인 출처, 로그인을 덮는 API 키. 변수 이름과 상태만 보이고 값은 나오지 않아요. Claude Code 자체의 점검(`claude doctor`, `/status`)은 대신 하지 않고 알려 주기만 해요.",
+    ),
+    (
         "install-inspect",
         "설치를 읽기만 하고 살펴봐요: PATH 의 세대, `~/.moai-cli/installations/` 의 \
          영수증, Go 세대 경로가 있는지. 아무것도 쓰지 않아요.",
@@ -1793,6 +1802,11 @@ const LAUNCHER_ABOUT_KO: &[(&str, &str)] = &[
 /// command for an argument id every command shares.
 const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ("", "project", "프로젝트 루트"),
+    (
+        "doctor",
+        "auth_status",
+        "`claude auth status` 를 한 번 더 돌려 로그인 방식·설정 폴더·만료만 남겨요",
+    ),
     (
         "cc|glm",
         "prompt",

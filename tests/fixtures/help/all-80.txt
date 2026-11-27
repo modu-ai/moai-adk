@@ -152,6 +152,8 @@ Keys
 Diagnose
   claude-doctor                    Check that Claude Code reads your own
                                    AGENTS.md
+  doctor                           Diagnose the moai layer of your Claude Code
+                                   setup
   install-inspect                  Show the installed MoAI binaries
   identity                         Show where a path sits in its clone
   worktree-report                  Report the space worktrees use
@@ -309,6 +311,8 @@ Internal
                                    branches
   branch-gc-apply                  Delete the previewed local branches
   worktree-slot                    Fixed worktree slots, warmed from the seed
+  worktree-new                     Make a lane worktree in the primary checkout
+                                   and verify it
   worktree-install-plan            Preview a scoped package install
   hygiene-plan                     Preview what may move to the holding folder
   hygiene-apply                    Move the previewed leftovers to the holding

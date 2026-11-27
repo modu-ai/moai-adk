@@ -2296,6 +2296,7 @@
         "versioning_release_texts",
         "workflow_size_budget",
         "worktree_include_guard",
+        "worktree_new_cli",
         "worktree_place_cli"
       ],
       "checks": [
@@ -2410,6 +2411,7 @@
         "tests/update_run_receipt_cli.rs",
         "tests/workflow_size_budget.rs",
         "tests/worktree_include_guard.rs",
+        "tests/worktree_new_cli.rs",
         "tests/build_number_texts.rs",
         "tests/skill_generalization_scan.rs",
         "tests/versioning_release_texts.rs",

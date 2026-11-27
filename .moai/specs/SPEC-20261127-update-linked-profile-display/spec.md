@@ -1,12 +1,21 @@
 ---
 id: SPEC-20261127-update-linked-profile-display
 title: "moai update shows a Claude config folder that links into the default folder as the default folder and says plainly what is blocked"
-status: draft
+status: approved
 revision: 3
 created: 2026-11-27
+approval:
+  by: user
+  at: 2026-11-27
+  basis: "리더 결정 노트 10824 (카드 C-460, 2026-11-27): 사용자가 리더 세션의 질문 도구로 직접 골랐어요, '승인, 랜딩 (Recommended)'. 개정 3(head e61a5aeee34b, ivan tier 2 전체 리뷰 PASS 이벤트 23803)의 승인이에요."
+  digest: "sha256:ba5f15e2840ace1ece3f6777804da89d2dd74ddd58ba1e1a1a4d4b5974cd19bd"
 ---
 
 # moai update shows a Claude config folder that links into the default folder as the default folder and says plainly what is blocked
+
+## Interview
+
+- Q1: 개정 3 을 승인하고 다음 배치에 넣을까요? → A: 승인, 랜딩(사용자가 리더 세션의 질문 도구로 직접 골랐어요, 리더 결정 노트 10824). 카드 기준 4 는 일부만 충족이고 카드는 열어 둬요.
 
 ## Intent
 

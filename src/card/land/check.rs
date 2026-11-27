@@ -152,14 +152,35 @@ pub const CHECK_UNREADABLE: &str = "check_unreadable";
 /// A refusal is an `Err` in enforce mode. In observe mode it is reported in `would_refuse`, and so
 /// is a git or ledger read that failed inside the check, as [`CHECK_UNREADABLE`].
 pub fn read(input: &Input<'_>, mode: Mode) -> Result<Reading> {
+    read_start_row(input, mode, false)
+}
+
+/// [`read`] for a call that closes the card with nothing held: a start row's PASS that held a
+/// criterion never closes it, so the verdicts are judged again once the hold is released
+/// (SPEC-20261126-land-open-criteria).
+pub fn read_for_close(input: &Input<'_>, mode: Mode) -> Result<Reading> {
+    read_start_row(input, mode, true)
+}
+
+/// Whether the verdict `named` by a start row holds a criterion.
+fn named_holds(input: &Input<'_>, named: &Value) -> Result<bool> {
+    let events = workflow::verdict_events(input.conn, input.card_id).map_err(|e| e.to_string())?;
+    Ok(events
+        .iter()
+        .any(|e| named["event"].as_i64() == Some(e.event_id) && !e.open.is_empty()))
+}
+
+fn read_start_row(input: &Input<'_>, mode: Mode, closes: bool) -> Result<Reading> {
     if !input.on_tip {
         if let Some(named) = workflow::land_started_verdict(input.conn, input.card_id, input.head)
             .map_err(|e| e.to_string())?
         {
-            return Ok(Reading {
-                relied: Some(named),
-                would_refuse: None,
-            });
+            if !(closes && named_holds(input, &named)?) {
+                return Ok(Reading {
+                    relied: Some(named),
+                    would_refuse: None,
+                });
+            }
         }
     }
     let refusal = match judge(input) {
@@ -320,6 +341,69 @@ fn receipt_ok(event: &VerdictEvent) -> bool {
     event.receipt.as_ref().is_some_and(|r| {
         r.head == event.head && !r.steps.is_empty() && r.steps.iter().all(|s| s.exit == 0)
     })
+}
+
+/// One criterion a verdict holds open (SPEC-20261126-land-open-criteria): its number, the
+/// reviewer who holds it, that reviewer's verdict event and the head the verdict names.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Hold {
+    pub seq: i64,
+    pub reviewer: String,
+    pub event: i64,
+    pub head: String,
+}
+
+impl Hold {
+    pub fn json(&self) -> Value {
+        json!({"seq": self.seq, "reviewer": self.reviewer, "event": self.event})
+    }
+}
+
+/// What the verdicts on `heads` hold open: the union of the `open` numbers of each reviewer's
+/// newest PASS on each of them, the PASS the landing relies on or not, without the criteria
+/// withdrawn since. A reviewer releases its hold with a newer PASS of the same head. Ordered by
+/// criterion number, then event. Read in every mode: a hold only keeps a card open.
+pub fn held(conn: &Connection, card_id: i64, heads: &[&str]) -> Result<Vec<Hold>> {
+    let events = workflow::verdict_events(conn, card_id).map_err(|e| e.to_string())?;
+    let mut seen: Vec<(&str, &str)> = Vec::new();
+    let mut holds = Vec::new();
+    for event in events.iter().rev() {
+        if !heads.contains(&event.head.as_str())
+            || !event.pass
+            || seen.iter().any(|(head, reviewer)| {
+                *head == event.head && reviewer.eq_ignore_ascii_case(&event.reviewer)
+            })
+        {
+            continue;
+        }
+        seen.push((&event.head, &event.reviewer));
+        holds.extend(event.open.iter().map(|&seq| Hold {
+            seq,
+            reviewer: event.reviewer.clone(),
+            event: event.event_id,
+            head: event.head.clone(),
+        }));
+    }
+    if holds.is_empty() {
+        return Ok(holds);
+    }
+    let mut stmt = conn
+        .prepare("SELECT seq FROM card_ac WHERE card_id = ?1 AND status <> 'withdrawn'")
+        .map_err(|e| e.to_string())?;
+    let standing = stmt
+        .query_map([card_id], |r| r.get::<_, i64>(0))
+        .and_then(Iterator::collect::<std::result::Result<Vec<_>, _>>)
+        .map_err(|e| e.to_string())?;
+    holds.retain(|h| standing.contains(&h.seq));
+    holds.sort_by_key(|h| (h.seq, h.event));
+    Ok(holds)
+}
+
+/// The second parent of `commit` when it is a merge of two parents.
+pub(crate) fn second_parent(project: &Path, commit: &str) -> Result<Option<String>> {
+    let line = git_text(project, &["rev-list", "--parents", "-n", "1", commit])?;
+    let ids: Vec<&str> = line.split_whitespace().collect();
+    Ok((ids.len() == 3).then(|| ids[2].to_string()))
 }
 
 /// A FAIL on the head recorded after the verdict the landing relied on: `{event, reviewer}` of

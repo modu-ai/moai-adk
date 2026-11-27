@@ -49,7 +49,7 @@ const VERSION_TIMEOUT: Duration = Duration::from_secs(5);
 const VERSION_GROUP_KILLER: &str = "/bin/kill";
 
 /// Outcome of the `claude --version` probe.
-enum VersionProbe {
+pub(crate) enum VersionProbe {
     Found((u32, u32, u32)),
     NoVersion,
     TimedOut { group_signal_sent: bool },
@@ -83,7 +83,7 @@ fn timeout_reason(group_signal_sent: bool) -> &'static str {
 /// `claude --version` with a fixed argv, bounded by `VERSION_TIMEOUT`. The probe runs in
 /// its own process group; timeout cleanup signals the group before reaping its
 /// leader and reports whether the system signal command acknowledged the request.
-fn claude_version() -> VersionProbe {
+pub(crate) fn claude_version() -> VersionProbe {
     let mut cmd = Command::new("claude");
     cmd.arg("--version")
         .stdin(Stdio::null())
