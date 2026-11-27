@@ -338,6 +338,9 @@ pub fn note(project: &Path, home: &Path, reference: &str, req: &NoteRequest<'_>)
         "ref": note.reference, "bytes": note.bytes, "created_at": note.created_at,
         "events": 1, "writes": true,
     });
+    // The times the text names, against the server clock the note was stamped with: a hand-typed
+    // time that is hours off or still has an `x` is called out; the note is kept whatever it finds.
+    answer["warnings"] = json!(input::time_warnings(text, note.created_at));
     if let Some(head) = &hand_back_head {
         // SPEC-20261125-card-no-file-locks: the files the integration branch changed since the
         // lane's base that the lane changed too; the note is kept whatever it finds.
@@ -1096,18 +1099,36 @@ pub fn unhold(
 }
 
 /// `card prereq C-n --needs C-m --by <name>`: C-n waits for C-m, one active `blocks` link from
-/// C-m to C-n. A second call changes nothing (`created: false`).
+/// C-m to C-n. A second call changes nothing (`created: false`). With `remove` the link is
+/// retired instead (`removed: true`, or `removed: false` when no active link exists and nothing
+/// is written); a loop of any length is refused when a link is added.
 pub fn prereq(
     project: &Path,
     home: &Path,
     reference: &str,
     needs: &str,
     by: &str,
+    remove: bool,
 ) -> Result<Value> {
     input::parse_ref(reference).map_err(|e| format!("card prereq refused: {e}"))?;
     let (id, mut ledger) = open_for_write(project, home)?;
     let card_id = card_or_source(&ledger, "prereq", reference)?;
     let needs_id = card_or_source(&ledger, "prereq", needs)?;
+    if remove {
+        let removed = workflow::retire_prerequisite(
+            &mut ledger,
+            card_id,
+            needs_id,
+            by,
+            caller_session().as_deref(),
+        )
+        .map_err(|e| format!("card prereq refused: {e}"))?;
+        return Ok(json!({
+            "action": "prereq", "project_id": id, "card": input::card_name(card_id),
+            "needs": input::card_name(needs_id), "removed": removed,
+            "events": u8::from(removed), "writes": removed,
+        }));
+    }
     let created = workflow::add_prerequisite(
         &mut ledger,
         card_id,
