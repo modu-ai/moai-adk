@@ -198,6 +198,61 @@ fn n1_table_keeps_the_twelve_refusals_and_frees_plain_prose() {
     }
 }
 
+// ---- repair of review note 10724: a question row that ends in a choice shape ----
+
+/// A screen of a lane that ended its turn: `rows`, then the input line and its footer.
+fn idle_with(rows: &[&str]) -> String {
+    let mut screen: Vec<&str> = vec!["repo main clean", "agent idle", "nothing to do", "waiting"];
+    screen.extend_from_slice(rows);
+    screen.push("❯ ");
+    screen.push("? for shortcuts");
+    orca(&screen, "screen")
+}
+
+/// The question and its choices share one row (the old rule R-B1 refused these through the word
+/// list): the tail after the question mark is read for a choice shape, on a working screen and on
+/// a waiting one.
+#[test]
+fn a_question_row_ending_in_a_choice_shape_is_never_working_or_idle() {
+    for row in [
+        "Do you want to proceed? Yes/No",
+        "Do you want to delete the build folder? Yes/No",
+        "Do you want to delete the build folder? [Yes] [No]",
+        "Do you want to continue? yes or no",
+        "Do you want to continue? Allow / Deny",
+        "Do you want to proceed? Yes/No?",
+        "│ Do you want to proceed? Yes/No │",
+    ] {
+        for (kind, screen) in [
+            ("working", working_with(vec![row])),
+            ("idle", idle_with(&[row])),
+        ] {
+            let state = state_of(&screen);
+            assert!(
+                state == "permission_prompt" || state == "unknown",
+                "{kind} screen, row {row:?}: expected permission_prompt or unknown, got {state}"
+            );
+        }
+    }
+}
+
+/// The guard of the repair: a question whose own words hold no choice shape, and plain prose after
+/// it (REQ-7), still let a send through.
+#[test]
+fn a_question_row_without_a_choice_shape_still_reads_working_or_idle() {
+    for row in [
+        "Do you want me to run the tests now?",
+        "Would you like me to commit or push?",
+        "Do you want to continue? no changes yet",
+        "Do you want to continue? yes, go ahead",
+    ] {
+        let working = state_of(&working_with(vec![row]));
+        assert_eq!(working, "working", "working screen, row {row:?}");
+        let idle = state_of(&idle_with(&[row]));
+        assert_eq!(idle, "idle", "idle screen, row {row:?}");
+    }
+}
+
 // ---- the fake Orca program ----
 
 /// Records every call in `calls.txt`; `list.json` is what `terminal list` prints, `read-<handle>`
@@ -344,6 +399,40 @@ fn lane_send_refuses_the_new_choice_shapes_and_sends_nothing() {
             r.stdout, r.stderr
         );
         assert!(!fake.sent(), "{name}: no orca send call may happen");
+    }
+}
+
+/// The dangerous path of the repair: a send into a question row that ends in a choice shape, on a
+/// working screen and on a waiting one, must reach no `orca terminal send` call.
+#[test]
+fn lane_send_refuses_a_question_row_ending_in_a_choice_shape_and_sends_nothing() {
+    for row in [
+        "Do you want to proceed? Yes/No",
+        "Do you want to delete the build folder? [Yes] [No]",
+    ] {
+        let screens = [
+            ("working", format!("{}{row}\n", working_screen_text())),
+            (
+                "idle",
+                format!(
+                    "repo main clean\nagent idle\nnothing to do\nwaiting\n{row}\n❯ \n? for shortcuts\n"
+                ),
+            ),
+        ];
+        for (kind, screen) in screens {
+            let fake = Fake::new(&list(&[term("t1", "lane one")], 1));
+            fake.screen("t1", &screen);
+            let r = fake.run(&["lane-send", "--terminal", "t1", "--text", "hello"]);
+            assert_eq!(
+                r.code, 1,
+                "{kind} screen, row {row:?}: lane-send must refuse, stdout {} stderr {}",
+                r.stdout, r.stderr
+            );
+            assert!(
+                !fake.sent(),
+                "{kind} screen, row {row:?}: no orca send call may happen"
+            );
+        }
     }
 }
 
