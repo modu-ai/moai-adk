@@ -382,6 +382,59 @@ fn the_shared_checkout_is_read_without_changing_it() {
 }
 
 #[test]
+fn the_status_line_cache_is_not_a_leftover_but_other_new_files_still_are() {
+    let w = World::new();
+    // The project's own state folder, the one the reader resolves for the checkout.
+    let dir = moai_cli::state_root::dir(&w.project);
+    // The project's own ignore shape: the whole state folder is ignored, so a new file inside it
+    // is an ignored path that a plain list would report.
+    fs::write(
+        w.project.join(".git/info/exclude"),
+        format!("target/\n{dir}/*\n*.log\n"),
+    )
+    .unwrap();
+    let card = w.new_card();
+    let _lane = w.take(&card);
+    // The status line cache: written by the host, never by a lane.
+    fs::create_dir_all(w.project.join(dir).join("state/deep")).unwrap();
+    fs::write(w.project.join(dir).join("state/statusline.json"), "x").unwrap();
+    fs::write(w.project.join(dir).join("state/deep/cache.bin"), "x").unwrap();
+    // Neighbours of the cache folder and the same name elsewhere: still listed.
+    fs::create_dir_all(w.project.join(dir).join("state-old")).unwrap();
+    fs::write(w.project.join(dir).join("state-old/cache.bin"), "x").unwrap();
+    fs::write(w.project.join(dir).join("other.log"), "x").unwrap();
+    fs::create_dir_all(w.project.join("src/state")).unwrap();
+    fs::write(w.project.join("src/state/x.txt"), "x").unwrap();
+    fs::write(w.project.join("new_untracked.txt"), "x").unwrap();
+    fs::write(w.project.join("cache.log"), "x").unwrap();
+
+    let text = format!(
+        "{}leftovers: none\n",
+        w.marker_line("LANE-READY-INTEGRATION", &card)
+    );
+    let (ok, out) = w.note(&card, &text);
+    assert!(ok, "the note is kept: {out}");
+    let a = answer(&out);
+    assert_eq!(a["shared_checkout"], "checked", "{out}");
+    let mut listed: Vec<String> = a["shared_checkout_new"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    listed.sort();
+    let mut want = vec![
+        "cache.log".to_string(),
+        format!("{dir}/other.log"),
+        format!("{dir}/state-old/"),
+        "new_untracked.txt".to_string(),
+        "src/state/x.txt".to_string(),
+    ];
+    want.sort();
+    assert_eq!(listed, want, "{out}");
+}
+
+#[test]
 fn a_card_without_a_reservation_is_not_checked_and_the_note_is_kept() {
     let w = World::new();
     let card = w.new_card();
