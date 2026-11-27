@@ -2,7 +2,7 @@
 id: SPEC-20261127-update-linked-profile-display
 title: "moai update shows a Claude config folder that links into the default folder as the default folder and says plainly what is blocked"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-27
 ---
 
@@ -43,14 +43,14 @@ NeXT 끝(`cedcd1f234`)을 코드와 기존 테스트로 읽은 결과(조사 에
 - AC-1 (REQ-1, REQ-2): 화면 골든 테스트에서 `rules` 링크 프로필의 `linked` 행이 기본 행의 'moai.md' 하나에 `(이 프로필은 링크로 읽어요)` 를 붙이고 마크가 `Ok` 이며, 기본 행이 conflict 이면 메모가 없고 마크가 같이 `Warn` 이에요 · verify: `cargo nextest run --locked --offline --test update_tux_golden -E 'test(a_linked_profile_routing_row_is_the_default_entry_with_a_note)'`
 - AC-2 (REQ-3, REQ-4): `not_linked` 행이 `Warn` 마크와 이유·다음 걸음 문장으로 나오고 '건너뜀'·'skipped' 낱말이 없으며, detail 이 없는 행은 한 문장의 일반 안내로 나와요 · verify: `cargo nextest run --locked --offline --test update_tux_golden -E 'test(a_not_linked_profile_row_shows_its_reason_as_a_warning)'`
 - AC-3 (REQ-5, REQ-6): 진짜 둘째 폴더가 이전 세대 HOME 에서 막힐 때 문구가 세 안쪽 말을 안 쓰고 `CLAUDE_CONFIG_DIR` 없이 돌리는 길과 링크 거는 길을 말하며, 링크 거절·기본 폴더가 링크인 경우의 막힘 문구는 그 이유 그대로예요 · verify: `cargo nextest run --locked --offline --test home_style_cli -E 'test(a_blocked_second_folder_names_the_way_out_without_internal_words)'`
-- AC-4 (REQ-7, REQ-8): 임시 HOME 에서 프로필의 모든 입구가 기본 폴더로 가는 링크일 때 미리보기 출력에 기본 폴더 경로가 나오고 프로필 경로와 '프로필에 쓰는' 경고가 없으며, 입구 하나가 프로필 안의 진짜 폴더이면 그 경로와 경고가 나와요 · verify: `cargo nextest run --locked --offline --test update_linked_config_files -E 'test(a_fully_linked_profile_is_shown_as_the_default_folder)'`
+- AC-4 (REQ-7, REQ-8): 임시 HOME 에서 프로필의 모든 입구가 기본 폴더로 가는 링크일 때 미리보기 출력에 기본 폴더 경로가 나오고 프로필 경로와 '프로필에 쓰는' 경고가 없으며, 입구 하나가 프로필 안의 진짜 폴더이면 그 경로와 경고가 나와요 · verify: `cargo nextest run --locked --offline --test desktop_folder_rules_cli -E 'test(a_fully_linked_profile_is_shown_as_the_default_folder)'`
 - AC-5 (REQ-9): 기존 테스트가 통과해요. 고치는 것은 옛 막힘 문구나 옛 행 글자를 단언하던 줄뿐이고(AC-3·AC-1·AC-2 가 새 글자로 바꿔요), 링크 프로필의 계획·적용·되돌리기, 진짜 둘째 폴더 막기, 기록 이름을 단언하는 줄은 그대로예요 · verify: `cargo nextest run --locked --offline --test update_linked_config_files --test home_style_cli --test claude_md_home_cli --test update_conflict_baseline_cli --test update_tux_golden --test desktop_folder_rules_cli`
 - AC-6 (REQ-1…REQ-9): `moai check affected --card <base>..<head>` 가 PASS 예요 · verify: `moai check affected --card <base>..<head>`
 
 ## Scope
 
 - write: `.moai/specs/SPEC-20261127-update-linked-profile-display/**`
-- write (구현 슬라이스, 범위는 구현 때 카드에 넓혀요): `src/update_tux.rs` (routing 행과 style 행의 글자), `src/update.rs` (`claude_folders_notice`, `layer_summary` 의 글자), `src/home_style.rs` (막힘 문구 한 곳), `tests/update_tux_golden.rs`, `tests/update_linked_config_files.rs`, `tests/home_style_cli.rs`, `tests/desktop_folder_rules_cli.rs`
+- write (구현 슬라이스, 범위는 구현 때 카드에 넓혀요): `src/update_tux.rs` (routing 행과 style 행의 글자), `src/update.rs` (`claude_folders_notice`, `layer_summary` 의 글자), `src/home_style.rs` (막힘 문구 한 곳), `tests/update_tux_golden.rs`, `tests/home_style_cli.rs`, `tests/desktop_folder_rules_cli.rs` (AC-4 의 테스트는 패키지 복사 헬퍼가 이미 있고 저장소 스캔에 올라 있는 이 파일에 둬요. `tests/update_linked_config_files.rs` 는 쓰지 않고 기준 2 의 근거로 읽기만 해요)
 - read-only: `src/home_routing/rules.rs`, `src/host_home.rs`, `tests/claude_md_home_cli.rs`, `tests/update_conflict_baseline_cli.rs`
 - forbidden: `CLAUDE.md`
 - forbidden: `src/home_routing/**`
