@@ -2072,7 +2072,7 @@ fn user_layer_plan_in(
     // A project value of `outputStyle` that hides ours, and the `/status` pointer after a style
     // write: notices only, read-only and outside every digest (install-checks SPEC).
     let mut notices = crate::home_style::notices(&style, &cwd);
-    notices.extend(claude_folders_notice(home));
+    notices.extend(claude_folders_notice(home, &style));
     let hooks = crate::update_hooks::plan(home, &cwd)?;
     let keys = crate::update_keys::plan(home)?;
     let home_layer = crate::update_home::plan(home)?;
@@ -2134,7 +2134,16 @@ fn user_layer_plan_in(
 /// a login shell export and a restart and otherwise reads `~/.claude`, with the run that targets
 /// `~/.claude`. Text only: it reads the environment and writes nothing, and it is no part of any
 /// digest. `None` when a folder cannot be resolved; the part plans name that problem themselves.
-fn claude_folders_notice(home: &Path) -> Option<serde_json::Value> {
+///
+/// SPEC-20261127-update-linked-profile-display REQ-7, REQ-8: the warning is for a write that lands
+/// in the folder the variable names. When every entry this update writes there (the skills,
+/// agents and output-styles bases, and the `settings.json` the style plan writes) is a link into
+/// the default folder, nothing lands in it and there is no warning; one entry that is a real file
+/// or folder in it keeps the warning and its path.
+fn claude_folders_notice(
+    home: &Path,
+    style_plan: &crate::home_style::Plan,
+) -> Option<serde_json::Value> {
     use crate::host_home::{place, resolve, Host};
     let home = std::fs::canonicalize(home).unwrap_or_else(|_| home.to_path_buf());
     let default = home.join(Host::Claude.default_dir());
@@ -2148,7 +2157,16 @@ fn claude_folders_notice(home: &Path) -> Option<serde_json::Value> {
                 (Ok(x), Ok(y)) if x == y
             )
     };
-    let warning = !same_folder(&configured, &default);
+    // A part writes into the named folder when its base is not the default folder, or when the
+    // style plan writes a file (`settings.json`) that is not behind a link into the default one.
+    let writes_in_default_only = [&skills, &agents, &style]
+        .iter()
+        .all(|b| same_folder(b, &default))
+        && !style_plan.targets.iter().any(|t| {
+            !["unchanged", "skipped", "blocked"].contains(&t.action.as_str())
+                && Path::new(&t.path).starts_with(&configured)
+        });
+    let warning = !same_folder(&configured, &default) && !writes_in_default_only;
     let shown = |p: &Path| p.display().to_string();
     let parts = format!(
         "skills {}, agents {}, output style {} and rules {}",
@@ -2432,6 +2450,17 @@ fn routing_writes_anything(p: &crate::home_routing::Plan) -> bool {
     })
 }
 
+/// The file a routing row of the terminal summary names (SPEC-20261127-update-linked-profile-
+/// display REQ-7). A `linked` row is the default folder's file reached through the profile's
+/// link: it names that file, the one place the update writes (`section.path`); every other row,
+/// with or without a section, names its own file.
+fn routing_summary_file(h: &crate::home_routing::HostPlan) -> &str {
+    h.section
+        .as_ref()
+        .filter(|s| s.action == "linked")
+        .map_or(h.file.as_str(), |s| s.path.as_str())
+}
+
 /// The terminal question's text: every skill host, every agent file action and each global
 /// instruction file (#2638).
 pub fn layer_summary(p: &UserLayerPlan) -> String {
@@ -2455,9 +2484,10 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
     out.push_str("routing section\n");
     for h in &p.routing.hosts {
         let action = h.section.as_ref().map_or("—", |s| s.action.as_str());
+        let file = routing_summary_file(h);
         out.push_str(&format!(
-            "  {}: {} — {action} {}\n",
-            h.host, h.preflight, h.file
+            "  {}: {} — {action} {file}\n",
+            h.host, h.preflight
         ));
     }
     out.push_str("output style\n");
@@ -4268,6 +4298,50 @@ mod version_folder_tests {
 #[cfg(test)]
 mod user_layer_tests {
     use super::*;
+
+    /// SPEC-20261127-update-linked-profile-display REQ-7: the summary names the default folder's
+    /// file for a `linked` routing row and the row's own file otherwise. Hand-built rows only: no
+    /// file and no environment variable is read, so the HOME guard has nothing to observe.
+    #[test]
+    fn routing_summary_names_the_default_file_for_a_linked_row() {
+        let section = |action: &str| crate::agents::FilePlan {
+            path: "/home/u/.claude/rules/moai.md".into(),
+            action: action.into(),
+            tracked_by_default: false,
+            expected_sha256: None,
+            section_id: None,
+            baseline_sha256: None,
+            rendered_sha256: None,
+            detail: None,
+        };
+        let row = |section: Option<crate::agents::FilePlan>| crate::home_routing::HostPlan {
+            host: "claude".into(),
+            config_dir: "/home/u/profiles/p".into(),
+            file: "/home/u/profiles/p/rules/moai.md".into(),
+            preflight: "ok".into(),
+            blocked_reason: None,
+            section,
+            flow: None,
+            old_block: None,
+            legacy_flow: None,
+            backup_blocked: Vec::new(),
+        };
+        assert_eq!(
+            routing_summary_file(&row(Some(section("linked")))),
+            "/home/u/.claude/rules/moai.md"
+        );
+        for action in ["unchanged", "create", "conflict", "not_linked"] {
+            assert_eq!(
+                routing_summary_file(&row(Some(section(action)))),
+                "/home/u/profiles/p/rules/moai.md",
+                "{action}"
+            );
+        }
+        assert_eq!(
+            routing_summary_file(&row(None)),
+            "/home/u/profiles/p/rules/moai.md"
+        );
+    }
 
     fn package(dir: &Path, routing: &str) {
         fs::create_dir_all(dir.join("references/home")).unwrap();
