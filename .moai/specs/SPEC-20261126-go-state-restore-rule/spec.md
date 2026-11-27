@@ -7,8 +7,8 @@ created: 2026-11-26
 approval:
   by: leader
   at: 2026-11-26
-  basis: "LEADER-APPROVAL 노트 10466 (개정 1 승인, 리더 판단이고 사용자 직접 선택은 아님, 사용자 목표 2026-11-26 에 따름, D-1·D-2·D-4 기본값) 과 노트 10519 (AC-4 문구 정정, 결정 10516 A, 개정 2); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
-  digest: "sha256:d776b6a0f2765bec8d4fb2f663fcfacf4ba593ecc122b9d96d86a7e41e0a094c"
+  basis: "LEADER-APPROVAL 노트 10466 (개정 1 승인, 리더 판단이고 사용자 직접 선택은 아님, 사용자 목표 2026-11-26 에 따름, D-1·D-2·D-4 기본값) 과 노트 10519 (AC-4 문구 정정, 결정 10516 A, 개정 2) 와 노트 10615 (업데이트 락 제외, 개정 3, 리더 판단이고 사용자 직접 선택은 아님); 리더가 노트에 적었고 레인은 그 노트를 인용만 해요"
+  digest: "sha256:02a7948b9b8a8c3a2f32cf5fe36dbb1695f5c6cdca96411a5477fa036268f646"
 ---
 
 # go-state apply restores the files the Go manifest does not record and leaves the byte-proven Go templates in the backup
