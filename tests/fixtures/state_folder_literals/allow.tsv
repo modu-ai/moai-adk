@@ -119,9 +119,9 @@ tests/go_settings_cli.rs	10	43
 tests/go_settings_defaults.rs	0	5
 tests/go_state_blocked_folders_cli.rs	0	15
 tests/go_state_classes_cli.rs	19	101
-tests/go_state_cli.rs	114	293
+tests/go_state_cli.rs	115	318
 tests/go_state_codex_cli.rs	2	17
-tests/go_state_digest_cli.rs	7	32
+tests/go_state_digest_cli.rs	7	33
 tests/go_state_preview_cli.rs	0	15
 tests/green_test_lock.rs	3	2
 tests/heavy_slot_cli.rs	0	1
