@@ -158,6 +158,7 @@ pub mod repo_scans;
 pub mod reports_move;
 pub mod retired_hosts;
 pub mod review;
+pub mod review_names;
 pub mod run;
 pub mod scope;
 pub mod scopes;
