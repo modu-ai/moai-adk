@@ -1184,9 +1184,130 @@ fn ac4_the_link_folder_gets_moai_only_and_keeps_an_earlier_moai_cli_link() {
     );
     let moai =
         fs::read_link(links.join("moai")).unwrap_or_else(|e| panic!("no moai link: {e}\n{text}"));
-    assert_eq!(moai, installed_bin(&fx).join("moai"), "{text}");
+    // The script names the version folder through the state folder the binary reports, which
+    // is the resolved path (`/private/var/...` on macOS), so compare resolved paths.
+    assert_eq!(
+        fs::canonicalize(&moai).unwrap(),
+        fs::canonicalize(installed_bin(&fx).join("moai")).unwrap(),
+        "{text}"
+    );
+    assert!(
+        fs::symlink_metadata(links.join("moai"))
+            .unwrap()
+            .file_type()
+            .is_symlink(),
+        "{text}"
+    );
     assert!(
         lstat_kind(&installed_bin(&fx).join("moai-cli")).is_none(),
         "{text}"
+    );
+}
+
+// The PowerShell installer under `pwsh` follows the same rules on this host (REQ-1, REQ-2,
+// REQ-4): a regular `bin/moai`, no `bin/moai-cli`, an earlier `moai-cli` link kept, and an
+// archive with neither file stopped before anything is written. Windows itself (`.zip`,
+// `.exe`, copies) is `not_run`.
+#[test]
+fn ps1_installs_bin_moai_alone_and_stops_on_an_archive_without_it_when_pwsh_exists() {
+    let Some(target) = installer_target() else {
+        eprintln!("not_run: unsupported platform");
+        return;
+    };
+    let probe_home = TempDir::new().unwrap();
+    let probe = Command::new("pwsh")
+        .args(["-NoProfile", "-NonInteractive", "-Command", "exit 0"])
+        .env("PATH", "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin")
+        .env("HOME", probe_home.path())
+        .env("POWERSHELL_TELEMETRY_OPTOUT", "1")
+        .stdin(Stdio::null())
+        .output();
+    if probe.map(|o| !o.status.success()).unwrap_or(true) {
+        eprintln!("not_run: pwsh not found");
+        return;
+    }
+    let run = |fx: &ReleaseFixture, args: &[&str]| {
+        let mut cmd = Command::new("pwsh");
+        cmd.args(["-NoProfile", "-NonInteractive", "-File"])
+            .arg(script_path("install.ps1"))
+            .args(args);
+        install_env(
+            &mut cmd,
+            fx,
+            "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin",
+        );
+        cmd.output().unwrap()
+    };
+
+    let fx = release_fixture(&[(tag("moai-adk-v", RELEASE_VERSION), false)], true);
+    if !put_archive(&fx, target, &[("moai", EXE), ("moai-cli", CLI_FILE)]) {
+        eprintln!("not_run: this tar cannot write xz");
+        return;
+    }
+    assert!(moai_cli::home_root::adopt_new(&fx.home, "test").unwrap());
+    let state = moai_cli::home_root::path(&fx.home);
+    let earlier_bin = state.join("versions/3.0.0/bin");
+    fs::create_dir_all(&earlier_bin).unwrap();
+    common::copy_executable(Path::new(CLI_FILE), &earlier_bin.join("moai-cli"));
+    let links = fx.home.join("links");
+    fs::create_dir_all(&links).unwrap();
+    let old_target = earlier_bin.join("moai-cli");
+    std::os::unix::fs::symlink(&old_target, links.join("moai-cli")).unwrap();
+    let out = run(
+        &fx,
+        &[
+            "--version",
+            RELEASE_VERSION,
+            "--install-dir",
+            links.to_str().unwrap(),
+        ],
+    );
+    let text = text_of(&out);
+    assert!(out.status.success(), "{text}");
+    let bin = installed_bin(&fx);
+    let moai = lstat_kind(&bin.join("moai")).unwrap_or_else(|| panic!("no bin/moai\n{text}"));
+    assert!(moai.is_file(), "bin/moai is a regular file\n{text}");
+    assert!(
+        lstat_kind(&bin.join("moai-cli")).is_none(),
+        "bin/moai-cli exists\n{text}"
+    );
+    assert_eq!(
+        fs::read_link(links.join("moai-cli")).unwrap(),
+        old_target,
+        "{text}"
+    );
+    assert!(
+        fs::symlink_metadata(links.join("moai"))
+            .unwrap()
+            .file_type()
+            .is_symlink(),
+        "{text}"
+    );
+
+    // An archive with neither file: nonzero, both names in the message, nothing written.
+    let empty = release_fixture(&[(tag("moai-adk-v", RELEASE_VERSION), false)], true);
+    if !put_archive(&empty, target, &[]) {
+        eprintln!("not_run: this tar cannot write xz");
+        return;
+    }
+    let out = run(&empty, &["--version", RELEASE_VERSION]);
+    let text = text_of(&out);
+    assert!(!out.status.success(), "{text}");
+    assert!(text.contains("neither moai nor moai-cli"), "{text}");
+    // PowerShell writes its own `.cache` and `.local` under HOME, so the check is on what the
+    // installer would write: no state folder at all, and its temporary folder gone.
+    let state = moai_cli::home_root::path(&empty.home);
+    assert!(
+        lstat_kind(&state).is_none(),
+        "the installer wrote a state folder\n{text}"
+    );
+    let left = Command::new("ls")
+        .arg("-A")
+        .arg(&empty.scratch)
+        .output()
+        .unwrap();
+    assert!(
+        left.stdout.is_empty(),
+        "the temporary folder was left behind\n{text}"
     );
 }
