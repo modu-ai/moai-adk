@@ -281,15 +281,28 @@ fn lane_screen_state_a_question_with_its_choices_on_the_row_or_below_is_unknown(
     // Two numbered rows under a known question are enough, whatever they say; one is not.
     let two = "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n  1. Proceed\n  2. Cancel\n";
     assert_eq!(state_of(two), "unknown");
+    // SPEC-20261120-lane-screen-followups REQ-6: a short numbered row is choice-shaped, so one
+    // numbered row under a known question refuses too (it was `working` before).
     let one = "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n  1. maybe later\n";
-    assert_eq!(state_of(one), "working");
-    // Each choice word makes a row below the question a choice row, as a whole word only.
-    for word in ["Allow", "deny", "y", "N", "yes", "No", "(y/N/a)"] {
+    assert_eq!(state_of(one), "unknown");
+    // The shape is the criterion, not a word list: `(y/N/a)` is a bracket group and refuses.
+    for word in ["(y/N/a)", "[y/n]", "Allow / Deny"] {
         let screen = format!(
             "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n{word}\n"
         );
         assert_eq!(state_of(&screen), "unknown", "{word}");
     }
+    // REQ-7: a bare choice word on its own row is plain prose now (it refused before the word
+    // list was removed); two bare words one to a row are a list and still refuse.
+    for word in ["Allow", "deny", "y", "N", "yes", "No"] {
+        let screen = format!(
+            "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n{word}\n"
+        );
+        assert_eq!(state_of(&screen), "working", "{word}");
+    }
+    let list =
+        "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\nAllow\nDeny\n";
+    assert_eq!(state_of(list), "unknown");
     for word in ["Allowance", "denied", "yard", "Nine", "maybe"] {
         let screen = format!(
             "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n{word}\n"
@@ -318,12 +331,18 @@ fn lane_screen_state_a_lane_that_ended_on_a_question_is_idle() {
         );
         assert_eq!(state_of(&screen), "working", "{below}");
     }
-    // A whole word below the question is unknown, in any case and with any mark next to it.
-    for below in ["yes, go ahead", "No - wait", "(Yes)", "answer: NO."] {
+    // A short bracketed word is a choice shape and refuses.
+    let screen =
+        "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n(Yes)\n";
+    assert_eq!(state_of(screen), "unknown");
+    // SPEC-20261120-lane-screen-followups REQ-7: a sentence that merely starts with or holds a
+    // yes or a no is plain prose, not a choice shape (these refused before the word list was
+    // removed).
+    for below in ["yes, go ahead", "No - wait", "answer: NO."] {
         let screen = format!(
             "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n{below}\n"
         );
-        assert_eq!(state_of(&screen), "unknown", "{below}");
+        assert_eq!(state_of(&screen), "working", "{below}");
     }
     // A yes above the question does not count: the rule looks below it.
     let screen = "row 1\nrow 2\nrow 3\nyes it did\nesc to interrupt\nWould you like me to push?\n";
