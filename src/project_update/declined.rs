@@ -7,7 +7,12 @@
 //! or `conflict`), the preview reads it as `skip`. A source with other bytes is a new question,
 //! so the record is not read. `--ask-again` removes the record. Declining writes that one file
 //! and nothing else: no project file is written or deleted.
+//!
+//! The same record also holds the user's "keep it here" for a leftover of an earlier generation
+//! (SPEC-20261127-update-leftovers-action): the key is `leftover:<path>` for exactly the five
+//! paths [`leftovers::known_path`] names, and the sha256 is the leftover's current source.
 
+use super::leftovers;
 use super::{Step, PERMISSION_PLACEHOLDER};
 use crate::{apply, claude_settings_merge, state_root};
 use serde_json::{json, Map, Value};
@@ -22,6 +27,18 @@ pub const AGENTS_LOCAL_MERGE: &str = "agents-local-merge";
 pub const SETTINGS_MERGE: &str = "claude-settings-merge";
 /// The steps that can be declined.
 pub const STEPS: [&str; 3] = [AGENTS_PICKS, AGENTS_LOCAL_MERGE, SETTINGS_MERGE];
+/// The key prefix of a kept leftover: `leftover:<path>`, the path as the plan prints it.
+pub const LEFTOVER_PREFIX: &str = "leftover:";
+
+/// Whether `step` names something that can be recorded: a choice step, or `leftover:` and one
+/// of the five paths of a leftover (a syntactic check; whether the leftover exists now is not
+/// asked, so `--ask-again` works after the leftover is gone).
+fn known_step(step: &str) -> bool {
+    STEPS.contains(&step)
+        || step
+            .strip_prefix(LEFTOVER_PREFIX)
+            .is_some_and(|path| leftovers::known_path(path).is_some())
+}
 
 /// The record, under the project's state folder.
 const RECORD: &str = "manifests/update-declined.json";
@@ -120,12 +137,15 @@ pub fn picks_source_sha256(root: &Path) -> Option<String> {
 
 fn unknown_step(step: &str) -> String {
     format!(
-        "{step:?} is not a step that can be declined (one of {}); nothing was written",
+        "{step:?} is not a step that can be declined (one of {}, or {LEFTOVER_PREFIX}<path> of a \
+         leftover the plan lists); nothing was written",
         STEPS.join(", ")
     )
 }
 
-/// The source sha256 `step` has now, `None` when it has no source. Reads only.
+/// The source sha256 `step` has now, `None` when it has no source. Reads only. For a
+/// `leftover:<path>` key it is the one the plan prints for that leftover (the same enumeration),
+/// so a path the plan does not list has none.
 pub fn source_sha256(root: &Path, step: &str) -> Result<Option<String>> {
     match step {
         AGENTS_PICKS => Ok(picks_source_sha256(root)),
@@ -133,6 +153,10 @@ pub fn source_sha256(root: &Path, step: &str) -> Result<Option<String>> {
             .as_str()
             .map(String::from)),
         SETTINGS_MERGE => Ok(claude_settings_merge::candidates(root)?.map(|c| c.sha256)),
+        other if known_step(other) => Ok(leftovers::source_sha256(
+            root,
+            &other[LEFTOVER_PREFIX.len()..],
+        )),
         other => Err(unknown_step(other)),
     }
 }
@@ -246,7 +270,7 @@ fn write(root: &Path, before: Option<&[u8]>, record: &Record) -> Result<String> 
 }
 
 fn checked(project: &Path, step: &str, reference: &str) -> Result<std::path::PathBuf> {
-    if !STEPS.contains(&step) {
+    if !known_step(step) {
         return Err(unknown_step(step));
     }
     if !crate::contract::permission_reference_ok(reference) {
@@ -393,5 +417,88 @@ mod tests {
         ] {
             assert_eq!(parse(bad.as_bytes()), None, "{bad}");
         }
+    }
+
+    /// A `leftover:<path>` key goes through `encode` and `parse` unchanged, and only the five
+    /// known paths make a key that is accepted: another path, a bare prefix and a look-alike are
+    /// not, and every choice step still is.
+    #[test]
+    fn a_leftover_key_round_trips_and_an_unknown_key_is_refused() {
+        let earlier = format!("{LEFTOVER_PREFIX}{}/", state_root::EARLIER_PROJECT_DIR);
+        let lock = format!("{LEFTOVER_PREFIX}{}/.update.lock", state_root::GO_BACKUP);
+        let r = Record::from([
+            (earlier.clone(), "sha256:1".to_string()),
+            (lock.clone(), "sha256:2".to_string()),
+            (AGENTS_PICKS.to_string(), "sha256:3".to_string()),
+        ]);
+        assert_eq!(parse(&encode(&r)), Some(r));
+        assert!(known_step(&earlier) && known_step(&lock));
+        assert!(STEPS.iter().all(|s| known_step(s)));
+        for bad in [
+            "",
+            "leftover:",
+            "leftover:CLAUDE.md",
+            "leftover:src/",
+            "leftover:../.moai-backups/",
+            "leftover:.moai-backups",
+            "leftovers:.moai-backups/",
+            "Leftover:.moai-backups/",
+            "agents-picks2",
+        ] {
+            assert!(!known_step(bad), "{bad:?}");
+            assert!(unknown_step(bad).contains("nothing was written"));
+        }
+    }
+
+    /// On a project whose state lives in the new folder: a keep for a path that is none of the five
+    /// kinds or for a sha256 that is not the source's now is refused with nothing written, the right
+    /// one is recorded, and `--ask-again` removes it again.
+    #[test]
+    fn a_leftover_keep_needs_the_current_source_and_asks_again_on_request() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = std::fs::canonicalize(tmp.path()).unwrap();
+        std::fs::create_dir_all(root.join(state_root::MOAI_DIR)).unwrap();
+        std::fs::write(
+            root.join(state_root::MOAI_DIR)
+                .join(state_root::RUST_MARKER),
+            state_root::marker_bytes("test", &[]),
+        )
+        .unwrap();
+        let earlier = root.join(state_root::EARLIER_PROJECT_DIR);
+        std::fs::create_dir(&earlier).unwrap();
+        std::fs::write(earlier.join("a.txt"), "one").unwrap();
+        let key = format!("{LEFTOVER_PREFIX}{}/", state_root::EARLIER_PROJECT_DIR);
+        let record_file = state_root::path(&root, RECORD);
+        let sha = source_sha256(&root, &key)
+            .unwrap()
+            .expect("the folder is listed");
+
+        for (step, with) in [
+            (format!("{LEFTOVER_PREFIX}CLAUDE.md"), sha.as_str()),
+            (format!("{LEFTOVER_PREFIX}src/"), sha.as_str()),
+            (key.clone(), "sha256:0"),
+        ] {
+            assert!(decline(&root, &step, with, "ref-1").is_err(), "{step}");
+            assert!(!record_file.exists(), "{step}: nothing was written");
+        }
+        // A path of the five kinds that is not there has no source, so nothing to keep.
+        let missing = format!("{LEFTOVER_PREFIX}{}/", leftovers::GO_BACKUPS);
+        assert!(decline(&root, &missing, &sha, "ref-1").is_err());
+        assert!(!record_file.exists());
+
+        let out = decline(&root, &key, &sha, "ref-1").unwrap();
+        assert_eq!(out["state"], "declined");
+        assert_eq!(read(&root).unwrap().get(&key), Some(&sha));
+        // Another top-level name is another source: the record is no longer the current one.
+        std::fs::write(earlier.join("b.txt"), "two").unwrap();
+        let again = source_sha256(&root, &key).unwrap().unwrap();
+        assert_ne!(again, sha);
+        assert!(decline(&root, &key, &sha, "ref-1").is_err());
+
+        let cleared = ask_again(&root, &key, "ref-1").unwrap();
+        assert_eq!(cleared["state"], "asked_again");
+        assert_eq!(read(&root).unwrap().get(&key), None);
+        // An unknown key is refused by `--ask-again` too.
+        assert!(ask_again(&root, "leftover:src/", "ref-1").is_err());
     }
 }
