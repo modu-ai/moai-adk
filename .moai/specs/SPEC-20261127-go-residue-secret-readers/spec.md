@@ -87,3 +87,17 @@ approval:
 | D-2 | 비밀값 이름의 항목이 있는지는 `fs::symlink_metadata` 로만 봐요(링크도 있는 것으로 세요). 없으면 막지 않아요 | 부모 SPEC 의 REQ-3 이 "있는 읽는 곳"만 말해요. 메타데이터는 내용을 읽지 않아요 | 해당 없음 |
 | D-3 | 새 까닭 글은 `has a secret-shaped name` 이고 답에는 경로와 이 글만 나가요 | 기존 까닭들이 같은 모양의 고정 글이에요(`has a link on its path` 등) | 글 한 곳 |
 | D-4 | tier 2 로 다뤄요(리더 지시, 비밀값 파일을 읽는 길을 건드려요). SPEC 승인 전에는 코드를 쓰지 않아요 | 리더 메시지 2026-11-27 | 리더가 tier 1 로 정해요 |
+
+## Result
+
+측정 2026-11-27 (UTC `date -u` 08:53:37Z) macOS, 워크트리 `.claude/worktrees/go-residue-secret-readers`, 브랜치 `spec/go-residue-secret-readers-20261127`, base `8b6ab176346f75d1170d8c74d2da8d39f8daf953`(머지한 NeXT 끝, 그 뒤 NeXT 가 더 움직였지만 레인은 따라가지 않았어요). 승인: 사용자 노트 10717(리더가 옮김), 승인 digest `sha256:2eb7ce618092f64f0ed43346cd35c8ef9ff1f3db3a1a4a13833b759211c4385e`(Interview Q2 를 옮긴 뒤 `moai spec show` 로 다시 읽은 값, 노트 10718). 커밋: SPEC 초안 `8b679aa7d4`, 승인 기록 `0c094bdeb9`, RED `8212c0148a`(`moai tdd red`: 세 체크가 단언 실패), 구현 `8855e8f58c`(`moai tdd green` 통과). 바뀐 곳: `src/go_residue/readers.rs` 의 `Collector::read` 맨 앞에서 `go_state::has_secret_component` 로 이름만 보고, 항목이 있으면 `has a secret-shaped name` 으로 못 읽은 곳에 기록해요(파일은 열지 않고 `fs::symlink_metadata` 만 불러요).
+
+- AC-1: met — `a_reader_with_a_secret_shaped_name_is_never_opened` 통과(UTF-8 이 아닌 `.env` 도, 조사 대상 파일을 이름 부르는 글자 `.env` 도 열리지 않고 까닭은 `has a secret-shaped name`, 모든 후보 `keep`, 적용 명령 없음, 트리 그대로).
+- AC-2: met — `a_secret_shaped_script_or_rule_is_unread_and_names_no_file` 통과(`credentials.sh`, `credentials.md` 규칙, `secrets/` 폴더 아래 스크립트 모두 `go_in_use` 없음).
+- AC-3: met — `a_missing_secret_shaped_name_blocks_nothing` 통과(`unread_readers` 비고 후보가 남아 적용 명령이 인쇄돼요). 이 테스트는 구현 전에도 통과했어요(과하게 막는 쪽을 지키는 가드).
+- AC-4: met — `a_secret_shaped_name_follows_the_shared_rule` 통과(`credentials-handling.md`·`credentials.json`은 `home_state` 쪽, `server.key`·`id_rsa`·`.npmrc`는 `worktree_include` 쪽, `secrets/notes.md`는 폴더 구성 요소; 평범한 `notes.md` 는 읽혀 `go_in_use`).
+- AC-5: met — `cargo nextest run --locked --offline --no-fail-fast --test project_update_go_residue_cli` 27개 통과, 0 실패(부모 SPEC 의 기존 테스트 23개는 고치지 않았어요).
+
+가드 뮤턴트(넷, 모두 `git checkout -- src/go_residue/readers.rs` 로 복원, 복원 뒤 `git status --short` 비어 있음): (M1) 검사 조건 뒤에 `&& false` → `a_reader_with_a_secret_shaped_name_is_never_opened` 실패; (M2) 구성 요소 전체 대신 마지막 이름만(`secret_name`) → `a_secret_shaped_name_follows_the_shared_rule` 실패; (M3) 기록 뒤 `return None` 을 뺌(열어 읽음) → `a_secret_shaped_script_or_rule_is_unread_and_names_no_file` 실패; (M4) 존재 검사를 `|| true` → `a_missing_secret_shaped_name_blocks_nothing` 실패. 넷 모두 exit 100.
+
+틈: `frontmatter_name` 은 읽는 곳이 아니라 조사 대상(출력 스타일 파일)의 첫머리를 열어요. 이 SPEC 은 읽는 곳의 경로만 다뤄서 거기에는 비밀값 이름 검사를 두지 않았어요. 위험한 길(삭제·프로세스)은 없어요: 읽기만 하는 조사이고 시험은 임시 프로젝트에서 돌렸어요. Windows·Linux 는 돌리지 않았어요. 이 레인의 계획·구현·문서는 하위 에이전트 없이 세션이 직접 했어요.
