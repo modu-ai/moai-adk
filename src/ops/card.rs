@@ -312,7 +312,9 @@ enum Action {
         /// else the SPEC's `write:` list, else its last reservation's scope).
         #[arg(long = "scope")]
         scope: Vec<String>,
-        /// The worktree the holder works in.
+        /// The worktree the holder works in: an absolute path is recorded as given, a relative
+        /// one is resolved against the folder the command runs in and recorded as the absolute
+        /// top of the checkout it names (refused when that folder is not the top of one).
         #[arg(long)]
         worktree: Option<String>,
         /// The branch the holder works on.
@@ -1517,6 +1519,41 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Correct the branch or worktree a reservation recorded
+    ///
+    /// Writes the ledger. The holder of a live reservation (this session, at `--generation`, its
+    /// lease not ended) sets the recorded `--branch`, `--worktree` or both; one `card.repair`
+    /// event names the old value, the new value, `--by` and `--reason`, and nothing else of the
+    /// reservation changes. The new worktree is an absolute path to the top of a git checkout
+    /// that exists, the new branch a short name git accepts, and `--reason` one line of 1 to 500
+    /// characters. Another session's reservation is never repaired; a refusal writes nothing.
+    /// `card take` records a relative `--worktree` as the absolute top of the checkout it names,
+    /// resolved against the folder the command runs in.
+    Repair {
+        /// `C-12`.
+        card: String,
+        /// The generation `take` or `handoff` answered with.
+        #[arg(long)]
+        generation: i64,
+        /// The branch the reservation should record (a short name, no `refs/heads/`).
+        #[arg(long, allow_hyphen_values = true)]
+        branch: Option<String>,
+        /// The worktree the reservation should record: an absolute path to the top of a checkout.
+        #[arg(long)]
+        worktree: Option<String>,
+        /// Who repairs it (one line, 1..=80 characters).
+        #[arg(long)]
+        by: String,
+        /// Why (one line, 1..=500 characters).
+        #[arg(long)]
+        reason: String,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Reads the ledger only. Check that this session may write a path
     ///
     /// Reads the ledger only. Exit 0 only when this session holds the card at `--generation`
@@ -1791,20 +1828,30 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             require_approved_spec,
             project,
             home,
-        } => d::take(
-            &project,
-            &resolve_home(home)?,
-            &card,
-            &d::TakeRequest {
-                holder: &d::session_holder("take", env)?,
-                lease_secs,
-                scope: &scope,
-                worktree: worktree.as_deref(),
-                branch: branch.as_deref(),
-                require_approved_spec,
-                running_dir: std::env::current_dir().ok().as_deref(),
-            },
-        ),
+        } => {
+            // A relative `--worktree` is recorded as the absolute top of the checkout it names,
+            // resolved against the folder the command runs in
+            // (SPEC-20261127-reservation-repair REQ-1).
+            let running_dir = std::env::current_dir().ok();
+            let worktree = worktree
+                .as_deref()
+                .map(|w| moai_cli::card::repair::absolute_worktree(w, running_dir.as_deref()))
+                .transpose()?;
+            d::take(
+                &project,
+                &resolve_home(home)?,
+                &card,
+                &d::TakeRequest {
+                    holder: &d::session_holder("take", env)?,
+                    lease_secs,
+                    scope: &scope,
+                    worktree: worktree.as_deref(),
+                    branch: branch.as_deref(),
+                    require_approved_spec,
+                    running_dir: running_dir.as_deref(),
+                },
+            )
+        }
         Action::Assign {
             card,
             auditor,
@@ -2414,6 +2461,28 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &d::session_holder("renew", env)?,
             generation,
             lease_secs,
+        ),
+        Action::Repair {
+            card,
+            generation,
+            branch,
+            worktree,
+            by,
+            reason,
+            project,
+            home,
+        } => moai_cli::card::repair::repair(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &moai_cli::card::repair::RepairRequest {
+                holder: &d::session_holder("repair", env)?,
+                generation,
+                branch: branch.as_deref(),
+                worktree: worktree.as_deref(),
+                by: &by,
+                reason: &reason,
+            },
         ),
         Action::Check {
             card,

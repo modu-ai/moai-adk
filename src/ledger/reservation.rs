@@ -1027,6 +1027,76 @@ pub fn renew(
     )
 }
 
+/// The new values `card repair` sets: each `Some` replaces what the reservation recorded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RepairChange<'a> {
+    pub branch: Option<&'a str>,
+    pub worktree: Option<&'a str>,
+}
+
+/// Corrects the branch or the worktree path recorded on the current `held` reservation of
+/// `holder` at `generation` (SPEC-20261127-reservation-repair REQ-2). Only those columns and
+/// `updated_at` change; the scope, the lease, the generation and the holder stay. One
+/// `card.repair` event, signed by `by`, names the old and the new value of each changed field,
+/// the generation, the holder and `reason`. The lease must still hold: a holder whose lease
+/// ended renews first. A refusal writes nothing, not even the `fence_reject` event the other
+/// fenced calls leave. The answer is the reservation as it is now.
+pub fn repair(
+    w: &mut WriteLedger,
+    card_id: i64,
+    holder: &str,
+    generation: i64,
+    change: &RepairChange<'_>,
+    by: &str,
+    reason: &str,
+) -> Result<Reservation, FenceError> {
+    check_holder(holder).map_err(FenceError::InvalidInput)?;
+    if change.branch.is_none() && change.worktree.is_none() {
+        return Err(FenceError::InvalidInput(
+            "repair needs a branch or a worktree".into(),
+        ));
+    }
+    check_optional("branch", change.branch).map_err(FenceError::InvalidInput)?;
+    check_optional("worktree", change.worktree).map_err(FenceError::InvalidInput)?;
+    check_text("by", by, MAX_HOLDER_LEN).map_err(FenceError::InvalidInput)?;
+    check_text("reason", reason, MAX_REASON_LEN).map_err(FenceError::InvalidInput)?;
+    if reason.trim().is_empty() {
+        return Err(FenceError::InvalidInput("reason is blank".into()));
+    }
+    w.with_write_tx(
+        |tx, now| match evaluate(tx, card_id, holder, generation, now, true)? {
+            Err(e) => Ok(Err(e)),
+            Ok(row) => {
+                let branch = change.branch.map(str::to_string).or(row.branch.clone());
+                let worktree = change.worktree.map(str::to_string).or(row.worktree.clone());
+                tx.execute(
+                    "UPDATE reservation SET branch = ?1, worktree = ?2, updated_at = ?3 \
+                     WHERE reservation_id = ?4",
+                    params![branch, worktree, now, row.reservation_id],
+                )?;
+                tx.execute(
+                    "UPDATE card SET updated_at = ?2 WHERE card_id = ?1",
+                    params![card_id, now],
+                )?;
+                let mut payload = json!({
+                    "generation": generation, "holder": holder, "by": by, "reason": reason,
+                });
+                if let Some(to) = change.branch {
+                    payload["branch"] = json!({"from": row.branch, "to": to});
+                }
+                if let Some(to) = change.worktree {
+                    payload["worktree"] = json!({"from": row.worktree, "to": to});
+                }
+                add_event(tx, now, by, card_id, "card.repair", &payload)?;
+                let repaired = load_reservation(tx, card_id, generation)?.ok_or_else(|| {
+                    LedgerError::Sql("the repaired reservation cannot be read".into())
+                })?;
+                Ok(Ok(repaired))
+            }
+        },
+    )?
+}
+
 /// How long a card in `review` keeps its lease from the moment it is sent there, in seconds: the
 /// longest lease a reservation can have (SPEC-20261125-review-lease-hold REQ-1, D-4).
 pub const REVIEW_HOLD_SECS: i64 = MAX_LEASE_SECS;
