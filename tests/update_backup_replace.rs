@@ -2043,3 +2043,30 @@ fn prior_install_offer_ends_after_a_second_writing_apply() {
     let rp = recovery_plan_by(&b, &f.home);
     assert!(host(&rp, "claude")["restore_backup"].is_null(), "{rp}");
 }
+
+// Guards of the candidate choice beyond SPEC-20261127-recovery-prior-install AC-1..7: an earlier
+// receipt that is still pending, or that names another installation, lends no offer.
+#[test]
+fn prior_install_offer_is_not_taken_from_an_unsettled_receipt() {
+    let (f, _, a, b, _) = upgraded(false);
+    let a_id = id_of(&a);
+
+    set_receipt_field(&f.home, &a_id, "status", "pending");
+    let rp = recovery_plan_by(&b, &f.home);
+    assert!(
+        host(&rp, "claude")["restore_backup"].is_null(),
+        "an earlier receipt that is pending: {rp}"
+    );
+    set_receipt_field(&f.home, &a_id, "status", "committed");
+
+    set_receipt_field(&f.home, &a_id, "install_id", &sha256_hex(b"fixture-other"));
+    let rp = recovery_plan_by(&b, &f.home);
+    assert!(
+        host(&rp, "claude")["restore_backup"].is_null(),
+        "a receipt that names another installation: {rp}"
+    );
+    set_receipt_field(&f.home, &a_id, "install_id", &a_id);
+
+    // Control: with both fields as they were the offer is there.
+    assert_offers_prior(&recovery_plan_by(&b, &f.home), &a);
+}
