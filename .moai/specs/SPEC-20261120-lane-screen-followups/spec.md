@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261120-lane-screen-followups
 title: "lane-screen follow-ups — other choice shapes, scan time cap, list size, reason visibility"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-20
 parent: SPEC-20261119-lane-screen-scan
+approval:
+  by: user
+  at: 2026-11-27
+  basis: "리더 결정 노트 10680 (USER-APPROVAL C-134, 2026-11-27): 사용자가 직접 골랐어요(리더 세션의 질문 도구), \"승인, D-7 포함 (Recommended)\"; SPEC-READY 노트 10673, 커밋 40858b0ad318022107c14cdcfb543b1168f21041 의 개정 1에 대한 승인이고 D-7 은 (a) 포함이에요; 리더가 노트에 적었고 레인은 그 노트를 옮겨 적었어요(레인은 자기 승인을 기록하지 않았어요)"
+  digest: "sha256:3aae1f73415e013a5e38d61b6253e1d2b3e145001eafc12e939a66c7a0e5bf4f"
 ---
 
 # 레인 화면 후속 — 다른 선택 모양·스캔 시간 상한·목록 크기·사유 가시성 (카드 C-134)
@@ -27,6 +32,15 @@ RED 시험(새 시험 파일, 가짜 orca)을 붙이고, 구현은 같은 카드
 - 이 조각에서 `src/**` 편집 — SPEC 승인 뒤의 구현 조각 몫. C-120 은 끝났고(done) 두 파일은 풀려 있어요.
 - 실제 orca 실행, 실제 HOME, 네트워크.
 - 이미 있는 규칙(번호 Yes/No 쌍, 한도 줄, 바닥글)의 재정의 — 새 모양만 더해요.
+
+## Interview
+
+사용자가 고른 것(2026-11-27, 리더 세션의 질문 도구, 리더 노트 10680에 옮겨 적힘): "승인, D-7 포함 (Recommended)".
+
+- Q1: Is revision 1 of this SPEC approved? -> A: yes, approved as written (user pick "승인, D-7 포함 (Recommended)").
+- Q2: Is a terminal list cut at the output limit part of this work (D-7)? -> A: yes, option (a): a cut list output also fails with a reason that names the size. It is a new refusal applied at once, not "observe first", because observing alone does not keep text out of a confirmation question.
+- Q3: What does it cost? -> A: on a screen that looks like a choice, the leader's lane sends may be refused more often.
+- Q4: What changes for the person? -> A: (1) a screen showing `[1] Yes`, `1: Yes`, `a. Yes` or `(y/N/a)` is refused and nothing is sent, (2) a choice is recognised by its shape, not by a word list, (3) `--scan` gets a total time cap and a terminal-count cap, (4) a long program path no longer hides the timeout reason.
 
 ## Requirements
 
