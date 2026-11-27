@@ -91,3 +91,21 @@ created: 2026-11-27
 - **`ReserveError` 변형이 하나 늘어요.** 지금 이름으로 맞추는 시험은 `other =>` 갈래나 `matches!` 라서 깨지지 않지만, 빠짐없는 `match` 가 어딘가에 있으면 컴파일이 깨져요. 구현 때 `git grep` 으로 다시 확인해요.
 - **앞의 검사와 안의 검사가 같은 함수를 불러야 해요.** 둘의 글이 어긋나지 않게 함수 하나로 모아요(`no_criteria` 가 선례).
 - **두 SPEC 의 관계:** `SPEC-20261121-card-hold-gate` 의 REQ-5(두 카드 순환)는 이 SPEC 의 REQ-1 이 넓혀요. 옛 SPEC 의 Result 에 한 줄 적어요.
+
+## Result
+
+구현(2026-11-27, 브랜치 `spec/card-prereq-remove-20261127`): RED 커밋 `61976c908c`(`moai tdd red`), 구현 커밋 `99acba7ed6`(`moai tdd green` 통과), NeXT 끝점 `8b6ab17634` 머지 뒤 `check affected --card` 가 `result=PASS`(head `b3ff33c97a4e`, 테스트 3076개 통과, `clippy=0`).
+
+바뀐 곳: `src/ledger/workflow.rs`(`prerequisite_loop` 너비 우선 순환 검사와 `PrereqError::Cycle { path }`, `retire_prerequisite`, 철회 규칙이 든 `unfinished_prerequisites`, `dispatch.rs` 에서 옮겨 온 `hold_gate_refusal`, 상수 `HOLD_READ_SQL`), `src/ledger/reservation.rs`(`ReserveError::HoldGate`, `reserve_in_tx` 의 `gate` 인자, 두 sweeping 길만 `true`), `src/card/dispatch.rs`, `src/card/work.rs`·`src/ops/card.rs`(`card prereq --remove`), 운영 문서 `card.md` 와 옛 SPEC 의 Result 두 줄. 승인된 결정(D-1 (a), D-3, D-4, D-6)은 글 그대로예요.
+
+- AC-1: met — `prereq_ac1_a_loop_of_any_length_is_refused_naming_every_card_and_writing_nothing`, `prereq_ac1_a_retired_link_does_not_close_a_loop` 통과(세 카드·네 카드 고리, 고리 밖 카드는 이름에 없음, 두 카드 문구 그대로, 링크 행과 이벤트 수 불변).
+- AC-2: met — `prereq_ac2_remove_retires_the_link_and_writes_one_event`, `prereq_ac2_a_retired_link_is_added_again_as_the_same_row_after_the_loop_check` 통과.
+- AC-3: met — `prereq_ac3_removing_the_last_prerequisite_offers_the_card_and_take_goes_through`, `prereq_ac3_only_a_withdrawn_prerequisite_stops_blocking` 통과(철회와 `done` 은 풀리고 합쳐진·사건 없는 `hold`·`active`·`review` 는 계속 막아요).
+- AC-4: met — `ledger_reservation::prereq_ac4_` 세 개 통과, `card_hold_gate_cli::take_refuses_…` 가 이웃 모듈 실행(81개 통과)에 들어 있어요.
+- AC-5: met — `prereq_ac5_the_hold_read_goes_through_the_event_card_kind_index` 통과(계획이 `event_card_kind` 를 이름으로 대고 `SCAN event` 가 없어요). 인덱스는 이미 있어서 스키마는 안 바꿨어요.
+- AC-6: met — 운영 문서 `card.md` 의 `card prereq` 행에 `--remove`, `retired`, 길이에 상관없는 고리 거절, 철회 규칙을 적었고 옛 SPEC 의 Result 에 두 줄을 더했어요. `git diff --check` 와 `moai spec check` 는 오류 0 이에요.
+- AC-7: met — 이웃 모듈 `card_hold_gate_cli::`·`ledger_reservation::`·`card_next_skip_reason_cli::`·`card_dispatch_cli::` 81개 통과(구현 커밋에서), 합친 head 의 `check affected --card` 가 3076개 통과와 `clippy=0`, `moai trailer-check NeXT..HEAD` 지적 0.
+
+가드 뮤턴트(다섯, 모두 복원): 순환 검사의 도달 조건을 거짓으로(`prereq_ac1_`), 철회 조건을 없는 사건 이름과 비교(`prereq_ac3_only_a_withdrawn_…`), 합쳐진 카드까지 풀어 줌(같은 테스트), 트랜잭션 안 검사를 끔(`prereq_ac4_the_sweeping_…refuse…`), 지우기가 `active` 를 씀(`prereq_ac2_remove_…`) — 모두 테스트가 붉어졌어요(exit 101).
+
+틈: 이미 세 카드 이상의 고리가 든 장부는 이번 변경이 풀지 않아요(`card prereq --remove` 로 풀어요). `adopt` 와 시험용 `reserve`·`reserve_own_scope` 에는 안쪽 검사를 넣지 않았어요(D-4). Windows·Linux 는 돌리지 않았어요.
