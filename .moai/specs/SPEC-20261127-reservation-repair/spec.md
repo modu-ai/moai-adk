@@ -1,9 +1,10 @@
 ---
 id: SPEC-20261127-reservation-repair
 title: "A holder repairs the branch or worktree path its reservation recorded, and card take records a worktree as an absolute path"
-status: draft
-revision: 1
+status: approved
+revision: 2
 created: 2026-11-27
+approval: {by: user, at: 2026-11-27, basis: "레저 결정 노트 10712 (ref note:314:a081acb86ae93377966edea70bfdaadd) 인용: 사용자가 직접 골랐어요(2026-11-27, 리더 세션의 질문 도구): \"추천값으로 승인 (Recommended)\" = D-1 (가), D-2 (가), D-3 card repair", digest: "sha256:b952ba39ef4381da7c817273a3e455d08a68790bed31637a543f5277ba9cfe88"}
 ---
 
 # A holder repairs the branch or worktree path its reservation recorded, and card take records a worktree as an absolute path
@@ -22,7 +23,7 @@ created: 2026-11-27
 ## Interview
 
 - Q1: 무엇을 원하나요? → A: C-314 카드 본문 7번 항목("no command fixes the branch recorded on a reservation — add a ledger-recorded way for the holder (or leader with reason) to correct it")과 리더가 2026-11-27 에 더한 상대 경로 사례(C-561 노트 10654·10657). 사용자의 말이 아니라 카드 본문과 리더 메시지에서 옮겼어요.
-- Q2: 아래 Decisions 의 "승인 때 골라요" 항목(D-1, D-2, D-3) → A: 아직 답이 없어요. 승인 노트의 답을 따르고, 답이 없으면 구현하지 않아요.
+- Q2: 아래 Decisions 의 "승인 때 골라요" 항목(D-1, D-2, D-3) → A: 사용자가 직접 골랐어요(2026-11-27, 리더 세션의 질문 도구, 레저 노트 10712): "추천값으로 승인 (Recommended)" = D-1 (가) 예약의 보유자만 고침, D-2 (가) 상대 경로는 호출한 폴더 기준의 절대 경로로 바꿔 적고 그 폴더가 실제 체크아웃이 아니면 거절, D-3 `card repair`. 다른 카드의 예약을 대신 고치는 길은 만들지 않아요.
 
 ## Non-goals
 
@@ -62,9 +63,9 @@ created: 2026-11-27
 
 | Id | Decision | Source |
 |---|---|---|
-| D-1 | 누가 고치나요: 승인 때 골라요. (가) 예약의 보유자만(추천: 이 SPEC 의 REQ-2 가 그렇게 써 있어요). (나) 보유자와, 이유를 적은 리더(예약이 끝났거나 보유자가 사라진 경우). (나)는 `card reclaim` 이 이미 하는 일과 겹쳐서 이번에는 넣지 않았어요. | C-314 본문 7번 항목 |
-| D-2 | 상대 `--worktree` 를 어떻게 하나요: 승인 때 골라요. (가) 호출한 폴더 기준으로 절대 경로로 바꿔 적고 폴더가 체크아웃의 맨 위가 아니면 거절(추천: REQ-1). (나) 상대 경로를 항상 거절하고 절대 경로를 달라고 알려 줘요. (가)는 호출 폴더가 틀리면 엉뚱한 절대 경로가 되지만 REQ-1 이 그 폴더가 실제 체크아웃일 때만 받아요. | 리더 메시지 2026-11-27, `src/card/dispatch.rs:1141-1150` |
-| D-3 | 새 명령 이름: 승인 때 골라요. `card repair`(추천) 또는 `card rebranch`. `repair` 는 브랜치와 워크트리를 한 명령에 담아요. | 이 SPEC |
+| D-1 | 누가 고치나요: 승인 때 골라요. (가) 예약의 보유자만(추천: 이 SPEC 의 REQ-2 가 그렇게 써 있어요). (나) 보유자와, 이유를 적은 리더(예약이 끝났거나 보유자가 사라진 경우). (나)는 `card reclaim` 이 이미 하는 일과 겹쳐서 이번에는 넣지 않았어요. **답(사용자, 2026-11-27, 레저 노트 10712): (가).** | C-314 본문 7번 항목 |
+| D-2 | 상대 `--worktree` 를 어떻게 하나요: 승인 때 골라요. (가) 호출한 폴더 기준으로 절대 경로로 바꿔 적고 폴더가 체크아웃의 맨 위가 아니면 거절(추천: REQ-1). (나) 상대 경로를 항상 거절하고 절대 경로를 달라고 알려 줘요. (가)는 호출 폴더가 틀리면 엉뚱한 절대 경로가 되지만 REQ-1 이 그 폴더가 실제 체크아웃일 때만 받아요. **답(사용자, 2026-11-27, 레저 노트 10712): (가).** | 리더 메시지 2026-11-27, `src/card/dispatch.rs:1141-1150` |
+| D-3 | 새 명령 이름: 승인 때 골라요. `card repair`(추천) 또는 `card rebranch`. `repair` 는 브랜치와 워크트리를 한 명령에 담아요. **답(사용자, 2026-11-27, 레저 노트 10712): `card repair`.** | 이 SPEC |
 | D-4 | 이미 상대 경로로 적힌 예약(C-358, C-569 등)은 이 명령이 생기면 보유자가 `--worktree` 로 한 번에 고쳐요. 일괄로 고치는 도구는 만들지 않아요. | 리더 메시지 2026-11-27 |
 
 ### Research
