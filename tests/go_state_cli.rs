@@ -3445,6 +3445,32 @@ fn restore_rule_skips_the_markers_and_the_backups_folder() {
     );
 }
 
+/// AC-2 (REQ-3): the Go tool's update lock is its own process lock; the update reports it as a
+/// fact and expects it to stay in the Go backup, so no restore row names it. A new apply leaves
+/// no `.moai/.update.lock` behind.
+#[test]
+fn restore_rule_skips_the_go_update_lock() {
+    let fx = restore_rule_fixture();
+    fx.write(".moai/.update.lock", "{\"pid\":1}\n");
+    let p = plan(&fx);
+    assert!(
+        !has_restore_row(&p, ".moai-backup/.update.lock"),
+        "the Go update lock is never restored: {p}"
+    );
+    assert_eq!(
+        restore_action(&p, ".moai-backup/design/x.md"),
+        "copy",
+        "{p}"
+    );
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert!(
+        !fx.root.join(".moai/.update.lock").exists(),
+        "the lock stays in the Go backup only"
+    );
+    assert!(fx.root.join(".moai-backup/.update.lock").is_file());
+}
+
 /// AC-3 (REQ-4): a row outside the ten folders is judged like one inside them: a secret name
 /// is never opened, a link is never followed, credential-looking content in a config-shaped
 /// file is refused, and an existing target is a conflict.
