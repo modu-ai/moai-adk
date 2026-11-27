@@ -338,6 +338,9 @@ pub fn note(project: &Path, home: &Path, reference: &str, req: &NoteRequest<'_>)
         "ref": note.reference, "bytes": note.bytes, "created_at": note.created_at,
         "events": 1, "writes": true,
     });
+    // The times the text names, against the server clock the note was stamped with: a hand-typed
+    // time that is hours off or still has an `x` is called out; the note is kept whatever it finds.
+    answer["warnings"] = json!(input::time_warnings(text, note.created_at));
     if let Some(head) = &hand_back_head {
         // SPEC-20261125-card-no-file-locks: the files the integration branch changed since the
         // lane's base that the lane changed too; the note is kept whatever it finds.

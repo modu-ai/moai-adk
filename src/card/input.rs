@@ -647,6 +647,140 @@ pub fn card_name(card_id: i64) -> String {
     format!("C-{card_id}")
 }
 
+/// How far a time named in a note may be from the server clock before it is called out, in
+/// seconds.
+const TIME_SKEW_SECS: i64 = 600;
+/// The most time warnings one note gets: a note that quotes a whole log must not drown its answer.
+const MAX_TIME_WARNINGS: usize = 5;
+
+/// Days since 1970-01-01 of a civil date (proleptic Gregorian; Howard Hinnant's algorithm).
+fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
+    let y = if month <= 2 { year - 1 } else { year };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let doy = (153 * (month + if month > 2 { -3 } else { 9 }) + 2) / 5 + day - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
+}
+
+/// The civil date of a day count since 1970-01-01, the inverse of [`days_from_civil`].
+fn civil_from_days(days: i64) -> (i64, i64, i64) {
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    (year, month, day)
+}
+
+fn days_in_month(year: i64, month: i64) -> i64 {
+    match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        _ if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) => 29,
+        _ => 28,
+    }
+}
+
+/// `2026-11-27T09:05:03Z` for an epoch second.
+fn iso_utc(epoch: i64) -> String {
+    let (y, mo, d) = civil_from_days(epoch.div_euclid(86_400));
+    let secs = epoch.rem_euclid(86_400);
+    format!(
+        "{y:04}-{mo:02}-{d:02}T{:02}:{:02}:{:02}Z",
+        secs / 3_600,
+        secs % 3_600 / 60,
+        secs % 60
+    )
+}
+
+/// The length of the ISO-like time (`YYYY-MM-DD` then `T` or a blank, `hh:mm`, optional `:ss`,
+/// then `Z`) that starts `b`, or `None`. A digit position may hold an `x` (a placeholder).
+fn iso_time_len(b: &[u8]) -> Option<usize> {
+    let slot = |i: usize| {
+        b.get(i)
+            .is_some_and(|c| c.is_ascii_digit() || matches!(c, b'x' | b'X'))
+    };
+    let at = |i: usize, want: &[u8]| b.get(i).is_some_and(|c| want.contains(c));
+    let slots = |from: usize, n: usize| (from..from + n).all(slot);
+    if !(slots(0, 4) && at(4, b"-") && slots(5, 2) && at(7, b"-") && slots(8, 2)) {
+        return None;
+    }
+    if !(at(10, b"T ") && slots(11, 2) && at(13, b":") && slots(14, 2)) {
+        return None;
+    }
+    let end = if at(16, b":") && slots(17, 2) { 19 } else { 16 };
+    at(end, b"Z").then_some(end + 1)
+}
+
+/// The warning for one time a note names, or `None` when it is a real time within
+/// [`TIME_SKEW_SECS`] of `now_epoch`.
+fn time_warning(time: &str, now_epoch: i64) -> Option<String> {
+    if time.contains(['x', 'X']) {
+        return Some(format!(
+            "the note names the time {time}, which has an x placeholder; write the real time \
+             (`date -u +%Y-%m-%dT%H:%M:%SZ`)"
+        ));
+    }
+    let number = |from: usize, to: usize| time[from..to].parse::<i64>().unwrap_or(-1);
+    let (year, month, day) = (number(0, 4), number(5, 7), number(8, 10));
+    let (hour, minute) = (number(11, 13), number(14, 16));
+    let second = if time.len() == 20 { number(17, 19) } else { 0 };
+    let valid = (1..=12).contains(&month)
+        && (1..=days_in_month(year, month)).contains(&day)
+        && (0..=23).contains(&hour)
+        && (0..=59).contains(&minute)
+        && (0..=59).contains(&second);
+    if !valid {
+        return Some(format!(
+            "the note names the time {time}, which is not a real time; write the real time \
+             (`date -u +%Y-%m-%dT%H:%M:%SZ`)"
+        ));
+    }
+    let epoch = days_from_civil(year, month, day) * 86_400 + hour * 3_600 + minute * 60 + second;
+    let gap = epoch - now_epoch;
+    if gap.abs() <= TIME_SKEW_SECS {
+        return None;
+    }
+    let (amount, unit) = if gap.abs() < 2 * 3_600 {
+        (gap.abs() / 60, "minutes")
+    } else {
+        ((gap.abs() + 1_800) / 3_600, "hours")
+    };
+    Some(format!(
+        "the note names the time {time}, about {amount} {unit} {} the server clock ({}); the note \
+         is kept, write times from `date -u +%Y-%m-%dT%H:%M:%SZ`",
+        if gap > 0 { "ahead of" } else { "behind" },
+        iso_utc(now_epoch)
+    ))
+}
+
+/// What is wrong with the times a note names, one line each, at most [`MAX_TIME_WARNINGS`]: an
+/// ISO-like time ending in `Z` that has an `x` placeholder, is not a real time, or is more than
+/// ten minutes from the server clock `now_epoch` (a hand-typed time that is hours off breaks the
+/// stage timings that read the notes). Only a scan: the note is stored whatever it finds.
+pub fn time_warnings(text: &str, now_epoch: i64) -> Vec<String> {
+    let bytes = text.as_bytes();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() && out.len() < MAX_TIME_WARNINGS {
+        // A time inside a longer word or number (`12026-…`, `abx2026-…`) is not the shape.
+        let alone = i == 0 || !bytes[i - 1].is_ascii_alphanumeric();
+        match alone.then(|| iso_time_len(&bytes[i..])).flatten() {
+            Some(len) => {
+                out.extend(time_warning(&text[i..i + len], now_epoch));
+                i += len;
+            }
+            None => i += 1,
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1273,5 +1407,94 @@ mod tests {
             validate_add(&input),
             Err(InputError::BodySecretShaped { words: 1 })
         );
+    }
+
+    // ---- time_warnings -------------------------------------------------------------------------
+
+    /// 2026-11-27T12:00:00Z.
+    fn noon() -> i64 {
+        days_from_civil(2026, 11, 27) * 86_400 + 12 * 3_600
+    }
+
+    #[test]
+    fn the_civil_date_functions_agree_with_known_epochs() {
+        assert_eq!(days_from_civil(1970, 1, 1), 0);
+        assert_eq!(days_from_civil(2000, 3, 1), 11_017);
+        assert_eq!(civil_from_days(11_017), (2000, 3, 1));
+        assert_eq!(iso_utc(0), "1970-01-01T00:00:00Z");
+        assert_eq!(iso_utc(noon()), "2026-11-27T12:00:00Z");
+        for days in [-1, 0, 59, 60, 365, 11_016, 20_000, 21_000] {
+            let (y, m, d) = civil_from_days(days);
+            assert_eq!(days_from_civil(y, m, d), days, "{days}");
+        }
+    }
+
+    #[test]
+    fn a_time_within_ten_minutes_of_the_clock_and_plain_text_get_no_warning() {
+        let now = noon();
+        for text in [
+            "",
+            "no time here",
+            "done at 2026-11-27T12:00:00Z and again 2026-11-27T12:09:59Z",
+            "short form 2026-11-27 12:05Z",
+            "a date only 2026-11-20 and a clock 11:62 are not the shape",
+            "year-like 12026-11-27T12:00:00Z inside a longer number",
+        ] {
+            assert_eq!(time_warnings(text, now), Vec::<String>::new(), "{text}");
+        }
+    }
+
+    #[test]
+    fn a_time_far_from_the_clock_is_named_with_its_distance_and_the_server_time() {
+        let now = noon();
+        let behind = time_warnings("LEADER 2026-11-20T11:30:00Z note", now);
+        assert_eq!(behind.len(), 1, "{behind:?}");
+        assert!(behind[0].contains("2026-11-20T11:30:00Z"), "{behind:?}");
+        assert!(behind[0].contains("behind the server clock (2026-11-27T12:00:00Z)"));
+        let ahead = time_warnings("at 2026-11-27T14:00:00Z", now);
+        assert!(ahead[0].contains("about 2 hours ahead of"), "{ahead:?}");
+        let minutes = time_warnings("at 2026-11-27T12:11:00Z", now);
+        assert!(
+            minutes[0].contains("about 11 minutes ahead of"),
+            "{minutes:?}"
+        );
+        // A time just inside and just outside the limit.
+        assert!(time_warnings("2026-11-27T12:10:00Z", now).is_empty());
+        assert_eq!(time_warnings("2026-11-27T12:10:01Z", now).len(), 1);
+    }
+
+    #[test]
+    fn a_placeholder_and_an_impossible_time_are_named() {
+        let now = noon();
+        let placeholder = time_warnings("report 2026-11-20T11:6xZ and 2026-xx-xxTxx:xx:xxZ", now);
+        assert_eq!(placeholder.len(), 2, "{placeholder:?}");
+        assert!(placeholder.iter().all(|w| w.contains("x placeholder")));
+        for text in [
+            "2026-13-01T10:00:00Z",
+            "2026-02-30T10:00:00Z",
+            "2026-11-27T24:00:00Z",
+            "2026-11-27T12:60:00Z",
+            "2026-11-27T12:00:60Z",
+        ] {
+            let w = time_warnings(text, now);
+            assert_eq!(w.len(), 1, "{text}: {w:?}");
+            assert!(w[0].contains("not a real time"), "{text}: {w:?}");
+        }
+        // 2028 is a leap year, 2026 is not.
+        assert!(time_warnings(
+            "2028-02-29T12:00:00Z",
+            days_from_civil(2028, 2, 29) * 86_400 + 43_200
+        )
+        .is_empty());
+        assert_eq!(time_warnings("2026-02-29T12:00:00Z", now).len(), 1);
+    }
+
+    #[test]
+    fn at_most_five_warnings_are_given_and_multibyte_text_is_safe() {
+        let now = noon();
+        let many = "2020-01-01T00:00:00Z ".repeat(9);
+        assert_eq!(time_warnings(&many, now).len(), MAX_TIME_WARNINGS);
+        let korean = "시각 2026-11-27T12:00:00Z 이후 한글 2020-01-01T00:00:00Z 뒤 😀 끝";
+        assert_eq!(time_warnings(korean, now).len(), 1);
     }
 }
