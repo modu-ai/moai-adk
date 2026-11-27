@@ -47,7 +47,7 @@ created: 2026-11-27
 - AC-6 (REQ-5, REQ-7): 임시 HOME 의 버전 폴더에 실제 바이너리를 하드 링크, 반대(상대·절대), 거울 모양으로 놓고 `moai update --json` 을 돌리면 `bin_names.state` 가 `unchanged` 예요. `--confirm` 뒤 `bin_names_result.state` 도 `unchanged` 이고 두 이름은 그대로예요. 1 passed · verify: `cargo test --locked --test bin_names_cli ac6_ -- --nocapture`
 - AC-7 (REQ-5): 이름이 하나뿐이면 지금처럼 하드 링크를 만들고 다시 돌리면 `unchanged` 예요. 1 passed · verify: `cargo test --locked --test bin_names_cli create_links_the_alias -- --nocapture`
 - AC-8 (REQ-4): 다른 프로그램, 다른 곳의 사본을 가리키는 링크, 폴더인 `bin/moai` 는 계속 `blocked` 예요. 1 passed · verify: `cargo test --locked --test bin_names_cli another_program_a_link_or_a_folder -- --nocapture`
-- AC-9 (REQ-7): 반대 모양을 쓴 절차를 찾아 모든 설치 경로가 한 모양을 쓰게 해요 (카드 기준 1) · unknown: 추적 코드에 그 모양을 쓰는 곳이 없고 어떤 절차였는지는 리더 확인 대기예요
+- AC-9 (REQ-7): 반대 모양을 쓴 절차를 찾아 모든 설치 경로가 한 모양을 쓰게 해요 (카드 기준 1) · manual: 추적 코드에는 그 모양을 쓰는 곳이 없고, 리더가 원장 노트 10651 에서 그 모양을 쓴 절차는 리더의 손 설치 순서(빌드 뒤 `bin/moai` 를 상태 폴더의 versions 아래 dev 빌드 폴더로 복사하고 `ln -sfn` 으로 상태 폴더의 `bin/moai` 링크를 바꾸는 순서, 추적된 설치 스크립트가 아님)라고 확인했어요. 그 순서가 다음 빌드 설치부터 제품의 설치 경로(`install/install.sh` 의 하드 링크 모양)를 따르는지를 리더가 읽어 확인하고, 읽은 파일·줄과 결과를 카드 노트에 적어요
 - AC-10 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7): SPEC 검사를 통과해요 · verify: `moai spec check SPEC-20261127-launcher-bin-layout`
 
 ## Scope
@@ -60,7 +60,7 @@ created: 2026-11-27
 
 - Q1: `moai` 가 일반 파일이고 `moai-cli` 가 링크인 모양을 설치된 모양으로 받아들이나요? → A: 리더 지시예요(세션 간 메시지). 받아들이되 링크가 같은 설치를 가리키는지 확인하고, 다른 곳이면 지금처럼 거절해요.
 - Q2: 거울 모양(`moai` 가 `moai-cli` 를 가리키는 링크)도 받아들이나요? → A: 기본값은 받아들임 (D-2). 카드 기준 2 가 "하드 링크나 그것을 가리키는 링크" 라고 적었어요.
-- Q3: 반대 모양은 어떤 절차가 썼나요? → A: 확인 중이에요. 추적 코드에는 없어요 (AC-9 unknown).
+- Q3: 반대 모양은 어떤 절차가 썼나요? → A: 리더의 손 설치 순서예요(원장 노트 10651). 추적 코드에는 없어요 (AC-9 는 manual 확인).
 
 ## Plan
 

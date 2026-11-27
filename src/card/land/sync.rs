@@ -409,8 +409,17 @@ fn inside_answer(ctx: &Ctx<'_>, ledger: &mut WriteLedger) -> Result<Value> {
     Ok(answer(&facts))
 }
 
-/// `card land-sync`: see the module comment.
+/// `card land-sync`: see the module comment. RC1 observes a record that names another branch than
+/// the profile (`guard_record_stale`, from [`guard::repoint::observation`]) and refuses nothing.
 pub fn land_sync(project: &Path, home: &Path, req: &SyncRequest<'_>) -> Result<Value> {
+    let mut answer = sync_answer(project, home, req)?;
+    if let Some(stale) = guard::repoint::observation(project) {
+        answer["guard_record_stale"] = stale;
+    }
+    Ok(answer)
+}
+
+fn sync_answer(project: &Path, home: &Path, req: &SyncRequest<'_>) -> Result<Value> {
     if req.by != LEADER_BY {
         return Err(unchanged(format!(
             "only the leader syncs a branch: give --by {LEADER_BY}"
