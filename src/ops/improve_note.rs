@@ -78,11 +78,12 @@ pub fn run(args: Args) -> Result<Value, String> {
     }))
 }
 
-/// Refuses a project whose state folder is a symbolic link, under either name this generation
-/// knows. The resolver reads a link as "not ours" and falls back to the other name, so the path it
-/// answers would not show the link and a write would create a second state folder beside it.
+/// Refuses a project whose state folder is a symbolic link, under the name this generation
+/// writes and under the name the resolver answers. The resolver reads a link as "not ours" and
+/// can fall back to the other name, so the path it answers would not show the link and a write
+/// would create a second state folder beside it. The names come from `state_root`.
 fn refuse_state_link(root: &Path) -> Result<(), String> {
-    for name in [state_root::MOAI_DIR, moai_cli::PROJECT_STATE_DIR] {
+    for name in [state_root::MOAI_DIR, state_root::dir(root)] {
         if std::fs::symlink_metadata(root.join(name)).is_ok_and(|m| m.file_type().is_symlink()) {
             return Err(refused(&format!(
                 "the state folder {name} is a symbolic link; it is not followed"
