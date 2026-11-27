@@ -222,7 +222,9 @@ impl World {
                 .expect("run moai"),
         );
         let id = made["id"].as_str().unwrap().to_string();
-        let path = self.project.join(".moai/specs").join(&id).join("spec.md");
+        let path = moai_cli::state_root::path(&self.project, "specs")
+            .join(&id)
+            .join("spec.md");
         fs::write(&path, filled(&fs::read_to_string(&path).unwrap())).unwrap();
         id
     }
