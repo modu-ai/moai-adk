@@ -2,7 +2,7 @@
 id: SPEC-20261127-update-linked-profile-display
 title: "moai update shows a Claude config folder that links into the default folder as the default folder and says plainly what is blocked"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-27
 ---
 
@@ -44,7 +44,7 @@ NeXT 끝(`cedcd1f234`)을 코드와 기존 테스트로 읽은 결과(조사 에
 - AC-2 (REQ-3, REQ-4): `not_linked` 행이 `Warn` 마크와 이유·다음 걸음 문장으로 나오고 '건너뜀'·'skipped' 낱말이 없으며, detail 이 없는 행은 한 문장의 일반 안내로 나와요 · verify: `cargo nextest run --locked --offline --test update_tux_golden -E 'test(a_not_linked_profile_row_shows_its_reason_as_a_warning)'`
 - AC-3 (REQ-5, REQ-6): 진짜 둘째 폴더가 이전 세대 HOME 에서 막힐 때 문구가 세 안쪽 말을 안 쓰고 `CLAUDE_CONFIG_DIR` 없이 돌리는 길과 링크 거는 길을 말하며, 링크 거절·기본 폴더가 링크인 경우의 막힘 문구는 그 이유 그대로예요 · verify: `cargo nextest run --locked --offline --test home_style_cli -E 'test(a_blocked_second_folder_names_the_way_out_without_internal_words)'`
 - AC-4 (REQ-7, REQ-8): 임시 HOME 에서 프로필의 모든 입구가 기본 폴더로 가는 링크일 때 미리보기 출력에 기본 폴더 경로가 나오고 프로필 경로와 '프로필에 쓰는' 경고가 없으며, 입구 하나가 프로필 안의 진짜 폴더이면 그 경로와 경고가 나와요 · verify: `cargo nextest run --locked --offline --test update_linked_config_files -E 'test(a_fully_linked_profile_is_shown_as_the_default_folder)'`
-- AC-5 (REQ-9): 기존 테스트가 고치지 않은 채 통과해요(링크 프로필의 계획·적용·되돌리기, 진짜 둘째 폴더 막기, 기록 이름) · verify: `cargo nextest run --locked --offline --test update_linked_config_files --test home_style_cli --test claude_md_home_cli --test update_conflict_baseline_cli --test update_tux_golden --test desktop_folder_rules_cli`
+- AC-5 (REQ-9): 기존 테스트가 통과해요. 고치는 것은 옛 막힘 문구나 옛 행 글자를 단언하던 줄뿐이고(AC-3·AC-1·AC-2 가 새 글자로 바꿔요), 링크 프로필의 계획·적용·되돌리기, 진짜 둘째 폴더 막기, 기록 이름을 단언하는 줄은 그대로예요 · verify: `cargo nextest run --locked --offline --test update_linked_config_files --test home_style_cli --test claude_md_home_cli --test update_conflict_baseline_cli --test update_tux_golden --test desktop_folder_rules_cli`
 - AC-6 (REQ-1…REQ-9): `moai check affected --card <base>..<head>` 가 PASS 예요 · verify: `moai check affected --card <base>..<head>`
 
 ## Scope
@@ -76,4 +76,4 @@ NeXT 끝(`cedcd1f234`)을 코드와 기존 테스트로 읽은 결과(조사 에
 | D-1 | 카드 기준 2(기록 이름)는 코드를 바꾸지 않고 고정 테스트(AC-5)로 지켜요 | NeXT 끝에서 링크 프로필의 계획·적용·되돌리기가 이미 `claude.json` 기록으로 통과해요(`tests/update_linked_config_files.rs`). 조사 보고 2026-11-27 | AC-5 의 목록에서 뺀 뒤 기준 2 를 다시 열어요 |
 | D-2 | 계획 JSON 과 영수증의 값은 바꾸지 않고 화면·안내문의 글자만 바꿔요 | 값이 바뀌면 다이제스트와 되돌리기의 짝 맞추기가 달라져요(REQ-9) | 글자를 만드는 함수만 되돌려요 |
 | D-3 | 프로필 `linked` 행의 메모 낱말은 카드가 적은 `(이 프로필은 링크로 읽어요)` 로 해요(영어는 `(this folder is read through a link)`) | 카드 기준 1 의 표현 | 낱말은 화면 글자 테이블 한 곳에 있어요 |
-| D-4 | tier 는 1 로 봐요(화면 글자만 바꾸고 쓰기와 HOME 상태는 건드리지 않아요) | CLAUDE.md 의 tier 2 정의(삭제, 권한, 게이트, HOME). 리더가 다르게 정하면 따라요 | 리더의 결정 |
+| D-4 | tier 는 1 로 다뤄요(화면 글자만 바꾸고 쓰기와 HOME 상태는 건드리지 않아요). 승인 블록 없이 구현하고 SPEC 은 draft 로 남겨요 | 리더 결정, 카드 노트 10784. 쓰기 경로, 계획 JSON 필드, 영수증 값, tier 2 바닥 경로를 건드리게 되면 멈추고 알려요 | 리더의 결정 | 리더의 결정 |
