@@ -169,6 +169,9 @@ pub(crate) fn find_manifest(project: &Path) -> Option<(String, BTreeMap<String, 
 /// What one manifest entry records: the bytes of the file and who the Go tool says wrote it.
 pub(crate) struct Recorded {
     pub(crate) deployed_hash: String,
+    /// The `sha256:<hex>` of the bytes the Go tool would have written for the path, when the
+    /// entry holds a non-empty one.
+    pub(crate) template_hash: Option<String>,
     provenance: String,
 }
 
@@ -188,6 +191,11 @@ fn read_manifest(project: &Path, rel: &str) -> Option<BTreeMap<String, Recorded>
             .filter_map(|(path, e)| {
                 let entry = Recorded {
                     deployed_hash: e.get("deployed_hash")?.as_str()?.to_string(),
+                    template_hash: e
+                        .get("template_hash")
+                        .and_then(Value::as_str)
+                        .filter(|hash| !hash.is_empty())
+                        .map(str::to_string),
                     // No provenance reads as none of the template ones.
                     provenance: e
                         .get("provenance")

@@ -137,6 +137,18 @@ impl Fx {
         );
     }
 
+    /// Records `rel` as a file the user already had: the Go tool keeps the bytes of that file,
+    /// `mine`, as the deployed hash, and the bytes it would have written, `template`, as the
+    /// template hash.
+    fn record_user_created(&mut self, rel: &str, template: &str, mine: &str) {
+        let deployed = sha(mine.as_bytes());
+        self.recorded.insert(
+            rel.into(),
+            json!({"provenance": "user_created", "template_hash": sha(template.as_bytes()),
+                   "deployed_hash": deployed, "current_hash": deployed}),
+        );
+    }
+
     /// The Go manifest as an update leaves it, under the Go backup folder.
     fn manifest(&self) {
         self.write(
@@ -575,6 +587,68 @@ fn base_without_a_matching_version_every_line_counts() {
     let result = fx.plan();
     assert_eq!(result["go_manifest"], json!(null));
     assert_lines(&result, "CLAUDE.md", all_lines("no_record"), &[1, 2, 3]);
+}
+
+#[test]
+fn base_a_user_created_record_is_compared_with_its_template_hash() {
+    let template = "# zq-go agents\n\nzq-template one\n";
+    let mine = "# zq-go agents\n\nzq-template one\nzq-my rule\n";
+    for in_history in [false, true] {
+        let mut fx = Fx::new();
+        fx.record_user_created("AGENTS.md", template, mine);
+        fx.manifest();
+        fx.git_init();
+        if in_history {
+            fx.write("AGENTS.md", template);
+            fx.commit(&["AGENTS.md"]);
+        }
+        fx.write("AGENTS.md", mine);
+        fx.commit(&["AGENTS.md"]);
+        let result = fx.plan();
+        if in_history {
+            // Only the lines the template version lacks.
+            let blob = fx.git(&["rev-parse", "HEAD~1:AGENTS.md"]);
+            assert_lines(&result, "AGENTS.md", history(&blob), &[4]);
+        } else {
+            // The user's own file is no earlier text, though git holds it: every line counts.
+            assert_lines(
+                &result,
+                "AGENTS.md",
+                all_lines("no_matching_version"),
+                &[1, 2, 3, 4],
+            );
+        }
+        // The template's own bytes hold no line of the user's.
+        fx.write("AGENTS.md", template);
+        assert_lines(
+            &fx.plan(),
+            "AGENTS.md",
+            json!({"used": "manifest_equal"}),
+            &[],
+        );
+    }
+}
+
+#[test]
+fn base_a_record_without_a_template_hash_counts_every_line() {
+    let mine = "zq-mine one\nzq-mine two\n";
+    let hash = sha(mine.as_bytes());
+    for entry in [
+        json!({"provenance": "user_created", "deployed_hash": hash, "current_hash": hash}),
+        json!({"provenance": "generated_managed", "template_hash": "",
+               "deployed_hash": hash, "current_hash": hash}),
+    ] {
+        let mut fx = Fx::new();
+        fx.recorded.insert("CLAUDE.md".into(), entry.clone());
+        fx.manifest();
+        fx.git_init();
+        fx.write("CLAUDE.md", mine);
+        fx.commit(&["CLAUDE.md"]);
+        let result = fx.plan();
+        assert_lines(&result, "CLAUDE.md", all_lines("no_record"), &[1, 2]);
+        // The manifest still records the path, so the file is still a Go-generation one.
+        assert_eq!(result["go_claude_md"], json!("manifest"), "{entry}");
+    }
 }
 
 #[test]

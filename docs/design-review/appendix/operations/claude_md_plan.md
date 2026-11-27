@@ -15,10 +15,10 @@ operation `claude_md.plan` · 코드 `src/ops/claude_md_plan.rs`, `src/project_u
 
 `comparison.used` 와 프로젝트 줄:
 
-1. `manifest_equal`: 지금 바이트가 매니페스트가 그 경로에 기록한 sha256 과 같다. 프로젝트 줄은 0개.
+1. `manifest_equal`: 지금 바이트가 매니페스트가 그 경로에 기록한 `template_hash`(Go 도구가 쓰려던 글의 sha256)와 같다. 프로젝트 줄은 0개. 기준은 `template_hash` 이고 `deployed_hash` 가 아니다: 사용자가 이미 갖고 있던 파일은 `deployed_hash` 에 그 파일 자신의 바이트가 들어 있어서 기준이 될 수 없다.
 2. `moai_first_text`: `AGENTS.local.md` 나 `CLAUDE.local.md` 가 moai 가 처음 만들 때 쓰는 글과 똑같다. 프로젝트 줄은 0개.
-3. `git_history`: 그 경로의 git 기록(모든 ref, 최신 200개 버전까지)에 sha256 이 기록과 같은 버전이 있다. 그 버전(`blob`)에 없는 줄만 센다.
-4. `all_lines`: 그 밖은 모든 줄을 센다. `reason` 은 `no_record`(매니페스트가 그 경로를 기록하지 않음), `not_a_repository`, `git_failed`, `no_matching_version`.
+3. `git_history`: 그 경로의 git 기록(모든 ref, 최신 200개 버전까지)에 sha256 이 기록의 `template_hash` 와 같은 버전이 있다. 그 버전(`blob`)에 없는 줄만 센다.
+4. `all_lines`: 그 밖은 모든 줄을 센다. `reason` 은 `no_record`(매니페스트가 그 경로를 기록하지 않았거나 기록에 `template_hash` 가 없음), `not_a_repository`, `git_failed`, `no_matching_version`.
 
 어느 경우든 완결된 `moai-workflow` 관리 블록의 줄과 Go 큐레이터 표지 한 줄(시작·끝 표지만 있는 줄)은 프로젝트 줄에서 뺀다.
 

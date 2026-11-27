@@ -247,7 +247,9 @@ pub fn preview(project: &Path) -> Result<Preview, String> {
         match read {
             Ok(Some(text)) => {
                 let sha256 = digest(text.as_bytes());
-                let record = records.get(&path).map(|r| r.deployed_hash.as_str());
+                // The baseline is the text the Go tool would have written: its template hash,
+                // never the deployed one, which holds a user's own pre-existing file as it was.
+                let record = records.get(&path).and_then(|r| r.template_hash.as_deref());
                 let (comparison, project_lines) = compare(project, &path, &text, &sha256, record);
                 let git = match &tracked {
                     Some(set) if set.contains(&path) => Tracking::Tracked,
@@ -1108,7 +1110,8 @@ fn read_source(project: &Path, rel: &str) -> Result<Option<String>, &'static str
 }
 
 /// What the source is compared with, and the numbers of its project lines. `record` is the
-/// `sha256:<hex>` the found Go manifest holds for the path.
+/// `template_hash` (`sha256:<hex>`) the found Go manifest holds for the path, `None` when it
+/// holds none.
 fn compare(
     project: &Path,
     path: &str,
