@@ -580,6 +580,10 @@ enum Action {
         /// Who does it (default `user`).
         #[arg(long)]
         by: Option<String>,
+        /// The generation the card has now (`card show` prints it); a card at another
+        /// generation, or one nobody holds, is a `conflict`. Left out, nothing is checked.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(1..))]
+        generation: Option<i64>,
         /// The project folder (its profile holds the project id; its `.moai/specs` holds the SPEC).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -961,6 +965,10 @@ enum Action {
         /// needs it.
         #[arg(long)]
         by: Option<String>,
+        /// The generation the card has now (`card show` prints it); a card at another
+        /// generation, or one nobody holds, is a `conflict`. Left out, nothing is checked.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(1..))]
+        generation: Option<i64>,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -1827,14 +1835,16 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             spec,
             unlink: _,
             by,
+            generation,
             project,
             home,
-        } => moai_cli::card::spec_link::link(
+        } => moai_cli::card::spec_link::link_at(
             &project,
             &resolve_home(home)?,
             &card,
             spec.as_deref(),
             by.as_deref(),
+            generation,
         ),
         Action::Release {
             card,
@@ -2019,6 +2029,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             kind,
             reference,
             by,
+            generation,
             project,
             home,
         } => {
@@ -2036,7 +2047,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             // The one action that reads standard input (the help rule in `src/main.rs` reads
             // this arm).
             let text = w::read_note_text(std::io::stdin().lock())?;
-            w::note(
+            w::note_at(
                 &project,
                 &home,
                 &card,
@@ -2047,6 +2058,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                     by: by.as_deref(),
                     session: d::session_holder("note", env).ok().as_deref(),
                 },
+                generation,
             )
         }
         Action::Criterion {
