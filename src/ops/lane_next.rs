@@ -86,8 +86,8 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 home.as_deref(),
             )
             .ok()
-                .filter(|id| id["identity_status"].as_str() == Some("ok"))
-                .and_then(|id| id["clone_anchor"].as_str().map(PathBuf::from))
+            .filter(|id| id["identity_status"].as_str() == Some("ok"))
+            .and_then(|id| id["clone_anchor"].as_str().map(PathBuf::from))
         })
         .flatten();
     // The count saved so far, so a `--wait` call stops at the Nth empty read in a row.
