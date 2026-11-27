@@ -590,8 +590,12 @@ fn shape_e_backup_lock_needs_the_leftovers_revert_first() {
     assert!(!receipt.is_empty(), "{archived}");
     assert!(!fx.root.join(&backup_lock).exists(), "{archived}");
     let after = fx.update_plan();
+    // The printed order always lists the go-residue revert between the move of the Go folder and
+    // the generation step, as in `the_printed_undo_order_takes_the_chain_back_to_the_start_bytes`.
+    let mut forward = ORDER.to_vec();
+    forward.insert(2, "go-residue");
     let mut expected = vec!["leftovers"];
-    expected.extend(ORDER.iter().rev());
+    expected.extend(forward.iter().rev());
     assert_eq!(undo_rows(&after), expected, "{}", after["undo_order"]);
 
     let id = |step: &str, key: &str| applied(&w, step)[key].as_str().unwrap().to_string();
@@ -604,10 +608,6 @@ fn shape_e_backup_lock_needs_the_leftovers_revert_first() {
         (
             "<receipt of the project harness step>",
             id("generation", "receipt"),
-        ),
-        (
-            "<receipt of the go-residue step>",
-            id("go-residue", "receipt"),
         ),
         ("<backup of the go-state step>", id("go-state", "backup")),
         ("<receipt of the leftovers step>", receipt),
@@ -624,8 +624,9 @@ fn shape_e_backup_lock_needs_the_leftovers_revert_first() {
             .collect()
     };
     let mut digest = String::new();
-    // The rows before the go-state revert that do not depend on the lock.
-    for name in ["hooks", "generation", "go-residue"] {
+    // The rows before the go-state revert that do not depend on the lock. No go-residue apply ran
+    // (its two hook scripts are in use and stay), so its printed revert has no receipt to name.
+    for name in ["hooks", "generation"] {
         for cmd in commands(name) {
             let out = run_undo_line(&fx, &cmd, &fills, &mut digest);
             assert_eq!(out["ok"], json!(true), "{name}: {cmd}: {out}");
