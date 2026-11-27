@@ -704,14 +704,16 @@ fn plan_restores(
 
 /// A path under the Go `.moai/` (relative to it) that is never restored, whoever wrote it: the
 /// three Go markers, whose restore would make the new `.moai/` read as the Go generation again
-/// (`state_root`), and the Go tool's own backups folder.
+/// (`state_root`), the Go tool's update lock (its process lock: the update reports a dead one as a
+/// leftover fact and expects it to stay in the Go backup), and the Go tool's own backups folder.
 fn restore_excluded(rel: &str) -> bool {
-    const MARKERS: [&str; 3] = [
+    const NEVER_RESTORED: [&str; 4] = [
         "manifest.json",
         "config/config.yaml",
         "config/sections/system.yaml",
+        ".update.lock",
     ];
-    MARKERS.contains(&rel) || rel.split('/').next() == Some("backups")
+    NEVER_RESTORED.contains(&rel) || rel.split('/').next() == Some("backups")
 }
 
 pub(crate) fn sha256_file(path: &Path) -> Result<String> {
@@ -6971,6 +6973,7 @@ mod tests {
             ".moai/manifest.json",
             ".moai/config/config.yaml",
             ".moai/config/sections/system.yaml",
+            ".moai/.update.lock",
             ".moai",
             ".moai/",
             ".claude/rules/a.md",
