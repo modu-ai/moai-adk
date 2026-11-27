@@ -494,6 +494,24 @@ fn add_card(w: &World, scope: &str, spec: Option<&str>) -> String {
     added["name"].as_str().unwrap().to_string()
 }
 
+/// A link that an earlier build allowed and `card spec` refuses now (a second open card on one
+/// SPEC), written as the ledger would hold it: a `card.spec` event with no relation.
+fn legacy_link(w: &World, card: &str, spec: &str) {
+    let n: i64 = card.trim_start_matches("C-").parse().unwrap();
+    let raw =
+        rusqlite::Connection::open(ledger::ledger_path(w.home.path(), "demo").unwrap()).unwrap();
+    raw.execute(
+        "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+         VALUES (?1, unixepoch(), 'test', ?2, 'card.spec', ?3)",
+        rusqlite::params![
+            format!("card.spec:{n}:legacy:{spec}"),
+            n,
+            serde_json::json!({"from": Value::Null, "to": spec}).to_string()
+        ],
+    )
+    .unwrap();
+}
+
 /// Closes card `name` the way a landing leaves it: a met criterion, a `card.landed` event, then
 /// `review` and `done`.
 fn close_card(w: &World, name: &str) {
@@ -547,6 +565,14 @@ fn spec_take_card_does_not_add_a_second_open_card_to_a_spec() {
 
     // The card already names the SPEC: the link is a no-op and the take goes on.
     let (w, id) = setup();
+    let r = ok(&w.take(&id, &["--card", "C-1"], &[]));
+    assert_eq!(r["card"]["changed"], false, "{r}");
+
+    // An older ledger holds a second open card on the same SPEC (a pair `card spec` would refuse
+    // now): the card that already names the SPEC is still taken, not refused for its partner.
+    let (w, id) = setup();
+    let c3 = add_card(&w, "src/c", None);
+    legacy_link(&w, &c3, &id);
     let r = ok(&w.take(&id, &["--card", "C-1"], &[]));
     assert_eq!(r["card"]["changed"], false, "{r}");
 
