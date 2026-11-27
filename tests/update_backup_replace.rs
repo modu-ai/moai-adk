@@ -1359,8 +1359,8 @@ fn entry_rows(receipt: &Value) -> Vec<(String, String)> {
         .collect()
 }
 
-/// The receipt holds no backup and lists the writes of `plan` only, and no restore row is shown.
-fn assert_writes_only_and_no_offer(exe: &Path, home: &Path, plan: &Value) {
+/// The receipt holds no backup and lists the writes of `plan` only.
+fn assert_writes_only(exe: &Path, home: &Path, plan: &Value) {
     let receipt = read_receipt(home, &id_of(exe));
     assert_eq!(receipt["status"], json!("committed"), "{receipt}");
     assert!(receipt["backup"].is_null(), "no backup: {receipt}");
@@ -1371,6 +1371,11 @@ fn assert_writes_only_and_no_offer(exe: &Path, home: &Path, plan: &Value) {
         writes,
         "entries are the writes: {receipt}"
     );
+}
+
+/// The receipt holds no backup and lists the writes of `plan` only, and no restore row is shown.
+fn assert_writes_only_and_no_offer(exe: &Path, home: &Path, plan: &Value) {
+    assert_writes_only(exe, home, plan);
     let rp = recovery_plan_by(exe, home);
     assert!(
         host(&rp, "claude")["restore_backup"].is_null(),
@@ -1671,7 +1676,7 @@ fn keep_restore_is_not_taken_from_another_installation() {
         "the replacing build's receipt is the baseline: {p}"
     );
     assert_eq!(host(&r, "claude")["status"], json!("applied"), "{r}");
-    assert_writes_only_and_no_offer(&b, &f.home, &p);
+    assert_writes_only(&b, &f.home, &p);
     assert_eq!(
         fs::read(receipt_file(&f.home, &id_of(&a))).unwrap(),
         bytes,
@@ -1731,4 +1736,284 @@ fn keep_restore_covers_what_another_build_wrote() {
     assert_restores_original(&a, &f.home, &rp, &original[0]);
     let kept = backup_of(&f.home, "claude").join("replaced/references/new.md");
     assert_eq!(fs::read_to_string(kept).unwrap(), "added by b\n");
+}
+
+// ---- SPEC-20261127-recovery-prior-install: the restore offer survives a version upgrade ----
+
+type Snapshot = BTreeMap<String, (Vec<u8>, u32)>;
+
+/// `a` replaced the Go-era folder and holds its backup. With `applied`, `b` (another build, so
+/// another installation id) then took over with an ordinary apply; without it `b` is only
+/// installed. Returns the fixture, the original folder, `a`, `b` and the plan of `b`'s apply
+/// (`null` without one).
+fn upgraded(applied: bool) -> (Fixture, Snapshot, PathBuf, PathBuf, Value) {
+    let f = fixture();
+    let original = originals(&f).remove(0);
+    let a = put_build(&f.home, "a");
+    let b = put_build(&f.home, "b");
+    replace_by(&a, &f.home, &f.stage);
+    restorable_receipt(&a, &f.home);
+    let mut plan = Value::Null;
+    if applied {
+        put_file(&f.stage, "workflows/update.md", "# UPDATE\nrust v2\n");
+        put_file(&f.stage, "references/new.md", "new v2\n");
+        let (p, r) = ordinary_apply(&b, &f.home, &f.stage);
+        assert_eq!(host(&r, "claude")["status"], json!("applied"), "{r}");
+        plan = p;
+    }
+    (f, original, a, b, plan)
+}
+
+/// The plan offers the restore of the original folder out of the earlier installation `a`.
+fn assert_offers_prior(rp: &Value, a: &Path) {
+    let offer = &host(rp, "claude")["restore_backup"];
+    assert_eq!(offer["action"], json!("restore_backup"), "{rp}");
+    assert_eq!(offer["original_at"], json!("backup"), "{rp}");
+    assert_eq!(offer["from_install"], json!(id_of(a)), "{rp}");
+}
+
+/// Every regular file under `home` by content digest and count, leaving out what a recovery
+/// rewrites on purpose (the host receipts and recovery records) and the build copies.
+fn home_digests(home: &Path) -> BTreeMap<String, usize> {
+    fn walk(dir: &Path, skip: &Path, out: &mut BTreeMap<String, usize>) {
+        for e in fs::read_dir(dir).unwrap() {
+            let p = e.unwrap().path();
+            let m = fs::symlink_metadata(&p).unwrap();
+            if m.is_dir() {
+                if p != skip {
+                    walk(&p, skip, out);
+                }
+            } else if m.is_file() {
+                let name = p.file_name().unwrap().to_str().unwrap();
+                let rewritten = p.components().any(|c| c.as_os_str() == "installations")
+                    && (name == "claude.json" || name == "claude.recovery.json");
+                if !rewritten {
+                    *out.entry(sha256_hex(&fs::read(&p).unwrap())).or_default() += 1;
+                }
+            }
+        }
+    }
+    let mut out = BTreeMap::new();
+    walk(home, &state_dir(home).join("versions"), &mut out);
+    out
+}
+
+// SPEC-20261127-recovery-prior-install AC-1
+#[test]
+fn prior_install_offers_the_restore_after_an_ordinary_apply() {
+    let (f, _, a, b, _) = upgraded(false);
+    let a_bytes = fs::read(receipt_file(&f.home, &id_of(&a))).unwrap();
+    put_file(&f.stage, "workflows/update.md", "# UPDATE\nrust v2\n");
+    put_file(&f.stage, "references/new.md", "new v2\n");
+    let (p, r) = ordinary_apply(&b, &f.home, &f.stage);
+    assert_eq!(host(&r, "claude")["status"], json!("applied"), "{r}");
+
+    assert_writes_only(&b, &f.home, &p);
+    assert_offers_prior(&recovery_plan_by(&b, &f.home), &a);
+    assert_eq!(
+        fs::read(receipt_file(&f.home, &id_of(&a))).unwrap(),
+        a_bytes,
+        "the earlier installation's receipt is untouched by the apply"
+    );
+}
+
+// SPEC-20261127-recovery-prior-install AC-2
+#[test]
+fn prior_install_offers_the_restore_before_the_new_build_applies() {
+    let (f, _, a, b, _) = upgraded(false);
+    assert!(
+        !receipt_file(&f.home, &id_of(&b)).exists(),
+        "the new build has applied nothing yet"
+    );
+    assert_offers_prior(&recovery_plan_by(&b, &f.home), &a);
+}
+
+/// Restores across installations and checks that nothing in the temporary HOME is lost.
+fn restore_across(applied: bool) {
+    let (f, original, a, b, _) = upgraded(applied);
+    let a_before = read_receipt(&f.home, &id_of(&a));
+    let rp = recovery_plan_by(&b, &f.home);
+    assert_offers_prior(&rp, &a);
+
+    let root = f.home.join(ROOTS[0].1);
+    let installed = snapshot(&root);
+    let before = home_digests(&f.home);
+    let out = recovery_apply_by(&b, &f.home, &rp);
+    assert_eq!(out["status"], json!("success"), "{out}");
+    assert_eq!(
+        host(&out, "claude")["backup_restored"],
+        json!(true),
+        "{out}"
+    );
+    let after = home_digests(&f.home);
+    let lost: Vec<&String> = before
+        .iter()
+        .filter(|(d, n)| after.get(*d).copied().unwrap_or(0) < **n)
+        .map(|(d, _)| d)
+        .collect();
+    eprintln!(
+        "prior install restore (applied={applied}): files before {}, after {}, lost {}",
+        before.values().sum::<usize>(),
+        after.values().sum::<usize>(),
+        lost.len()
+    );
+    assert!(lost.is_empty(), "files lost: {lost:?}");
+
+    assert_eq!(
+        snapshot(&root),
+        original,
+        "original restored, bytes and modes"
+    );
+    let dir = backup_of(&f.home, "claude");
+    assert_eq!(
+        snapshot(&dir.join("replaced")),
+        installed,
+        "what was installed is kept in the backup"
+    );
+    assert!(dir.join("RESTORED.json").is_file());
+
+    let a_after = read_receipt(&f.home, &id_of(&a));
+    assert_eq!(a_after["status"], json!("recovered"), "{a_after}");
+    assert_eq!(a_after["owned"], json!([]), "{a_after}");
+    assert_eq!(a_after["backup"], a_before["backup"], "{a_after}");
+    assert_eq!(
+        a_after["finished_at"], a_before["finished_at"],
+        "the earlier receipt keeps its finish time, so no two receipts finish together"
+    );
+    if applied {
+        let b_after = read_receipt(&f.home, &id_of(&b));
+        assert_eq!(b_after["status"], json!("recovered"), "{b_after}");
+        assert_eq!(b_after["owned"], json!([]), "{b_after}");
+    } else {
+        assert!(
+            !receipt_file(&f.home, &id_of(&b)).exists(),
+            "a build that applied nothing gets no receipt"
+        );
+    }
+}
+
+// SPEC-20261127-recovery-prior-install AC-3
+#[test]
+fn prior_install_restore_moves_and_deletes_nothing() {
+    restore_across(true);
+    restore_across(false);
+}
+
+// SPEC-20261127-recovery-prior-install AC-4
+#[test]
+fn prior_install_offer_is_blocked_by_a_user_edit() {
+    let (f, original, a, b, _) = upgraded(true);
+    let root = f.home.join(ROOTS[0].1);
+    put_file(&root, "notes/mine.txt", "mine\n");
+    let rp = recovery_plan_by(&b, &f.home);
+    assert!(
+        host(&rp, "claude")["restore_backup"].is_null(),
+        "no offer over a file neither receipt knows: {rp}"
+    );
+
+    let installed = snapshot(&root);
+    let dir = backup_of(&f.home, "claude");
+    let _ = recovery_apply_by(&b, &f.home, &rp);
+    assert_eq!(snapshot(&root), installed, "installed folder unchanged");
+    assert_eq!(snapshot(&dir.join("moai")), original, "backup unchanged");
+    assert!(!dir.join("RESTORED.json").exists());
+    assert_eq!(
+        read_receipt(&f.home, &id_of(&a))["status"],
+        json!("committed")
+    );
+}
+
+// SPEC-20261127-recovery-prior-install AC-5
+#[test]
+fn prior_install_offer_waits_for_own_pending_recovery() {
+    let f = fixture();
+    let a = put_build(&f.home, "a");
+    let b = put_build(&f.home, "b");
+    replace_by(&a, &f.home, &f.stage);
+    restorable_receipt(&a, &f.home);
+
+    let root = f.home.join(ROOTS[0].1);
+    put_file(
+        &f.stage,
+        "SKILL.md",
+        "---\nname: moai\ndescription: fixture package\n---\n# MoAI\nrust v2\n",
+    );
+    put_file(&f.stage, "workflows/new.md", "# NEW\n");
+    // A plain file where the folder was: the apply fails after SKILL.md.
+    fs::remove_dir_all(root.join("workflows")).unwrap();
+    fs::write(root.join("workflows"), "not a directory\n").unwrap();
+    let (_, r) = ordinary_apply(&b, &f.home, &f.stage);
+    assert_eq!(host(&r, "claude")["status"], json!("failed"), "{r}");
+
+    let rp = recovery_plan_by(&b, &f.home);
+    let h = host(&rp, "claude");
+    assert_eq!(h["receipt_status"], json!("pending"), "{rp}");
+    assert!(h["restore_backup"].is_null(), "no offer yet: {rp}");
+    assert!(
+        !h["files"].as_array().unwrap().is_empty(),
+        "per-file recovery stays first: {rp}"
+    );
+}
+
+// SPEC-20261127-recovery-prior-install AC-6
+#[test]
+fn prior_install_offer_is_not_guessed_between_two_backups() {
+    let (f, _, a, b, _) = upgraded(false);
+    // A second earlier installation that finished in the same second and holds a backup too.
+    let other = sha256_hex(b"fixture-second-earlier-installation");
+    let mut copy = read_receipt(&f.home, &id_of(&a));
+    copy["install_id"] = json!(other);
+    let path = receipt_file(&f.home, &other);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(&path, serde_json::to_vec_pretty(&copy).unwrap()).unwrap();
+    let rp = recovery_plan_by(&b, &f.home);
+    assert!(
+        host(&rp, "claude")["restore_backup"].is_null(),
+        "two backups that finished together: {rp}"
+    );
+
+    // An earlier installation whose receipt cannot be read is not guessed past either.
+    fs::write(&path, "not json\n").unwrap();
+    let rp = recovery_plan_by(&b, &f.home);
+    assert!(
+        host(&rp, "claude")["restore_backup"].is_null(),
+        "an unreadable receipt: {rp}"
+    );
+
+    // Control: without the second installation the offer is there again.
+    fs::remove_dir_all(state_dir(&f.home).join("installations").join(&other)).unwrap();
+    assert_offers_prior(&recovery_plan_by(&b, &f.home), &a);
+}
+
+// SPEC-20261127-recovery-prior-install AC-7
+#[test]
+fn prior_install_used_backup_is_not_offered_again() {
+    let (f, original, a, b, _) = upgraded(true);
+    let rp = recovery_plan_by(&b, &f.home);
+    assert_offers_prior(&rp, &a);
+    let out = recovery_apply_by(&b, &f.home, &rp);
+    assert_eq!(out["status"], json!("success"), "{out}");
+
+    let again = recovery_plan_by(&b, &f.home);
+    assert!(
+        host(&again, "claude")["restore_backup"].is_null(),
+        "{again}"
+    );
+    let c = put_build(&f.home, "c");
+    let from_c = recovery_plan_by(&c, &f.home);
+    assert!(
+        host(&from_c, "claude")["restore_backup"].is_null(),
+        "{from_c}"
+    );
+
+    // The restored folder is unmanaged again, and the two closed receipts do not make a third
+    // build's next update ambiguous.
+    let p = plan_by(&c, &f.home, &f.stage);
+    let h = host(&p, "claude");
+    assert!(h["backup_then_replace"].is_object(), "{p}");
+    assert!(
+        !h["blocked_reason"].to_string().contains("same second"),
+        "{p}"
+    );
+    assert_eq!(snapshot(&f.home.join(ROOTS[0].1)), original);
 }
