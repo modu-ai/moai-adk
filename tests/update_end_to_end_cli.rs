@@ -501,12 +501,21 @@ fn shape_e_reaches_all_unchanged() {
     );
 
     let w = assert_walks_to_the_end(&fx, &ORDER);
-    // The lock went into the Go backup with the folder; nothing deleted it. The earlier receipt
-    // folder of the first half move is still in the earlier state folder.
+    // The lock went into the Go backup with the folder; nothing deleted it, and it is a leftover
+    // of its own there (a second one beside the earlier state folder), answered with its printed
+    // keep command like the folder. The earlier receipt folder of the first half move is still in
+    // the earlier state folder.
     assert!(fx.root.join(".moai-backup/.update.lock").is_file());
-    assert_eq!(leftover_paths(&w.last), [".moai-cli/"], "{}", w.last);
-    let fact = leftover(&w.last, ".moai-cli/")["fact"].as_str().unwrap();
+    let earlier = format!("{EARLIER_PROJECT_DIR}/");
+    let both = [earlier.as_str(), ".moai-backup/.update.lock"];
+    assert_eq!(leftover_paths(&w.last), both, "{}", w.last);
+    assert_eq!(w.kept, both, "{}", w.last);
+    let fact = leftover(&w.last, &earlier)["fact"].as_str().unwrap();
     assert!(fact.contains("still holds 1 entries (backups)"), "{fact}");
+    let fact = leftover(&w.last, ".moai-backup/.update.lock")["fact"]
+        .as_str()
+        .unwrap();
+    assert!(fact.contains("not running"), "{fact}");
 }
 
 /// The step names of the printed undo order, first row first.
@@ -639,6 +648,21 @@ fn shape_e_backup_lock_needs_the_leftovers_revert_first() {
         before,
         "a refused revert writes nothing"
     );
+    // The refusal changed nothing, so the printed order still starts with the leftovers revert.
+    let still = fx.update_plan();
+    assert_eq!(
+        undo_rows(&still).first(),
+        Some(&"leftovers"),
+        "{}",
+        still["undo_order"]
+    );
+    let first_row = commands("leftovers");
+    assert_eq!(first_row.len(), 1, "{first_row:?}");
+    assert!(
+        first_row[0].contains("project-update-leftovers-revert")
+            && first_row[0].contains("<receipt of the leftovers step>"),
+        "{first_row:?}"
+    );
     // The leftovers revert puts the lock back byte for byte, and the go-state revert then works.
     for cmd in commands("leftovers") {
         let out = run_undo_line(&fx, &cmd, &fills, &mut digest);
@@ -750,10 +774,16 @@ fn project_nodes(fx: &GoFx) -> BTreeMap<String, Node> {
         .collect()
 }
 
+/// The one record the walk's answer to the open earlier-state-folder leftover writes (its printed
+/// keep command); an undo does not take it away. Named exactly, never as a wildcard.
+fn kept_record() -> String {
+    format!("{EARLIER_PROJECT_DIR}/manifests/update-declined.json")
+}
+
 /// What the chain adds and an undo does not take away: the receipts, the set-aside folder of the
-/// Rust state.
+/// Rust state, and the one record of the kept earlier state folder.
 fn may_stay_behind(rel: &str) -> bool {
-    rel.starts_with(".moai-cli/receipts") || rel.starts_with(".moai.rust-")
+    rel.starts_with(".moai-cli/receipts") || rel.starts_with(".moai.rust-") || rel == kept_record()
 }
 
 fn applied<'a>(w: &'a Walk, step: &str) -> &'a Value {
