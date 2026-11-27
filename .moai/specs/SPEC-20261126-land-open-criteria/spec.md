@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261126-land-open-criteria
 title: "A landing keeps open the criteria the verdict holds open"
-status: draft
+status: approved
 revision: 1
 created: 2026-11-26
 branch: spec/land-open-criteria-kz-20261126
+approval:
+  by: user
+  at: 2026-11-27
+  basis: "approval@1 값(옛 계산), 승인 노트 9863(리더의 위임 승인), 사용자 확인 노트 10875: 사용자가 2026-11-27 에 리더 세션의 질문 도구에서 직접 고른 '확인, 랜딩 (Recommended)'(선택은 리더가 옮긴 글이고 이 레인이 직접 보지는 않았어요); digest 는 노트 9863 의 approval_digest 를 그대로 적었어요(결정 노트 10612)"
+  digest: "sha256:195f3e8a1656ff9fe9fe28d87efc3f28909159d1031d5a1ec5c0009004165584"
 ---
 
 ## Interview
