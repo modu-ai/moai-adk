@@ -76,4 +76,17 @@ NeXT 끝(`cedcd1f234`)을 코드와 기존 테스트로 읽은 결과(조사 에
 | D-1 | 카드 기준 2(기록 이름)는 코드를 바꾸지 않고 고정 테스트(AC-5)로 지켜요 | NeXT 끝에서 링크 프로필의 계획·적용·되돌리기가 이미 `claude.json` 기록으로 통과해요(`tests/update_linked_config_files.rs`). 조사 보고 2026-11-27 | AC-5 의 목록에서 뺀 뒤 기준 2 를 다시 열어요 |
 | D-2 | 계획 JSON 과 영수증의 값은 바꾸지 않고 화면·안내문의 글자만 바꿔요 | 값이 바뀌면 다이제스트와 되돌리기의 짝 맞추기가 달라져요(REQ-9) | 글자를 만드는 함수만 되돌려요 |
 | D-3 | 프로필 `linked` 행의 메모 낱말은 카드가 적은 `(이 프로필은 링크로 읽어요)` 로 해요(영어는 `(this folder is read through a link)`) | 카드 기준 1 의 표현 | 낱말은 화면 글자 테이블 한 곳에 있어요 |
-| D-4 | tier 는 1 로 다뤄요(화면 글자만 바꾸고 쓰기와 HOME 상태는 건드리지 않아요). 승인 블록 없이 구현하고 SPEC 은 draft 로 남겨요 | 리더 결정, 카드 노트 10784. 쓰기 경로, 계획 JSON 필드, 영수증 값, tier 2 바닥 경로를 건드리게 되면 멈추고 알려요 | 리더의 결정 | 리더의 결정 |
+| D-4 | tier 는 1 로 다뤄요(화면 글자만 바꾸고 쓰기와 HOME 상태는 건드리지 않아요). 승인 블록 없이 구현하고 SPEC 은 draft 로 남겨요 | 리더 결정, 카드 노트 10784. 쓰기 경로, 계획 JSON 필드, 영수증 값, tier 2 바닥 경로를 건드리게 되면 멈추고 알려요 | 리더의 결정 |
+
+## Result
+
+구현 head 는 `459732c1dd`(브랜치 `spec/update-linked-profile-display-20261127`, 기준 NeXT `df710fbe20`)이에요. RED 는 구현 에이전트가 테스트마다 먼저 돌려 실패를 봤고(AC-1 `tests/update_tux_golden.rs` 줄 843, AC-2 줄 891, AC-3 `tests/home_style_cli.rs` 줄 788, AC-4 `tests/desktop_folder_rules_cli.rs` 줄 404), 레인이 다시 돌린 것은 아니에요. 초록은 레인이 직접 돌린 AC-5 verify 명령(exit 0, 144 tests run, 144 passed)과 체크 결과(`target/check-affected-459732c1dd2d`, `result=PASS`, 1780 passed)예요.
+
+- AC-1: met. `a_linked_profile_routing_row_is_the_default_entry_with_a_note` passed 한 줄 — `linked` 프로필 행이 기본 행의 'moai.md' 하나에 메모가 붙고 마크가 같아요. 기본 행이 conflict 이면 메모가 없어요(en·ko 둘 다).
+- AC-2: met. `a_not_linked_profile_row_shows_its_reason_as_a_warning` passed 한 줄 — `Warn` 마크, 이유 문장, detail 이 없거나 비면 한 문장 안내, '건너뜀'·'skipped' 없음(en·ko).
+- AC-3: met. `a_blocked_second_folder_names_the_way_out_without_internal_words` passed 한 줄 — 세 안쪽 말이 없고 `env -u CLAUDE_CONFIG_DIR moai update` 와 링크 걸기 두 길이 있어요. 옛 문구를 단언하던 `a_second_folder_is_blocked_while_the_state_root_is_not_this_generations` 의 한 줄(`state`·`generation` 확인)을 새 문구 확인으로 바꿨어요.
+- AC-4: met. `a_fully_linked_profile_is_shown_as_the_default_folder` passed 한 줄(`preview::`, `tests/desktop_folder_rules_cli.rs`) — 모든 입구가 링크면 알림의 네 폴더가 기본 폴더이고 `warning` 이 false 이며 프로필 경로가 없어요. `skills` 만 프로필의 진짜 폴더면 경고와 그 경로가 남아요. 터미널 요약은 `routing_summary_names_the_default_file_for_a_linked_row`(lib 단위 테스트, passed 한 줄)가 지켜요.
+- AC-5: met. verify 명령을 그대로 돌려 exit 0, 144 tests run, 144 passed. 기록 이름과 링크 프로필의 계획·적용·되돌리기(`a_config_file_linked_into_the_default_folder_is_planned_and_written_there`), 진짜 둘째 폴더 막기가 그대로 통과해요.
+- AC-6: met. `env -u CLAUDE_CODE_SESSION_ID moai check affected --card df710fbe20..HEAD` → `result=PASS`(selection=card, targets=136, diff_check=0 fmt=0 ledger=0 clippy=0 test=0).
+
+카드 기준: 1 met(AC-1·AC-2). 2 met(코드 변경 없음, `a_config_file_linked_into_the_default_folder_is_planned_and_written_there` 가 증거). 3 met(AC-3). 4 일부만: 안내문과 터미널 요약은 기본 폴더 경로를 적지만, 계획 JSON 의 `config_dir`·`file`, 거절 문구의 프로필 경로, 영수증 `config_folder` 는 REQ-9 때문에 그대로 프로필 경로예요(Non-goals). 리더의 결정 |
