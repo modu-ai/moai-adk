@@ -79,10 +79,17 @@ fn the_help_goldens_keep_the_old_name_only_for_folders_and_the_alias_file() {
     for name in GOLDENS {
         let path = dir.join(name);
         let text = fs::read_to_string(&path).unwrap_or_else(|e| panic!("{name}: {e}"));
-        let mut before = "";
+        // The last few lines, trimmed: the sentence may wrap before or inside its lead at another
+        // column width, so the file name is the alias file when the words of the one sentence
+        // `<lead> <name>` end on this line, however the wrap cuts them.
+        let mut recent: Vec<&str> = Vec::new();
         for (i, line) in text.lines().enumerate() {
-            let alias_file = line.trim_end().ends_with(&format!("{ALIAS_LEAD} {NAME}"))
-                || (line.trim() == NAME && before.trim_end().ends_with(ALIAS_LEAD));
+            recent.push(line.trim());
+            if recent.len() > 4 {
+                recent.remove(0);
+            }
+            let alias_file = line.trim_end().ends_with(NAME)
+                && recent.join(" ").ends_with(&format!("{ALIAS_LEAD} {NAME}"));
             if !alias_file {
                 for (at, _) in line.match_indices(NAME) {
                     if !line[..at].ends_with('.') {
@@ -90,7 +97,6 @@ fn the_help_goldens_keep_the_old_name_only_for_folders_and_the_alias_file() {
                     }
                 }
             }
-            before = line;
         }
     }
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
