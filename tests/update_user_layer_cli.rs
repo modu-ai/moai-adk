@@ -1410,6 +1410,182 @@ fn a_first_html_report_install_records_that_the_skills_folder_was_new_to_this_ru
     );
 }
 
+/// Characterisation of the known-good copies an extra-skill update makes
+/// (`extra_skill::known_good_copies`): an update over an older installed version copies each
+/// file it replaces to `hosts/<skill>/claude/known-good/<sha256 hex>` of this installation, with
+/// the bytes that were installed.
+#[test]
+fn extra_skill_update_keeps_the_replaced_bytes_as_known_good_copies() {
+    let (_t, home, exe, pkg) = setup();
+    let src = with_html_report(&pkg);
+    let p = result(&run(&exe, &home, &["update"]));
+    let top = p["plan_digest"].as_str().unwrap();
+    result(&run(&exe, &home, &["update", "--confirm", top]));
+    let receipts = html_report_receipt_files(&home);
+    assert_eq!(receipts.len(), 1, "{receipts:?}");
+    let known_good = receipts[0].parent().unwrap().join("claude/known-good");
+    assert!(!known_good.exists(), "a first install replaces nothing");
+    // The next release changes two files; keep the bytes they have now.
+    let mut old: Vec<Vec<u8>> = Vec::new();
+    for rel in ["SKILL.md", "references/fonts.md"] {
+        let before = fs::read(src.join(rel)).unwrap();
+        let mut after = before.clone();
+        after.extend_from_slice(b"\nchanged in the next release\n");
+        fs::write(src.join(rel), after).unwrap();
+        old.push(before);
+    }
+    let p = result(&run(&exe, &home, &["update"]));
+    let top = p["plan_digest"].as_str().unwrap();
+    let r = result(&run(&exe, &home, &["update", "--confirm", top]));
+    assert_eq!(r["extra_skills_result"]["state"], json!("applied"), "{r}");
+    for before in &old {
+        let digest = moai_cli::digest(before);
+        let copy = known_good.join(digest.strip_prefix("sha256:").unwrap());
+        assert_eq!(
+            fs::read(&copy).unwrap(),
+            *before,
+            "known-good copy {}",
+            copy.display()
+        );
+    }
+    assert_eq!(fs::read_dir(&known_good).unwrap().count(), old.len());
+}
+
+/// Characterisation of the same step when it fails: a regular file where the known-good folder
+/// goes makes the part `failed` before its transaction starts, so no file of the skill folder
+/// changes and the committed receipt stays as it was.
+#[test]
+fn extra_skill_known_good_copy_failure_stops_the_part_before_it_starts() {
+    let (_t, home, exe, pkg) = setup();
+    let src = with_html_report(&pkg);
+    let dest = html_report_dir(&home);
+    let p = result(&run(&exe, &home, &["update"]));
+    let top = p["plan_digest"].as_str().unwrap();
+    result(&run(&exe, &home, &["update", "--confirm", top]));
+    let installed = tree(&dest);
+    let receipts = html_report_receipt_files(&home);
+    assert_eq!(receipts.len(), 1, "{receipts:?}");
+    let claude = receipts[0].parent().unwrap().join("claude");
+    fs::create_dir_all(&claude).unwrap();
+    fs::write(claude.join("known-good"), "not a folder\n").unwrap();
+    let mut bytes = fs::read(src.join("SKILL.md")).unwrap();
+    bytes.extend_from_slice(b"\nchanged in the next release\n");
+    fs::write(src.join("SKILL.md"), bytes).unwrap();
+    let p = result(&run(&exe, &home, &["update"]));
+    let (part, why) = html_report_part(&p);
+    assert_eq!(part["preflight"], json!("ok"), "{why}");
+    let top = p["plan_digest"].as_str().unwrap();
+    let r = result(&run(&exe, &home, &["update", "--confirm", top]));
+    let part = &r["extra_skills_result"]["parts"][0];
+    assert_eq!(part["status"], json!("failed"), "{r}");
+    assert_eq!(part["reload_required"], json!("no"), "{r}");
+    assert_eq!(part["receipt_status"], Value::Null, "{r}");
+    let basis = part["reload_basis"].as_str().unwrap();
+    assert!(
+        basis.starts_with("known-good copy failed; part not started"),
+        "{basis}"
+    );
+    assert!(
+        basis.ends_with("known-good directory unavailable"),
+        "{basis}"
+    );
+    assert_eq!(tree(&dest), installed, "the part wrote nothing");
+    assert_eq!(html_report_receipts(&home)[0]["status"], json!("committed"));
+}
+
+/// A second version folder `b` beside the fixture's first one, carrying the package and the
+/// html-report folder as a later release does; returns its binary.
+fn next_version_with_html_report(exe: &Path) -> PathBuf {
+    let next = exe
+        .parent()
+        .and_then(Path::parent)
+        .and_then(Path::parent)
+        .unwrap()
+        .join("b");
+    fs::create_dir_all(next.join("bin")).unwrap();
+    let exe_b = next.join("bin/moai-cli");
+    common::copy_executable(Path::new(EXE), &exe_b);
+    let pkg_b = next.join("skills/moai");
+    copy_tree(&package(), &pkg_b);
+    with_html_report(&pkg_b);
+    copy_tree(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("agents"),
+        &next.join("agents"),
+    );
+    exe_b
+}
+
+/// Installs the html-report skill from the fixture's first version folder, lets `damage` change
+/// the receipt that folder wrote (given its path), then previews from a second folder. Returns
+/// the id of the earlier installation and the blocked reason of the html-report part.
+fn blocked_reason_after_damaging_the_earlier_html_report_receipt(
+    damage: impl Fn(&Path),
+) -> (String, String) {
+    let (_t, home, exe, pkg) = setup();
+    with_html_report(&pkg);
+    let p = result(&run(&exe, &home, &["update"]));
+    let top = p["plan_digest"].as_str().unwrap();
+    result(&run(&exe, &home, &["update", "--confirm", top]));
+    let receipts = html_report_receipt_files(&home);
+    assert_eq!(receipts.len(), 1, "{receipts:?}");
+    damage(&receipts[0]);
+    // `<state>/installations/<id>/hosts/<skill>/claude.json`
+    let id = receipts[0]
+        .parent()
+        .and_then(Path::parent)
+        .and_then(Path::parent)
+        .and_then(Path::file_name)
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    let exe_b = next_version_with_html_report(&exe);
+    let p = result(&run(&exe_b, &home, &["update"]));
+    let (part, why) = html_report_part(&p);
+    assert_eq!(part["preflight"], json!("blocked"), "{p}");
+    assert!(part.get("receipt_from").is_none(), "{p}");
+    (id, why)
+}
+
+/// Characterisation of `extra_skill::resolve_receipt`: an unreadable receipt of the skill in an
+/// earlier installation blocks the part instead of being skipped; the reason names the skill and
+/// the installation and says nothing was adopted.
+#[test]
+fn extra_skill_unreadable_earlier_receipt_blocks_the_part_and_says_nothing_was_adopted() {
+    let (id, why) = blocked_reason_after_damaging_the_earlier_html_report_receipt(|receipt| {
+        fs::write(receipt, b"{ not json").unwrap();
+    });
+    let start =
+        format!("the {HTML_REPORT} receipt of the earlier installation {id} is unreadable (");
+    assert!(why.starts_with(&start), "{why}");
+    assert!(why.ends_with("); nothing was adopted"), "{why}");
+}
+
+/// Characterisation of the same function: a receipt of an earlier installation that names another
+/// installation, or another host (a copied file), lends nothing and blocks the part.
+#[test]
+fn extra_skill_receipt_naming_another_installation_or_host_blocks_the_part() {
+    let edit = |receipt: &Path, key: &str, value: Value| {
+        let mut v: Value = serde_json::from_slice(&fs::read(receipt).unwrap()).unwrap();
+        v[key] = value;
+        fs::write(receipt, serde_json::to_vec_pretty(&v).unwrap()).unwrap();
+    };
+    for (key, value) in [
+        ("install_id", json!("0".repeat(64))),
+        ("host", json!("another-host")),
+    ] {
+        let (id, why) = blocked_reason_after_damaging_the_earlier_html_report_receipt(|receipt| {
+            edit(receipt, key, value.clone())
+        });
+        let start = format!("the {HTML_REPORT} receipt of the earlier installation {id} names");
+        assert!(why.starts_with(&start), "{key}: {why}");
+        assert!(
+            why.ends_with("names another installation or host; nothing was adopted"),
+            "{key}: {why}"
+        );
+    }
+}
+
 /// SPEC-20261122-claude-md-home-routing REQ-5 and REQ-8, through the real `moai update`: the
 /// preview writes nothing, the confirm writes the rules files and leaves the earlier
 /// `moai-routing` block of the user's `CLAUDE.md` byte for byte, and only the separate pick
