@@ -406,6 +406,228 @@ fn the_gate_scan_tells_a_gated_read_from_a_bare_one() {
     assert!(seam_reads(text, "NONE").is_empty());
 }
 
+/// The variables of the gate (`GATED_SEAMS` names their constants). A read of one counts wherever it
+/// stands in `src/`, by its string or by a constant defined as that string (AUDIT #438 N2).
+const SEAM_VARS: [&str; 3] = [
+    "MOAI_TEST_SESSION_REGISTRY_HOLD_MS",
+    "MOAI_TEST_INIT_HOLD_MS",
+    "MOAI_TEST_INIT_FAIL_AFTER_PROFILE",
+];
+
+/// One read of a gate variable found in a text of `src/`.
+#[derive(Debug, PartialEq)]
+struct SeamRead {
+    var: &'static str,
+    file: String,
+    line: usize,
+    gated: bool,
+}
+
+/// Every read of a variable of `SEAM_VARS` in `files` (`(path, text)` pairs): a call of
+/// `env::var(..)` or `env::var_os(..)` whose argument is the variable's string or the name of a
+/// constant that some text defines as that string, however the call is split over lines. A read
+/// is gated when the last non-comment line above its first line is `#[cfg(debug_assertions)]`.
+fn seam_reads_in(files: &[(String, String)]) -> Vec<SeamRead> {
+    // The names that stand for each variable: its quoted string and every `const NAME: &str = "VAR"`.
+    let mut names: Vec<(&'static str, String)> = Vec::new();
+    for var in SEAM_VARS {
+        names.push((var, format!("\"{var}\"")));
+        let tail = format!("= \"{var}\"");
+        for (_, text) in files {
+            for line in text.lines().map(str::trim) {
+                if line.starts_with("//") || !line.contains(&tail) {
+                    continue;
+                }
+                let name = line
+                    .split("const ")
+                    .nth(1)
+                    .and_then(|rest| rest.split(':').next());
+                if let Some(name) = name {
+                    names.push((var, name.trim().to_string()));
+                }
+            }
+        }
+    }
+    let mut out = Vec::new();
+    for (file, text) in files {
+        let lines: Vec<&str> = text.lines().collect();
+        for (i, line) in lines.iter().enumerate() {
+            if line.trim_start().starts_with("//") {
+                continue;
+            }
+            for call in ["env::var(", "env::var_os("] {
+                for (at, _) in line.match_indices(call) {
+                    // The argument: the text after the `(` up to the first `)`, read over this
+                    // line and at most the next three.
+                    let mut rest = line[at + call.len()..].to_string();
+                    let mut j = i;
+                    while !rest.contains(')') && j < i + 3 && j + 1 < lines.len() {
+                        j += 1;
+                        rest.push_str(lines[j]);
+                    }
+                    let arg: String = rest
+                        .split(')')
+                        .next()
+                        .unwrap_or("")
+                        .chars()
+                        .filter(|c| !c.is_whitespace())
+                        .collect();
+                    let arg = arg.trim_end_matches(',');
+                    let above = lines[..i]
+                        .iter()
+                        .rev()
+                        .map(|l| l.trim())
+                        .find(|l| !l.starts_with("//"));
+                    for var in SEAM_VARS {
+                        let named = names.iter().any(|(v, name)| {
+                            *v == var && (arg == name || arg.ends_with(&format!("::{name}")))
+                        });
+                        if named {
+                            out.push(SeamRead {
+                                var,
+                                file: file.clone(),
+                                line: i + 1,
+                                gated: above == Some("#[cfg(debug_assertions)]"),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
+/// The `.rs` texts under `<root>/src`, as `(path relative to root, text)`, sorted by path.
+fn src_texts(root: &Path) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.join("src")];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let Ok(kind) = entry.file_type() else {
+                continue;
+            };
+            if kind.is_dir() {
+                stack.push(path);
+            } else if kind.is_file() && path.extension().is_some_and(|e| e == "rs") {
+                if let Ok(text) = fs::read_to_string(&path) {
+                    let rel = path.strip_prefix(root).unwrap().to_string_lossy();
+                    out.push((rel.replace('\\', "/"), text));
+                }
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+#[test]
+fn every_read_of_a_seam_variable_in_src_is_found_by_string_or_by_constant() {
+    let files = [
+        (
+            "src/a.rs",
+            "pub const HOLD: &str = \"MOAI_TEST_INIT_HOLD_MS\";\nfn a() {\n    #[cfg(debug_assertions)]\n    if let Some(ms) = std::env::var(HOLD).ok() {}\n}\n",
+        ),
+        (
+            "src/b.rs",
+            "fn b() {\n    let v = std::env::var(crate::a::HOLD);\n}\n",
+        ),
+        (
+            "src/c.rs",
+            "fn c() {\n    let v = std::env::var_os(\"MOAI_TEST_INIT_HOLD_MS\");\n}\n",
+        ),
+        (
+            "src/d.rs",
+            "fn d() {\n    // gate comment\n    #[cfg(debug_assertions)]\n    // the read\n    let v = std::env::var(\n        HOLD,\n    );\n}\n",
+        ),
+        (
+            "src/e.rs",
+            "// std::env::var(HOLD) in a comment\nfn e() {\n    let v = std::env::var(\"MOAI_TEST_OTHER\");\n    let w = std::env::var(NOT_A_SEAM);\n    let c = std::env::vars();\n}\n",
+        ),
+        (
+            "src/deep/f.rs",
+            "pub(crate) const FAIL: &str = \"MOAI_TEST_INIT_FAIL_AFTER_PROFILE\";\nfn f() {\n    if std::env::var_os(FAIL).is_some() {}\n}\n",
+        ),
+    ]
+    .map(|(p, t)| (p.to_string(), t.to_string()));
+    let at = |file: &str, line: usize, var: &'static str, gated: bool| SeamRead {
+        var,
+        file: file.to_string(),
+        line,
+        gated,
+    };
+    assert_eq!(
+        seam_reads_in(&files),
+        [
+            at("src/a.rs", 4, "MOAI_TEST_INIT_HOLD_MS", true),
+            at("src/b.rs", 2, "MOAI_TEST_INIT_HOLD_MS", false),
+            at("src/c.rs", 2, "MOAI_TEST_INIT_HOLD_MS", false),
+            at("src/d.rs", 5, "MOAI_TEST_INIT_HOLD_MS", true),
+            at(
+                "src/deep/f.rs",
+                3,
+                "MOAI_TEST_INIT_FAIL_AFTER_PROFILE",
+                false
+            ),
+        ],
+        "a read by the string or by a constant of another file is found; a comment, another \
+         variable, an unknown name and `env::vars` are not"
+    );
+}
+
+#[test]
+fn src_texts_reads_nested_rs_files_only() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let root = dir.path();
+    for (rel, text) in [
+        ("src/a.rs", "a"),
+        ("src/deep/er/b.rs", "b"),
+        ("src/notes.md", "c"),
+        ("tests/t.rs", "d"),
+    ] {
+        let path = root.join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, text).unwrap();
+    }
+    let got: Vec<String> = src_texts(root).into_iter().map(|(p, _)| p).collect();
+    assert_eq!(got, ["src/a.rs", "src/deep/er/b.rs"]);
+}
+
+#[test]
+fn each_seam_variable_is_read_once_in_src_and_under_the_debug_gate() {
+    let reads = seam_reads_in(&src_texts(Path::new(MANIFEST)));
+    let mut problems = Vec::new();
+    for var in SEAM_VARS {
+        let mine: Vec<&SeamRead> = reads.iter().filter(|r| r.var == var).collect();
+        if mine.len() != 1 {
+            let at: Vec<String> = mine
+                .iter()
+                .map(|r| format!("{}:{}", r.file, r.line))
+                .collect();
+            problems.push(format!(
+                "{var} is read {} times in src, not once: {}",
+                mine.len(),
+                at.join(", ")
+            ));
+        }
+        for r in mine.iter().filter(|r| !r.gated) {
+            problems.push(format!(
+                "{}:{}: the read of {var} is not directly under #[cfg(debug_assertions)]",
+                r.file, r.line
+            ));
+        }
+    }
+    assert!(
+        problems.is_empty(),
+        "a release build must not read a test-only seam:\n{}",
+        problems.join("\n")
+    );
+}
+
 /// An old-layout fixture text, as a listed file holds it: it builds the earlier folder first.
 fn fixture_text() -> String {
     format!(
