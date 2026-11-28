@@ -999,21 +999,51 @@ fn table_never_prints_an_unverified_cell_as_yes() {
             .unwrap_or_else(|| panic!("no row {feature}"))["cells"][column]
             .clone()
     };
-    // The cells the SPEC's research could not read from the docs, or only inferred.
-    for (feature, column) in [
+    // The cells no page states: the SPEC's research could not read them or only inferred them, and
+    // the seven pages behind them were read again on 2026-11-28 (slice 3) and still do not say.
+    let unverified = [
         ("cross_session_same_machine", "gateway"),
         ("cross_session_same_machine", "cloud"),
         ("cross_session_other_machine", "desktop"),
         ("cross_session_other_machine", "vscode"),
         ("output_styles", "gateway"),
+        ("output_styles", "cloud"),
         ("rate_limit_status_line", "desktop"),
+        ("rate_limit_status_line", "vscode"),
+        ("rate_limit_status_line", "cloud"),
         ("artifacts", "vscode"),
-    ] {
+        ("artifacts", "cloud"),
+    ];
+    for (feature, column) in unverified {
+        let c = cell(feature, column);
+        assert_eq!(c["value"], "unverified", "{feature}/{column}");
         assert_eq!(
-            cell(feature, column)["value"],
-            "unverified",
-            "{feature}/{column}"
+            cell_text(&c, "read_at"),
+            "2026-11-28",
+            "{feature}/{column}: re-read"
         );
+        assert!(
+            cell_text(&c, "docs").ends_with(".md"),
+            "{feature}/{column}: {c}"
+        );
+        assert!(
+            cell_text(&c, "line").len() > 40,
+            "{feature}/{column}: the line says what the pages say instead: {c}"
+        );
+    }
+    // No other cell is unverified: a new unverified cell is added to the list above on purpose,
+    // and a cell the docs state keeps the day it was read.
+    for row in rows {
+        for column in COLUMNS {
+            let c = &row["cells"][column];
+            let listed = unverified
+                .iter()
+                .any(|(f, col)| row["feature"] == *f && column == *col);
+            assert_eq!(c["value"] == "unverified", listed, "{row}: {column}");
+            if !listed {
+                assert_eq!(cell_text(c, "read_at"), "2026-11-27", "{row}: {column}");
+            }
+        }
     }
     // A cell the docs state outright keeps its value.
     assert_eq!(cell("remote_control", "cli")["value"], "yes");

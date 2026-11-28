@@ -3,32 +3,51 @@
 //! table "능력 표" of the SPEC). A cell is `yes`, `no`, `partial` or `unverified`; a cell whose
 //! basis the research only inferred, or could not read, is `unverified` and never `yes`. `docs`
 //! names the page, `line` the quoted line or the section it came from (or says that the SPEC
-//! kept only the row), and `read_at` the day of the reading.
+//! kept only the row), and `read_at` the day of the reading. The eleven cells that were
+//! `unverified` in slice 2 had their pages read again on 2026-11-28 (slice 3): none of the seven
+//! pages states them, so they stay `unverified` and `line` says what the pages say instead.
 
 use super::{Check, State};
 use serde_json::{json, Map, Value};
 
-/// The day the pages were read (the SPEC's evidence table).
+/// The day the pages of the SPEC's evidence table were read.
 const READ_AT: &str = "2026-11-27";
+/// The day the pages behind the cells that stayed `unverified` were read again (slice 3).
+const RE_READ_AT: &str = "2026-11-28";
 
 /// The hosts, in the column order of the table.
 pub(super) const COLUMNS: [&str; 5] = ["cli", "gateway", "desktop", "vscode", "cloud"];
 
-/// One cell: its value, the page and the line (or section) it came from.
+/// One cell: its value, the page and the line (or section) it came from, and the day it was read.
 struct Cell {
     value: &'static str,
     docs: &'static str,
     line: &'static str,
+    read_at: &'static str,
 }
 
 const fn cell(value: &'static str, docs: &'static str, line: &'static str) -> Cell {
-    Cell { value, docs, line }
+    Cell {
+        value,
+        docs,
+        line,
+        read_at: READ_AT,
+    }
+}
+
+/// A cell whose pages were read again and still do not state it: `unverified`, and `line` says
+/// what the pages say instead (SPEC-20261127-doctor-moai-layer slice 3, REQ-12).
+const fn not_stated(docs: &'static str, line: &'static str) -> Cell {
+    Cell {
+        value: "unverified",
+        docs,
+        line,
+        read_at: RE_READ_AT,
+    }
 }
 
 /// For a cell whose page section the research did not keep.
 const ROW_ONLY: &str = "the SPEC evidence table kept this row; the page section was not kept";
-/// For a cell the docs do not state.
-const NOT_STATED: &str = "not stated in the pages that were read";
 
 struct Row {
     feature: &'static str,
@@ -56,10 +75,9 @@ fn rows() -> [Row; 8] {
             feature: "cross_session_same_machine",
             cells: [
                 cell("yes", "cross-session-messaging.md", "Availability"),
-                cell(
-                    "unverified",
+                not_stated(
                     "cross-session-messaging.md",
-                    "\"available on every provider\" was read, but not for the gateway column itself",
+                    "Availability says \"available on every provider, including Amazon Bedrock, Claude Platform on AWS, Google Cloud's Agent Platform, and Microsoft Foundry\" and names no gateway; llm-gateway-connect.md never mentions cross-session messaging",
                 ),
                 cell(
                     "partial",
@@ -67,10 +85,9 @@ fn rows() -> [Row; 8] {
                     "\"local, SSH, and WSL sessions\"",
                 ),
                 cell("yes", "cross-session-messaging.md", "Availability"),
-                cell(
-                    "unverified",
+                not_stated(
                     "cross-session-messaging.md",
-                    "only inferred, not stated",
+                    "no line covers a cloud session messaging a session on its own machine; the page only says a cloud session can't use SendMessage to answer a message from another machine",
                 ),
             ],
         },
@@ -83,8 +100,14 @@ fn rows() -> [Row; 8] {
                     "needs Remote Control (Availability)",
                 ),
                 cell("no", "cross-session-messaging.md", ROW_ONLY),
-                cell("unverified", "cross-session-messaging.md", NOT_STATED),
-                cell("unverified", "cross-session-messaging.md", NOT_STATED),
+                not_stated(
+                    "cross-session-messaging.md",
+                    "no line gives the desktop app availability for sessions beyond this machine; the only desktop line is about the approval dialog (\"A session in the VS Code extension or the Desktop app can't show the dialog\"), and desktop.md names cross-session messaging without saying which machines",
+                ),
+                not_stated(
+                    "cross-session-messaging.md",
+                    "no line gives the VS Code extension availability for sessions beyond this machine; the only such line is about the approval dialog (\"A session in the VS Code extension or the Desktop app can't show the dialog\"), and vs-code.md has no line on messaging another machine",
+                ),
                 cell(
                     "partial",
                     "cross-session-messaging.md",
@@ -120,10 +143,16 @@ fn rows() -> [Row; 8] {
             feature: "output_styles",
             cells: [
                 cell("yes", "output-styles.md", ROW_ONLY),
-                cell("unverified", "output-styles.md", NOT_STATED),
+                not_stated(
+                    "output-styles.md",
+                    "the page names no gateway or ANTHROPIC_BASE_URL, and llm-gateway-connect.md never mentions output styles",
+                ),
                 cell("partial", "output-styles.md", ROW_ONLY),
                 cell("yes", "output-styles.md", "since 2.1.257"),
-                cell("unverified", "output-styles.md", NOT_STATED),
+                not_stated(
+                    "output-styles.md",
+                    "the page has no line about Claude Code on the web; the nearest line is about Remote Control from the mobile app or web, where only the built-in styles can be listed and selected (/output-style, v2.1.269 or later)",
+                ),
             ],
         },
         Row {
@@ -135,9 +164,18 @@ fn rows() -> [Row; 8] {
                     "feature-availability.md",
                     "read as an exclusion in Features that require a Claude subscription",
                 ),
-                cell("unverified", "statusline.md", NOT_STATED),
-                cell("unverified", "statusline.md", NOT_STATED),
-                cell("unverified", "statusline.md", NOT_STATED),
+                not_stated(
+                    "statusline.md",
+                    "the page never mentions the desktop app, and desktop.md names no status line or 5-hour or 7-day limit (its \"Check usage\" section describes a usage ring)",
+                ),
+                not_stated(
+                    "statusline.md",
+                    "the page never mentions VS Code; vs-code.md shows plan usage bars in the /usage dialog, not in a status line",
+                ),
+                not_stated(
+                    "statusline.md",
+                    "the page never mentions Claude Code on the web or cloud sessions; it says rate_limits appears only for claude.ai Pro, Max and Ultra subscribers or behind a Claude apps gateway that sets a spend limit",
+                ),
             ],
         },
         Row {
@@ -146,15 +184,21 @@ fn rows() -> [Row; 8] {
                 cell("yes", "artifacts.md", "Availability"),
                 cell("no", "artifacts.md", "Availability"),
                 cell("yes", "artifacts.md", "Availability"),
-                cell("unverified", "artifacts.md", NOT_STATED),
-                cell("unverified", "artifacts.md", NOT_STATED),
+                not_stated(
+                    "artifacts.md",
+                    "the Availability \"Surface\" row names the Claude Code CLI, the Claude desktop app, Claude Tag and claude remote-control sessions, and the words VS Code appear nowhere in the page; a surface that is not listed is not stated as unsupported; vs-code.md has no line on artifacts",
+                ),
+                not_stated(
+                    "artifacts.md",
+                    "the page names a cloud session only for deleting (\"outside a cloud session\") and for reading a shared artifact, and no line says a cloud session can publish; the Availability \"Surface\" row does not list web or cloud",
+                ),
             ],
         },
     ]
 }
 
 fn cell_json(c: &Cell) -> Value {
-    json!({ "value": c.value, "docs": c.docs, "line": c.line, "read_at": READ_AT })
+    json!({ "value": c.value, "docs": c.docs, "line": c.line, "read_at": c.read_at })
 }
 
 /// The host column the process runs under: `gateway` when `ANTHROPIC_BASE_URL` names a host other
@@ -208,7 +252,6 @@ pub(super) fn host_check(host: &'static str) -> Check {
 pub(super) fn table() -> Value {
     json!({
         "columns": COLUMNS,
-        "read_at": READ_AT,
         "rows": rows()
             .iter()
             .map(|row| {
