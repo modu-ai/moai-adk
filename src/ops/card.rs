@@ -222,7 +222,10 @@ enum Action {
     ///
     /// Writes the ledger. A `draft` (or `hold`) card becomes `ready`, with one `card.ready` event.
     /// A card with no `open` or `met` criterion is refused and the answer names `card criterion-add`:
-    /// such a card could never be closed. The ledger must already exist.
+    /// such a card could never be closed. A `hold` card that names a SPEC without a relation is
+    /// refused with `conflict in spec` while that SPEC has another open card (a card that is
+    /// neither `done` nor `hold`): add a new card with `card add --spec <SPEC> --follow-up`, or add
+    /// the work to the open card with `card criterion-add`. The ledger must already exist.
     Ready {
         /// `C-12`.
         card: String,
@@ -569,7 +572,11 @@ enum Action {
     /// `.moai/specs` and pass `moai spec check` without an error; it is only read, and it never
     /// names the card: the link lives in this machine's ledger. `card next` and `card take` then
     /// print the SPEC's status and warn while a card that changes the repository (any kind but
-    /// `research` and `audit`) has no approved SPEC. The same link again writes nothing.
+    /// `research` and `audit`) has no approved SPEC. The same link again writes nothing. Linking a
+    /// card that is neither `done` nor `hold` to a SPEC that has another open card is refused with
+    /// `conflict in spec`; `--unlink` and the link of a `done` or `hold` card are not. Add a new
+    /// card with `card add --spec <SPEC> --follow-up`, or add the work to the open card with `card
+    /// criterion-add`.
     Spec {
         /// `C-12`.
         card: String,
@@ -1294,7 +1301,12 @@ enum Action {
     /// `work_flow.land_verdict`. `--keep-open` lands a slice instead: the landing is recorded
     /// (`card.landed` with `keep_open` true), nothing is closed and the answer names the open
     /// criteria; the mode of `land_verdict` still judges the verdict, and `--keep-open` is refused
-    /// with a `--met` option or on a card with no open criterion.
+    /// with a `--met` option or on a card with neither an open criterion nor a hold. A head whose
+    /// verdicts hold criteria open (`card verdict --open`) lands as such a slice: no criterion is
+    /// marked met, a held one that is met is open again, no `--met` is taken and the answer lists
+    /// them under `held`. A rerun of a head the branch already holds also reads the holds of the
+    /// head itself and, for a merge, of its second parent. A rerun that closes after a hold was
+    /// released judges the verdicts again; it never relies on a PASS that held.
     Land {
         /// The card to land (`C-12`).
         card: String,
@@ -1391,8 +1403,12 @@ enum Action {
     /// or `fail`, the tier the reviewer judged (0 to 2), the evidence (one line that passes the
     /// secret screen) and, for a PASS above tier 0, the check receipt (`--receipt-head` and
     /// `--receipt-step NAME=EXIT` for each step). The reviewer is the session id the host sets;
-    /// no option names one. The same call again writes nothing and answers the first event.
+    /// no option names one. The same call again writes nothing and answers the event it wrote,
+    /// unless it changes what a PASS of this reviewer holds on the head now.
     /// `card land` reads these events and lands a head only on an independent PASS of it.
+    /// `--open N` (PASS only, repeatable) holds criterion N open: the landing marks no criterion
+    /// met and keeps the card open until the same reviewer records a PASS of that head without
+    /// it.
     Verdict {
         /// The card the audit belongs to (`C-12`).
         card: String,
@@ -1417,6 +1433,9 @@ enum Action {
         /// One step of the receipt, `NAME=EXIT`; repeat for each step.
         #[arg(long = "receipt-step", requires = "receipt_head")]
         receipt_step: Vec<String>,
+        /// A criterion this PASS holds open; repeat for each.
+        #[arg(long = "open", value_parser = clap::value_parser!(i64).range(1..))]
+        open: Vec<i64>,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -2408,6 +2427,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             evidence,
             receipt_head,
             receipt_step,
+            open,
             project,
             home,
         } => {
@@ -2425,6 +2445,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                     evidence: &evidence,
                     receipt_head: receipt_head.as_deref(),
                     steps: &receipt_step,
+                    open: &open,
                 },
             )
         }

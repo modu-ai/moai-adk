@@ -425,8 +425,10 @@ pub fn new_request_id(operation: &str, plan_digest: &str) -> String {
 /// recorded for traceability; a resolver failure never fails the apply.
 fn identity_fields(root: &Path) -> (Option<String>, Option<String>) {
     // The environment HOME is read here, as `claim::journal_root` reads it, so a HOME whose state
-    // root is refused keeps being refused (SPEC-20261124-identity-home-arg D-13).
-    match identity::identity_in(root, crate::layout::environment_home().as_deref()) {
+    // root is refused keeps being refused (SPEC-20261124-identity-home-arg D-13); it is also the
+    // process HOME given with it (D-17).
+    let home = crate::layout::environment_home();
+    match identity::identity_in_from(root, home.as_deref(), home.as_deref()) {
         Ok(v) if v["identity_status"] == "ok" => (
             v["clone_id"].as_str().map(str::to_string),
             v["workspace_id"].as_str().map(str::to_string),

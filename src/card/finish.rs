@@ -26,6 +26,7 @@ use super::input::{self, CardRef};
 use super::land::check;
 use super::landed::{self, Containment};
 use super::spec_link;
+use crate::ledger::partial;
 use crate::ledger::reservation::Reservation;
 use crate::ledger::workflow::{self, FinishEvidence, WorkflowError, MAX_AUTHOR_CHARS};
 use crate::ledger::LedgerError;
@@ -408,6 +409,16 @@ pub fn finish(
     };
     // A landing-only call applied no met option, so it reports none.
     let applied: &[(i64, String)] = if done.closed { &met } else { &[] };
+    // The open criteria that a passing audit note of the landed head names by number: a pointer
+    // for the person who finishes the card (`--met N=<note ref>`), never a proof. A close, a
+    // merged pull request and a report have none to name.
+    let candidates = match &head {
+        Some(head) if !done.open_criteria.is_empty() => {
+            partial::met_candidates(ledger.conn(), card_id, head, &done.open_criteria)
+                .map_err(|e| e.to_string())?
+        }
+        _ => Vec::new(),
+    };
     // The close wrote this card's cleanup request; the executor takes it, and every older pending
     // one, after the close and never undoes it (SPEC-20261123-cleanup-outbox REQ-12).
     let outbox = if done.closed {
@@ -425,6 +436,10 @@ pub fn finish(
         "name": input::card_name(card_id), "card_id": card_id,
         "from": done.from, "state": done.state, "rev": done.rev, "closed_at": done.closed_at,
         "closed": done.closed, "open_criteria": done.open_criteria,
+        "met_candidates": candidates
+            .iter()
+            .map(|c| json!({"criterion": c.criterion, "note": c.note}))
+            .collect::<Vec<_>>(),
         "via": via, "head": head, "tip": tip, "report": report, "note": note,
         "met": applied.iter().map(|(seq, text)| json!({"seq": seq, "evidence": text})).collect::<Vec<_>>(),
         "by": req.by, "session": req.session,

@@ -397,12 +397,6 @@ fn land_inner(
         rows.collect::<std::result::Result<_, _>>()
             .map_err(sql_err)?
     };
-    if req.keep_open && open.is_empty() {
-        return Err(unchanged(format!(
-            "{name} has no open criterion, so --keep-open has nothing to keep open: land without it"
-        )));
-    }
-
     // The head the verdict check reads: the audited head a batch names, the second parent of a
     // clean merge the card has a verdict on (SPEC-20261125-land-closes-audited-merge), or the
     // candidate itself.
@@ -435,6 +429,50 @@ fn land_inner(
         Containment::Inside | Containment::Outside => {}
     }
     let standing = landed::standing(project, req.head, &tip).map_err(unchanged)?;
+
+    // The criteria the verdicts hold open (SPEC-20261126-land-open-criteria): such a head lands as
+    // a slice, whatever the criteria say, and no --met option goes with it. A verdict recorded
+    // since the first landing can change which head the check reads, so a rerun of a head the
+    // branch holds also keeps what is held on the head itself and on the second parent of a
+    // merge: the heads a first landing of this commit reads.
+    let second = match standing {
+        Standing::Inside => check::second_parent(project, req.head).map_err(unchanged)?,
+        _ => None,
+    };
+    let mut hold_heads = vec![verdict_head];
+    if standing == Standing::Inside {
+        hold_heads.push(req.head);
+        hold_heads.extend(second.as_deref());
+    }
+    let holds = check::held(ledger.conn(), card_id, &hold_heads).map_err(unchanged)?;
+    if req.keep_open && open.is_empty() && holds.is_empty() {
+        return Err(unchanged(format!(
+            "{name} has no open criterion, so --keep-open has nothing to keep open: land without it"
+        )));
+    }
+    if !holds.is_empty() && !met.is_empty() {
+        let named: Vec<String> = holds
+            .iter()
+            .map(|h| {
+                format!(
+                    "criterion {} (verdict event {} of {} on {})",
+                    h.seq,
+                    h.event,
+                    h.reviewer,
+                    &h.head[..12]
+                )
+            })
+            .collect();
+        return Err(unchanged(format!(
+            "the verdicts of the landing hold {} open, so the landing marks no criterion met: \
+             leave --met out, or have each reviewer record a new PASS of that head without --open",
+            named.join(", ")
+        )));
+    }
+    let mut held: Vec<i64> = holds.iter().map(|h| h.seq).collect();
+    held.dedup();
+    let keep_open = req.keep_open || !held.is_empty();
+
     let mut follow_plan: Option<follow::Plan> = None;
     match standing {
         Standing::Inside => {}
@@ -489,13 +527,16 @@ fn land_inner(
         &evidence,
         &met,
         req.generation,
+        &held,
     )
     .map_err(finish_refusal)?;
 
     // The audit verdict (SPEC-20261123-landing-reads-verdict): read before the first write. A head
     // the branch already holds is closed on the verdict its start row names; a head that still
-    // stands on the tip has moved nothing, so its verdicts are judged again (REQ-15, REQ-24). In
-    // observe mode a refusal is only reported, and the landing goes on as it did before the check.
+    // stands on the tip has moved nothing, so its verdicts are judged again (REQ-15, REQ-24). So
+    // are they when a closing call finds nothing held and the start row's PASS held a criterion
+    // (SPEC-20261126-land-open-criteria). In observe mode a refusal is only reported, and the
+    // landing goes on as it did before the check.
     let mode = check::mode(project).map_err(unchanged)?;
     let input = check::Input {
         project,
@@ -507,15 +548,22 @@ fn land_inner(
         on_tip: standing == Standing::OnTip,
         lander: req.session,
     };
+    let reading = if keep_open {
+        check::read(&input, mode)
+    } else {
+        check::read_for_close(&input, mode)
+    };
     let check::Reading {
         relied,
         would_refuse,
-    } = check::read(&input, mode).map_err(unchanged)?;
+    } = reading.map_err(unchanged)?;
 
     // A landing that closes the card needs the PASS the check relies on, in every mode
     // (SPEC-20261124-land-closes-card REQ-4): `no_pass` for a head with no usable verdict, the
     // check's own code and reason for a FAIL or anything else it found. A slice (`--keep-open`)
-    // goes on as the mode says. Nothing has been written yet.
+    // goes on as the mode says. A held head asked to close needs that PASS too, so a hold lets
+    // through nothing that was refused before it, and it fills no criterion. Nothing has been
+    // written yet.
     let met = if req.keep_open {
         met
     } else {
@@ -530,9 +578,11 @@ fn land_inner(
         };
         let line = format!("verdict event {event} PASS head {}", &verdict_head[..12]);
         let mut filled = met;
-        for seq in &open {
-            if !filled.iter().any(|(named, _)| named == seq) {
-                filled.push((*seq, line.clone()));
+        if held.is_empty() {
+            for seq in &open {
+                if !filled.iter().any(|(named, _)| named == seq) {
+                    filled.push((*seq, line.clone()));
+                }
             }
         }
         // The same checks again with the criteria filled, still before the first write.
@@ -544,6 +594,7 @@ fn land_inner(
             &evidence,
             &filled,
             req.generation,
+            &held,
         )
         .map_err(finish_refusal)?;
         filled
@@ -585,6 +636,7 @@ fn land_inner(
             &evidence,
             &met,
             req.generation,
+            &held,
             &branch,
             &tip,
             relied.as_ref(),
@@ -649,7 +701,8 @@ fn land_inner(
         &met,
         req.generation,
         workflow::LandedVerdict::Relied(relied.as_ref()),
-        req.keep_open,
+        keep_open,
+        &held,
     )
     .map_err(|e| {
         if moved {
@@ -716,6 +769,13 @@ fn land_inner(
     }
     if let Some(refusal) = would_refuse {
         answer["would_refuse"] = refusal;
+    }
+    if !holds.is_empty() {
+        answer["held"] = holds
+            .iter()
+            .map(check::Hold::json)
+            .collect::<Vec<_>>()
+            .into();
     }
     Ok(answer)
 }

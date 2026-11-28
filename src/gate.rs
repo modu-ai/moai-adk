@@ -286,6 +286,7 @@ pub const TIER2_PREFIXES: &[&str] = &[
     "tools/self_check.sh",
     "tools/review_checklist.json",
     "src/audit_gate.rs",
+    "src/review_names",
     "REVIEW.md",
     "agents/audit.md",
     "skills/moai/workflows/audit.md",
@@ -306,16 +307,15 @@ fn tier0_safe(path: &str) -> bool {
             && name != "CLAUDE.md")
 }
 
-/// The audit tier a PR body declares (#2906 T): among its first 10 lines, the first that
-/// starts with `audit-tier:` decides, and it counts only as exactly `audit-tier: 0`, `1` or
+/// The tier a PR body declares (#2906 T): among its first 10 lines, the first that starts with
+/// `audit-tier:` or `review-tier:` decides, and it counts only as exactly `<marker>: 0`, `1` or
 /// `2` followed by the end of the line or a space (the reason). Anything else is `None`.
 pub fn parse_body_tier(body: &str) -> Option<u8> {
-    let line = body
-        .lines()
-        .take(10)
-        .find(|l| l.starts_with("audit-tier:"))?;
+    let line = body.lines().take(10).find(|l| {
+        crate::review_names::starts_with_any(l, &crate::review_names::TIER_MARKERS, ":")
+    })?;
     let line = line.strip_suffix('\r').unwrap_or(line);
-    let rest = line.strip_prefix("audit-tier: ")?;
+    let rest = crate::review_names::strip_any(line, &crate::review_names::TIER_MARKERS, ": ")?;
     let mut chars = rest.chars();
     let tier = match chars.next()? {
         '0' => 0,
@@ -665,10 +665,12 @@ fn is_hex40(s: &str) -> bool {
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
-/// A verdict is a comment whose first line starts with `AUDIT #`; a line quoted further down
-/// (a repair note, a merge record) is never a verdict (audit 6850181707 B1).
+/// A verdict is a comment whose first line starts with `AUDIT #` or `REVIEW #`; a line quoted
+/// further down (a repair note, a merge record) is never a verdict (audit 6850181707 B1).
 pub fn verdict_line(body: &str) -> Option<&str> {
-    body.lines().next().filter(|l| l.starts_with("AUDIT #"))
+    body.lines()
+        .next()
+        .filter(|l| crate::review_names::starts_verdict(l, " #"))
 }
 
 /// `(head, base, verdict)` from a verdict line `… head <40hex> base <40hex> — verdict: <V>`.
@@ -746,10 +748,13 @@ pub fn format_verdict_line(
 }
 
 /// The auditor of a verdict: the first lane name (`agent-N`, `pr-N`, with an optional
-/// `-suffix`) after the `AUDIT #` line. A lane named further on is not the author (owner_ok).
+/// `-suffix`) after the `AUDIT #` or `REVIEW #` line. A lane named further on is not the author
+/// (owner_ok).
 pub fn auditor(body: &str) -> Option<String> {
     let mut lines = body.lines();
-    lines.next().filter(|l| l.starts_with("AUDIT #"))?;
+    lines
+        .next()
+        .filter(|l| crate::review_names::starts_verdict(l, " #"))?;
     let rest: String = lines.collect::<Vec<_>>().join("\n");
     let b = rest.as_bytes();
     let mut i = 0;
@@ -797,7 +802,11 @@ pub fn audit_claims(comments: &[Comment]) -> Vec<(u64, String, String)> {
         .iter()
         .filter_map(|c| {
             let first = c.body.lines().next()?;
-            let rest = first.strip_prefix("moai-audit-claim 철회: ")?;
+            let rest = crate::review_names::strip_any(
+                first,
+                &crate::review_names::CLAIM_MARKERS,
+                " 철회: ",
+            )?;
             let open = rest.find('(')?;
             let close = rest[open..].find(')')? + open;
             let lane = rest[..open].trim().to_string();
@@ -808,7 +817,11 @@ pub fn audit_claims(comments: &[Comment]) -> Vec<(u64, String, String)> {
         .iter()
         .filter_map(|c| {
             let first = c.body.lines().next()?;
-            let rest = first.strip_prefix("moai-audit-claim: lane=")?;
+            let rest = crate::review_names::strip_any(
+                first,
+                &crate::review_names::CLAIM_MARKERS,
+                ": lane=",
+            )?;
             let lane: String = rest
                 .chars()
                 .take_while(|ch| ch.is_ascii_alphanumeric() || *ch == '-')
@@ -848,9 +861,15 @@ pub fn audit_claims(comments: &[Comment]) -> Vec<(u64, String, String)> {
 /// `moai-audit-withdraw: lane=<lane>` or `moai-audit-claim-withdraw: lane=<lane>`.
 pub fn lane_withdrawal(body: &str) -> Option<String> {
     let first = body.lines().next()?;
-    let rest = first
-        .strip_prefix("moai-audit-withdraw: lane=")
-        .or_else(|| first.strip_prefix("moai-audit-claim-withdraw: lane="))?;
+    let rest =
+        crate::review_names::strip_any(first, &crate::review_names::WITHDRAW_MARKERS, ": lane=")
+            .or_else(|| {
+                crate::review_names::strip_any(
+                    first,
+                    &crate::review_names::CLAIM_WITHDRAW_MARKERS,
+                    ": lane=",
+                )
+            })?;
     let lane: String = rest
         .chars()
         .take_while(|ch| ch.is_ascii_alphanumeric() || *ch == '-')
@@ -899,7 +918,10 @@ fn no_verdict_reason(s: &Snapshot) -> String {
         .iter()
         .filter(|c| crate::comment_authority::is_member(&c.author_association))
         .filter_map(|c| c.body.lines().next())
-        .rfind(|l| l.trim_start().starts_with("AUDIT") && !l.starts_with("AUDIT #"))
+        .rfind(|l| {
+            crate::review_names::starts_with_verdict_word(l.trim_start())
+                && !crate::review_names::starts_verdict(l, " #")
+        })
         .map(|l| {
             // A comment can carry a credential-shaped line: mask it before it is named at all,
             // then cut — the cut never sees the secret's own characters (audit B1).
@@ -1499,7 +1521,10 @@ pub fn reads_summary(s: &Snapshot) -> serde_json::Value {
     let lookalike: Vec<serde_json::Value> = s
         .comments
         .iter()
-        .filter(|c| c.body.trim_start().starts_with("AUDIT") && verdict_line(&c.body).is_none())
+        .filter(|c| {
+            crate::review_names::starts_with_verdict_word(c.body.trim_start())
+                && verdict_line(&c.body).is_none()
+        })
         .map(|c| {
             // A comment can carry a credential-shaped line: mask it before it is named at all,
             // then cut — the cut never sees the secret's own characters (audit B1).

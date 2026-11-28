@@ -520,7 +520,7 @@ fn record_name(home: &Path, host: &str) -> Result<String> {
         "rust" | "rust-first"
     ) {
         return Err(format!(
-            "{} is not the default {host} folder, so moai writes nothing to its output style here; next: run env -u CLAUDE_CONFIG_DIR moai update to update the default folder, or link {} to {} and run moai update again",
+            "{} is not the default {host} folder and this HOME is still set up by an earlier moai, so moai writes nothing to its output style here; next: run env -u CLAUDE_CONFIG_DIR moai update to update the default folder, or link {} to {} and run moai update again",
             folder.display(),
             folder.join("output-styles").display(),
             home.join(h.default_dir()).join("output-styles").display()

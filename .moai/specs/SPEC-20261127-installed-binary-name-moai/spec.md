@@ -127,4 +127,18 @@ approval:
 
 ## Result
 
-(구현 전. 이 SPEC 은 초안이고 승인과 구현이 남아 있어요.)
+조각 1(Rust 이름 검사)과 조각 2(설치 스크립트 둘과 `install/README.md`)까지 구현했어요. 조각 3(AC-9)과 조각 4(AC-10~AC-12)는 남았어요.
+
+- AC-1: met — `ac1_an_archive_with_both_files_installs_bin_moai_alone`(tests/install_cli.rs), 두 번째 실행은 아무것도 쓰지 않아요.
+- AC-2: met — `ac2_an_archive_with_moai_cli_only_installs_it_as_bin_moai`.
+- AC-3: met — `ac3_an_archive_with_neither_file_stops_before_writing`.
+- AC-4: met — `ac4_the_link_folder_gets_moai_only_and_keeps_an_earlier_moai_cli_link`. `install.ps1` 은 같은 규칙을 `pwsh` 로 이 Mac 에서 돌렸고(`ps1_installs_bin_moai_alone_and_stops_on_an_archive_without_it_when_pwsh_exists`), Windows 의 `.zip`·`.exe`·복사본은 not_run 이에요.
+- AC-5: met — `ac5_only_moai_is_unchanged_by_the_plan_and_by_update`(tests/bin_names_cli.rs).
+- AC-6: met — `ac6_no_name_state_makes_or_refreshes_a_moai_cli`(핀).
+- AC-7: met — `ac7_a_new_folder_with_moai_alone_finds_the_earlier_receipt`(핀, 구현 전에도 통과해요).
+- AC-8: met — `ac8_a_name_left_in_place_is_listed_and_never_touched`와 요약 줄의 단위 테스트 `the_summary_names_each_command_name_left_in_place`.
+- AC-9: not_run — 조각 3.
+- AC-10: not_run — 조각 4.
+- AC-11: not_run — 조각 4.
+- AC-12: not_run — 조각 4.
+- AC-13: met — `moai spec check` 오류 0.

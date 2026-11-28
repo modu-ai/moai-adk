@@ -188,6 +188,20 @@ pub fn list_filtered(
     for row in rows {
         cards.push(row.map_err(|e| LedgerError::from(e).to_string())?);
     }
+    // A card that landed and keeps open criteria is a partial landing: two keys more, only on
+    // such a card (the other cards keep exactly the keys they had).
+    let partial: HashMap<i64, i64> = ledger::partial::partial_landings(conn)
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .map(|p| (p.card_id, p.open_criteria))
+        .collect();
+    for card in &mut cards {
+        let left = card["card_id"].as_i64().and_then(|n| partial.get(&n));
+        if let Some(left) = left {
+            card["partial_landing"] = json!(true);
+            card["open_criteria"] = json!(left);
+        }
+    }
     Ok(json!({
         "action": "list", "project_id": id, "ledger": "ready",
         "count": cards.len(), "cards": cards, "writes": false,

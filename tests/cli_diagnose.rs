@@ -308,6 +308,26 @@ fn identity_reports_git_failure_separately_from_no_git() {
     }
 }
 
+/// SPEC-20261124-identity-home-arg AC-26 (REQ-36): the edge of the identity command hands over the
+/// process HOME together with the HOME it gives, so the file `GIT_CONFIG_GLOBAL` names still
+/// reaches git: a repository that git counts as owned by another user is refused without that
+/// file (the control) and trusted with it.
+#[test]
+fn home_arg_rest_process_home_callers_keep_the_environment_git_config() {
+    let repo = TempDir::new().unwrap();
+    let home = TempDir::new().unwrap();
+    committed_repo(repo.path());
+    let trust = home.path().join("trusting.gitconfig");
+    fs::write(&trust, "[safe]\n\tdirectory = *\n").unwrap();
+    let owner = ("GIT_TEST_ASSUME_DIFFERENT_OWNER", "1");
+    let (out, _) = ident_env(repo.path(), home.path(), None, &[owner]);
+    assert_eq!(out.status.code(), Some(1), "{:?}", out.stderr);
+    let trusting = ("GIT_CONFIG_GLOBAL", trust.to_str().unwrap());
+    let (out, v) = ident_env(repo.path(), home.path(), None, &[owner, trusting]);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert_eq!(v["identity_status"], json!("ok"));
+}
+
 /// SPEC-20261124-identity-home-arg AC-21 (REQ-25): an unset or empty HOME is no HOME, so the
 /// command names no home state root.
 #[test]

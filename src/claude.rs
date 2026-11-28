@@ -49,7 +49,7 @@ const VERSION_TIMEOUT: Duration = Duration::from_secs(5);
 const VERSION_GROUP_KILLER: &str = "/bin/kill";
 
 /// Outcome of the `claude --version` probe.
-enum VersionProbe {
+pub(crate) enum VersionProbe {
     Found((u32, u32, u32)),
     NoVersion,
     TimedOut { group_signal_sent: bool },
@@ -72,6 +72,13 @@ fn stop_version_probe(child: &mut std::process::Child, _group_kill_program: &Pat
     group_signal_sent
 }
 
+/// Stops a child that was started in its own process group (`process_group(0)`) and has run out
+/// of time: the group is signalled before the leader is reaped, as the version probe does, so a
+/// descendant does not outlive it. Returns whether the signal command acknowledged the request.
+pub(crate) fn stop_process_group(child: &mut std::process::Child) -> bool {
+    stop_version_probe(child, Path::new(VERSION_GROUP_KILLER))
+}
+
 fn timeout_reason(group_signal_sent: bool) -> &'static str {
     if group_signal_sent {
         "claude --version timed out after 5 s; process-group SIGKILL was acknowledged"
@@ -83,7 +90,7 @@ fn timeout_reason(group_signal_sent: bool) -> &'static str {
 /// `claude --version` with a fixed argv, bounded by `VERSION_TIMEOUT`. The probe runs in
 /// its own process group; timeout cleanup signals the group before reaping its
 /// leader and reports whether the system signal command acknowledged the request.
-fn claude_version() -> VersionProbe {
+pub(crate) fn claude_version() -> VersionProbe {
     let mut cmd = Command::new("claude");
     cmd.arg("--version")
         .stdin(Stdio::null())

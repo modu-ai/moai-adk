@@ -83,7 +83,7 @@ Update and move
   star-ask                         The polite star ask
   worktree-move-plan               Preview moving this clone's worktrees
   worktree-move-apply              Move the previewed worktrees
-  update-plan                      Preview an update of every host copy
+  update-plan                      Preview what update writes to host copies
   update-apply                     Apply a previewed update host by host
   reports-move-plan                Preview moving the earlier reports out of the repository
   reports-move-apply               Move the earlier reports out of the repository
@@ -126,12 +126,15 @@ Keys
   models-revert                    Undo the model settings one update saved
 Diagnose
   claude-doctor                    Check that Claude Code reads your own AGENTS.md
+  doctor                           Diagnose the moai layer of your Claude Code setup
   install-inspect                  Show the installed MoAI binaries
   identity                         Show where a path sits in its clone
   worktree-report                  Report the space worktrees use
   optimize-plan                    Preview space that can be freed
   baseline-inventory               List a checkout's baseline facts
   improve-signals                  Read the observed problems of a project as counted classes
+  improve-plan                     Plan lessons for a project skill or agent file
+  improve-note                     Append one observed problem to the project's notes file
 Lane and leader
   claim-acquire                    Claim a task with one Issue comment
   claim-verify                     Check claim ownership before a commit or push
@@ -257,6 +260,7 @@ Internal
   branch-gc-plan                   Preview deleting the merged, unused local branches
   branch-gc-apply                  Delete the previewed local branches
   worktree-slot                    Fixed worktree slots, warmed from the seed
+  worktree-new                     Make a lane worktree in the primary checkout and verify it
   worktree-install-plan            Preview a scoped package install
   hygiene-plan                     Preview what may move to the holding folder
   hygiene-apply                    Move the previewed leftovers to the holding folder

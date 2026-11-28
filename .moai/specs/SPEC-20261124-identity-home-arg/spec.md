@@ -2,13 +2,13 @@
 id: SPEC-20261124-identity-home-arg
 title: "identity takes the HOME as an argument: identity_in, the claim group, then every remaining caller, and the identity adapter removed"
 status: approved
-revision: 6
+revision: 7
 created: 2026-11-24
 approval:
   by: user
   at: 2026-11-27
-  basis: "리더 결정 노트 10791 (카드 C-409, 2026-11-27): 사용자가 리더 세션의 질문 도구로 직접 골랐어요, '확인, 랜딩 (Recommended)'. 개정 6 조각 2b(head 9e5f1f3e29, dana tier 2 전체 리뷰 PASS 노트 10788)의 승인이에요. 위임으로 낸 노트 10231 의 승인을 그대로 인정한다는 선택이에요."
-  digest: "sha256:58a2893eed9f0d48685e3b41a21c46146921b3eed46f7883797bf9aef76cf82e"
+  basis: "리더 결정 노트 10862 (카드 C-409, 2026-11-27): 사용자가 리더 세션의 질문 도구로 직접 골랐어요, '안 1: 인자로 넘김 (Recommended)'. 개정 7(SPEC-READY 노트 10844, 초안 head f95a366c95)의 D-17(안 1)과 REQ-32..37, AC-25..28, 조각 2c-1·2c-2 의 승인이에요."
+  digest: "sha256:e1cc5ae67edee144414383b9655fdff7f5632711c8111bdac7a382556e40911e"
 ---
 
 # identity takes the HOME as an argument: identity_in, the claim group, then every remaining caller, and the identity adapter removed
@@ -23,6 +23,8 @@ approval:
 
 판 6 은 리더 결정 노트 10218 을 반영해요. `apply` 영수증, `audit::observe`, `lane-next` 는 환경 HOME 을 넘겨 지금의 링크 HOME 거절을 지키고, 카드 기준 1 은 not met 으로 두고 착지해요.
 
+판 7(초안, 사용자 승인 전)은 카드 기준 1 의 마지막 남은 읽기를 닫아요: `src/identity.rs` 의 `rev_parse` 가 환경 변수 HOME 을 읽어(`layout::environment_home()`, 줄 126) 받은 HOME 과 비교하는 한 곳이에요. 비교용 '프로세스 HOME' 을 부르는 쪽이 인자로 넘기게 해요. 이 일은 한 줄이 아니에요: 프로세스 HOME 을 이미 쥔 호출부는 여섯 곳이고, 임의의 `home` 매개변수를 받는 호출부(`audit_clone::plan`, `update_hooks::project_of`, `key_vault` 의 `scope_for`·`project_scope_in`·`read_here`, `model_effort_questions::glm_key_step`)는 프로세스 HOME 을 몰라서 인자를 가장자리에서 그 함수들까지 올려야 해요(조사 2026-11-27T12:37Z, 읽기만, 일부 unverified). 그래서 Interview Q11 에 두 안과 비용을 적고, 고르는 것은 사용자 몫으로 둬요. 아래 요구·기준·결정은 추천 안(가장자리에서 올리는 안, 두 조각)을 쓴 초안이에요.
+
 ## Interview
 
 - Q1: `identity` 의 서명을 바로 바꾸나요, 새 함수를 더하나요? → A: 새 함수 `identity_in(path, home)` 를 더하고 `identity(path)` 는 그것을 부르는 가장자리 어댑터로 남겨요(D-1). 서명을 바로 바꾸면 한 번에 16개 파일이 깨져 한 카드·한 감사로 닿기엔 너무 커요.
@@ -35,6 +37,12 @@ approval:
 - Q8: (판 5) `identity` 를 쓰던 테스트는 어떻게 하나요? → A: 환경 HOME 을 드러내어 읽어 `identity_in` 에 넘기거나 `None` 을 넘기도록 고치고, 어댑터 자체를 재던 AC-4 테스트는 지워요(D-14).
 - Q9: (판 5) 기준선은 몇 줄 줄어요? → A: 읽기만으로는 몰라요(unverified). 변경 전후 관찰 실행으로 재요(D-15).
 - Q10: (판 6) 카드 기준 1 은 어떻게 적나요? → A: not met 으로 두고 `card land --keep-open` 으로 착지해요. 비교용 HOME 을 인자로 넘기는 일은 후속 카드예요(리더 결정 노트 10218, D-16).
+- Q11: (판 7) 비교용 프로세스 HOME 을 어떻게 `rev_parse` 까지 가져오나요? → A: 안 1(인자로 넘김)이에요. 사용자가 직접 골랐어요(2026-11-27, 리더 세션의 질문 도구: "안 1: 인자로 넘김 (Recommended)", 리더 결정 노트 10862). 안 2·안 3 은 버렸어요. 세 안의 비교는 바로 아래 세 줄에 있고, 이 카드가 맡는다는 것(후속 카드로 떼지 않아요)은 리더 결정이에요(2026-11-27 메시지).
+안 1(추천): 프로세스 HOME 인자를 가장자리에서 올려요. 새 `identity_in_from(path, home, process_home)`. 바뀌는 파일: 제품 약 14개(아래 조각표 2c-1 여섯 개, 2c-2 여덟 개), 테스트 파일은 세지 않았어요(unverified, 호출 서명이 바뀌는 곳마다). 동작이 달라지는 경우: 없어요(임시 HOME 테스트의 자식 환경도, Windows `USERPROFILE` 경우도 지금과 같아요). 두 조각이 각각 동작을 지키며 착지해요. 이유: SPEC-20261124-home-env-readers D-8 을 그대로 지키고, 임시 HOME 을 쓰는 프로세스 안 테스트가 개발자의 실제 git 설정을 읽지 않아요.
+안 2(작은 안): '넘긴 HOME 은 프로세스 HOME' 을 기본으로 봐요. `rev_parse` 는 비교를 안 하고, HOME 을 받으면 자식이 프로세스 환경을 그대로 써요(HOME 을 덮어쓰지 않아요). 바뀌는 파일: `src/identity.rs` 와 `tests/home_env_readers.rs`, identity.rs 안의 테스트 둘(약 2개). 동작이 달라지는 경우: (1) 임시 HOME 을 넘기는 프로세스 안 테스트(`update_hooks::plan_in`, `audit_clone::plan`, 키 금고 테스트)에서 git 자식이 임시 HOME 의 설정이 아니라 프로세스의 실제 HOME·`XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 을 읽어요 — 테스트가 실제 HOME 을 읽게 돼요. (2) Windows 에서 HOME 이 없어 `key_vault::home()` 이 `USERPROFILE` 을 줄 때, 지금은 자식에게 그 값을 HOME 으로 주고 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 을 지우는데, 그 뒤로는 프로세스 환경을 그대로 써요(Mac 에서 확인 못 함). (3) 이 SPEC 의 Non-goals 가 막은 'git 자식 환경 규칙 바꾸기' 를 하게 돼요. 작지만 위 세 가지 때문에 추천하지 않아요.
+안 3(버림): 넘긴 HOME 이 있으면 늘 HOME 을 덮어쓰고 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 을 지워요. 환경 HOME 을 넘기는 여섯 호출부에서 사용자의 git 설정(`safe.directory` 등)이 사라져 제품 동작이 바뀌어요.
+- Q12: (판 7) 두 조각으로 나누는 까닭은? → A: 조각 2c-1 은 새 함수와 프로세스 HOME 을 이미 쥔 호출부 여섯 곳, 조각 2c-2 는 임의의 `home` 을 받는 호출부와 환경 읽기 제거예요. 2c-1 동안 `identity_in(path, home)` 은 지금처럼 환경 HOME 과 비교해 동작이 그대로이고, 2c-2 가 마지막 `Some(home)` 호출부를 옮긴 뒤에만 그 읽기를 지워요. 각 조각은 따로 착지할 수 있고 동작이 같아요(D-17).
+- Q13: (판 7) 프로세스 HOME 으로 무엇을 넘기나요? → A: 지금 `rev_parse` 가 비교하는 값 그대로 `layout::environment_home()`(HOME 만, `USERPROFILE` 은 안 읽어요, 줄 45-47)이에요. 호출부가 자기 가장자리에서 한 번 읽어요(D-19).
 
 ## Non-goals
 
@@ -44,7 +52,8 @@ approval:
 - `rev_parse` 의 git 자식 환경 규칙 바꾸기(SPEC-20261124-home-env-readers D-8).
 - `identity` 답의 모양 바꾸기. 값 규칙의 변화는 REQ-10(빈 HOME) 하나예요.
 - `src/home_state.rs` 변경(D-2).
-- `identity_in` 이 git 자식 준비에서 비교용으로 읽는 환경 HOME 을 인자로 넘기는 일. 후속 카드예요(D-16).
+- (판 7 에서 이 카드로 가져왔어요: D-17) `identity_in` 이 git 자식 준비에서 비교용으로 읽는 환경 HOME 을 인자로 넘기는 일. 판 6 까지는 후속 카드로 뒀어요(D-16).
+- `apply` 영수증과 `audit::observe` 의 서명을 바꾸어 환경 HOME 을 명령 가장자리까지 올리는 일(D-13 의 버린 대안, 리더 결정 노트: 하지 않아요).
 
 ## Requirements
 
@@ -79,6 +88,12 @@ approval:
 - REQ-29 (REQ-21): IF the identity cannot be resolved, THEN `apply::Receipt::new` shall record both ids as null without failing the apply.
 - REQ-30 (REQ-22): IF the identity cannot be resolved, THEN `audit::observe` shall return the resolver's error.
 - REQ-31 (REQ-23): IF no clone is resolved, THEN `lane-next` shall answer without counting.
+- REQ-32 (판 7): The `identity_in_from` function shall decide the environment of its git child from the `process_home` it is given, without reading any environment variable named HOME.
+- REQ-33 (판 7): WHEN `identity_in_from` is given a `home` equal to the `process_home` it is given, its git child shall keep the process's own environment, including `XDG_CONFIG_HOME` and `GIT_CONFIG_GLOBAL`.
+- REQ-34 (REQ-33): IF the `home` given to `identity_in_from` differs from its `process_home`, or no `process_home` is given, THEN its git child shall run with that `home` as HOME and without `XDG_CONFIG_HOME` and `GIT_CONFIG_GLOBAL`.
+- REQ-35 (판 7): After slice 2c-2 the `identity_in` function shall answer as `identity_in_from` does with no `process_home`.
+- REQ-36 (판 7): Each product caller that gives `identity_in` a home shall call `identity_in_from` with the same home and with the process HOME that it or its command edge reads once with `layout::environment_home()`.
+- REQ-37 (판 7): After slice 2c-2 the product code of `src/identity.rs` shall hold no read of an environment variable named HOME.
 
 ## Acceptance
 
@@ -106,8 +121,14 @@ approval:
 - AC-22 (REQ-26, REQ-7, REQ-9): 어댑터를 쓰던 테스트(클레임 묶음 도우미, identity 의 git 설정 테스트, `claims_legacy_dir`)가 고친 뒤에도 통과해요. · verify: `cargo nextest run --offline --locked --lib -E 'test(home_arg_claim_group) | test(identity::) | test(claims_legacy_dir_ignores)'`
 - AC-23 (REQ-27, REQ-28): 기준 커밋의 기준선에 이름이 있는 테스트만, 변경 전과 변경 후에 관찰 모드로 돌려 두 로그를 비교하고, 앞에는 닿고 뒤에는 닿지 않은 줄만 지워요. 먼저 `cp tests/fixtures/test_home_guard/baseline.tsv target/c409/baseline-base.tsv` 로 기준 커밋의 목록을 남겨요(코드 변경 전). 관찰 실행의 HOME 은 가드가 만드는 임시 폴더예요(`tools/test_home_guard.sh`). 지운 뒤에는 같은 명령을 환경 변수 없이(enforce) 돌려 exit 0, `cargo nextest run --offline --locked --test test_home_guard` exit 0 이에요. · verify: `MOAI_HOME_GUARD=observe MOAI_HOME_GUARD_LOG="$PWD/target/c409/guard-before.log" cargo nextest run --offline --locked --no-fail-fast $(awk -F'\t' '!/^#/ && NF==2 {print ($1=="moai_cli" ? "--lib" : "--test=" $1)}' target/c409/baseline-base.tsv | sort -u) -E "$(awk -F'\t' '!/^#/ && NF==2 {printf "%stest(=%s)", s, $2; s=" | "}' target/c409/baseline-base.tsv)"` (heavy slot 안에서; 변경 후에는 로그 이름만 `guard-after.log`)
 - AC-24 (REQ-6..REQ-31): 기존 테스트가 통과해요. · verify: `moai check affected --card <base>..<head>` 가 PASS
+- AC-25 (REQ-32, REQ-33, REQ-34): 자식 프로세스에서 `identity_in_from` 이 같은 HOME 이면 환경의 `XDG_CONFIG_HOME`·`GIT_CONFIG_GLOBAL` 설정을 쓰고(ok), 다른 HOME 이면 그 HOME 의 설정만 쓰며(그 HOME 에 설정이 없으면 거부), `process_home` 이 없어도 다른 HOME 으로 봐요. 테스트는 `identity_in_from_keeps_the_process_environment_for_the_process_home`, `identity_in_from_uses_only_the_given_home_for_another_one`, `identity_in_from_without_a_process_home_treats_the_home_as_another_one` 이에요. · verify: `cargo nextest run --offline --locked --lib -E 'test(identity_in_from)'`
+- AC-26 (REQ-36): 호출부마다 고친 뒤에도 판 5·6 의 테스트(`home_arg_rest_*`, `home_arg_claim_group_*`, `identity::`, `project_scope_in`)가 고치지 않은 채 통과하고, 프로세스 HOME 을 넘기는 호출부에서 환경 `GIT_CONFIG_GLOBAL` 설정이 자식에 남는다는 테스트가 하나 있어요(`home_arg_rest_process_home_callers_keep_the_environment_git_config`). · verify: `cargo nextest run --offline --locked --no-fail-fast --lib --test key_vault_cli --test hook_legacy_cli --test lane_next_cli --test cli_diagnose --test home_writer_links --test home_isolation_scan --test path_root_direct_sites --test launcher_key_vault -E 'kind(test) | test(home_arg_rest) | test(home_arg_claim_group) | test(identity::) | test(project_scope_in)'`
+- AC-27 (REQ-35, REQ-37): 2c-2 뒤 `src/identity.rs` 의 `#[cfg(test)]` 밖에 `environment_home`·`var_os("HOME")` 가 없고, `tests/home_env_readers.rs` 의 `rev_parse` 항목이 사라져요. · verify: `MOAI_HOME_READERS=enforce cargo nextest run --offline --locked --test home_env_readers`
+- AC-28 (REQ-32..REQ-37): 기존 테스트가 통과해요. · verify: `moai check affected --card <base>..<head>` 가 PASS
 
 ## Scope
+
+- write (판 7, 승인 뒤, 추천 안 1): 조각 2c-1 `src/identity.rs`, `src/apply.rs`, `src/audit.rs`, `src/ops/identity.rs`, `src/ops/lane_next.rs`, `src/launcher_init.rs`와 그 테스트. 조각 2c-2 `src/audit_clone.rs`, `src/main.rs`, `src/update_hooks.rs`, `src/update.rs`, `src/key_vault.rs`, `src/session.rs`, `src/model_effort_questions.rs`, `src/update_models.rs`, `tests/hook_legacy_cli.rs`, `tests/home_env_readers.rs`와 그 테스트. 정확한 목록은 조각을 시작할 때 `card scope` 로 정하고 리더 노트를 받아요(약 14개 제품 파일, 테스트 파일 수는 unverified). `src/update.rs`·`src/main.rs` 는 다른 열린 카드와 겹칠 수 있어요.
 
 - write (판 5): `src/identity.rs`, `src/layout.rs`(테스트의 `identity` 호출 한 곳과 그 주석만), `src/key_vault.rs`, `src/launcher_init.rs`, `src/update_hooks.rs`, `src/audit_clone.rs`, `src/apply.rs`, `src/audit.rs`, `src/ops/lane_next.rs`, `src/ops/identity.rs`, `src/main.rs`, `tests/home_writer_links.rs`, `tests/key_vault_cli.rs`, `tests/hook_legacy_cli.rs`, `tests/lane_next_cli.rs`, `tests/cli_diagnose.rs`, `tests/test_home_guard.rs`, `tests/fixtures/test_home_guard/baseline.tsv`, `.moai/specs/SPEC-20261124-identity-home-arg/spec.md`. C-410 이 먼저 착지해 `tests/home_env_readers.rs` 의 자리 목록이 생기면 그 파일의 해당 항목도 써요.
 - read-only: `src/home_state.rs`(D-2), `src/home_root.rs`, `src/state_root.rs`, `src/session.rs`, `src/model_effort_questions.rs`, `src/ops/key_*.rs`, `tests/launcher_key_vault.rs`
@@ -127,6 +148,8 @@ approval:
 읽기 증거(2026-11-24, `grep -rn "home_state_root" src` 와 호출부 읽기): `home_state_root` 키를 이름으로 읽는 제품 코드는 `src/audit_clone.rs:151` 뿐이에요. 호출부 `claim.rs`, `session.rs`, `lane_registry.rs`, `layout.rs`, `ops/lane_next.rs` 는 `identity_status`, `clone_anchor`, `work_tree`, `workspace_id` 같은 칸만 읽어요. 조각 2 는 파일마다 이 읽기를 다시 해서 증거로 남겨요.
 
 조각 2a 읽기 증거(2026-11-24, 판 3 초안을 쓰며 7개 파일의 호출 11곳과 테스트 호출 1곳을 열어 읽음): `claim_link.rs:274·299`(`identity_status`, `workspace_kind`, `clone_anchor`, `work_tree`, `claim::worktree_id` 로 `work_tree`·`clone_anchor`·`workspace_git_dir`), `claim_link.rs:440`(`work_tree`), `claim.rs:80`(`identity_status`, `clone_anchor`), `claim.rs:1488`(`worktree_id`), `session.rs:367`(`identity_status`, `clone_anchor`), `lane_registry.rs:91`(`identity_status`, `clone_anchor`), `lane_registry.rs:315`(`identity_status`, `work_tree`), `goal.rs:76`(`identity_status`, `clone_anchor`), `worktree_move.rs:217`(`clone_id`), `run.rs:552`(`clone_anchor`). 어느 곳도 `home_state_root` 를 읽지 않아요. `claim_link.rs:1202` 는 테스트 모듈 안의 호출이에요. 이 읽기는 판 3 의 RUN 에서 `grep` 으로 한 번 더 확인해요(AC-8).
+
+판 7 조각표(추천 안 1, 승인 뒤): 조각 2c-1 — `identity_in_from(path, home, process_home)` 를 더하고 `rev_parse` 가 비교용 값을 인자로 받아요. `identity_in(path, home)` 은 이 조각 동안 지금처럼 `layout::environment_home()` 을 읽어 `identity_in_from` 에 넘겨 동작이 그대로예요. 프로세스 HOME 을 이미 쥔 여섯 곳이 `identity_in_from` 을 불러요: `apply::identity_fields` 와 `audit::observe`(그 자리에서 한 번 읽어 두 번 넘김, 서명은 안 바꿔요), `ops/identity.rs` 의 `home`, `ops/lane_next.rs` 의 `home`, `launcher_init` 의 `prepare_project`(`raw_home`)와 `git_init`(`home` 매개변수에 프로세스 HOME 을 같이 받아요). 증거: 변경 전후 같은 입력 → 같은 답, 환경 `GIT_CONFIG_GLOBAL` 이 자식에 남는 테스트 하나. 조각 2c-2 — 임의의 `home` 을 받는 호출부가 프로세스 HOME 인자를 받고 가장자리에서 한 번 읽어 올려요: `audit_clone::plan`(`main.rs` 가장자리), `update_hooks::project_of`(`plan_in`←`update::user_layer_plan_in`←`main.rs`), `key_vault` 의 `project_scope_in`·`scope_for`·`read_here`(`scope_here` 는 자기 자리에서 읽고, `session.rs` 와 `model_effort_questions::glm_key_step`←`update_models.rs` 가 가장자리), 그리고 마지막 `Some(home)` 호출부가 떠난 뒤 `identity_in` 이 환경을 읽지 않고(`identity_in_from(path, home, None)`) `rev_parse` 의 비교 읽기가 없어져요. 증거: 위 AC-25..27. 테스트 쪽은 임시 HOME 을 넘기는 곳이 프로세스 HOME 으로 다른 값을 넘겨 다른 HOME 경로를 계속 시험해요. 읽기 증거(2026-11-27T12:37Z, 읽기 조사 보고, 줄 번호는 tip `7aa72ff3d3` 기준이고 일부 unverified): `apply.rs:429`, `audit.rs:274`, `audit_clone.rs:150`(`main.rs:2059`), `key_vault.rs:206`, `launcher_init.rs:147·308·321`, `ops/identity.rs:21`, `ops/lane_next.rs:84`, `update_hooks.rs:121`(`update.rs:2076`, `main.rs:2076`). 프로세스 HOME 을 넘기지 않는(`None`) 열네 곳(`claim.rs` 2, `claim_link.rs` 3, `goal.rs` 1, `lane_registry.rs` 3, `layout.rs` 1, `run.rs` 1, `session.rs` 2, `worktree_move.rs` 1)은 바뀌지 않아요.
 
 판 5 는 표의 2b·3·4 를 한 판, READY 하나로 해요(D-8). 순서: 승인과 범위 확장 → 변경 전 관찰 실행 → 동작 RED → 호출부 하나씩 → 어댑터 삭제 → 뮤턴트 → 변경 후 관찰 실행과 기준선 → 검사와 READY.
 
@@ -154,6 +177,11 @@ approval:
 - 판 6: 남은 제품 호출이 모두 HOME 을 넘기므로 `identity_in` 은 이 길들에서 계속 그 HOME 을 읽어요. 줄어들 수 있는 것은 가드의 HOME 과 다른 픽스처 HOME 을 넘기게 되는 테스트(후보: `plan_in` 을 거치는 lib 의 `update::` 줄)뿐일 것으로 봐요. 0 에서 몇 줄 사이이고 unverified 예요. `lane_next_cli`, `audit_admission`, `apply_*` 줄은 남을 것으로 봐요. 0줄이면 기준 2 도 not met 이에요(REQ-28).
 - 판 5, 다른 카드와의 겹침: C-457(`spec/glm-key-scope-20261124`, 착지 전 커밋 `cc22a0d9a8`)이 `src/key_vault.rs` 에 `project_scope_in(dir, home)` 를 더했고 `project_scope(dir)` 는 `identity(dir)` 를 불러요. 판 5 의 키 금고 변경은 같은 이름과 몸통(`scope_of_identity`)을 써서 합치기를 맞추고, 뒤에 착지하는 쪽이 남은 `identity` 호출을 없애야 컴파일돼요. C-410 의 새 목록 검사(`tests/home_env_readers.rs`)가 먼저 착지하면 이 판이 바꾼 HOME 읽기 자리를 그 목록에 맞춰요. `src/main.rs` 의 audit clone 가장자리에 환경 HOME 읽기가 하나 늘어요.
 
+- 판 7: 안 1 은 파일이 많아 한 번에 틀리기 쉬워요. 그래서 두 조각으로 나누고, 2c-1 동안 `identity_in` 은 지금 읽기를 그대로 둬요. 한 호출부라도 프로세스 HOME 대신 같은 `home` 을 넘기면 임시 HOME 테스트의 비교가 항상 같아져 자식에 HOME 이 안 붙어요(조사 보고). REQ-36 과 AC-26 의 환경 `GIT_CONFIG_GLOBAL` 테스트, 임시 HOME 을 넘기는 기존 테스트가 이 실수를 잡아요.
+- 판 7: Windows 에서 `key_vault::home()` 이 `USERPROFILE` 을 줄 때의 자식 환경은 안 1 이 지금과 같게 지켜요(프로세스 HOME 은 `layout::environment_home()` 만, D-19). Mac 에서 확인할 수 없어요(unverified).
+- 판 7: `tests/home_env_readers.rs` 의 `EDGE_READS`(`("src/identity.rs","identity",1)`, 줄 26)와 `EDGE_FUNCTIONS`(줄 246)는 지금 없는 함수 `identity` 를 가리켜요(조사 보고, 추론이라 unverified). 이 SPEC 이 고칠지는 2c-2 시작 때 읽고 정해요.
+- 판 7: 판 6 승인(노트 10791, digest `58a2893e…`)의 블록은 커밋 `aeddd8d8a2` 에 있어요. 개정 7 의 본문이 바뀌면 그 digest 는 맞지 않아 `moai spec check` 가 `approval_digest` 오류를 내요(2026-11-27 직접 확인: 블록을 둔 채 본문을 고쳤을 때). 그래서 이 초안 커밋은 `status: draft` 로 돌리고 블록을 빼요. 판 7 은 사용자 승인을 새로 받아야 하고, 그때 `moai spec show` 의 새 digest 로 블록을 다시 넣어요. 이 초안은 그때까지 브랜치에만 두고 랜딩하지 않아요(리더 지시).
+
 ## Decisions
 
 | Id | Decision | Basis | Undo |
@@ -174,6 +202,9 @@ approval:
 | D-14 | `identity` 명령은 환경 HOME 을 읽어 넘기고 `identity` 를 지워요. 테스트는 `identity_in` 으로 고치고(클레임 도우미의 사전 단언 문장은 유지), git 설정 테스트의 이름은 유지해요. 대안: `#[cfg(test)]` 환경 도우미를 남겨요 | 마지막 호출부가 떠나요. C-410 SPEC 의 AC-15 문장(`identity(path)`)은 C-410 이 고쳐야 해요 | 어댑터 되살리기 |
 | D-15 | 기준선은 변경 전후 관찰 실행의 차이만 지우고 `BASELINE_CAP` 을 남은 줄 수로 낮춰요. 머리 주석의 `identity::identity` 설명도 고쳐요 | C-410 노트 10179 의 나눔: 각 카드는 자기 변경이 비운 줄만, 뒤 카드는 앞 카드가 착지한 tip 에서 지워요. 변경 전 관찰에서 이미 닿지 않는 줄은 지우지 않고 목록을 리더에게 알려요 | 지운 줄 되살리기 |
 | D-16 | 카드 기준 1 은 not met 으로 두고 `card land --keep-open` 으로 착지해요. 비교용 HOME 을 인자로 넘기는 일은 후속 카드예요 | 리더 결정 노트 10218. 알려진 예외가 남으면 met 이 아니에요(노트 10212) | 해당 없음 |
+| D-17 | (판 7, 초안) 비교용 HOME 을 이 카드의 조각 2c 로 가져와요. 안 1: 새 `identity_in_from(path, home, process_home)` 이고 프로세스 HOME 인자를 가장자리에서 올려요, 두 조각(2c-1 새 함수와 여섯 호출부, 2c-2 나머지와 읽기 제거). 버린 대안: 안 2(넘긴 HOME 을 프로세스 HOME 으로 봄: 파일 약 2개, 임시 HOME 테스트와 Windows `USERPROFILE` 의 자식 환경이 바뀌고 home-env-readers D-8 을 바꿔요), 안 3(늘 HOME 을 덮어씀: 제품 동작이 바뀌어요), 전역 값(`OnceLock` 에 프로세스 HOME 을 저장: 환경 읽기를 숨길 뿐이에요) | 리더 결정(카드 노트가 아니라 2026-11-27 메시지, 사용자가 외출하며 맡긴 범위 안): (A)는 이 카드의 마지막 조각이고 (B) 는 안 해요. 고르는 안은 사용자 몫이고 이 초안은 추천(안 1)이에요 | 안 1 의 두 조각을 되돌리면 판 6 상태예요 |
+| D-18 | `identity_in(path, home)` 은 2c-2 뒤 `identity_in_from(path, home, None)` 과 같아요: 프로세스 HOME 이 없으면 넘긴 HOME 을 다른 HOME 으로 봐요. 대안: `process_home` 을 필수 인자로(모든 `None` 호출부 열네 곳이 바뀌어요) | 열네 곳 `None` 호출부를 안 건드려요. 함정: `Some(home)` 을 `identity_in` 에 넘기는 새 호출부가 환경 설정을 잃어요. REQ-36·AC-26 과 `home_env_readers` 가 막아요 | 필수 인자로 바꾸기 |
+| D-19 | 프로세스 HOME 으로 넘기는 값은 `layout::environment_home()`(HOME 만, `USERPROFILE` 은 안 읽어요) | 지금 `rev_parse` 가 비교하는 값이에요(`src/layout.rs:45-47`, `src/identity.rs:126`). 바꾸면 Windows 동작이 달라져요 | 해당 없음 |
 
 ## Result
 
@@ -242,3 +273,13 @@ approval:
 - 카드 기준 1(identity 가 환경 HOME 을 읽지 않음)은 충족하지 않았어요(not met): `identity_in` 은 변수를 읽지 않고 어댑터도 없지만, None 을 받으면 `rev_parse` 의 `git` 자식 프로세스가 환경 HOME 의 전역 git 설정을 여전히 읽고, 호출부 세 곳이 환경 HOME 을 그 자리에서 읽어요. 비교용 HOME 을 `rev_parse` 에 넘기는 일은 후속 카드가 해요(D-16). 그래서 카드는 `--keep-open` 으로 랜딩해요. 카드 기준 2(기준선이 줄고 줄어든 테스트가 enforce 에서 통과)는 AC-23 으로 충족했어요(다섯 줄 삭제, enforce exit 0).
 - not_run: Windows 와 Linux, `cargo test` 전체. 위험한 경로의 실행은 위 AC-14 와 AC-15 테스트예요(임시 HOME 안의 링크 홈 상태 폴더이고 실제 HOME 은 읽지 않아요). 실제 HOME 의 읽기 전후 비교는 하지 않았어요(not_run).
 - 이 슬라이스의 규칙 어김: 구현 에이전트가 요청하지 않은 `rm -rf target/debug`(워크트리 안의 상대 경로)를 슬롯 실행이 빌드되는 동안 돌려 실행 하나가 깨졌고(다시 돌린 실행은 통과), 초기에 슬롯 형태 앞에 `env -u CLAUDE_CONFIG_DIR` 를 한 번 썼다가 요청으로 뺐어요. 구현 쪽에서 거절된 명령은 없었어요. 문서 에이전트의 복합 `git` 명령 하나는 워크트리 가드가 "너무 복잡하다"고 거절했고, 에이전트는 다른 길로 돌리지 않고 멈췄어요(레인이 `git diff --check` 와 `git diff --stat` 를 따로 돌려 확인했어요).
+
+판 7(조각 2c-1, 사용자 승인 노트 10862, 브랜치 `spec/identity-home-arg-2c-20261124`, 기준 NeXT `ee4fa3108b`): 구현 커밋은 `9042d898d8` 이에요. RED 는 임시 몸체(`process_home` 를 무시하고 환경 HOME 과 비교)에서 `identity_in_from_uses_only_the_given_home_for_another_one` 과 `identity_in_from_without_a_process_home_treats_the_home_as_another_one` 둘이 실패했고 `identity_in_from_keeps_the_process_environment_for_the_process_home` 는 통과했어요(`cargo nextest run --locked --offline --lib -E 'test(identity_in_from)'` → exit 100, 3개 중 2개 실패, 같은 HOME 보존 테스트는 기존 동작을 고정하는 테스트라 RED 에서도 통과해요).
+
+- AC-25: 충족. `identity_in_from_keeps_the_process_environment_for_the_process_home`, `identity_in_from_uses_only_the_given_home_for_another_one`, `identity_in_from_without_a_process_home_treats_the_home_as_another_one` passed(lib 42개 실행 `-E 'test(identity::) | test(home_arg_rest) | test(home_arg_claim_group) | test(project_scope_in) | test(launcher_init)'` 가 42 passed).
+- AC-26: 충족. `home_arg_rest_process_home_callers_keep_the_environment_git_config`(`tests/cli_diagnose.rs`) passed, `identity` 명령이 환경 HOME 을 프로세스 HOME 으로 함께 넘겨 `GIT_CONFIG_GLOBAL` 의 신뢰 설정이 자식에 남아요. 이어 `--test cli_diagnose --test lane_next_cli --test home_writer_links --test home_env_readers` 가 109 passed.
+- AC-27: 아직 아님(조각 2c-2): `identity_in` 은 이 조각에서 환경 HOME 을 읽고 `tests/home_env_readers.rs` 항목도 그대로예요.
+- AC-28: `moai check affected --card` 결과는 READY 노트에 적어요(조각 2c-1 의 이 줄을 쓸 때는 not_run, AC-9 와 같아요).
+- 뮤턴트(테스트마다 하나, 되돌린 뒤 `git status --short` 가 비었어요): `rev_parse` 의 조건을 항상 참으로 → 새 lib 테스트 셋이 모두 실패, `rev_parse` 가 `process_home` 대신 환경 HOME 과 비교 → `identity_in_from_uses_only_the_given_home_for_another_one` 과 `identity_in_from_without_a_process_home_treats_the_home_as_another_one` 실패(exit 100), `src/ops/identity.rs` 가 `process_home` 으로 `None` 을 넘김 → `home_arg_rest_process_home_callers_keep_the_environment_git_config` 실패(exit 100).
+- 제품 변경: `identity_in_from(path, home, process_home)` 이 더해졌고 `rev_parse` 는 환경 변수를 읽지 않아요. `identity_in(path, home)` 은 환경 HOME 을 읽어 `identity_in_from` 에 넘겨 답이 그대로예요. 호출부 여섯 곳(`ops/identity.rs`, `ops/lane_next.rs`, `apply.rs`, `audit.rs`, `launcher_init.rs` 의 `prepare_project` 와 `git_init`)이 자기 가장자리에서 읽은 프로세스 HOME 을 같이 넘겨요. `launcher_init` 는 `key_vault::home()` 의 값은 `home` 으로, 환경 HOME 은 `process_home` 으로 따로 넘겨요(D-19).
+- 규칙 어김 둘(레인): 뮤턴트 복원에 `git checkout -- src/identity.rs` 를 구현을 커밋하기 전에 써서 커밋 전 구현이 함께 되돌아갔어요. 같은 편집을 다시 적용하고 같은 테스트(42 passed)로 같은 상태를 확인한 뒤 커밋했고 이후 복원은 커밋된 구현으로만 돌아가요. 체크의 base 를 처음에 잘못 적어(C-460 의 tip) 실행을 멈추고 `ee4fa3108b` 로 다시 돌렸어요.

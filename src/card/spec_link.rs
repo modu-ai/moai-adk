@@ -291,6 +291,13 @@ pub fn link_at(
             if from.as_deref() == spec {
                 return Ok(Ok((from, false, rev(tx)?)));
             }
+            // An open card (not `done`, not `hold`) is not linked to a SPEC that already has
+            // another open card; `--unlink` and the link of a closed or withdrawn card are free.
+            if let Some(spec_id) = spec {
+                if let Some(why) = link_conflict(tx, card_id, spec_id)? {
+                    return Ok(Err(why));
+                }
+            }
             tx.execute(
                 "UPDATE card SET updated_at = ?2 WHERE card_id = ?1",
                 params![card_id, now],
@@ -429,6 +436,72 @@ pub fn add_conflict(spec_id: &str, relation: Relation<'_>, open: &[OpenCard]) ->
             ))
         }
     }
+}
+
+/// The refusal of `card ready` (`verb` is `ready`) and `card spec` (`verb` is `spec`) when the card
+/// would become an open card of `spec_id` that already has the open cards `others`, or `None`
+/// when `others` is empty. A card made open this way carries no relation, so the way out is a
+/// new card with `--follow-up` or a criterion of the open card
+/// (SPEC-20261124-card-help-gates REQ-8, REQ-9). The `conflict in ` prefix gives it the
+/// `conflict` kind (`contract::classify`).
+pub fn open_card_conflict(verb: &str, spec_id: &str, others: &[OpenCard]) -> Option<String> {
+    let first = others.first()?;
+    let names: Vec<String> = others.iter().map(|c| input::card_name(c.card_id)).collect();
+    let first = input::card_name(first.card_id);
+    Some(format!(
+        "card {verb} conflict in spec: {spec_id} already has another open card ({}); a card with \
+         no relation would be a second open card of it. Add a new card with `moai card add \
+         --spec {spec_id} --follow-up`, or add the work as a criterion of {first} with `moai \
+         card criterion-add {first} --ac <text>`; nothing was changed",
+        names.join(", "),
+    ))
+}
+
+/// The refusal of `card spec` when it links `card_id` to `spec_id`, or `None`: the card already
+/// names that SPEC, the card is `done` or `hold` (not an open card), the card does not exist, or
+/// the SPEC has no other open card. Read only, so `spec take --card` asks it before it changes
+/// anything (SPEC-20261124-card-help-gates REQ-9, REQ-13).
+pub fn link_conflict(
+    conn: &Connection,
+    card_id: i64,
+    spec_id: &str,
+) -> rusqlite::Result<Option<String>> {
+    let Some((_, linked)) = kind_and_spec(conn, card_id)? else {
+        return Ok(None);
+    };
+    if linked.as_deref() == Some(spec_id) {
+        return Ok(None);
+    }
+    let state: String = conn.query_row(
+        "SELECT state FROM card WHERE card_id = ?1",
+        [card_id],
+        |r| r.get(0),
+    )?;
+    if state == "done" || state == "hold" {
+        return Ok(None);
+    }
+    let others: Vec<OpenCard> = open_cards_of(conn, spec_id)?
+        .into_iter()
+        .filter(|c| c.card_id != card_id)
+        .collect();
+    Ok(open_card_conflict("spec", spec_id, &others))
+}
+
+/// The refusal of `card ready` for a `hold` card: it names a SPEC with no relation and that SPEC
+/// has another open card; `None` for a card with no SPEC, with a relation, or with no other open
+/// card on its SPEC (SPEC-20261124-card-help-gates REQ-8).
+pub fn ready_conflict(conn: &Connection, card_id: i64) -> rusqlite::Result<Option<String>> {
+    let Some((_, Some(spec_id))) = kind_and_spec(conn, card_id)? else {
+        return Ok(None);
+    };
+    if !link_json(conn, card_id)?["relation"].is_null() {
+        return Ok(None);
+    }
+    let others: Vec<OpenCard> = open_cards_of(conn, &spec_id)?
+        .into_iter()
+        .filter(|c| c.card_id != card_id)
+        .collect();
+    Ok(open_card_conflict("ready", &spec_id, &others))
 }
 
 #[cfg(test)]

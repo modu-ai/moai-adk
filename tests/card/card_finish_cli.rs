@@ -1934,6 +1934,11 @@ fn ac9_list_adds_a_landed_key_and_keeps_the_others() {
         keys.sort_unstable();
         let mut expected: Vec<&str> = LIST_KEYS.to_vec();
         expected.push("landed");
+        // A landed card that keeps an open criterion is a partial landing and has two keys more
+        // (its own test below pins them).
+        if entry["landed"] == json!(true) {
+            expected.extend(["partial_landing", "open_criteria"]);
+        }
         expected.sort_unstable();
         assert_eq!(keys, expected, "{entry}");
         assert!(entry["landed"].is_boolean(), "{entry}");
@@ -3063,4 +3068,244 @@ fn ac_keep_open_next_lists_a_marked_slice_and_still_skips_an_unmarked_landing() 
         "a marked slice is skipped as landed: {listing}"
     );
     assert_already_landed(&listing, &plain);
+}
+
+// ---- a landed card that keeps open criteria is shown as a partial landing ---------------------
+
+/// The landing event `card land --keep-open` writes for `card`: the head with the mark. Events
+/// are append-only, so it is the newest landing of the card.
+fn mark_keep_open(w: &World, card: &str) {
+    let conn = Connection::open(ledger::ledger_path(w.home.path(), "demo").unwrap()).unwrap();
+    let payload = json!({
+        "head": w.head, "tip": w.tip, "generation": 1, "by": "leader",
+        "via": "finish", "no_code": false, "keep_open": true,
+    });
+    let rows: i64 = conn
+        .query_row("SELECT count(*) FROM event", [], |r| r.get(0))
+        .unwrap();
+    conn.execute(
+        "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+         VALUES (?1, unixepoch(), 'leader', ?2, 'card.landed', ?3)",
+        rusqlite::params![
+            format!("test-keep-open-{rows}"),
+            card.trim_start_matches("C-").parse::<i64>().unwrap(),
+            payload.to_string()
+        ],
+    )
+    .unwrap();
+}
+
+/// The keys of a `card list` entry of a partial landing: the ten, `landed` and the two this
+/// change adds.
+fn partial_list_keys() -> Vec<&'static str> {
+    let mut keys: Vec<&str> = LIST_KEYS.to_vec();
+    keys.extend(["landed", "partial_landing", "open_criteria"]);
+    keys.sort_unstable();
+    keys
+}
+
+fn key_set(entry: &Value) -> Vec<&str> {
+    let mut keys: Vec<&str> = entry
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    keys.sort_unstable();
+    keys
+}
+
+/// AC-1 (list): a card that landed and keeps open criteria is listed with `partial_landing`
+/// true and `open_criteria` as the number left, by a landing event and by a merged pull request
+/// link alike; a card with every criterion met, a card that never landed and a card that is
+/// `done` keep the keys they had; a withdrawn criterion is not counted, and a card whose last
+/// open criterion is withdrawn is no partial landing.
+#[test]
+fn partial_landing_list_marks_a_landed_card_with_open_criteria_and_counts_them() {
+    let w = World::new();
+    let partial = w.card_named("task", "apps/a/", &["one", "two"]);
+    let plain = w.card_named("task", "apps/b/", &["one"]);
+    let merged = w.card_named("task", "apps/c/", &["one", "two", "three"]);
+    let full = w.card_named("task", "apps/d/", &["one"]);
+    w.land(&partial, &w.head, true);
+    w.link_merged_pr(&merged, 7);
+    w.land(&full, &w.head, true);
+    // The schema keeps an evidence ref on a met criterion and a reason on a withdrawn one.
+    w.sql("UPDATE card_ac SET status = 'met', evidence_ref = 'e' WHERE card_id = 4");
+
+    let listing = w.list();
+    let cards = listing["cards"].as_array().unwrap();
+    let by_name = |name: &str| {
+        cards
+            .iter()
+            .find(|c| c["name"] == json!(name))
+            .unwrap_or_else(|| panic!("{name} is not listed: {listing}"))
+    };
+    for (name, left) in [(&partial, 2), (&merged, 3)] {
+        let entry = by_name(name);
+        assert_eq!(entry["partial_landing"], json!(true), "{entry}");
+        assert_eq!(entry["open_criteria"], json!(left), "{entry}");
+        assert_eq!(key_set(entry), partial_list_keys(), "{entry}");
+    }
+    for name in [&plain, &full] {
+        let entry = by_name(name);
+        let mut expected: Vec<&str> = LIST_KEYS.to_vec();
+        expected.push("landed");
+        expected.sort_unstable();
+        assert_eq!(key_set(entry), expected, "no partial keys: {entry}");
+    }
+
+    // A done card is never a partial landing.
+    let closed = result(&w.finish(Some(S_L), &full, &["--head", &w.head, "--by", "leader"]));
+    assert_eq!(closed["closed"], json!(true), "{closed}");
+    let listing = w.list();
+    let entry = listing["cards"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == json!(full))
+        .unwrap();
+    assert_eq!(entry["state"], json!("done"), "{entry}");
+    assert!(entry.get("partial_landing").is_none(), "{entry}");
+
+    // A withdrawn criterion is not counted; with none open the card is no partial landing.
+    w.sql(
+        "UPDATE card_ac SET status = 'withdrawn', withdrawn_reason = 'r' \
+         WHERE card_id = 1 AND seq = 2",
+    );
+    let listing = w.list();
+    let entry = listing["cards"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == json!(partial))
+        .unwrap();
+    assert_eq!(entry["open_criteria"], json!(1), "{entry}");
+    w.sql(
+        "UPDATE card_ac SET status = 'withdrawn', withdrawn_reason = 'r' \
+         WHERE card_id = 1 AND seq = 1",
+    );
+    let listing = w.list();
+    let entry = listing["cards"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == json!(partial))
+        .unwrap();
+    assert!(entry.get("partial_landing").is_none(), "{entry}");
+}
+
+/// AC-1 (next): `card next` names every landed card with open criteria apart, under
+/// `partial_landing`, with the number left and the landed head: a landing that is skipped as
+/// `already_landed` and a slice landed with `--keep-open` that stays offered under `ready`; a
+/// card that never landed is not in it.
+#[test]
+fn partial_landing_next_lists_the_landed_cards_with_open_criteria_apart() {
+    let w = World::new();
+    let landed = w.card_named("task", "apps/a/", &["one", "two"]);
+    let slice = w.card_named("task", "apps/b/", &["one", "two", "three"]);
+    let plain = w.card_named("task", "apps/c/", &["one"]);
+    w.land(&landed, &w.head, true);
+    w.land(&slice, &w.head, true);
+    mark_keep_open(&w, &slice);
+
+    let listing = w.next(S_B);
+    let partial = &listing["partial_landing"];
+    assert_eq!(
+        names(partial),
+        vec![landed.clone(), slice.clone()],
+        "{listing}"
+    );
+    let entry = |name: &str| {
+        partial
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["name"] == json!(name))
+            .unwrap()
+    };
+    assert_eq!(entry(&landed)["open_criteria"], json!(2), "{listing}");
+    assert_eq!(entry(&slice)["open_criteria"], json!(3), "{listing}");
+    assert_eq!(entry(&landed)["head"], json!(w.head), "{listing}");
+    assert!(
+        entry(&landed)["title"].is_string() && entry(&landed)["card_id"].is_number(),
+        "{listing}"
+    );
+    // What `next` did before stays: the marked slice is offered, the plain landing is skipped.
+    assert!(names(&listing["ready"]).contains(&slice), "{listing}");
+    assert!(names(&listing["ready"]).contains(&plain), "{listing}");
+    assert_already_landed(&listing, &landed);
+}
+
+/// AC-2: when `card finish` records a landing and leaves open criteria, the answer names, next
+/// to `open_criteria`, the open criteria that a passing audit note of the landed head names by
+/// number (`met_candidates`, each with the note's ref). A failing note and a note of another
+/// head name nothing; the key is an empty list when nothing is named and when the card closed.
+#[test]
+fn partial_landing_finish_names_the_criteria_a_passing_audit_note_covers() {
+    let w = World::new();
+    let card = w.card_named("task", "apps/a/", &["one", "two", "three"]);
+    w.note(
+        &card,
+        "report",
+        "audit-pass",
+        &format!(
+            "AUDIT {card} (scope) head {} base {} — verdict: PASS\n\n기준 1~2 가 원장에서 met 이에요\n",
+            w.head, w.tip
+        ),
+    );
+    w.note(
+        &card,
+        "report",
+        "audit-fail",
+        &format!(
+            "AUDIT {card} (scope) head {} base {} — verdict: FAIL\n\n기준 3\n",
+            w.head, w.tip
+        ),
+    );
+    w.note(
+        &card,
+        "report",
+        "audit-other",
+        &format!(
+            "AUDIT {card} (scope) head {} base {} — verdict: PASS\n\n기준 3\n",
+            w.orphan, w.tip
+        ),
+    );
+
+    let got = result(&w.finish(Some(S_L), &card, &["--head", &w.head, "--by", "leader"]));
+    assert_eq!(got["closed"], json!(false), "{got}");
+    assert_eq!(got["open_criteria"], json!([1, 2, 3]), "{got}");
+    assert_eq!(
+        got["met_candidates"],
+        json!([
+            {"criterion": 1, "note": "audit-pass"},
+            {"criterion": 2, "note": "audit-pass"},
+        ]),
+        "{got}"
+    );
+
+    // The criteria with a met option are no longer open, so they are not named again.
+    let got = result(&w.finish(
+        Some(S_L),
+        &card,
+        &["--head", &w.head, "--met", "1=r1", "--by", "leader"],
+    ));
+    assert_eq!(got["open_criteria"], json!([2, 3]), "{got}");
+    assert_eq!(
+        got["met_candidates"],
+        json!([{"criterion": 2, "note": "audit-pass"}]),
+        "{got}"
+    );
+
+    // Closing the card leaves nothing to name.
+    let got = result(&w.finish(
+        Some(S_L),
+        &card,
+        &[
+            "--head", &w.head, "--met", "1=r1", "--met", "2=r2", "--met", "3=r3", "--by", "leader",
+        ],
+    ));
+    assert_eq!(got["closed"], json!(true), "{got}");
+    assert_eq!(got["met_candidates"], json!([]), "{got}");
 }

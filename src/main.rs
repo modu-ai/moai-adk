@@ -1013,10 +1013,14 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
-    /// Preview an update of every host copy
+    /// Preview what update writes to host copies
     ///
     /// Read-only UPDATE preview over every host projection (04-B #1999; the command name
     /// is P06 HOLD). HOME is the user home root; STAGE is the package directory to apply.
+    /// This is the low-level step under `update`: to update MoAI run `update` (it previews
+    /// with the installed package and asks once), and to preview a project's own files run
+    /// `project-update-plan`. Use this command only when you hold both a home folder and a
+    /// staged package.
     UpdatePlan {
         /// User home root whose `.moai-cli` and host projections are inspected.
         home: PathBuf,
