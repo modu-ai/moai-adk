@@ -1321,3 +1321,109 @@ fn a_newest_hand_back_note_that_does_not_read_is_not_replaced_by_an_older_one() 
         assert!(head_entry(&v)["head"].is_null(), "{v}");
     }
 }
+
+// ---- SPEC-20261127-review-term-rename (slice 1b): the review name is read like the audit name ----
+
+/// The same verdict line under the review name.
+fn review_verdict(card: &str, prefix: &str, head: &str, base: &str, word: &str) -> String {
+    format!("REVIEW {card} ({prefix}) head {head} base {base} — verdict: {word}\nbody")
+}
+
+#[test]
+fn a_review_named_pass_counts_like_an_audit_named_pass() {
+    let w = World::new();
+    let tip = w.tip_sha();
+    let a = w.head(
+        "spec/ra",
+        TIP,
+        &[("src/ra.rs", "fn ra() {}\n")],
+        SPEC,
+        &[1, 2],
+        true,
+    );
+    let b = w.head(
+        "spec/rb",
+        TIP,
+        &[("src/rb.rs", "fn rb() {}\n")],
+        SPEC,
+        &[1, 2],
+        true,
+    );
+    let (ca, cb) = (w.new_card(), w.new_card());
+    w.ready_note(&ca, &a);
+    w.ready_note(&cb, &b);
+    let audit = w.note(&ca, &verdict(&ca, SPEC, &a, &tip, "PASS"));
+    let review = w.note(&cb, &review_verdict(&cb, SPEC, &b, &tip, "PASS"));
+
+    let (v, _) = w.bundle(&["check", &ca, &cb]);
+    assert_eq!(findings(&v), vec![], "{v}");
+    let heads = v["result"]["heads"].as_array().unwrap();
+    assert_eq!(heads[0]["pass_note"], audit, "{v}");
+    assert_eq!(heads[1]["pass_note"], review, "{v}");
+}
+
+#[test]
+fn a_review_named_pass_states_its_tier_like_an_audit_named_pass() {
+    let w = World::new();
+    let tip = w.tip_sha();
+    // Floor 2: a change under `.claude/`; a PASS that states tier 1 is below it.
+    let two = w.head(
+        "spec/rtwo",
+        TIP,
+        &[(".claude/r.md", "x\n")],
+        SPEC,
+        &[1, 2],
+        true,
+    );
+    let c2 = w.new_card();
+    w.ready_note(&c2, &two);
+    let low = w.note(
+        &c2,
+        &review_verdict(&c2, &format!("{SPEC}, tier 1"), &two, &tip, "PASS"),
+    );
+
+    let (v, _) = w.bundle(&["check", &c2]);
+    assert_eq!(
+        findings(&v),
+        vec![(c2.clone(), "audit_tier_low".to_string())],
+        "{v}"
+    );
+    let f = &v["result"]["findings"][0];
+    assert_eq!(f["detail"]["floor"], 2, "{v}");
+    assert_eq!(f["detail"]["pass_tier"], 1, "{v}");
+    assert_eq!(f["detail"]["note_id"], low, "{v}");
+}
+
+#[test]
+fn a_review_line_that_does_not_read_is_listed_and_a_line_of_another_name_is_not_a_pass() {
+    let w = World::new();
+    let tip = w.tip_sha();
+    let h = w.head(
+        "spec/rc",
+        TIP,
+        &[("src/rc.rs", "fn rc() {}\n")],
+        SPEC,
+        &[1, 2],
+        true,
+    );
+    let c = w.new_card();
+    w.ready_note(&c, &h);
+    // A first word that is neither name is no verdict, even with every field right.
+    w.note(
+        &c,
+        &format!("INSPECT {c} ({SPEC}) head {h} base {tip} — verdict: PASS\nbody"),
+    );
+    let unreadable = w.note(&c, "REVIEW free text without the head fields");
+
+    let (v, _) = w.bundle(&["check", &c]);
+    assert_eq!(
+        findings(&v),
+        vec![(c.clone(), "audit_missing".to_string())],
+        "{v}"
+    );
+    assert_eq!(
+        v["result"]["unreadable_verdict"],
+        serde_json::json!([{"card": c, "note_id": unreadable}]),
+        "{v}"
+    );
+}
