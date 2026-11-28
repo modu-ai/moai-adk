@@ -1681,16 +1681,41 @@ fn ci_step(root: &Path, shown: &str) -> Result<Step> {
 }
 
 /// Whether the regular file at `path` (never a link, at most 256 KiB) holds a Hangul syllable.
+/// The file is opened once, without following a link, and the opened file itself is judged, so a
+/// link put in the place of the file after any earlier look is never followed.
 fn has_korean_text(path: &Path) -> bool {
     use std::io::Read;
-    let regular = std::fs::symlink_metadata(path)
+    let Ok(file) = open_without_following(path) else {
+        return false;
+    };
+    let regular = file
+        .metadata()
         .is_ok_and(|m| m.file_type().is_file() && m.len() <= 256 * 1024);
     let mut text = String::new();
     regular
-        && std::fs::File::open(path)
-            .and_then(|f| f.take(256 * 1024).read_to_string(&mut text))
-            .is_ok()
+        && file.take(256 * 1024).read_to_string(&mut text).is_ok()
         && text.chars().any(|c| ('\u{ac00}'..='\u{d7a3}').contains(&c))
+}
+
+/// Opens `path` for reading; a link at `path` is refused by the open itself, and a named pipe does
+/// not block it.
+#[cfg(unix)]
+fn open_without_following(path: &Path) -> std::io::Result<std::fs::File> {
+    use std::os::unix::fs::OpenOptionsExt;
+    std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+        .open(path)
+}
+
+/// Opens `path` for reading after a look that it is no link; a host without `O_NOFOLLOW` keeps
+/// that one look.
+#[cfg(not(unix))]
+fn open_without_following(path: &Path) -> std::io::Result<std::fs::File> {
+    if std::fs::symlink_metadata(path)?.file_type().is_symlink() {
+        return Err(std::io::Error::other("a link is not read"));
+    }
+    std::fs::File::open(path)
 }
 
 /// The install steps that wait for the profile or for the backup phase, in the order they are
@@ -2575,6 +2600,33 @@ mod tests {
         assert_eq!(choice["apply"]["argv"][1], "claude-settings-apply");
         assert_eq!(choice["apply"]["argv"][4], "sha256:d");
         assert_eq!(choice["apply"]["stdin"], json!(stdin));
+    }
+
+    /// A link at the path is never read for its language, whatever it points at: the open itself
+    /// refuses it, so a link swapped in for a file after an earlier look is not followed either.
+    /// The file the link points at, a named pipe and a file over the size limit are each judged
+    /// on the opened file.
+    #[cfg(unix)]
+    #[test]
+    fn a_link_to_a_korean_file_is_not_read_for_its_language() {
+        let tmp = tempfile::tempdir().unwrap();
+        let korean = "# 한국어 주석\nname: ci\n";
+        let real = tmp.path().join("real.yml");
+        fs::write(&real, korean).unwrap();
+        let link = tmp.path().join("link.yml");
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+        assert!(has_korean_text(&real), "the file itself holds Hangul");
+        assert!(!has_korean_text(&link), "a link is never followed");
+        let english = tmp.path().join("english.yml");
+        fs::write(&english, "name: ci\n").unwrap();
+        assert!(!has_korean_text(&english));
+        let big = tmp.path().join("big.yml");
+        fs::write(&big, format!("{}\n{korean}", "a".repeat(256 * 1024))).unwrap();
+        assert!(
+            !has_korean_text(&big),
+            "over the size limit counts as no text"
+        );
+        assert!(!has_korean_text(&tmp.path().join("missing.yml")));
     }
 
     #[test]
