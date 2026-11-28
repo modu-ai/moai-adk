@@ -1017,6 +1017,32 @@ fn open_labels(rows: &[Row]) -> Vec<String> {
     labels
 }
 
+/// The `file: key = value` rows of the style targets that change something: one per key of the
+/// plan's `keys`, in its order. A target that is `unchanged` writes no key and shows none. A
+/// string value is shown as its text; any other value as JSON.
+fn style_key_rows(lang: Lang, targets: &[Value]) -> Vec<Row> {
+    let mut rows = Vec::new();
+    for t in targets
+        .iter()
+        .filter(|t| t["action"].as_str() != Some("unchanged"))
+    {
+        let file = t["path"].as_str().unwrap_or("");
+        let file = file.rsplit('/').next().unwrap_or(file);
+        for k in t["keys"].as_array().into_iter().flatten() {
+            let value = match &k["value"] {
+                Value::String(s) => s.clone(),
+                other => other.to_string(),
+            };
+            rows.push(row(
+                Mark::Update,
+                w(lang, W::Style).into(),
+                format!("{file}: {} = {value}", k["key"].as_str().unwrap_or("")),
+            ));
+        }
+    }
+    rows
+}
+
 fn blocked_row(lang: Lang, label: String, reason: &Value) -> Row {
     let reason = reason.as_str().unwrap_or("");
     row(
@@ -1294,6 +1320,9 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
             let (m, text) = tally_text(lang, tally(&rest));
             rows.push(row(m, w(lang, W::Style).into(), text));
         }
+        // SPEC-20261120-reply-language-rule REQ-10: each settings key a target would write, with
+        // its value, so the person sees what the yes agrees to (one row per key, plan order).
+        rows.extend(style_key_rows(lang, &rest));
         for t in &blocked {
             let label = format!(
                 "{} {}",

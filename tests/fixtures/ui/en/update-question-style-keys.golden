@@ -1,0 +1,18 @@
+◆ MoAI update
+  installed 2026.11.0-rc.1 = package 2026.11.0-rc.1
+  HOME ~
+
+Checking
+  ↑ skills claude  30 up to date · 1 new · 1 to update
+  ✓ agents         claude 5 — 5 up to date
+  ✓ routing        CLAUDE.md up to date
+  ↑ output style   1 up to date · 1 to update
+  ↑ output style   settings.json: outputStyle = MoAI-Style
+  ↑ output style   settings.json: language = korean
+  ✓ command names  up to date
+  – hooks          skipped: no MoAI hook set in this project
+
+Changes
+  skills claude  ↑ references/routes.md
+                 ↑ workflows/update.md
+  output style   ↑ ~/.claude/settings.json
