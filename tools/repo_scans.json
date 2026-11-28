@@ -3144,6 +3144,25 @@
       "rejects": "Reports, and fails only with MOAI_HOME_READERS=enforce: a product source under src/ whose direct HOME reads or HOME adapter calls differ from the list in tests/home_env_readers.rs (SPEC-20261124-home-env-readers REQ-13, REQ-14)"
     },
     {
+      "id": "home-write-check",
+      "always": true,
+      "tests": [
+        "tests/home_write_scan.rs::every_home_root_use_in_product_code_is_classified"
+      ],
+      "test_targets": [
+        "home_write_scan"
+      ],
+      "rules": [
+        "tests/home_write_scan.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/"
+        }
+      ],
+      "rejects": "Reports, and fails only with MOAI_HOME_WRITE_CHECK=enforce: a product source under src/ with a module-qualified call that resolves a HOME state folder that the rows of tests/home_write_scan.rs do not list, a write entry or best-effort row whose function does not call the write check, an under row that names no entry row, a read, clean-up or resolver row without a reason, a row nobody has read yet, or a bare import of a resolving function."
+    },
+    {
       "id": "check-affected-binary-picks",
       "always": true,
       "tests": [
