@@ -4,6 +4,11 @@ title: "HOME 상태에 쓰는 모든 명령이 공통 쓰기 검사 하나를 �
 status: draft
 revision: 2
 created: 2026-11-27
+approval:
+  by: user
+  at: 2026-11-28
+  basis: "승인 노트 10957(USER-APPROVAL, 개정 2, 커밋 764e16be90): 사용자가 2026-11-28 에 리더 세션의 질문 도구에서 직접 고른 '승인 (Recommended)'과 D-1·D-17, D-7, D-9 의 기본값 답(선택은 리더가 원장에 옮긴 글이고 이 레인이 직접 보지는 않았어요). digest 는 그 커밋의 파일에서 moai spec show 로 읽은 approval_digest 예요"
+  digest: "sha256:369375d0678a72d17c3c86dad7e8659ab1ea48833d7f43cce4093d7d0585e7eb"
 ---
 
 # HOME 상태에 쓰는 모든 명령이 공통 쓰기 검사 하나를 거쳐요
