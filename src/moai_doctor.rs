@@ -270,6 +270,9 @@ pub struct Options {
     /// The managed settings folder to read; `None` reads the platform's own folder.
     pub managed_dir: Option<PathBuf>,
     pub table: bool,
+    /// The home directory, resolved once at the command edge (`src/ops/doctor.rs`) so `gather`
+    /// reads no `HOME` itself; the error text is shown as the `config_folder` problem.
+    pub home: Result<PathBuf, String>,
 }
 
 /// The folder of the managed settings files of this platform
@@ -321,8 +324,9 @@ pub fn gather(opts: &Options) -> Gathered {
         .filter(|n| get(n).is_some())
         .collect::<Vec<_>>();
 
-    let folder = crate::key_vault::home()
-        .map_err(|e| e.to_string())
+    let folder = opts
+        .home
+        .clone()
         .and_then(|home| host_home::resolve(Host::Claude, &home))
         .and_then(|dir| match std::fs::symlink_metadata(&dir) {
             Ok(m) if m.file_type().is_symlink() => Err(

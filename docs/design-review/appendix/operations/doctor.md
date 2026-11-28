@@ -10,6 +10,6 @@ operation `doctor` · 코드 `src/ops/doctor.rs`, `src/moai_doctor.rs`, `src/moa
 
 `cross_session_inbound`: `crossSessionInbound` 의 유효 값을 문서의 우선순위(관리 파일, 사용자 설정; 프로젝트·로컬은 더 엄격하거나 신뢰 값이 없을 때만)로 구해 값과 파일을 말한다. unset·hold·refuse 는 `-l`·`-a` 레인이 권한 우회로 돌아 메시지를 붙잡으므로 warn, accept 는 ok.
 
-`host_capabilities`: `ANTHROPIC_BASE_URL` 의 호스트가 `api.anthropic.com` 이 아니면 gateway 열, 아니면 cli 열의 능력 칸(기능 여덟 개)을 보인다. URL 은 출력하지 않는다. `--table` 이면 최상위 `capability_table` 에 다섯 열(cli·gateway·desktop·vscode·cloud)과 여덟 행 전체가 나오고 칸마다 `value`(yes·no·partial·unverified)·`docs`·`line`·`read_at` 이 있다. 문서가 말하지 않았거나 추론뿐인 칸은 unverified 이고 yes 로 나오지 않는다.
+`host_capabilities`: `ANTHROPIC_BASE_URL` 의 호스트가 `api.anthropic.com` 이 아니면 gateway 열, 아니면 cli 열의 능력 칸(기능 여덟 개)을 보인다. URL 은 출력하지 않는다. `--table` 이면 최상위 `capability_table` 에 다섯 열(cli·gateway·desktop·vscode·cloud)과 여덟 행 전체가 나오고 칸마다 `value`(yes·no·partial·unverified)·`docs`·`line`·`read_at` 이 있다. 문서가 말하지 않았거나 추론뿐인 칸은 unverified 이고 yes 로 나오지 않는다. 그런 열한 칸은 문서 페이지 일곱(`cross-session-messaging`, `output-styles`, `statusline`, `artifacts`, `desktop`, `vs-code`, `llm-gateway-connect`)을 2026-11-28 에 다시 읽고도 닫히지 않았다: 그 칸의 `read_at` 은 2026-11-28 이고 `line` 은 페이지가 대신 말하는 것이다(칸을 말하는 줄이 없다는 사실 포함). 나머지 칸의 `read_at` 은 2026-11-27 이다.
 
 비밀 값·키 접두사·길이·`apiKeyHelper` 출력·`.credentials.json` 내용은 어디에도 나오지 않는다. 파일과 레저를 쓰지 않고 네트워크를 열지 않으며 `claude --version`(과 요청 시 `claude auth status`) 밖의 프로세스를 시작하지 않는다.
