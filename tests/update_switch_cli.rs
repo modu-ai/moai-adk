@@ -521,7 +521,7 @@ fn ac9_a_script_without_a_moai_cli_beside_it_gets_a_link_to_the_running_builds_b
 }
 
 #[test]
-fn ac9_without_bin_moai_of_the_running_build_the_step_is_held_and_names_the_file() {
+fn held_without_bin_moai_of_the_running_build_names_the_file() {
     // The running binary is `bin/moai-cli`; its folder has no `bin/moai`.
     let (_t, home, state, exe) = setup_new(V1, "moai-cli");
     let p = preview(&exe, &home);
@@ -538,7 +538,7 @@ fn ac9_without_bin_moai_of_the_running_build_the_step_is_held_and_names_the_file
 }
 
 #[test]
-fn ac9_a_build_outside_a_versions_folder_is_held_and_names_its_bin_moai() {
+fn held_a_build_outside_a_versions_folder_names_its_bin_moai() {
     // The running binary answers as this build but sits in no `versions/<v>/bin/` of the state
     // folder, so no relative link to it can be made.
     let (_t, home, state, _exe) = setup_new(V1, "moai");
