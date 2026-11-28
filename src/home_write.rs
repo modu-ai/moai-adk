@@ -3,6 +3,7 @@
 //! is mixed, was left by a stopped move or cannot be used, it answers with a refusal that says
 //! nothing was written and which step clears the state. It reads only.
 
+use crate::state_root::{classify_home, MOAI_DIR};
 use crate::ui_text::Lang;
 use std::fmt;
 use std::path::Path;
@@ -41,8 +42,115 @@ pub struct HomeWriteRefused {
 impl HomeWriteRefused {
     /// The refusal in the language of the stream it is shown on.
     pub fn text(&self, lang: Lang) -> String {
-        let _ = lang;
-        String::new()
+        let (en, ko) = match &self.way {
+            Way::CleanUp { markers } => {
+                let shown = markers_shown(markers);
+                (
+                    format!(
+                        "~/.moai still holds files of the Go generation ({shown}). Run \
+                         `moai update`, then run the clean-up step it shows on its own: \
+                         `moai update --confirm-home <token>`. When that is done, run this \
+                         command again. If the preview says a Go session is still running, \
+                         close that session first."
+                    ),
+                    format!(
+                        "~/.moai 에 Go 세대 파일이 남아 있어요({shown}). `moai update` 를 실행해 \
+                         보이는 정리 단계만 먼저 실행해 주세요: \
+                         `moai update --confirm-home <토큰>`. 끝나면 이 명령을 다시 실행해 \
+                         주세요. 미리보기가 Go 세션이 아직 돌고 있다고 하면 그 세션을 먼저 \
+                         닫아 주세요."
+                    ),
+                )
+            }
+            Way::MoveBack { backups } => {
+                let names = backups.join(", ");
+                (
+                    format!(
+                        "A move of ~/.moai stopped halfway; your Go folder is still in \
+                         {names} beside it. Rename that folder back to ~/.moai, then run \
+                         `moai update` and its clean-up step \
+                         (`moai update --confirm-home <token>`), and run this command again."
+                    ),
+                    format!(
+                        "~/.moai 를 옮기다 중간에 멈췄어요. Go 폴더가 옆의 {names} 에 그대로 \
+                         있어요. 그 폴더 이름을 ~/.moai 로 되돌린 뒤 `moai update` 와 그 정리 \
+                         단계(`moai update --confirm-home <토큰>`)를 하고, 이 명령을 다시 \
+                         실행해 주세요."
+                    ),
+                )
+            }
+            Way::FinishRevert => (
+                "~/.moai holds the record of a move that did not finish. Run \
+                 `moai go-state-revert-plan --backup <UTC> <folder>` to see what undoing it \
+                 would do, then run this command again."
+                    .to_string(),
+                "~/.moai 에 끝나지 않은 옮기기 기록이 있어요. \
+                 `moai go-state-revert-plan --backup <UTC> <폴더>` 로 되돌리면 무엇이 바뀌는지 \
+                 먼저 확인한 뒤 이 명령을 다시 실행해 주세요."
+                    .to_string(),
+            ),
+            Way::Link => (
+                "~/.moai is a link, and a link is never followed. Remove the link or replace \
+                 it with the real folder, then run this command again."
+                    .to_string(),
+                "~/.moai 가 링크예요. 링크는 따라가지 않아요. 링크를 지우거나 진짜 폴더로 \
+                 바꾼 뒤 이 명령을 다시 실행해 주세요."
+                    .to_string(),
+            ),
+            Way::NotAFolder => (
+                "~/.moai is a file, not a folder. Move that file aside, then run this command \
+                 again."
+                    .to_string(),
+                "~/.moai 가 폴더가 아니라 파일이에요. 그 파일을 옆으로 옮긴 뒤 이 명령을 \
+                 다시 실행해 주세요."
+                    .to_string(),
+            ),
+            Way::NewerMarker => (
+                "~/.moai was written by a newer moai. Use that newer moai, or move the folder \
+                 aside, then run this command again."
+                    .to_string(),
+                "~/.moai 를 더 새로운 moai 가 썼어요. 그 moai 를 쓰거나 폴더를 옆으로 옮긴 뒤 \
+                 이 명령을 다시 실행해 주세요."
+                    .to_string(),
+            ),
+            Way::UnreadableMarker => (
+                "The marker file inside ~/.moai cannot be read. Fix that file or move it \
+                 aside, then run this command again."
+                    .to_string(),
+                "~/.moai 안의 표식 파일을 읽을 수 없어요. 그 파일을 고치거나 옆으로 옮긴 뒤 \
+                 이 명령을 다시 실행해 주세요."
+                    .to_string(),
+            ),
+            Way::Layout(reason) => (
+                format!(
+                    "~/.moai cannot be used: {reason}. Fix or move that item, then run this \
+                     command again."
+                ),
+                format!(
+                    "~/.moai 를 쓸 수 없어요: {reason}. 그 항목을 고치거나 옮긴 뒤 이 명령을 \
+                     다시 실행해 주세요."
+                ),
+            ),
+        };
+        match lang {
+            Lang::En => format!("Nothing was written. {en}"),
+            Lang::Ko => format!("아무것도 쓰지 않았어요. {ko}"),
+        }
+    }
+}
+
+/// The first Go markers by name, with how many more there are.
+fn markers_shown(markers: &[String]) -> String {
+    const SHOWN: usize = 4;
+    let head = markers
+        .iter()
+        .take(SHOWN)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(", ");
+    match markers.len().saturating_sub(SHOWN) {
+        0 => head,
+        more => format!("{head} and {more} more"),
     }
 }
 
@@ -64,8 +172,35 @@ impl From<HomeWriteRefused> for String {
 /// not exist passes: each writer keeps its own answer for that. Reads only; the environment is
 /// never read.
 pub fn check(home: &Path) -> Result<(), HomeWriteRefused> {
-    let _ = home;
-    Ok(())
+    let c = classify_home(home);
+    let way = match c.generation {
+        "go" | "mixed" => Way::CleanUp {
+            markers: c.go_markers,
+        },
+        // A stopped move that left its Go folder in a backup names the backup; one that left
+        // only the state folder with the record of the move names the revert preview.
+        "interrupted" => {
+            if !c.interrupted.is_empty() && c.interrupted.iter().all(|n| n == MOAI_DIR) {
+                Way::FinishRevert
+            } else {
+                Way::MoveBack {
+                    backups: c.interrupted,
+                }
+            }
+        }
+        "refuse" => match (c.moai_dir, c.rust_marker) {
+            ("link", _) => Way::Link,
+            ("other", _) => Way::NotAFolder,
+            (_, "newer") => Way::NewerMarker,
+            (_, "unreadable") => Way::UnreadableMarker,
+            _ => Way::Layout(c.reason),
+        },
+        _ => return Ok(()),
+    };
+    Err(HomeWriteRefused {
+        generation: c.generation,
+        way,
+    })
 }
 
 #[cfg(test)]
