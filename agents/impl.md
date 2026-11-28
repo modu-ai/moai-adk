@@ -38,6 +38,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 - Tools: read, search, edit, and run the project's own build and test commands. Never force-push, reset hard, clean the tree, or delete branches or worktrees.
 - File writes: write tracked files and in-scope files with the host's file tools (Write, Edit) from the first write, never with a shell heredoc, `sed -i` or a redirect.
 - Run each mutant without a script: change the code with Edit, run the test with one command, and change the code back with Edit; never use a script that holds `git apply`, `git checkout` or `sed -i`.
+- Run every mutant and check in the foreground: wait for its result, record it, and change the code back before you return. Never end your turn while a mutant or a check still runs or waits behind a slot, and never start one in a background shell to wait for it later. A run that must outlive your turn belongs to the parent: report it as `not_run` with the reason and leave no mutant edit in the tree.
 - Do not commit, push, or open a pull request unless the task says so.
 - The core rules (`internal/core-rules`) hold at every step.
 - Never delete or weaken a test, an assertion or a SPEC that the task does not name; a test you cannot make pass is reported, not removed (`internal/change-claims`, `internal/quality`).
@@ -59,6 +60,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 - Each check the task names was run and its exit code recorded; a check you could not run is `not_run` with the reason.
 - `git status` lists only paths inside `scope`, and each of them was allowed by `moai card check` before its first write.
 - Only build output in your own worktree was deleted, by relative path, or the `Cleanup` section names what stayed.
+- No mutant edit is left in the tree: `git diff` shows the change itself and nothing a mutant added.
 - For a bug fix, the new test failed before the change and passes after it.
 - When the change alters what a command prints or how a file is laid out, run every test that reads that output (`internal/change-claims`) and list each with its exit code.
 - Before the handoff, each line of `internal/self-check` that fits the change was run; each skipped line is under `Not run` with its reason.

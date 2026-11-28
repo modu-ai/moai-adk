@@ -1639,6 +1639,8 @@
         "check_pipeline_config",
         "cli_text_citations",
         "hot_file_ops_merge",
+        "improve_note_cli",
+        "improve_plan_cli",
         "integration_guard_install",
         "integration_guard_repoint",
         "lane_next_rules",
@@ -1686,6 +1688,8 @@
         "tests/card/decision_append_cli.rs",
         "tests/card/followup_per_spec_rules.rs",
         "tests/hot_file_ops_merge.rs",
+        "tests/improve_note_cli.rs",
+        "tests/improve_plan_cli.rs",
         "tests/integration_guard_install.rs",
         "tests/integration_guard_repoint.rs",
         "tests/lane_next_rules.rs",
@@ -1937,6 +1941,7 @@
         "e2e_temp_home_cli",
         "home_style_ownership_cli",
         "host_small_fixes_cli",
+        "improve_plan_cli",
         "lane_completion_handshake",
         "lane_next_rules",
         "launcher_retire_role_flags",
@@ -1983,6 +1988,7 @@
         "tests/home_style_ownership_cli.rs",
         "tests/card/followup_per_spec_rules.rs",
         "tests/host_small_fixes_cli.rs",
+        "tests/improve_plan_cli.rs",
         "tests/lane_completion_handshake.rs",
         "tests/lane_next_rules.rs",
         "tests/launcher_retire_role_flags.rs",
@@ -2465,6 +2471,7 @@
         "repo_scans_table",
         "retired_host_words",
         "retired_hosts_layer",
+        "review_names_floor",
         "style_banner_scan",
         "test_weakening",
         "worktree_cli",
@@ -2502,6 +2509,7 @@
         "tests/repo_scans_cli.rs",
         "tests/retired_host_words.rs",
         "tests/retired_hosts_layer.rs",
+        "tests/review_names_floor.rs",
         "tests/test_weakening.rs",
         "tests/worktree_cli.rs",
         "tests/style_banner_scan.rs",
@@ -2693,6 +2701,9 @@
           "prefix": "src/recovery.rs"
         },
         {
+          "prefix": "src/review_names.rs"
+        },
+        {
           "prefix": "src/session.rs"
         },
         {
@@ -2769,6 +2780,7 @@
         "repo_scans_cli",
         "repo_scans_table",
         "review_checklist_cli",
+        "review_names_floor",
         "search_atlas",
         "skill_text_citations",
         "style_banner_scan",
@@ -2788,6 +2800,7 @@
         "tests/protected_paths_one_list.rs",
         "tests/repo_scans_cli.rs",
         "tests/review_checklist_cli.rs",
+        "tests/review_names_floor.rs",
         "tests/search_atlas.rs",
         "tests/skill_text_citations.rs",
         "tests/style_banner_scan.rs",

@@ -2,13 +2,13 @@
 id: SPEC-20261121-self-improvement-loop
 title: "Self-improvement loop: `moai improve` proposes small gated changes to project skills, agents and CLAUDE.local.md from observed signals; the first change adds the read-only `improve-signals`"
 status: approved
-revision: 1
+revision: 2
 created: 2026-11-21
 approval:
   by: user
   at: 2026-11-27
-  basis: "사용자가 직접 골랐어요(2026-11-27, 리더 세션의 질문 도구; 리더 노트 10683, 2026-11-27T06:28:45Z, 레인은 그 노트를 인용해 옮겨 적었어요): 개정 1 을 한 SPEC 으로 승인(D11), D1 개인 파일 쓰기 허용(관리 블록 안만, 미리보기와 선택 뒤), D4 평평한 이름(improve-signals·improve-plan·improve-eval·improve-apply·improve-revert, 스킬 입구 /moai improve), D6 어림 세기 받아들임(출력에 어림값 표시)"
-  digest: "sha256:4389671b0dcef6dd68fa1b833571c2b0c8f4f0171bb29a8aa1d287afd85098bb"
+  basis: "사용자가 직접 골랐어요(2026-11-27, 리더 세션의 질문 도구; 리더 노트 10683, 2026-11-27T06:28:45Z, 레인은 그 노트를 인용해 옮겨 적었어요): 개정 1 을 한 SPEC 으로 승인(D11), D1 개인 파일 쓰기 허용(관리 블록 안만, 미리보기와 선택 뒤), D4 평평한 이름(improve-signals·improve-plan·improve-eval·improve-apply·improve-revert, 스킬 입구 /moai improve), D6 어림 세기 받아들임(출력에 어림값 표시). 개정 2: 사용자가 직접 \"개정 2 승인 (Recommended)\"을 골랐어요(2026-11-27, 리더 세션의 질문 도구; 리더 노트 10814, 2026-11-27T12:10:26Z, 레인은 그 노트를 인용해 옮겨 적었어요): 요구 11줄(REQ-26~REQ-36)과 기준 9줄(AC-10~AC-18)을 더하고 결정 본문(Decisions)은 바꾸지 않음"
+  digest: "sha256:c584a562d011c102b02585269cfab91943644c4b648ccfbe9d39076954a0cc55"
 ---
 
 # 자기 개선 루프 (`moai improve`)
@@ -40,7 +40,7 @@ AI 코딩 도구가 같은 실수를 되풀이하면 사람이 같은 정정을 
 
 ## Requirements
 
-요구 REQ-1~REQ-11 은 조각 S1 이고, REQ-12~REQ-25 는 이 SPEC 이 정해 두는 루프 전체의 설계로 뒤 조각이 구현해요.
+요구 REQ-1~REQ-11 은 조각 S1 이고, REQ-12~REQ-25 는 이 SPEC 이 정해 두는 루프 전체의 설계로 뒤 조각이 구현해요. REQ-26~REQ-36 은 조각 S2 가 개정 2 로 더한 줄이에요(`improve-plan` 의 정적 게이트와 쓰기 없음, `improve-note` 의 쓰기).
 
 - REQ-1: When `moai improve-signals <project>` runs, the command shall read only observed facts from four sources — audit-FAIL notes and `LANE-BLOCKED kind=<kind>` notes of the project's card ledger, cards titled `flaky: <test>`, and the project's `improve/notes.jsonl` — and print each fact as a signal grouped into classes with a count, the first and last time and at most five example signals per class.
 - REQ-2 (REQ-1): IF the card ledger cannot be read or the notes file is a symbolic link, THEN the command shall refuse with an error and print no classes.
@@ -67,10 +67,21 @@ AI 코딩 도구가 같은 실수를 되풀이하면 사람이 같은 정정을 
 - REQ-23: Where the project's `CLAUDE.local.md` holds a managed block `moai-lessons`, the writing code shall change only the lines inside the block markers, and `src/agents.rs` names the block as the one exception to "created once and never modified" · failure: none
 - REQ-24 (REQ-16): IF an evaluation file changed since the plan was built, THEN the evaluation shall be `blocked`.
 - REQ-25: Where a maintainer adapter or a maintainer evaluation case exists (`tools/improve/maintainer-signals.json`), it shall stay outside the shipped package, and a scan fails when the count of maintainer-only tokens in shipped text rises above the base commit's · failure: none
+- REQ-26: When `moai improve-plan` runs, the command shall write no file, no ledger row and no folder, and its result says `writes: false` · failure: none
+- REQ-27: When a plan is built, the command shall read the target only as a regular file below the project root and print the target, the sha-256 of the old and of the new bytes, the item lines it would write, the target's generation state (`unchanged` when the bytes equal the manifest's `baseline_sha256`, `conflict` when they differ) and a `plan_digest` · failure: none
+- REQ-28 (REQ-27): IF an item rule or reason names a project path that does not exist, or a `moai` command that the binary does not have, THEN the plan shall be refused with the reason `drift`.
+- REQ-29 (REQ-27): IF the target is not a regular file below the project root (a link, a path with `..`, a folder), or does not start with front matter that has a `name` and a `description` of at most 1,024 characters, THEN the plan shall be refused with the reason `not_allowed` or `front_matter`.
+- REQ-30 (REQ-27): IF an item rule, reason or source id is shaped like a secret (`redact::redact_secret_shapes` changes it), THEN the plan shall be refused with the reason `secret`.
+- REQ-31: When the same arguments and the same bytes of the target and the manifest are given, the plan digest shall be the same, whatever the project folder or the clock is · failure: none
+- REQ-32: When `moai improve-note` runs, the command shall append exactly one line of the D7 shape to the project's `improve/notes.jsonl`, with `at` read from the clock in UTC, creating the folder and the file when they are absent · failure: none
+- REQ-33 (REQ-32): IF the kind is outside `correction`, `failure` and `false_claim`, or the key is over 80 characters, or the text is over 200 characters, or the append would take the file over 1 MiB (the read limit of `improve-signals`), THEN the command shall refuse and write nothing.
+- REQ-34: When the key or the text of a note carries a secret-shaped word, the command shall write `[redacted]` in its place · failure: none
+- REQ-35 (REQ-32): IF the `improve` folder or the notes file is a symbolic link, or the notes file is not a regular file, or the state folder above them is a link, THEN the command shall refuse and write nothing.
+- REQ-36: When the notes file is opened for the append, the command shall open it without following a link · failure: none
 
 ## Acceptance
 
-Acceptance lines exist for REQ-1…REQ-11, the requirements of slice S1. REQ-12…REQ-25 are fixed by this SPEC; each later slice adds its own acceptance lines (revision bump) from the boundary table. The host is Claude Code only (D10).
+Acceptance lines AC-1…AC-9 exist for REQ-1…REQ-11, the requirements of slice S1; AC-10…AC-18 are the lines slice S2 added in revision 2 for REQ-12…REQ-15 and REQ-26…REQ-36. REQ-16…REQ-25 are fixed by this SPEC; each later slice adds its own acceptance lines (revision bump) from the boundary table. The host is Claude Code only (D10).
 
 - AC-1 (REQ-1…REQ-3): in a temporary HOME and project with a ledger, two `AUDIT … verdict: FAIL` notes that cite `src/a.rs`, one that cites `src/b.rs`, two `LANE-BLOCKED … kind=ci` notes, one card titled `flaky: some_test` and improve notes of the kind `correction` give the classes `audit_fail:src/a.rs`, `audit_fail:src/b.rs`, `block:ci`, `flake:some_test` and `correction:<topic>` with counts, times and at most five examples; an absent ledger and an absent notes file report `absent` with exit 0; an unreadable ledger and a symbolic link as the notes file are refused.
   verify: `cargo nextest run --locked --offline --test improve_signals_cli`
@@ -90,6 +101,24 @@ Acceptance lines exist for REQ-1…REQ-11, the requirements of slice S1. REQ-12�
   verify: `cargo nextest run --locked --offline --bin moai-cli operations_doc_matches_code help_table_names_every_command_once every_command_has_examples`; `cargo nextest run --locked --offline --test help_layout`
 - AC-9 (REQ-1…REQ-11): at most five mutants of the new code, each turning a test red, are restored.
   verify: manual: the mutant table in the Result, one `guard-mutant:` line per mutant in the READY note.
+- AC-10 (REQ-12, REQ-13): `improve-plan` accepts a target that the manifest `owned_files` lists with the kind `generation:project-skill:claude:prj-*` or `generation:native-role:claude:prj-*` and refuses, with the reason `not_allowed` and no write, each of: a file the manifest does not list, the installed `moai` skill, `.claude/settings.json`, a hook file, `.mcp.json`, a file under `tests/`, a file under the evaluation set folder `improve/evals/`, `CLAUDE.md`, `CLAUDE.local.md` (grade B waits for slice S4), a path with `..`, an absolute path and a link.
+  verify: `cargo nextest run --locked --offline --test improve_plan_cli`
+- AC-11 (REQ-14): a proposal of one, two or three items is accepted and of zero or four is refused; each item has an `id`, one rule sentence, one reason line, one to five `source` signal ids, the status `trial` and the counters `helped` and `hurt` at 0; the merge adds, replaces or retires by item id inside the managed block `moai-lessons` of the target and every byte outside the block is the same before and after.
+  verify: `cargo nextest run --locked --offline --test improve_plan_cli`; `cargo nextest run --locked --offline --bin moai-cli improve_plan`
+- AC-12 (REQ-15): the budgets hold at N and refuse at N+1 on the new bytes: 200 lines for `CLAUDE.md`-class files and for project agent files (D10 names no agent budget; this line fixes it at 200), 500 lines for a skill and 1,024 characters for its `description`; a proposal that would pass a line budget is accepted when it also retires one `trial` item that brings the file back to N.
+  verify: `cargo nextest run --locked --offline --test improve_plan_cli`; `cargo nextest run --locked --offline --bin moai-cli improve_plan`
+- AC-13 (REQ-26…REQ-30): one failing input per gate (test deletion or weakening named by the target path, `drift` for a missing path and for a missing `moai` command, `secret`, `front_matter`) is refused with its reason, and the reasons of every failing gate are listed; `improve-plan` writes nothing (`TempHome::snapshot`, folder modification times included, equal before and after) and says `writes: false`; a conflict state is shown when the target differs from its `baseline_sha256`.
+  verify: `cargo nextest run --locked --offline --test improve_plan_cli`
+- AC-14 (REQ-31): the same arguments in two temporary projects with the same file bytes give the same `plan_digest`, and a changed item, a changed target byte or a changed `baseline_sha256` gives another one.
+  verify: `cargo nextest run --locked --offline --test improve_plan_cli`
+- AC-15 (REQ-32…REQ-34): `improve-note` appends one D7 line (the `at` field is UTC RFC 3339), creates the folder and the file when absent, and the line is read back by `improve-signals` as the class `<kind>:<key>`; a kind outside the three, a key of 81 characters, a text of 201 characters and an append over the 1 MiB read limit are refused with nothing written, and a key of 80 characters, a text of 200 characters and a file that ends exactly at the limit are accepted; a secret-shaped word is written as `[redacted]`.
+  verify: `cargo nextest run --locked --offline --test improve_note_cli`
+- AC-16 (REQ-35, REQ-36): with the real binary in a temporary project, `improve/` as a symbolic link, `improve/notes.jsonl` as a symbolic link and as a named pipe, and the state folder above them as a link each refuse the append, the link target is not written, and nothing else under the temporary HOME and project changes.
+  verify: `cargo nextest run --locked --offline --test improve_note_cli`
+- AC-17 (REQ-26, REQ-32): both commands are file-ops with their operations documents, help rows, examples and goldens.
+  verify: `cargo nextest run --locked --offline --bin moai-cli operations_doc_matches_code help_table_names_every_command_once every_command_has_examples`; `cargo nextest run --locked --offline --test help_layout`
+- AC-18 (REQ-12…REQ-15, REQ-26…REQ-36): one mutant per gate and per refusal path of the new code (allow-list, test path, `drift`, `secret`, `front_matter`, each budget, item count, digest input, link refusal, size cap), each turning a named test red, is restored.
+  verify: manual: the mutant table in the Result, one `guard-mutant:` line per mutant in the READY note.
 
 ### 조각과 카드의 경계
 
@@ -98,7 +127,7 @@ Acceptance lines exist for REQ-1…REQ-11, the requirements of slice S1. REQ-12�
 | 조각 | 카드 | 요구 | 하는 일 | 쓰는 곳 | 상태 |
 | --- | --- | --- | --- | --- | --- |
 | S1 신호 수집 | C-228 | REQ-1~REQ-11 | 읽기 전용 `improve-signals` 와 이 SPEC | `src/ops/improve_signals.rs`, `tests/improve_signals_cli.rs`, 운영 문서 조각, 줄 임대로 `src/help.rs` 와 `tests/fixtures/help/*.txt` | 이 SPEC 승인 뒤 시작. 옛 구현은 `a4f4f177ca` 에만 있어요 |
-| S2 제안과 정적 게이트 | C-229 | REQ-12~REQ-15 | `improve-plan`(등급 A 델타 제안, `generation-plan` 미리보기, 정적 게이트, `plan_digest`)과 신호를 쓰는 `improve-note`(D7). `improve-note` 의 요구 줄은 S2 가 개정으로 더해요 | 새 `src/ops/improve_*.rs`, `src/generation.rs` 는 읽기만 | S1 착지 뒤 |
+| S2 제안과 정적 게이트 | C-229 | REQ-12~REQ-15, REQ-26~REQ-36 | `improve-plan`(등급 A 델타 제안, `generation-plan` 미리보기, 정적 게이트, `plan_digest`)과 신호를 쓰는 `improve-note`(D7). `improve-note` 의 요구 줄은 개정 2 의 REQ-32~REQ-36 이에요 | 새 `src/ops/improve_*.rs`, `src/generation.rs` 는 읽기만 | S1 착지 뒤 |
 | S3 평가 게이트 | C-230 | REQ-16~REQ-18, REQ-24 | `improve-eval`: 사례 재생, 결정적 검사기, 판정 `accept`·`reject`·`needs_human`·`blocked` | 새 `src/ops/improve_eval.rs`, 평가 세트 파일(루프가 못 쓰는 자리) | S2 착지 뒤 |
 | S4 적용·되돌리기 | C-231 | REQ-19~REQ-23 | `improve-apply`·`improve-revert`, `skills/moai/workflows/improve.md` 와 루트, `CLAUDE.local.md` 관리 블록 예외(`src/agents.rs`) | 새 `src/ops/improve_*.rs`, `skills/moai/**`(소스 매니페스트 줄 임대), `src/agents.rs` | S3 착지 뒤. 스킬 변경이라 사본 동기화 규칙을 따라요 |
 | S5 유지보수 루프 | C-232 | REQ-25 | 저장소 전용 어댑터, 배포 텍스트 ratchet 스캔, 평가 사례 네 개 | `tools/improve/**`, 스캔 표(줄 임대) | 카드 상태 `hold`. 스캔과 사례는 지금도 시작할 수 있지만 엔진 연결은 S1 뒤 |
@@ -108,6 +137,7 @@ Acceptance lines exist for REQ-1…REQ-11, the requirements of slice S1. REQ-12�
 ## Scope
 
 - write (slice S1, 승인 뒤): `.moai/specs/SPEC-20261121-self-improvement-loop/**`, `src/ops/improve_signals.rs` (로직은 이 파일에 자기 단위 테스트와 함께 두어 `src/lib.rs` 를 건드리지 않아요), `docs/design-review/appendix/operations/improve_signals.md`, `tests/improve_signals_cli.rs`
+- write (slice S2, 개정 2): `.moai/specs/SPEC-20261121-self-improvement-loop/**`, `src/ops/improve_plan.rs`, `src/ops/improve_note.rs` (각자 자기 단위 테스트와 함께), `docs/design-review/appendix/operations/improve_plan.md`, `docs/design-review/appendix/operations/improve_note.md`, `tests/improve_plan_cli.rs`, `tests/improve_note_cli.rs`. `src/generation.rs` 와 `src/contract.rs` 는 읽기만 해요(S2 는 허용 경로를 매니페스트의 `owned_files` 에서 읽고, 거절은 S1 처럼 `improve-plan refused: <이유>` 메시지와 종류 `invalid_input` 이에요).
 - 줄 임대로만(공유 파일, 카드 범위에 넣지 않아요): `src/help.rs`(`GROUPS` 행 하나, `EXAMPLES` 행 하나), `tests/fixtures/help/*.txt`(그 명령을 담는 골든), 새 테스트 파일이 체크인 파일을 읽으면 `tools/repo_scans.json`
 - read-only: `src/ledger/open.rs`(`open_read_only`), `src/card/export_db.rs`(`read_snapshot`), `src/card/inbox.rs`, `src/lane_next.rs`, `src/redact.rs`, `src/state_root.rs`, `src/home_root.rs`, `tests/common/home.rs`, `skills/moai/references/internal/check-rules.md`, `skills/moai/workflows/audit.md`, `skills/moai/workflows/work.md`
 - forbidden: `skills/moai/**`(`improve` 루트는 조각 S4), `agents/*.md`, `CLAUDE.md`, `src/agents.rs`(D1 예외는 조각 S4), `src/generation.rs`, 철회된 호스트의 경로, 카드·장부·실제 HOME 에 쓰기, 네트워크
@@ -190,3 +220,50 @@ Acceptance lines exist for REQ-1…REQ-11, the requirements of slice S1. REQ-12�
 한 가림 단계만 빼는 뮤턴트(`redact_secret_shapes` 만 제거)는 `redact_outgoing` 이 같은 모양을 가려서 살아남아요. 두 단계가 겹치는 것이라 동작 차이가 없어서(같은 입력에 같은 출력) 테스트를 더하지 않았어요. 둘 다 빼면 위 네 번째 줄처럼 빨개져요.
 
 알려진 한계: 점검 실패의 종료 코드는 읽지 않아요(D8). 플레이키 횟수는 어림값이에요(D6, 출력에 표시). Windows 는 `not_run`(두 테스트 대상이 unix 전용이에요). `improve-note` 와 제안·평가·적용은 뒤 조각(S2~S4)이에요.
+
+### 조각 S2 (`improve-plan`, `improve-note`) 결과
+
+개정 2 의 REQ-26~REQ-36 과 AC-10~AC-18 을 구현한 결과예요. 이 브랜치(`spec/self-improvement-loop-20261121-r3`)에서 새로 구현했고 `tdd red` 가 `-plan` 접미사를 읽지 못해 브랜치 이름을 `-r3` 으로 바꿨어요.
+
+단계: RED 커밋 `1c6f2aee89`(`tests/improve_plan_cli.rs` 17개, `tests/improve_note_cli.rs` 8개, `moai tdd red` 기록), 이름 붙은 파이프 사례를 폴더 목록 비교로 바꾼 `6f747f2c71`(스냅샷이 파이프를 읽으며 멈춰서 `moai tdd reopen` 을 한 번 했고, 그래서 `moai tdd green` 은 기록하지 못했어요. GREEN 은 아래 verify 실행과 커밋 `ebc1a60288` 로 대신 보여요), 구현 `ebc1a60288`(`src/ops/improve_plan.rs`, `src/ops/improve_note.rs`, 운영 문서 둘, `src/help.rs` 행 둘과 예시, 도움말 골든 4개), 중복 링크 분기 정리 `dae647ddbb`(AC-18 뮤턴트 12 가 살아남아 고쳤어요), 스캔 표 등록 `7ca6cceb2f`(`tools/repo_scans.json` 줄 임대). verify 는 NeXT tip `d80ed2e7b6` 를 머지한 헤드 `cdbad671d0` 에서 적힌 그대로 슬롯 안에서 돌렸어요. 그 뒤 영수증(`check affected --card`)이 `ops_rustfmt`, `clippy`, 도움말 규칙 둘(`every_one_line_about_follows_the_rule`, `every_example_parses`: tip 이 들여온 규칙이에요)에서 차례로 멈춰서 `rustfmt` 서식 커밋, 테스트 clippy 수정, `improve-plan` 한 줄 설명과 `improve-note` 예시 수정(골든 4개 다시 생성)을 더했어요. 마지막 헤드와 영수증은 READY 노트에 적어요. AC-17 의 두 verify 는 도움말 수정 뒤에 다시 돌려 통과했어요(`--bin moai-cli` 31개, `help_layout` 11개).
+
+- AC-10: met — `cargo nextest run --locked --offline --test improve_plan_cli` 17개 통과(exit 0). `a_listed_project_skill_and_agent_are_planned_and_nothing_is_written`(매니페스트가 가진 프로젝트 스킬·에이전트는 계획되고 아무것도 쓰지 않아요), `a_target_the_manifest_does_not_own_as_a_project_file_is_refused_not_allowed`(목록에 없는 파일, 설치된 `moai` 스킬, `.claude/settings.json`, 훅 파일, `.mcp.json`, `CLAUDE.md`, `CLAUDE.local.md`, `..`, 절대 경로, 링크, 폴더, 다른 종류 섹션, 매니페스트 없음 모두 `not_allowed`), `a_target_in_a_test_or_the_evaluation_set_lists_both_reasons`(`tests/` 와 `improve/evals/` 아래 파일), `a_link_in_the_manifest_or_in_the_path_is_never_followed`(경로 중간의 링크).
+- AC-11: met — 같은 17개 중 `one_two_or_three_items_pass_and_zero_or_four_are_refused`, `an_item_needs_its_fields_in_their_limits`, `the_merge_adds_replaces_and_retires_by_id_inside_the_block_only`(블록 밖 바이트 그대로). `cargo nextest run --locked --offline --bin moai-cli improve_plan` 8개 통과(exit 0): `improve_plan_merge_keeps_every_byte_outside_the_block` 외.
+- AC-12: met — `the_line_budget_holds_at_n_and_refuses_at_n_plus_one_unless_one_trial_item_is_retired`(파일 종류별 줄 예산 N 통과, N+1 거절, `trial` 항목 하나를 은퇴시키면 통과), `the_description_budget_is_1024_characters`, 단위 `improve_plan_budgets_pass_at_n_and_refuse_at_n_plus_one`, `improve_plan_the_description_limit_is_1024_characters`. 예산: 스킬 500줄, 에이전트 파일 200줄, `description` 1,024자(32 KiB 예산은 두지 않았어요: leader 결정 노트 10802).
+- AC-13: met — `a_target_without_front_matter_with_a_name_and_a_description_is_refused`, `a_rule_that_names_a_missing_path_or_a_missing_command_is_drift`, `a_secret_shaped_word_in_an_item_is_refused_and_never_printed`, `every_failing_gate_is_listed_and_the_target_is_never_written`(실패한 게이트의 이유를 모두 나열하고 `TempHome::snapshot` 이 전후 같아요), `a_hand_edited_file_shows_conflict_and_a_generated_one_unchanged`. 결과에 `writes: false`. 시험 삭제·약화는 대상 경로로만 가려요(`test_weakening`).
+- AC-14: met — `the_same_input_gives_the_same_digest_in_any_folder_and_any_change_gives_another`(항목, 대상 바이트, 기준선이 각각 다른 digest 를 줘요), 단위 `improve_plan_the_digest_is_a_function_of_its_inputs_only`. 도메인 문자열 `improve-plan@1`.
+- AC-15: met — `cargo nextest run --locked --offline --test improve_note_cli` 8개 통과(exit 0): `a_note_is_one_d7_line_made_when_the_folder_and_file_are_absent`, `a_note_is_appended_after_the_earlier_ones_and_improve_signals_reads_it_as_its_class`(`improve-signals` 가 `<kind>:<key>` 부류로 읽어요), `a_file_that_does_not_end_with_a_newline_gets_one_before_the_new_line`, `the_kind_the_key_the_text_and_the_observer_are_held_to_their_limits`(80 통과 81 거절, 200 통과 201 거절), `an_append_that_would_take_the_file_over_one_mebibyte_is_refused`(한도에 딱 맞으면 통과), `a_secret_shaped_word_is_written_as_redacted_in_the_key_the_text_and_the_observer`.
+- AC-16: met — `a_link_or_a_special_file_on_the_way_is_refused_and_never_followed`: 실제 바이너리를 임시 프로젝트에서 돌려 `improve/` 링크, `improve/notes.jsonl` 링크와 이름 붙은 파이프, 상태 폴더 링크가 모두 거절되고 링크 대상과 그 밖의 파일이 그대로예요. 단위 `improve_note_a_link_and_a_pipe_are_refused_by_name` 외 5개(`cargo nextest run --locked --offline --bin moai-cli improve_note` 6개 통과).
+- AC-17: met — `cargo nextest run --locked --offline --bin moai-cli operations_doc_matches_code help_table_names_every_command_once every_command_has_examples` 3개 통과, `cargo nextest run --locked --offline --test help_layout` 11개 통과(골든 4개를 `MOAI_HELP_GOLDEN_WRITE=1` 로 머지된 트리에서 다시 만들었어요). `the_command_is_listed_in_the_help_and_has_an_example`, `the_command_is_listed_in_the_help_and_has_its_operations_document`.
+- AC-18: met — 뮤턴트 26개를 하나씩 걸고 이름 붙은 테스트를 슬롯에서 돌린 뒤 `git restore` 로 되돌렸고 마지막에 `git status --short` 가 비어 있어요. 아래 표에 요약했고 줄 단위 기록은 READY 노트에 있어요.
+
+| 뮤턴트 | 빨갛게 만든 테스트 | 종료 코드 |
+| --- | --- | --- |
+| 허용 목록의 소유 확인 제거 | `a_target_the_manifest_does_not_own_as_a_project_file_is_refused_not_allowed` | 101 |
+| `prj-*` 경로 모양 확인 제거 | `a_target_in_a_test_or_the_evaluation_set_lists_both_reasons` 외 둘 | 101 |
+| 시험 경로 게이트 제거 | `a_target_in_a_test_or_the_evaluation_set_lists_both_reasons` 외 하나 | 101 |
+| 항목 수 확인 제거 | `one_two_or_three_items_pass_and_zero_or_four_are_refused` 외 하나 | 101 |
+| 없는 경로를 `drift` 로 안 봄 | `a_rule_that_names_a_missing_path_or_a_missing_command_is_drift` | 101 |
+| 없는 `moai` 명령을 `drift` 로 안 봄 | `a_rule_that_names_a_missing_path_or_a_missing_command_is_drift` | 101 |
+| `secret` 게이트가 걸리지 않음 | `a_secret_shaped_word_in_an_item_is_refused_and_never_printed` 외 하나 | 101 |
+| `front_matter` 게이트 제거 | `a_target_without_front_matter_with_a_name_and_a_description_is_refused` 외 둘 | 101 |
+| 스킬 줄 예산 500 → 501 | 단위 `improve_plan_budgets_pass_at_n_and_refuse_at_n_plus_one` | 101 |
+| 에이전트 줄 예산 200 → 201 | `the_line_budget_holds_at_n_and_refuses_at_n_plus_one_unless_one_trial_item_is_retired` | 101 |
+| digest 입력에서 기준선 제거 | `the_same_input_gives_the_same_digest_in_any_folder_and_any_change_gives_another` | 101 |
+| 경로 중간 폴더가 링크여도 통과 | `a_link_in_the_manifest_or_in_the_path_is_never_followed` | 101 (첫 시도는 살아남아 exit 0 이었어요: 링크를 따로 거절하던 분기는 뒤의 "파일도 폴더도 아님" 검사가 같은 링크를 같은 이유로 거절해서 있으나 마나였어요. 그 분기를 지우는 커밋 `dae647ddbb` 뒤 다시 걸었을 때 101) |
+| 읽기 한도 확인 제거 | `a_target_over_the_read_limit_is_refused_by_the_size_budget` | 101 |
+| 은퇴 대상이 `trial` 인지 확인 제거 | `the_merge_adds_replaces_and_retires_by_id_inside_the_block_only` | 101 |
+| `description` 한도 1024 → 1025 | `the_description_budget_is_1024_characters` | 101 |
+| 항목 글 한도 200 → 201 | `an_item_needs_its_fields_in_their_limits` | 101 |
+| 기준선과 비교하지 않고 항상 `unchanged` | `a_hand_edited_file_shows_conflict_and_a_generated_one_unchanged` | 101 |
+| `improve-note` 상태 폴더 링크 거절 제거 | `a_link_or_a_special_file_on_the_way_is_refused_and_never_followed` | 101 |
+| 1 MiB 한도 `<=` → `<` | `an_append_that_would_take_the_file_over_one_mebibyte_is_refused` | 101 |
+| 개행 없는 파일 뒤 개행 삽입 제거 | `a_file_that_does_not_end_with_a_newline_gets_one_before_the_new_line` | 101 |
+| 비밀 가리기 제거 | `a_secret_shaped_word_is_written_as_redacted_in_the_key_the_text_and_the_observer` | 101 |
+| 제어 문자 거절 제거 | `the_kind_the_key_the_text_and_the_observer_are_held_to_their_limits` | 101 |
+| key 한도 80 → 81 | `the_kind_the_key_the_text_and_the_observer_are_held_to_their_limits` | 101 |
+| text 한도 200 → 201 | `the_kind_the_key_the_text_and_the_observer_are_held_to_their_limits` | 101 |
+| 폴더 링크 사전 거절 분기 끔 | `a_link_or_a_special_file_on_the_way_is_refused_and_never_followed` | 101 |
+| `O_NOFOLLOW` 제거 | 단위 `improve_note_a_link_and_a_pipe_are_refused_by_name` | 101 |
+
+알려진 한계와 알려 둘 것: 변이를 걸지 않은 테스트는 단순 성공 경로와 도움말·운영 문서 목록 테스트예요(가드가 아니에요). `improve-note` 의 `kind` 허용 목록과 `by` 한도는 같은 테스트(`the_kind_the_key_the_text_and_the_observer_are_held_to_their_limits`)가 지키지만 이 둘만 따로 변이를 걸지는 않았어요. 뮤턴트 9 는 통합 테스트 대상을 걸지 않고 단위 테스트로만 확인했어요. `source` 신호 id 는 모양(1~120자, 한 줄)만 검사하고 장부에 있는지는 보지 않아요. SPEC 개정 2 의 `generation-plan` 미리보기 말은 구현하지 않았고 매니페스트의 `owned_files` 로만 대상을 가려요(매니페스트가 정본이라서요). Windows·Linux 는 `not_run`(두 테스트 대상이 unix 전용이에요).

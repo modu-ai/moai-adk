@@ -13,6 +13,9 @@
 //! Claude Code's changelog (https://code.claude.com/docs/en/changelog.md, read 2026-11-27); a
 //! row it could not verify is not listed (D-5).
 
+mod capabilities;
+mod locks;
+
 use crate::claude::{claude_version, VersionProbe};
 use crate::host_home::{self, Host};
 use serde_json::{json, Map, Value};
@@ -248,6 +251,13 @@ pub struct Gathered {
     pub set_names: Vec<&'static str>,
     pub credentials_file: bool,
     pub settings: Vec<(Scope, Settings)>,
+    /// The managed settings files that exist, as `(label, content)`: `managed-settings.json`
+    /// first, then `managed-settings.d/*.json` in alphabetical order (a later file wins).
+    pub managed: Vec<(String, Settings)>,
+    /// The host column of the capability table the process runs under (`cli` or `gateway`).
+    pub host: &'static str,
+    /// Whether the whole capability table is printed (`--table`).
+    pub table: bool,
     pub version: VersionResult,
     /// `None` unless `--auth-status` was given.
     pub auth: Option<AuthResult>,
@@ -257,6 +267,48 @@ pub struct Gathered {
 pub struct Options {
     pub project: PathBuf,
     pub auth_status: bool,
+    /// The managed settings folder to read; `None` reads the platform's own folder.
+    pub managed_dir: Option<PathBuf>,
+    pub table: bool,
+}
+
+/// The folder of the managed settings files of this platform
+/// (https://code.claude.com/docs/en/managed-settings.md, read 2026-11-27).
+fn platform_managed_dir() -> PathBuf {
+    if cfg!(target_os = "macos") {
+        PathBuf::from("/Library/Application Support/ClaudeCode")
+    } else if cfg!(windows) {
+        PathBuf::from("C:\\Program Files\\ClaudeCode")
+    } else {
+        PathBuf::from("/etc/claude-code")
+    }
+}
+
+/// `managed-settings.json` and the `managed-settings.d/*.json` files of `dir` that exist, in the
+/// order Claude Code merges them.
+fn read_managed(dir: &Path) -> Vec<(String, Settings)> {
+    let mut files = Vec::new();
+    let base = dir.join(locks::MANAGED_BASE);
+    if base.exists() {
+        files.push((locks::MANAGED_BASE.to_string(), read_settings(&base)));
+    }
+    let mut names: Vec<String> = std::fs::read_dir(dir.join("managed-settings.d"))
+        .map(|entries| {
+            entries
+                .filter_map(Result::ok)
+                .filter_map(|e| e.file_name().into_string().ok())
+                .filter(|name| name.ends_with(".json"))
+                .collect()
+        })
+        .unwrap_or_default();
+    names.sort();
+    for name in names {
+        let path = dir.join("managed-settings.d").join(&name);
+        if path.is_file() {
+            files.push((format!("managed-settings.d/{name}"), read_settings(&path)));
+        }
+    }
+    files
 }
 
 /// Reads the environment, the files and the probe (the only side effects are the reads and the
@@ -307,11 +359,21 @@ pub fn gather(opts: &Options) -> Gathered {
         }
     };
     let auth = opts.auth_status.then(auth_status);
+    let managed = read_managed(
+        opts.managed_dir
+            .as_deref()
+            .unwrap_or(&platform_managed_dir()),
+    );
+    // Only the host of the base URL decides the column; the URL itself is never kept.
+    let base_url = std::env::var("ANTHROPIC_BASE_URL").ok();
     Gathered {
         folder,
         set_names,
         credentials_file,
         settings,
+        managed,
+        host: capabilities::host_of(base_url.as_deref()),
+        table: opts.table,
         version,
         auth,
     }
@@ -372,8 +434,9 @@ fn auth_status() -> AuthResult {
     let out = match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
         Ok(out) => out,
         Err(_) => {
-            let _ = child.kill();
-            let _ = child.wait();
+            // The group is signalled before the leader is reaped, so a descendant that holds the
+            // pipe or keeps running does not outlive the time-out (note 10861 of C-338).
+            crate::claude::stop_process_group(&mut child);
             return AuthResult::Unknown("timeout");
         }
     };
@@ -408,12 +471,19 @@ pub fn report(g: &Gathered, platform: &str) -> Value {
         version_check(&g.version, platform),
         login_check(g),
         api_key_check(g),
+        locks::managed_locks_check(g),
+        locks::cross_session_inbound_check(g),
+        capabilities::host_check(g.host),
     ];
-    json!({
+    let mut report = json!({
         "writes": false,
         "checks": checks.iter().map(Check::to_json).collect::<Vec<_>>(),
         "pointers": pointers(),
-    })
+    });
+    if g.table {
+        report["capability_table"] = capabilities::table();
+    }
+    report
 }
 
 fn config_folder_check(g: &Gathered) -> Check {

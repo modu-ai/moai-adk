@@ -72,6 +72,13 @@ fn stop_version_probe(child: &mut std::process::Child, _group_kill_program: &Pat
     group_signal_sent
 }
 
+/// Stops a child that was started in its own process group (`process_group(0)`) and has run out
+/// of time: the group is signalled before the leader is reaped, as the version probe does, so a
+/// descendant does not outlive it. Returns whether the signal command acknowledged the request.
+pub(crate) fn stop_process_group(child: &mut std::process::Child) -> bool {
+    stop_version_probe(child, Path::new(VERSION_GROUP_KILLER))
+}
+
 fn timeout_reason(group_signal_sent: bool) -> &'static str {
     if group_signal_sent {
         "claude --version timed out after 5 s; process-group SIGKILL was acknowledged"
