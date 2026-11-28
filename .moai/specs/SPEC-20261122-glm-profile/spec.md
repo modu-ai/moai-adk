@@ -131,4 +131,7 @@ Not stated in any page read: that `apiKeyHelper` may be given through `--setting
 
 ## Result
 
-(Filled when the work is done. Revision 4 is a SPEC-only draft: no code, no acceptance criterion run yet. It awaits the user's approval; no approval block is recorded.)
+(Filled when the work is done. Revision 4 awaits the user's approval; no approval block is recorded. Only the status line slice, which touches no key or settings path, ran ahead of it.)
+
+- AC-5: met — `glm_absent_windows_are_left_out_and_present_windows_render` in `tests/usage_limit_cli.rs` runs the real binary (plain output, the hidden clock and render-budget seams, temporary HOME, TMPDIR and project). A GLM-shaped payload (model `glm-5.4[1m]`, a declared 1M window, no `rate_limits`) renders `🧠 glm-5.4`, the version line and `🔋 CW █░░░░░░░░░ 12%` with no 5H and no 7D (the renderer leaves an absent window out, it does not print `n/a`); the same payload with both windows renders `🔋 5H ██░░░░░░░░ 25% (1h 0m) | 🔋 7D ████░░░░░░ 40% (3d 0h)` after the CW part, and nothing is written under the temporary HOME. Run: `cargo nextest run --locked --offline --no-fail-fast --test usage_limit_cli` 2 passed (slot `--max 2`). The version line is compared as `<binary-version>`, as the goldens of `tests/fixtures/statusline-claude` do. No product code changed. Guard mutant: none — `src/statusline/render.rs` is outside this card's write scope; both directions are pinned (absent and present), so a change that shows or drops a window fails one of the two assertions.
+- AC-1 to AC-4 and AC-6: not_run (code slices wait for the approval).

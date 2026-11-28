@@ -51,6 +51,44 @@ fn statusline(home: &Path, tmpdir: &Path, cwd: &Path, stdin: &str) {
     );
 }
 
+/// The status line's plain text for one payload: `NO_COLOR`, the hidden clock and render-budget
+/// seams of the goldens (`tests/statusline_golden.rs`), a temporary HOME, TMPDIR and project.
+fn statusline_text(home: &Path, tmpdir: &Path, cwd: &Path, stdin: &str) -> String {
+    let mut child = Command::new(EXE)
+        .args([
+            "statusline",
+            "--render-budget-ms",
+            "3600000",
+            "--now-unix",
+            "1738429000",
+        ])
+        .current_dir(cwd)
+        .clean_env()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", home)
+        .env("TMPDIR", tmpdir)
+        .env("LC_ALL", "C")
+        .env("NO_COLOR", "1")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(stdin.as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    String::from_utf8(out.stdout).unwrap()
+}
+
 fn usage(home: &Path, tmpdir: &Path) -> Value {
     let out = Command::new(EXE)
         .args(["usage-limit", home.to_str().unwrap()])
@@ -115,4 +153,60 @@ fn statusline_render_feeds_usage_limit_in_a_temporary_home() {
         usage(home.path(), tmp.path())["record"],
         record.to_str().unwrap()
     );
+}
+
+/// SPEC-20261122-glm-profile REQ-6 / AC-5: a GLM-shaped payload (the gateway model, the declared
+/// 1M window, no `rate_limits` object) shows neither the five-hour nor the seven-day window, and
+/// a payload that carries both renders them. The golden strings are the whole plain output.
+#[test]
+fn glm_absent_windows_are_left_out_and_present_windows_render() {
+    let home = TempDir::new().unwrap();
+    let tmp = TempDir::new().unwrap();
+    let cwd = TempDir::new().unwrap();
+    let project = cwd.path().to_str().unwrap();
+    let payload = |rate_limits: &str| {
+        format!(
+            r#"{{"model":{{"id":"glm-5.4[1m]","display_name":"glm-5.4[1m]"}},"workspace":{{"current_dir":"{project}","project_dir":"{project}"}},"context_window":{{"context_window_size":1000000,"used_percentage":12}}{rate_limits}}}"#
+        )
+    };
+
+    // The second line names the binary's version, which changes with every build; the goldens
+    // keep the place with `<binary-version>` as `tests/fixtures/statusline-claude` does.
+    let golden_form = |text: String| {
+        text.lines()
+            .map(|line| match line.strip_prefix("🗿 ") {
+                Some(_) => "🗿 <binary-version>".to_string(),
+                None => line.to_string(),
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    let glm = golden_form(statusline_text(
+        home.path(),
+        tmp.path(),
+        cwd.path(),
+        &payload(""),
+    ));
+    assert_eq!(
+        glm, "🧠 glm-5.4\n🗿 <binary-version>\n🔋 CW █░░░░░░░░░ 12%",
+        "{glm}"
+    );
+
+    let reset_5h = 1738429000 + 3600;
+    let reset_7d = 1738429000 + 3 * 86400;
+    let with = golden_form(statusline_text(
+        home.path(),
+        tmp.path(),
+        cwd.path(),
+        &payload(&format!(
+            r#","rate_limits":{{"five_hour":{{"used_percentage":25,"resets_at":{reset_5h}}},"seven_day":{{"used_percentage":40,"resets_at":{reset_7d}}}}}"#
+        )),
+    ));
+    assert_eq!(
+        with,
+        "🧠 glm-5.4\n🗿 <binary-version>\n🔋 CW █░░░░░░░░░ 12% | 🔋 5H ██░░░░░░░░ 25% (1h 0m) | 🔋 7D ████░░░░░░ 40% (3d 0h)",
+        "{with}"
+    );
+    // Nothing under the temporary HOME.
+    assert_eq!(std::fs::read_dir(home.path()).unwrap().count(), 0);
 }
