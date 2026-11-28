@@ -25,10 +25,10 @@
 //! nothing when a text is not whole in its CLAUDE file or a CLAUDE file imports `AGENTS.md`.
 
 use super::{
-    apply_confirmed, find_guidance, hidden_files_warning_except, imports_agents_md,
-    new_receipt_dir_named, originals, plan_for, read_checked, receipts_dir, revert_for,
-    revert_legacy_import, write_private, Found, Kind, Result, GUIDANCE_TARGET, LEGACY_TARGET,
-    LOCAL, TARGET,
+    find_guidance, held_by_claude_md, hidden_files_warning_except, imports_agents_md,
+    merge_confirmed, new_receipt_dir_named, originals, preview_of, read_checked, receipts_dir,
+    revert_for, revert_legacy_import, write_private, Found, Kind, Result, GUIDANCE_TARGET,
+    HELD_BY_CLAUDE_MD, LEGACY_TARGET, LOCAL, TARGET,
 };
 use crate::generation::{self, GenerationRequest};
 use serde::{Deserialize, Serialize};
@@ -146,7 +146,8 @@ impl State {
     fn read(root: &Path) -> Result<State> {
         let has_agents = exists(root, LEGACY_TARGET);
         let has_local = exists(root, LOCAL);
-        let plan = |kind, wanted: bool| wanted.then(|| plan_for(kind, root)).transpose();
+        // `offer` has asked about a Go-generation `CLAUDE.md` before it reads the state.
+        let plan = |kind, wanted: bool| wanted.then(|| preview_of(kind, root, false)).transpose();
         Ok(State {
             root: root.to_path_buf(),
             has_agents,
@@ -396,10 +397,12 @@ fn removal_choice(root: &Path, plan: &originals::Plan) -> Result<Value> {
 /// The preview of the picks of a project. Writes nothing. `request` builds the generation request
 /// the writer plans with; it is called only when `move` and `leave` are offered.
 ///
-/// `offer` is `none` (no `AGENTS.md` and no `AGENTS.local.md`), `settled` (nothing left to pick),
-/// `unavailable` (the request cannot be built, so the writer cannot be planned), `originals` (the
-/// text is in the CLAUDE files; `choices` holds `remove-originals` alone) or `picks`, which
-/// carries `choices` in the order `move`, `leave` and the shadow `warnings`.
+/// `offer` is `claude-md` (the root `CLAUDE.md` is a Go-generation instruction file, which the
+/// `claude-md` step of the update preview decides about), `none` (no `AGENTS.md` and no
+/// `AGENTS.local.md`), `settled` (nothing left to pick), `unavailable` (the request cannot be
+/// built, so the writer cannot be planned), `originals` (the text is in the CLAUDE files;
+/// `choices` holds `remove-originals` alone) or `picks`, which carries `choices` in the order
+/// `move`, `leave` and the shadow `warnings`.
 pub fn offer(root: &Path, request: impl FnOnce() -> Result<GenerationRequest>) -> Result<Value> {
     let project = root.display().to_string();
     // The first CLAUDE file of the project hides `AGENTS.md` and `.claude/AGENTS.md` from Claude
@@ -416,6 +419,10 @@ pub fn offer(root: &Path, request: impl FnOnce() -> Result<GenerationRequest>) -
             "choices": [],
         }))
     };
+    // Before anything reads the files: an import line of that file is no finished pick.
+    if held_by_claude_md(root) {
+        return other("claude-md", HELD_BY_CLAUDE_MD);
+    }
     if !exists(root, LEGACY_TARGET) && !exists(root, LOCAL) {
         return other(
             "none",
@@ -482,6 +489,10 @@ fn plan_with(
             "shadow_warnings": offered["warnings"],
         }))
     };
+    // Blocked rather than `none`, which an apply answers as nothing to do.
+    if offered["offer"] == "claude-md" {
+        return none("blocked", &offered["reason"]);
+    }
     // The deletion is available only when every text is whole in its CLAUDE file: a direct call
     // before that is refused with the reason, never answered as nothing to do.
     if pick == Pick::RemoveOriginals && offered["offer"] != "originals" {
@@ -602,6 +613,13 @@ pub fn apply(project: &Path, pick: &str, plan_digest: &str, permission: &str) ->
     }
     let pick = Pick::parse(pick)?;
     let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
+    // Asked before the digest, so a digest of an earlier preview gets the same answer.
+    if held_by_claude_md(&root) {
+        return Err(format!(
+            "the pick {} is refused: {HELD_BY_CLAUDE_MD}; nothing was written",
+            pick.id()
+        ));
+    }
     let request = crate::project_update::rebuilt_request(&root);
     let planned = plan_with(&root, pick, || request.clone())?;
     if planned["plan_digest"].as_str() != Some(plan_digest) {
@@ -807,7 +825,7 @@ fn run_parts(
         if !exists(root, source) {
             continue;
         }
-        let plan = plan_for(*kind, root).map_err(|e| format!("failed at {name}: {e}"))?;
+        let plan = preview_of(*kind, root, false).map_err(|e| format!("failed at {name}: {e}"))?;
         match plan["action"].as_str() {
             Some("merge") => {}
             Some("none" | "unchanged") => continue,
@@ -821,7 +839,7 @@ fn run_parts(
         let digest = plan["plan_digest"].as_str().unwrap_or_default();
         // The token of a plan that warns about a first CLAUDE file is never passed here: the
         // block is written first, so a plan that still carries one is refused.
-        let out = apply_confirmed(*kind, root, digest, permission, None)
+        let out = merge_confirmed(*kind, root, digest, permission, None)
             .map_err(|e| format!("failed at {name}: {e}"))?;
         let Some(engine_receipt) = out["receipt"].as_str() else {
             continue;

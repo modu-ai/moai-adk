@@ -86,6 +86,9 @@ pub const GROUPS: &[Group] = &[
             ("agents-merge-plan", false),
             ("agents-merge-apply", false),
             ("agents-merge-revert", false),
+            ("claude-md-plan", false),
+            ("claude-md-apply", false),
+            ("claude-md-revert", false),
         ],
     },
     Group {
@@ -383,6 +386,9 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("agents-merge-plan", &["agents-merge-plan .", "agents-merge-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("agents-merge-apply", &["agents-merge-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("agents-merge-revert", &["agents-merge-revert --receipt <id> --permission-reference <ref> ."]),
+    ("claude-md-plan", &["claude-md-plan .", "claude-md-plan --keep CLAUDE.md:12=shared ."]),
+    ("claude-md-apply", &["claude-md-apply --keep CLAUDE.md:12=shared --plan-digest <digest> --permission-reference <ref> ."]),
+    ("claude-md-revert", &["claude-md-revert --receipt <UTC> --permission-reference <ref> ."]),
     ("ledger-status", &["ledger-status ."]),
     (
         "card",

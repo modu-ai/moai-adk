@@ -1,7 +1,7 @@
 //! The choice steps of the project update the user declined (SPEC-20261125-update-declined-steps).
 //!
-//! The merge phase asks about `agents-picks`, `agents-local-merge` and `claude-settings-merge`
-//! on every update. A user who answers "change nothing" records that answer in
+//! The update asks about `claude-md`, `agents-picks`, `agents-local-merge` and
+//! `claude-settings-merge` on every run. A user who answers "change nothing" records that answer in
 //! `.moai/manifests/update-declined.json`: the step name and the sha256 of the source the step
 //! offered. While the step's source has that sha256 and the step would still ask (`needs_decision`
 //! or `conflict`), the preview reads it as `skip`. A source with other bytes is a new question,
@@ -13,7 +13,7 @@
 //! paths [`leftovers::known_path`] names, and the sha256 is the leftover's current source.
 
 use super::leftovers;
-use super::{Step, PERMISSION_PLACEHOLDER};
+use super::{claude_md, Step, PERMISSION_PLACEHOLDER};
 use crate::{apply, claude_settings_merge, state_root};
 use serde_json::{json, Map, Value};
 use std::{collections::BTreeMap, path::Path};
@@ -25,8 +25,9 @@ pub const OPERATION_WORD: &str = "project-update-decline";
 pub const AGENTS_PICKS: &str = "agents-picks";
 pub const AGENTS_LOCAL_MERGE: &str = "agents-local-merge";
 pub const SETTINGS_MERGE: &str = "claude-settings-merge";
+pub const CLAUDE_MD: &str = "claude-md";
 /// The steps that can be declined.
-pub const STEPS: [&str; 3] = [AGENTS_PICKS, AGENTS_LOCAL_MERGE, SETTINGS_MERGE];
+pub const STEPS: [&str; 4] = [AGENTS_PICKS, AGENTS_LOCAL_MERGE, SETTINGS_MERGE, CLAUDE_MD];
 /// The key prefix of a kept leftover: `leftover:<path>`, the path as the plan prints it.
 pub const LEFTOVER_PREFIX: &str = "leftover:";
 
@@ -153,6 +154,7 @@ pub fn source_sha256(root: &Path, step: &str) -> Result<Option<String>> {
             .as_str()
             .map(String::from)),
         SETTINGS_MERGE => Ok(claude_settings_merge::candidates(root)?.map(|c| c.sha256)),
+        CLAUDE_MD => Ok(claude_md::source_digest(root)),
         other if known_step(other) => Ok(leftovers::source_sha256(
             root,
             &other[LEFTOVER_PREFIX.len()..],
@@ -202,6 +204,9 @@ fn effect(step: &str) -> &'static str {
         }
         AGENTS_LOCAL_MERGE => {
             "declining leaves CLAUDE.local.md as it is and stops asking while the source file keeps its bytes"
+        }
+        CLAUDE_MD => {
+            "declining keeps the old instruction files where they are, still loaded by the sessions, and stops asking while the files the step would move keep their bytes"
         }
         _ => {
             "declining leaves .claude/settings.json as it is and stops asking while the earlier settings copy keeps its bytes"

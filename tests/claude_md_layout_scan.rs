@@ -316,6 +316,7 @@ const CLAUDE_RS: &str = "src/claude.rs";
 const UPDATE_RS: &str = "src/project_update.rs";
 const DECLINED: &str = "src/project_update/declined.rs";
 const GUIDE: &str = "src/project_update/guide.rs";
+const CLAUDE_MD_STEP: &str = "src/project_update/claude_md.rs";
 const LEFTOVERS: &str = "src/project_update/leftovers.rs";
 const MERGE_APPLY: &str = "src/ops/agents_merge_apply.rs";
 const MERGE_PLAN: &str = "src/ops/agents_merge_plan.rs";
@@ -398,6 +399,15 @@ const EXCEPTIONS: &[Row] = &[
 
     row(UPDATE_RS, "AGENTS.md and AGENTS.local.md move into CLAUDE.md", MOVE),
     row(UPDATE_RS, "AGENTS.local.md alone merges into CLAUDE.local.md", MOVE),
+
+    // SPEC-20261126-claude-md-fresh-merge: the `claude-md` step moves every older instruction file
+    // into a backup and writes a new CLAUDE.md, so its two source lists name them, as the list
+    // of the go-state move does. The two guide sentences tell the user that the text of an
+    // older file is not moved or copied in the held state.
+    row(CLAUDE_MD_STEP, r#"const ROOT_SOURCES: [&str; 4] = [CLAUDE_MD, "AGENTS.md", "AGENTS.local.md", CLAUDE_LOCAL_MD];"#, MOVE),
+    row(CLAUDE_MD_STEP, r#"const PERSONAL: [&str; 2] = ["AGENTS.local.md", CLAUDE_LOCAL_MD];"#, MOVE),
+    row(GUIDE, "No move of your AGENTS.md text is offered in this check.", ADVISE),
+    row(GUIDE, "Your AGENTS.local.md text is not copied by this step in this check.", ADVISE),
     row(UPDATE_RS, r#"root.join("AGENTS.md")"#, READ),
     row(UPDATE_RS, r#"root.join("AGENTS.local.md")"#, READ),
     row(UPDATE_RS, "the text of AGENTS.local.md goes into CLAUDE.local.md through the pick", MOVE),

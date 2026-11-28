@@ -594,7 +594,8 @@ fn shape_e_backup_lock_needs_the_leftovers_revert_first() {
     // the generation step, as in `the_printed_undo_order_takes_the_chain_back_to_the_start_bytes`.
     let mut forward = ORDER.to_vec();
     forward.insert(2, "go-residue");
-    let mut expected = vec!["leftovers"];
+    // The `claude-md` row follows the leftovers row: it is always printed, for the user's pick.
+    let mut expected = vec!["leftovers", "claude-md"];
     expected.extend(forward.iter().rev());
     assert_eq!(undo_rows(&after), expected, "{}", after["undo_order"]);
 
@@ -681,12 +682,13 @@ const LOCAL_WITH_GO_REFS: &str = "{\"statusLine\":{\"type\":\"command\",\"comman
 
 /// Go references in `settings.local.json` hold the Go folder: the update never edits that file by
 /// itself. After the settings clean-up the go-state step names the file and offers only the
-/// command that carries the pick. A user who edits the file instead reaches the end by the same
-/// loop.
+/// command that carries the pick. The Go `CLAUDE.md` stays as it is meanwhile and its own step
+/// asks about it. A user who edits the file instead reaches the end by the same loop.
 #[test]
 fn go_references_in_the_local_settings_are_named_and_left_to_the_user() {
     let fx = shape_g();
     fx.write(LOCAL, LOCAL_WITH_GO_REFS);
+    let go_claude_md = fs::read(fx.root.join("CLAUDE.md")).unwrap();
     let first = fx.update_plan();
     let cleaned = fx.apply_step(step_in(&first, 0, "go-settings"));
     assert_eq!(cleaned["ok"], json!(true), "{cleaned}");
@@ -717,6 +719,12 @@ fn go_references_in_the_local_settings_are_named_and_left_to_the_user() {
         fs::read_to_string(fx.root.join(LOCAL)).unwrap(),
         LOCAL_WITH_GO_REFS
     );
+    // The go-state step still has moves to make, and its move takes the Go `CLAUDE.md` along, so
+    // the question about that file waits behind it; the file is as it was.
+    let instructions = step_in(&held, 2, "claude-md");
+    assert_eq!(instructions["state"], "blocked", "{instructions}");
+    assert_eq!(instructions["apply"], Value::Null, "{instructions}");
+    assert_eq!(fs::read(fx.root.join("CLAUDE.md")).unwrap(), go_claude_md);
     assert!(fx.root.join(".moai/manifest.json").is_file());
 
     // The user edits the file instead of taking the pick; the same loop now reaches the end.
@@ -809,10 +817,14 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
     assert_eq!(w.order, ORDER, "{:?}", open_steps(&w.last));
     let steps = w.last["undo_order"]["steps"].as_array().unwrap();
     let printed: Vec<&str> = steps.iter().map(|s| s["step"].as_str().unwrap()).collect();
+    // `claude-md` is listed first: it applies after the install steps, on the user's pick only,
+    // so this walk, which runs the commands the steps print, never applies it.
+    assert!(!w.order.iter().any(|s| s == "claude-md"), "{:?}", w.order);
     // The printed order always lists the go-residue revert, for an apply that ran; none ran here.
     let mut reverse = ORDER.to_vec();
     reverse.insert(2, "go-residue");
     reverse.reverse();
+    reverse.insert(0, "claude-md");
     assert_eq!(printed, reverse, "{}", w.last["undo_order"]);
     let commands = |step: &str| -> Vec<String> {
         steps.iter().find(|s| s["step"] == step).unwrap()["commands"]
@@ -885,9 +897,10 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
         "a refused revert writes nothing"
     );
 
-    // The printed order: every printed command of every step, one after the other.
+    // The printed order: every printed command of every step the walk applied, one after the
+    // other.
     let mut ran = 0;
-    for step in steps {
+    for step in steps.iter().filter(|s| s["step"] != "claude-md") {
         // No go-residue apply ran, so there is no receipt for its printed revert to name.
         if step["step"] == "go-residue" {
             continue;

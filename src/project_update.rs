@@ -24,6 +24,7 @@ use crate::{
 use serde_json::{json, Map, Value};
 use std::{fs, path::Path};
 
+pub mod claude_md;
 /// The choice steps the user declined (SPEC-20261125-update-declined-steps).
 pub mod declined;
 pub mod guide;
@@ -58,6 +59,10 @@ pub const AFTER_GO_SETTINGS: &str = "re-run after the go-settings apply";
 /// changes what the go-state plan lists under the report folders, so a digest made before it
 /// would be stale.
 pub const AFTER_REPORTS: &str = "re-run after the reports apply";
+/// Why the `claude-md` step waits while the go-settings step has a command or the go-state step
+/// has a move to make: those two rewrite settings and move the Go state files, so the instruction
+/// files are read after them. No other backup step holds it.
+pub const AFTER_GO_BACKUP: &str = "re-run after the go-settings and go-state backup steps";
 
 const BACKUP_REASON: &str = "the Go-generation .moai/ and the earlier .moai-cli/ state, the \
      Go tool files under .claude/ and .agents/, settings and instruction files \
@@ -75,8 +80,13 @@ pub const AFTER_INSTALL: &str = "re-run after the install phase";
 /// reason has another meaning for one step, by its name too. A reason without a row here reads
 /// as a step that waits for nothing. Only the steps of the table that can run in this preview are
 /// named by the plan.
-const BEHIND: [(&str, Option<&str>, &[&str]); 7] = [
+const BEHIND: [(&str, Option<&str>, &[&str]); 8] = [
     (AFTER_BACKUP, None, &["go-settings", "go-state", "reports"]),
+    (
+        AFTER_GO_BACKUP,
+        None,
+        &["go-settings", "go-state", "reports"],
+    ),
     (AFTER_PROFILE, None, &["profile"]),
     (AFTER_SETTINGS, None, &["claude-settings"]),
     (AFTER_GO_SETTINGS, None, &["go-settings"]),
@@ -91,7 +101,8 @@ const BEHIND: [(&str, Option<&str>, &[&str]); 7] = [
     (AFTER_INSTALL, None, &["generation"]),
 ];
 
-const MERGE_REASON: &str = "AGENTS.md and AGENTS.local.md move into CLAUDE.md and \
+const MERGE_REASON: &str = "a Go-generation CLAUDE.md is replaced by a new one or left, as the \
+     user picks (claude-md); AGENTS.md and AGENTS.local.md move into CLAUDE.md and \
      CLAUDE.local.md or are left, and once their text is there the user may delete the \
      originals, as the user picks (agents-picks); the text of \
      AGENTS.local.md alone merges into CLAUDE.local.md (#2936 R10); the user's earlier \
@@ -181,13 +192,15 @@ impl Step {
         )
     }
 
-    /// The id of the recommended choice of a step that asks, when that choice needs no
-    /// confirmation word.
+    /// The id of the recommended choice of a step that asks, when that choice prints its own
+    /// command and the command needs no confirmation word: only such a choice can be run by the
+    /// plan's one question.
     fn pick(&self) -> Option<String> {
         self.choices()
             .iter()
             .find(|c| {
                 c["recommended"] == json!(true)
+                    && c["apply"].is_object()
                     && !confirms(
                         c["apply"]["argv"]
                             .as_array()
@@ -1076,10 +1089,24 @@ fn planned_step(
         .iter()
         .map(|f| json!({"path": f.path, "action": f.action, "detail": f.detail}))
         .collect();
+    // The row of a Go-generation `CLAUDE.md` reads `skip` in every plan until the `claude-md`
+    // step has replaced the file, so it is no file to write.
+    let go_file = claude_md::go_claude_md(root).is_some();
+    let kept = |path: &str, action: &str| go_file && path == "CLAUDE.md" && action == "skip";
     let (state, reason) = if plan.files.iter().any(|f| f.action == "conflict") {
         ("conflict", "a managed part was edited by hand; it is kept")
-    } else if plan.files.iter().any(|f| f.action != "unchanged") {
+    } else if plan
+        .files
+        .iter()
+        .any(|f| f.action != "unchanged" && !kept(&f.path, &f.action))
+    {
         ("ready", "managed files to write")
+    } else if go_file {
+        (
+            "unchanged",
+            "every managed file this step writes is current; the claude-md step decides about \
+             CLAUDE.md",
+        )
     } else {
         ("unchanged", "every managed file is current")
     };
@@ -1822,6 +1849,22 @@ fn backup_pending(backup: &[Step], pick_only: bool) -> bool {
     })
 }
 
+/// Whether the `claude-md` step has to wait: the go-settings step has a command, or the go-state
+/// step has a move to make, also while that move waits behind the go-settings or `reports` apply
+/// (it then prints no command of its own). The `reports` and `go-residue` commands never change
+/// what the step reads, so they do not hold it. A go-state step that only offers the local
+/// settings pick (`pick_only`) has no move to make and holds nothing.
+fn claude_md_waits(backup: &[Step], pick_only: bool) -> bool {
+    backup_pending(backup, pick_only)
+        || backup.iter().any(|s| {
+            s.name == "go-state"
+                && !pick_only
+                && (s.apply.is_some()
+                    || (s.state == "blocked"
+                        && (s.reason == AFTER_GO_SETTINGS || s.reason == AFTER_REPORTS)))
+        })
+}
+
 /// The merge phase (#2936 R10): `AGENTS.local.md` into `AGENTS.md`. It waits while the backup
 /// phase has a move to make, and while the generation step has files to write.
 fn merge_steps(
@@ -1836,14 +1879,24 @@ fn merge_steps(
     // A project without `AGENTS.md` and `AGENTS.local.md` has no pick to wait for.
     let holds_agents = fs::symlink_metadata(root.join("AGENTS.md")).is_ok()
         || fs::symlink_metadata(root.join("AGENTS.local.md")).is_ok();
+    // While `CLAUDE.md` is a Go-generation instruction file the `claude-md` step asks about it,
+    // and neither step that writes instruction files runs or waits to run.
+    let held = claude_md::go_claude_md(root)
+        .is_some()
+        .then_some(agents_local_merge::HELD_BY_CLAUDE_MD);
     if backup_pending(backup, pick_only) {
         let mut steps = Vec::new();
-        if holds_agents {
-            steps.push(Step::waiting(PICKS, "blocked", AFTER_BACKUP));
+        if let Some(reason) = held {
+            steps.push(Step::waiting(PICKS, "skip", reason));
+            steps.push(Step::waiting(NAME, "skip", reason));
         } else {
-            steps.push(picks_none(root));
+            if holds_agents {
+                steps.push(Step::waiting(PICKS, "blocked", AFTER_BACKUP));
+            } else {
+                steps.push(picks_none(root));
+            }
+            steps.push(Step::waiting(NAME, "blocked", AFTER_BACKUP));
         }
-        steps.push(Step::waiting(NAME, "blocked", AFTER_BACKUP));
         steps.push(Step::waiting(SETTINGS, "blocked", AFTER_BACKUP));
         return steps;
     }
@@ -1855,7 +1908,9 @@ fn merge_steps(
     let state_of = |step: &str| install.iter().find(|s| s.name == step).map(|s| s.state);
     // The pick plans the generation writer, whose digest binds the profile and every file the
     // generation step is still to write: with either to run, its digest would be stale.
-    let picks = if !holds_agents {
+    let picks = if let Some(reason) = held {
+        Step::waiting(PICKS, "skip", reason)
+    } else if !holds_agents {
         picks_none(root)
     } else if state_of("generation") == Some("ready") {
         Step::waiting(PICKS, "blocked", AFTER_INSTALL)
@@ -1867,7 +1922,9 @@ fn merge_steps(
     // A declined pick still reads as pending below: declining it must not open a new question
     // about the same file, so the merge decision follows the pick as it was before the record.
     let picks_pending = matches!(picks.state, "needs_decision" | "conflict");
-    let agents = if install
+    let agents = if let Some(reason) = held {
+        Step::waiting(NAME, "skip", reason)
+    } else if install
         .iter()
         .any(|s| s.name == "generation" && s.state == "ready")
     {
@@ -2269,6 +2326,9 @@ fn undo_order_rows() -> Value {
     json!({
         "rule": "undo the step applied last first; every command needs its own permission reference",
         "steps": [
+            {"step": "claude-md", "commands": [
+                "moai claude-md-revert <PROJECT> --receipt <receipt of the claude-md step> --permission-reference <reference>",
+            ], "note": "only when a claude-md-apply ran (the user picked replace); it puts the moved instruction files back from their backup and keeps a new file changed since as a conflict"},
             {"step": "hooks", "commands": [
                 "moai go-hooks-revert --receipt <receipt of the hooks step> --permission-reference <reference> <PROJECT>",
             ], "note": "for a hooks step that ran go-hooks-apply (the Go hook set); a hooks step that ran hooks-apply --host claude over an existing settings file printed its own `revert` (moai hooks-revert <PROJECT> --receipt <id> --permission-reference <reference>), and a first install has nothing to revert"},
@@ -2390,6 +2450,90 @@ fn go_residue_step(root: &Path, shown: &str, others_pending: bool) -> Result<Ste
     })
 }
 
+/// The `claude-md` step, the merge phase's first: a `CLAUDE.md` of the Go generation (see
+/// [`claude_md::go_claude_md`]) is replaced by a new one, its text moved into a backup, or left
+/// as it is. Nothing here writes, and the step never carries a command of its own: `replace`
+/// starts at the `claude-md-plan` preview, which takes the picks and prints the apply, and
+/// `leave` records the decline.
+///
+/// - `unchanged`: the root `CLAUDE.md` is no Go-generation file; nothing more is read.
+/// - `blocked`: the go-settings step has a command or the go-state step has a move to make (see
+///   [`claude_md_waits`]); the other backup steps, `reports` and `go-residue` included, never hold it.
+/// - `needs_decision`: the user picks. `replace` is offered only while the preview prints an apply
+///   command; otherwise it is listed under `blocked` with every reason. `leave` is offered only
+///   while every file the step would move can be read.
+/// - `skip`: the user declined the step for the bytes those files have now.
+fn claude_md_step(root: &Path, shown: &str, backup: &[Step], pick_only: bool) -> Result<Step> {
+    const NAME: &str = declined::CLAUDE_MD;
+    if claude_md::go_claude_md(root).is_none() {
+        return Ok(Step::waiting(
+            NAME,
+            "unchanged",
+            "the root CLAUDE.md is not a Go-generation instruction file",
+        ));
+    }
+    if claude_md_waits(backup, pick_only) {
+        return Ok(Step::waiting(NAME, "blocked", AFTER_GO_BACKUP));
+    }
+    let plan = claude_md::plan(root, &[])?;
+    let reasons: Vec<&str> = plan["apply_blocked"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
+    let source = claude_md::source_digest(root);
+    let mut choices = Vec::new();
+    let mut blocked = Vec::new();
+    let reason = if reasons.is_empty() {
+        choices.push(json!({
+            "id": "replace",
+            "recommended": true,
+            "effect": "move the listed instruction files into a backup and write a new CLAUDE.md \
+                       from the project profile; run the plan command, adding --keep \
+                       <id>=shared|personal for each hunk to keep, then the apply command it \
+                       prints",
+            "plan": {"argv": ["moai", "claude-md-plan", shown], "stdin": Value::Null},
+        }));
+        "the root CLAUDE.md is a Go-generation instruction file; the user picks replace \
+         (recommended) or leave"
+            .to_string()
+    } else {
+        blocked.push(json!({"id": "replace", "blocked": reasons}));
+        format!(
+            "the root CLAUDE.md is a Go-generation instruction file; replace prints no command: {}",
+            reasons.join("; ")
+        )
+    };
+    if let Some(sha) = &source {
+        choices.push(json!({
+            "id": "leave",
+            "recommended": false,
+            "effect": declined::decline_object(shown, NAME, sha, false)["effect"],
+            "apply": {"argv": declined::decline_argv(shown, NAME, sha), "stdin": Value::Null},
+        }));
+    }
+    let step = Step {
+        name: NAME,
+        state: "needs_decision",
+        reason,
+        preview: json!({
+            "go_claude_md": plan["go_claude_md"],
+            "go_manifest": plan["go_manifest"],
+            "sources": plan["sources"],
+            "refused": plan["refused"],
+            "warnings": plan["warnings"],
+            "blocked": blocked,
+            "choices": choices,
+        }),
+        plan_digest: None,
+        apply: None,
+    };
+    // A record that cannot be read changes nothing.
+    let record = declined::read(root).unwrap_or_default();
+    Ok(declined::read_step(shown, &record, step, source))
+}
+
 /// The whole preview. Writes nothing.
 pub fn plan(project: &Path) -> Result<Value> {
     let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
@@ -2440,7 +2584,14 @@ pub fn plan(project: &Path) -> Result<Value> {
     };
     // The retired hosts are always in the preview, whatever the profile or the backup phase says.
     install.extend(host_steps(&root));
-    let merge = merge_steps(&root, &shown, &backup, pick_only, &install);
+    let mut merge = merge_steps(&root, &shown, &backup, pick_only, &install);
+    // The old instruction files come first in the merge phase, whatever the install steps read;
+    // they wait only while a backup step prints a command.
+    let instructions = or_blocked(
+        declined::CLAUDE_MD,
+        claude_md_step(&root, &shown, &backup, pick_only),
+    );
+    merge.insert(0, instructions);
     // SPEC-20261127-update-leftovers-action: the leftovers of the five kinds, each with an archive
     // action or a keep reason. One that is neither archived nor kept for its current source holds
     // `all_unchanged` false (`CLAUDE.md` is no such kind). A record that cannot be read changes
@@ -2521,6 +2672,32 @@ mod tests {
         ] {
             assert_eq!(follow_state_dir(root, &other), other);
         }
+    }
+
+    /// SPEC-20261126-claude-md-fresh-merge REQ-1 with SPEC-20261126-go-local-settings-reference
+    /// D-8: a go-state step that only offers the local settings pick moves nothing and holds
+    /// nothing, also when it prints a command; with a move to make it holds the `claude-md`
+    /// step, and so does a go-settings command, pick or no pick.
+    #[test]
+    fn a_go_state_step_that_only_offers_the_settings_pick_does_not_hold_claude_md() {
+        let command = || Some((vec!["moai".to_string()], Value::Null));
+        let state = |apply| Step {
+            apply,
+            ..Step::waiting("go-state", "needs_decision", "")
+        };
+        let settings = |apply| Step {
+            apply,
+            ..Step::waiting("go-settings", "ready", "")
+        };
+        // The pick: a printed command and no move.
+        let pick = [settings(None), state(command())];
+        assert!(!claude_md_waits(&pick, true));
+        // The same step with a move to make holds the step.
+        assert!(claude_md_waits(&pick, false));
+        // A go-settings command holds it whatever go-state offers.
+        let both = [settings(command()), state(command())];
+        assert!(claude_md_waits(&both, true));
+        assert!(claude_md_waits(&both, false));
     }
 
     #[test]

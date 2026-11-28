@@ -136,7 +136,7 @@ pub(crate) fn secret_path(rel: &str) -> bool {
 /// with its `files` map. The chain: `.moai/manifest.json`, a `manifest.json` under any
 /// `.moai-backup*` folder, a `manifest.json` under `.moai/backups/go-markers-*`, then the
 /// backup manifest the newest committed go-state receipt names.
-fn find_manifest(project: &Path) -> Option<(String, BTreeMap<String, Recorded>)> {
+pub(crate) fn find_manifest(project: &Path) -> Option<(String, BTreeMap<String, Recorded>)> {
     let live = ".moai/manifest.json";
     if let Some(map) = read_manifest(project, live) {
         return Some((live.into(), map));
@@ -187,8 +187,11 @@ fn find_manifest(project: &Path) -> Option<(String, BTreeMap<String, Recorded>)>
 }
 
 /// What one manifest entry records: the bytes of the file and who the Go tool says wrote it.
-struct Recorded {
-    deployed_hash: String,
+pub(crate) struct Recorded {
+    pub(crate) deployed_hash: String,
+    /// The `sha256:<hex>` of the bytes the Go tool would have written for the path, when the
+    /// entry holds a non-empty one.
+    pub(crate) template_hash: Option<String>,
     provenance: String,
 }
 
@@ -208,6 +211,11 @@ fn read_manifest(project: &Path, rel: &str) -> Option<BTreeMap<String, Recorded>
             .filter_map(|(path, e)| {
                 let entry = Recorded {
                     deployed_hash: e.get("deployed_hash")?.as_str()?.to_string(),
+                    template_hash: e
+                        .get("template_hash")
+                        .and_then(Value::as_str)
+                        .filter(|hash| !hash.is_empty())
+                        .map(str::to_string),
                     // No provenance reads as none of the template ones.
                     provenance: e
                         .get("provenance")
