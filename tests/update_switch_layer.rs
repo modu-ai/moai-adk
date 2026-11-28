@@ -406,6 +406,34 @@ impl Home {
     }
 }
 
+/// A build that answers as Rust but whose folder is not `<state folder>/versions/<v>/bin/` of the
+/// state folder whose `path/` holds the script gets no link: `../versions/<v>/bin/moai` from
+/// `path/` would not reach it (SPEC-20261127-installed-binary-name-moai D-4). Two cases: a build
+/// of another state folder, and a folder of the right state folder that is not `versions`.
+#[test]
+fn plan_is_held_for_a_build_not_in_this_state_folders_versions() {
+    let _g = gate();
+    for rel in [".moai/versions/a/bin", ".moai-cli/other/a/bin"] {
+        let h = Home::new();
+        let bin = h.root.join(rel);
+        fs::create_dir_all(&bin).unwrap();
+        let launcher = bin.join("moai");
+        write_executable(&launcher, &format!("#!/bin/sh\necho '{}'\n", rust_line()));
+        let layer = switch::plan_for(&h.root, &bin.join("moai-cli")).unwrap();
+        let p = layer.to_json().expect("the known script is still shown");
+        assert_eq!(p["action"], json!("held"), "{rel}: {p}");
+        assert!(layer.token().is_none(), "{rel}: {p}");
+        assert!(
+            p["reason"]
+                .as_str()
+                .unwrap()
+                .contains(launcher.to_str().unwrap()),
+            "{rel}: {p}"
+        );
+        assert_eq!(h.read(), V1);
+    }
+}
+
 #[test]
 fn go_bin_is_reported_and_never_written() {
     let _g = gate();
