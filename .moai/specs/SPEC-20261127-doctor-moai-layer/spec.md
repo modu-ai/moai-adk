@@ -188,9 +188,18 @@ CLI = 터미널 Claude 로그인, GW = `ANTHROPIC_BASE_URL` 이 다른 호스트
 - AC-3: met — `versions_` 여섯 개 통과(below 는 행 이름과 버전, 모두 ok, 알 수 없는 출력 unknown, `not_found`, `timeout`)
 - AC-4: met — `login_` 다섯 개 통과(변수 일곱 개, 자격 증명 파일 존재만, 우선순위, `--auth-status` 없이는 만료 unknown, 있으면 세 필드와 종료 코드만)
 - AC-5: met — `api_key_` 네 개 통과(없으면 ok, 키 변수·`apiKeyHelper` 는 warn 과 이름·문장)
-- AC-6: not_run — 관리 잠금 점검은 둘째 조각이에요
-- AC-7: not_run — `cross_session_inbound` 점검은 둘째 조각이에요
-- AC-8: not_run — 능력 표(`--table`)는 둘째 조각이에요
+- AC-6: met — `locks_` 일곱 개 통과(조각 2 단락 참고): 네 키가 범위 규칙대로 effective·ignored·unset 이고, 읽을 수 없는 파일은 그 이름과 함께 unknown 이에요
+- AC-7: met — `inbound_` 여섯 개 통과(조각 2 단락 참고): 우선순위대로 값과 파일이 나오고 unset·hold·refuse 는 warn, accept 는 ok 예요
+- AC-8: met — `table_` 세 개 통과(조각 2 단락 참고): 다섯 열 여덟 행, 칸마다 문서·줄·읽은 때, unverified 는 yes 로 나오지 않고 `ANTHROPIC_BASE_URL` 이 다른 호스트면 gateway 열이에요
 - AC-9: met — `pointers_name_the_claude_code_checks_and_mark_each_against_the_docs` 통과(항목마다 `verified`·`unverified`, 가짜 `claude` 호출은 `--version` 하나)
 
-틈: 첫 조각만이에요(REQ-9~12 는 둘째 조각). Windows·Linux 는 `not_run`. 실제 `claude`·실제 설정 폴더는 읽지 않았어요. 버전 표의 Windows 행은 Mac 에서 `not_applicable` 로만 시험했어요. 가드 뮤턴트는 tier 2 가 아니라서 묻지 않았어요.
+틈: Windows·Linux 는 `not_run`. 실제 `claude`·실제 설정 폴더·이 기계의 관리 설정 폴더는 읽지 않았어요. 버전 표의 Windows 행은 Mac 에서 `not_applicable` 로만 시험했어요. 가드 뮤턴트는 tier 2 가 아니라서 묻지 않았어요.
+
+조각 2(REQ-9~12; 브랜치 같은 `spec/doctor-moai-layer-20261127`, 조각 1 랜딩 뒤 새 NeXT 끝 `a0de5a28da` 위에서 시작, 카드는 `card reopen` 으로 다시 열었어요): RED `fbfd406c82`(`moai tdd red`, 이름 있는 검사 넷 `locks_`·`inbound_`·`table_`·`login_a_hanging_auth_status` 모두 exit 100 테스트 실패)에서 구현으로 갔어요. 새 코드는 `src/moai_doctor/locks.rs`(관리 잠금과 `cross_session_inbound`)와 `src/moai_doctor/capabilities.rs`(능력 표)이고 `src/moai_doctor.rs` 가 둘을 불러요. 카드 범위는 그 폴더와 `src/claude.rs` 를 `card scope` 로 이유와 함께 넓혔어요(SPEC 의 Scope 목록은 그대로예요).
+- 관리 잠금(REQ-9, REQ-10): `managed-settings.json` 과 `managed-settings.d/*.json`(알파벳 순, 뒤 파일이 이겨요), 사용자·프로젝트·로컬 설정을 파일로만 읽어요. `allowManagedHooksOnly`·`strictPluginOnlyCustomization`·`allowManagedModsOnly`(관리 `pluginConfigs` 아래만)는 관리 파일만 effective 이고 다른 범위의 값은 `ignored_in` 에 이름만 올라요. `disableAllHooks` 는 관리 → 로컬 → 프로젝트 → 사용자 순서로 처음 나온 불리언이에요(관리 값이면 `managed_hooks` 까지 꺼요, 불리언이 아닌 관리 값은 `discarded`). 읽을 수 없는 파일은 그 키가 영향을 받는 범위에서만 키를 unknown 으로 하고 파일 이름을 `unreadable` 에 적어요. 파일이 아닌 소스(`policyHelper`, 서버 관리 설정, 세션의 `--settings`, macOS 관리 환경설정 도메인)는 `not_read` 로 이름만 말하고 읽지도 실행하지도 않아요.
+- `cross_session_inbound`(REQ-11): 관리 파일 → 사용자 설정의 값이 신뢰 값이고, 프로젝트·로컬의 hold·refuse 는 그보다 엄격하거나 신뢰 값이 없을 때만 세요(프로젝트의 accept 는 안 세요). 잘못된 값은 사용자·프로젝트에서 hold, 관리에서 refuse 예요. unset·hold·refuse 는 warn(`-l`·`-a` 레인이 권한 우회로 돌아 메시지를 붙잡는다는 문장), accept 는 ok, 읽을 수 없는 파일이 있으면 unknown 이에요.
+- 능력 표(REQ-12): 다섯 열 여덟 행, 칸마다 `value`·`docs`·`line`·`read_at`. 호스트는 `ANTHROPIC_BASE_URL` 의 호스트만 보고(`api.anthropic.com` 이 아니면 gateway, 사용자 정보·포트·경로는 버리고 URL 은 출력하지 않아요) `host_capabilities` 점검에 그 열의 칸 여덟 개가 있고 `--table` 이면 `capability_table` 에 전체가 나와요. 근거 표기가 추론이거나 읽지 못한 칸은 `unverified` 예요. 증거 표에서 `yes(GW 줄은 unverified)` 였던 세션 간 메시지(같은 컴퓨터)의 gateway 칸과 `no(추론)` 였던 같은 줄의 cloud 칸을 REQ-12 의 "unverified 는 yes 로 나오지 않아요"에 맞춰 `unverified` 로 적었어요. `docs` 쪽 이름은 증거 표의 쪽 목록이고 칸마다의 줄은 증거 표가 남긴 인용이나 절 이름이에요; 남기지 않은 칸은 `line` 이 그 사실을 말해요. 이 쪽들은 2026-11-28 에 다시 읽지 않았어요(unverified, `read_at` 은 2026-11-27).
+- `--managed-dir <폴더>` 를 더했어요(REQ-9 의 읽기 위치를 바꾸는 읽기 전용 옵션, 기본은 플랫폼 폴더). 테스트가 이 기계의 관리 설정 폴더를 읽지 않게 하려는 것이고(REQ-15), 모든 테스트가 임시 폴더를 이 옵션으로 줘요.
+- 노트 10861(hana): `auth_status` 의 시간 초과가 이제 `claude --version` 프로브와 같은 `stop_process_group`(프로세스 그룹에 SIGKILL 을 보낸 뒤 리더를 거둠, `src/claude.rs` 에 `pub(crate)` 래퍼 하나)을 써요. 위험한 경로의 실행: `login_a_hanging_auth_status_is_stopped_with_its_whole_process_group` 이 가짜 `claude auth status` 가 `sleep` 손자를 띄우고 멈추게 해 시간 초과(10초) 뒤 손자가 사라지는지 `kill -0` 으로 확인해요. RED 는 `--managed-dir` 옵션이 아직 없어서 먼저 실패했으므로, 이 정리 자체의 효과는 뮤턴트로 확인했어요: `auth_status` 의 시간 초과 가지를 `child.kill()` + `child.wait()` 로 되돌리고(구현 커밋 뒤, 되돌린 뒤 `git restore` 와 빈 `git status --short` 확인) 이 테스트만 슬롯에서 돌리니 `the grandchild 87646 outlived the time-out of auth status` 로 실패했어요(exit 100, 13.5초).
+- `moai tdd green`: RED 의 검사 넷을 구현 head 에서 다시 돌려 모두 통과했고 국면이 refactor 예요.
+- 확인: `cargo nextest run --locked --offline --no-fail-fast --test moai_doctor_cli` 는 37개 모두 통과(슬롯 `--max 2`, 10.6초).
