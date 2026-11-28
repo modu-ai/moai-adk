@@ -83,6 +83,7 @@ pub mod home_state;
 pub mod home_state_retire;
 pub mod home_style;
 pub mod home_workdir;
+pub mod home_write;
 pub mod hook_bash_boundary;
 pub mod hook_config;
 pub mod hook_engine;
