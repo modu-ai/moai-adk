@@ -196,14 +196,22 @@ fn the_versioning_question_shows_a_release_tool_conflict() {
         .find("When detection reports `release_tooling.conflict`")
         .unwrap_or_else(|| panic!("the row names no release tool conflict: {row}"));
     let sentence = row[start..].split(". ").next().unwrap();
-    for needle in ["beside the question", "in plain words", "which of the tool's files"] {
-        assert!(sentence.contains(needle), "{needle:?} is missing: {sentence}");
+    for needle in [
+        "beside the question",
+        "in plain words",
+        "which of the tool's files",
+    ] {
+        assert!(
+            sentence.contains(needle),
+            "{needle:?} is missing: {sentence}"
+        );
     }
     for internal in ["card ", "SPEC-", "C-"] {
         assert!(!sentence.contains(internal), "{internal:?} in: {sentence}");
     }
-    let detect = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("src/project_detect.rs"))
-        .expect("src/project_detect.rs");
+    let detect =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("src/project_detect.rs"))
+            .expect("src/project_detect.rs");
     assert!(
         detect.contains("\"release_tooling\"") && detect.contains("\"conflict\""),
         "project-detect prints no release_tooling.conflict"
