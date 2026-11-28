@@ -83,3 +83,13 @@ created: 2026-11-28
 | D-3 | `apply_part` is not folded | The extra part undoes its own writes and records `recovered`; the engine keeps a `pending` receipt and returns `Err` | Open a new card |
 | D-4 | The card's "about −900 lines" is replaced by measured line counts | The folds that keep behaviour reach about −270 by estimate; leader decision note 11061 | None needed |
 | D-5 | Slice B waits for the landing of the card that writes `src/update.rs` and for the user's approval | `src/update.rs` and `tests/home_write_scan.rs` are written by that card; `src/update` is a tier-2 floor path (leader decision note 11061) | Record a leader decision that lifts the wait (the user still approves the SPEC) |
+
+## Result
+
+조각 0(승인 전, 제품 코드 변경 없음)의 구현 커밋은 `b6fb694572`(브랜치 `refactor/update-fold-duplicates-20261128`, 기준 NeXT `af867cf151`)이에요. 이 SPEC 은 아직 승인 전(draft)이고 조각 B 는 시작하지 않았어요. 아래 AC 는 조각 B 가 끝나야 판정할 수 있어서 모두 not_run 이에요.
+
+- 조각 0: `tests/update_user_layer_cli.rs` 에 특성 테스트 넷(`extra_skill_update_keeps_the_replaced_bytes_as_known_good_copies`, `extra_skill_known_good_copy_failure_stops_the_part_before_it_starts`, `extra_skill_unreadable_earlier_receipt_blocks_the_part_and_says_nothing_was_adopted`, `extra_skill_receipt_naming_another_installation_or_host_blocks_the_part`)를 더했어요. 현재 코드에서 4개 모두 통과하고(`-E 'test(extra_skill_)'` → 4 passed) 파일 전체는 29개가 통과했어요(구현 에이전트 보고). 기존 테스트 줄은 하나도 지우거나 바꾸지 않았어요(`git diff --numstat` 175 추가 0 삭제 + 형식 정리 뒤 176 추가).
+- 뮤턴트(테스트마다 되돌린 뒤 `git status --short` 가 비었어요): known-good 폴더 경로에서 `.join(skill)` 을 뺌 → 앞 두 테스트가 실패, "읽을 수 없음" 글의 끝을 바꿈 → 셋째 테스트가 실패, "다른 설치나 호스트" 글의 끝을 바꿈 → 넷째 테스트가 실패(각각 exit 100).
+- 줄 수 전(기준 `af867cf151`, `wc -l`): `src/update.rs` 4709, `src/update/extra_skill.rs` 1134, `src/update_tux.rs` 2840. 조각 0 은 이 세 파일을 바꾸지 않았어요.
+- AC-1: not_run (조각 B 전). AC-2: not_run. AC-3: not_run. AC-4: not_run. AC-5: not_run. AC-6: not_run.
+- 건너뛴 것: 조각 B1·B2(승인과, `src/update.rs` 를 쓰는 다른 카드의 조각 2 랜딩 뒤), 전체 `cargo test --locked`(리더 몫), Windows·Linux.
