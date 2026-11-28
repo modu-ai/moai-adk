@@ -428,8 +428,74 @@ struct SeamRead {
 /// constant that some text defines as that string, however the call is split over lines. A read
 /// is gated when the last non-comment line above its first line is `#[cfg(debug_assertions)]`.
 fn seam_reads_in(files: &[(String, String)]) -> Vec<SeamRead> {
-    let _ = files;
-    Vec::new()
+    // The names that stand for each variable: its quoted string and every `const NAME: &str = "VAR"`.
+    let mut names: Vec<(&'static str, String)> = Vec::new();
+    for var in SEAM_VARS {
+        names.push((var, format!("\"{var}\"")));
+        let tail = format!("= \"{var}\"");
+        for (_, text) in files {
+            for line in text.lines().map(str::trim) {
+                if line.starts_with("//") || !line.contains(&tail) {
+                    continue;
+                }
+                let name = line
+                    .split("const ")
+                    .nth(1)
+                    .and_then(|rest| rest.split(':').next());
+                if let Some(name) = name {
+                    names.push((var, name.trim().to_string()));
+                }
+            }
+        }
+    }
+    let mut out = Vec::new();
+    for (file, text) in files {
+        let lines: Vec<&str> = text.lines().collect();
+        for (i, line) in lines.iter().enumerate() {
+            if line.trim_start().starts_with("//") {
+                continue;
+            }
+            for call in ["env::var(", "env::var_os("] {
+                for (at, _) in line.match_indices(call) {
+                    // The argument: the text after the `(` up to the first `)`, read over this
+                    // line and at most the next three.
+                    let mut rest = line[at + call.len()..].to_string();
+                    let mut j = i;
+                    while !rest.contains(')') && j < i + 3 && j + 1 < lines.len() {
+                        j += 1;
+                        rest.push_str(lines[j]);
+                    }
+                    let arg: String = rest
+                        .split(')')
+                        .next()
+                        .unwrap_or("")
+                        .chars()
+                        .filter(|c| !c.is_whitespace())
+                        .collect();
+                    let arg = arg.trim_end_matches(',');
+                    let above = lines[..i]
+                        .iter()
+                        .rev()
+                        .map(|l| l.trim())
+                        .find(|l| !l.starts_with("//"));
+                    for var in SEAM_VARS {
+                        let named = names.iter().any(|(v, name)| {
+                            *v == var && (arg == name || arg.ends_with(&format!("::{name}")))
+                        });
+                        if named {
+                            out.push(SeamRead {
+                                var,
+                                file: file.clone(),
+                                line: i + 1,
+                                gated: above == Some("#[cfg(debug_assertions)]"),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    out
 }
 
 /// The `.rs` texts under `<root>/src`, as `(path relative to root, text)`, sorted by path.
