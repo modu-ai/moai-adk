@@ -545,6 +545,11 @@ fn ac9_a_build_outside_a_versions_folder_is_held_and_names_its_bin_moai() {
     let elsewhere = home.join("elsewhere/bin/moai");
     fs::create_dir_all(elsewhere.parent().unwrap()).unwrap();
     common::copy_executable(Path::new(EXE), &elsewhere);
+    // The skill package sits beside that build, as `update` needs to run at all.
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let folder = home.join("elsewhere");
+    copy_tree(&manifest.join("skills/moai"), &folder.join("skills/moai"));
+    copy_tree(&manifest.join("agents"), &folder.join("agents"));
     let p = preview(&elsewhere, &home);
     let s = &p["switch"];
     assert_eq!(s["action"], json!("held"), "{p}");

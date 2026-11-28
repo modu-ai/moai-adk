@@ -69,9 +69,10 @@ impl Home {
         h
     }
 
-    /// The running build's `bin/moai`: the launcher the step looks for (it may not exist yet).
+    /// The running binary of the build folder `a`: it is named `moai-cli` so it is never the
+    /// launcher itself, which the step looks for beside it as `bin/moai`.
     fn exe(&self) -> PathBuf {
-        self.root.join(".moai-cli/versions/a/bin/moai")
+        self.root.join(".moai-cli/versions/a/bin/moai-cli")
     }
 
     fn dir(&self) -> PathBuf {
@@ -83,7 +84,7 @@ impl Home {
     }
 
     fn launcher_file(&self) -> PathBuf {
-        self.exe()
+        self.exe().with_file_name("moai")
     }
 
     fn saved(&self, stamp: &str) -> PathBuf {
@@ -619,11 +620,7 @@ fn apply_checks_everything_before_the_first_write() {
     let e = switch::apply_for(&h.root, &h.exe(), &token, NOW).unwrap_err();
     assert!(e.contains("preview again") || e.contains("link"), "{e}");
     assert_eq!(fs::read(real.join("moai")).unwrap(), V1);
-    assert_eq!(
-        fs::read_dir(&real).unwrap().count(),
-        2,
-        "the script and the launcher"
-    );
+    assert_eq!(fs::read_dir(&real).unwrap().count(), 1, "the script alone");
 
     // The file became a link after the preview.
     let h = Home::new();
