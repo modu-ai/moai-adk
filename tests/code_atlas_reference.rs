@@ -272,6 +272,24 @@ fn read_and_plan_point_to_the_instruction_in_one_line_and_project_offers_the_bui
     let project = fs::read_to_string(package().join("workflows/project.md")).unwrap();
     assert!(project.contains("**Offer the code map.**"));
     assert!(project.contains("run it only after the user agrees"));
+
+    // A build refused for the file limit is not sent again unchanged: the route offers a scope
+    // (SPEC-20261119-index-scope REQ-8). Read from step 7 only, not from the whole file.
+    let step7 = project
+        .lines()
+        .find(|l| l.starts_with("7. **Offer the code map.**"))
+        .expect("step 7 of the project route");
+    for needle in [
+        "`index file limit exceeded`",
+        "ten largest folders",
+        "{\"protocol_version\":1,\"scope\":",
+        "first and recommended",
+        "or skip the map",
+        "only after the user picks",
+        "covers those folders only",
+    ] {
+        assert!(step7.contains(needle), "step 7 lacks `{needle}`: {step7}");
+    }
 }
 
 /// The instruction's own requests, run in its order: before a build every read answer is
