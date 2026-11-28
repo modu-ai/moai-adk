@@ -15,6 +15,7 @@ const CLAUSE: &str = "never `cd` or `git -C` into a worktree that is not your ow
 
 const CONTRACT: &str = "skills/moai/references/audit.md";
 const LANE_RULES: &str = "docs/lane-rules.md";
+const WORKFLOW: &str = "skills/moai/workflows/audit.md";
 
 // Paths of texts that exist only inside these tests, spelled in two pieces so that the skill
 // reference scan of the tree (`tests/skill_references_scan.rs`) does not read them as references
@@ -220,7 +221,17 @@ fn audit_texts() -> BTreeMap<String, String> {
 /// SPEC-20261126-audit-reads-by-object-id AC-1 (REQ-1, REQ-2)
 #[test]
 fn ac1_the_contract_and_the_lane_rules_say_to_read_another_head_by_object_id() {
-    let wanted = [
+    // REQ-1 (revision 3): the contract line names the three commands, the argument forms are one
+    // line of the AUDIT workflow; the lane rules keep the forms on their one line.
+    let with_names = [
+        "own worktree",
+        "object id",
+        "`git show`",
+        "`git diff`",
+        "`git merge-tree`",
+        CLAUSE,
+    ];
+    let with_forms = [
         "own worktree",
         "object id",
         "`git show <sha>:<path>`",
@@ -228,19 +239,30 @@ fn ac1_the_contract_and_the_lane_rules_say_to_read_another_head_by_object_id() {
         "`git merge-tree`",
         CLAUSE,
     ];
+    let forms_only = [
+        "object id",
+        "`git show <sha>:<path>`",
+        "`git diff <base> <head>`",
+        "`git merge-tree`",
+    ];
     let texts = audit_texts();
-    let lacking: Vec<&str> = [CONTRACT, LANE_RULES]
-        .into_iter()
-        .filter(|file| {
-            let holding = texts[*file]
-                .lines()
-                .filter(|line| wanted.iter().all(|part| line.contains(part)));
-            holding.count() != 1
-        })
-        .collect();
+    let lacking: Vec<&str> = [
+        (CONTRACT, &with_names[..]),
+        (LANE_RULES, &with_forms[..]),
+        (WORKFLOW, &forms_only[..]),
+    ]
+    .into_iter()
+    .filter(|(file, wanted)| {
+        let holding = texts[*file]
+            .lines()
+            .filter(|line| wanted.iter().all(|part| line.contains(part)));
+        holding.count() != 1
+    })
+    .map(|(file, _)| file)
+    .collect();
     assert!(
         lacking.is_empty(),
-        "not exactly one line holds {wanted:?} in {lacking:?}"
+        "not exactly one line holds its read-by-object-id words in {lacking:?}"
     );
 }
 

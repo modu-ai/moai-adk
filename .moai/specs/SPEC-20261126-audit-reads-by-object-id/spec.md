@@ -2,7 +2,7 @@
 id: SPEC-20261126-audit-reads-by-object-id
 title: "감사는 다른 레인의 head 를 자기 워크트리에서 객체 id 로 읽어요"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-26
 ---
 
@@ -18,14 +18,14 @@ created: 2026-11-26
 
 ## Non-goals
 
-- 감사 에이전트 글(`agents/audit.md`)과 AUDIT 워크플로(`skills/moai/workflows/audit.md`) 수정: 감사자가 만든 감사 워크트리를 쓰는 기존 줄은 baseline 에 남겨요.
+- 감사 에이전트 글(`agents/audit.md`) 수정, 그리고 AUDIT 워크플로(`skills/moai/workflows/audit.md`)에서 인자 꼴 한 줄(REQ-1, 개정 3) 밖의 수정: 감사자가 만든 감사 워크트리를 쓰는 기존 줄은 baseline 에 남겨요.
 - 훅이나 관문으로 `cd` 를 거절하는 일.
 - 글자만 보고 대상 워크트리를 판별하는 일, `pushd`, `--git-dir`, `--work-tree`, 줄이 나뉜 명령 탐지.
 - `skills/`, `agents/`, `docs/` 밖의 파일(`templates/` 아래 감사 이름 파일 포함).
 
 ## Requirements
 
-- REQ-1: The audit contract shall tell its reader on one line to read another head from its own worktree by object id with `git show <sha>:<path>`, `git diff <base> <head>` and `git merge-tree` and to state the ban in the words "never `cd` or `git -C` into a worktree that is not your own".
+- REQ-1: The audit contract shall tell its reader on one line to read another head from its own worktree by object id with `git show`, `git diff` and `git merge-tree` and to state the ban in the words "never `cd` or `git -C` into a worktree that is not your own", and one line of the AUDIT workflow shall give the argument forms `git show <sha>:<path>`, `git diff <base> <head>` and `git merge-tree`.
 - REQ-2: The lane rules shall state the same read by object id and the same ban on one line.
 - REQ-3: When an audit text holds a `cd` or a `git -C` that no baseline entry covers, the scan test shall fail and name the file and the line · failure: none — a covered occurrence passes
 - REQ-4: When a baseline substring occurs in its file a number of times other than its recorded count, the scan test shall fail and name the entry · failure: none — an exact count passes
@@ -33,7 +33,7 @@ created: 2026-11-26
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2): The audit contract and the lane rules each hold one line with the own worktree, the object id, the three read commands and the ban · verify: `cargo test --locked --test audit_reads_by_object_id -- ac1_the_contract_and_the_lane_rules_say_to_read_another_head_by_object_id`
+- AC-1 (REQ-1, REQ-2): The audit contract holds one line with the own worktree, the object id, the names of the three read commands and the ban, the AUDIT workflow holds one line with their argument forms, and the lane rules hold one line with the own worktree, the object id, the three commands with their argument forms and the ban · verify: `cargo test --locked --test audit_reads_by_object_id -- ac1_the_contract_and_the_lane_rules_say_to_read_another_head_by_object_id`
 - AC-2 (REQ-3, REQ-4): Every `cd` and `git -C` of the checked-in audit texts lies inside a baseline substring whose count matches · verify: `cargo test --locked --test audit_reads_by_object_id -- ac2_the_checked_in_audit_texts_hold_only_the_baseline_cd_and_git_c`
 - AC-3 (REQ-3): A planted `cd` or `git -C` line is reported with its file and line, and `AUDIT-CLAIM` and `git diff` are not reported · verify: `cargo test --locked --test audit_reads_by_object_id -- ac3_a_new_cd_or_git_c_instruction_is_named_with_its_file_and_line`
 - AC-4 (REQ-4): A repeated or removed baseline substring is reported with its entry · verify: `cargo test --locked --test audit_reads_by_object_id -- ac4_a_baseline_count_that_differs_names_the_entry`
@@ -41,16 +41,17 @@ created: 2026-11-26
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261126-audit-reads-by-object-id/**`, `skills/moai/references/audit.md`, `docs/lane-rules.md`, `skills/moai/references/source-manifest.json`, `tests/audit_reads_by_object_id.rs`, `tools/repo_scans.json`
+- write: `.moai/specs/SPEC-20261126-audit-reads-by-object-id/**`, `skills/moai/references/audit.md`, `skills/moai/workflows/audit.md`(인자 꼴 한 줄만, 개정 3), `docs/lane-rules.md`, `skills/moai/references/source-manifest.json`, `tests/audit_reads_by_object_id.rs`, `tests/next_flow_skill_scan.rs`(찾는 줄이 겹친 문장을 고정하던 한 테스트만, 개정 3), `tools/repo_scans.json`
 - shared files (`card line-lease`, 커밋 뒤 바로 반납): `skills/moai/references/source-manifest.json`, `tools/repo_scans.json`
-- read-only: `src/gate.rs`, `tests/repo_scans_table.rs`, `tests/next_flow_skill_scan.rs`
-- forbidden: `agents/audit.md`, `skills/moai/workflows/audit.md`
+- read-only: `src/gate.rs`, `tests/repo_scans_table.rs`
+- forbidden: `agents/audit.md`
 
 ## Plan
 
 1. 실패하는 테스트와 스캔 표 항목을 함께 커밋해요. `tools/repo_scans.json` 은 공유 파일이라 `card line-lease` 로 써요.
 2. 감사 계약의 "Rules for every audit" 끝과 레인 규칙의 "Worktree entry and exit" 에 한 줄씩 넣어요. 넣는 글은 아래 그대로예요.
-   - 감사 계약: "6. Read another head from your own worktree by object id (`git show <sha>:<path>`, `git diff <base> <head>`, `git merge-tree`); never `cd` or `git -C` into a worktree that is not your own."
+   - 감사 계약(개정 3): "6. Read another head from your own worktree by object id (`git show`, `git diff`, `git merge-tree`; forms in `workflows/audit.md`); never `cd` or `git -C` into a worktree that is not your own."
+   - AUDIT 워크플로 6단계 아래 한 줄(개정 3): "- Read another head by object id from your own worktree: `git show <sha>:<path>` for a file, `git diff <base> <head>` for a range and `git merge-tree` for a merge result."
    - 레인 규칙: "- An audit reads another head from your own worktree by object id (`git show <sha>:<path>`, `git diff <base> <head>`, `git merge-tree`); never `cd` or `git -C` into a worktree that is not your own."
 3. `moai check fix` 로 소스 매니페스트의 sha256 을 써요(`card line-lease`).
 4. 대상 테스트와 가벼운 검사를 돌리고 Result 를 쓴 뒤 READY 에서 `check affected --card` 를 한 번 돌려요.
@@ -73,6 +74,7 @@ Reversible, category `none`.
 | D-2 | audit texts are the files named audit under three folders and five named rule files | small and stable, and a new audit file joins by its name | edit the named list |
 | D-3 | each occurrence is covered by a baseline substring with a count | an added occurrence fails and a removed one asks to shrink the baseline | edit the baseline |
 | D-4 | the scan has its own always entry over `skills/`, `agents/`, `docs/lane-rules.md`, `docs/leader-rules.md` and `docs/design-review/appendix/operations/` | the existing read groups list named files and would miss a new audit file, and a scope over all of `docs/` makes a docs-only change an own hit, which an existing repository test refuses | remove the entry and join those groups |
+| D-5 (revision 3) | the contract line names the three commands and the ban; their argument forms are one line of the AUDIT workflow; the findings line of the contract no longer repeats the side rule, and the test that pinned that repeat reads the side rule | the contract is at its 8192 byte limit and the limit stays; the user's pick of "겹친 문장 빼고 인자 옮김" (leader decision note 10950, 2026-11-28, chosen by the user through the leader session's question tool) approves this one-line revision of REQ-1 and nothing else | restore the argument forms on the contract line and the repeated sentence on the findings line, once the limit allows |
 
 ## Result
 
