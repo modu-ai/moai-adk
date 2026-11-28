@@ -91,27 +91,107 @@ fn timeout_reason(group_signal_sent: bool) -> &'static str {
 /// "Install Claude Code", read 2026-11-28).
 pub const WINDOWS_INSTALL_COMMAND: &str = "irm https://claude.ai/install.ps1 | iex";
 
-/// The program moai starts for Claude Code (SPEC-20261122-host-small-fixes REQ-1, REQ-2). Not
-/// written yet: this keeps the name as given on every target.
-pub fn choose_program(name: &str, _windows: bool, _files: &[PathBuf]) -> Result<PathBuf> {
-    Ok(PathBuf::from(name))
+/// The last part of a path as text, split at `/` and at `\`, so a Windows path is read the same
+/// way on every platform.
+fn leaf(path: &str) -> &str {
+    path.rsplit(['/', '\\']).next().unwrap_or(path)
 }
 
-/// The files `name` can resolve to, in search order. Not written yet.
-pub fn candidates_in(_dirs: &[PathBuf], _name: &str) -> Vec<PathBuf> {
-    Vec::new()
+/// The ending of a path's last part, lower-cased (`claude.CMD` gives `cmd`).
+fn ending(path: &str) -> Option<String> {
+    leaf(path)
+        .rsplit_once('.')
+        .map(|(_, e)| e.to_ascii_lowercase())
 }
 
-/// What both places that start Claude Code call. Not written yet.
+fn refuse_shim(shown: &str) -> String {
+    format!(
+        "refusing to start {shown}: Windows runs .bat and .cmd files through cmd.exe, which cannot \
+         escape arguments safely; install Claude Code natively with `{WINDOWS_INSTALL_COMMAND}` \
+         (https://code.claude.com/docs/en/agent-sdk/troubleshooting.md, \"Refusing to execute batch \
+         script\")"
+    )
+}
+
+/// The program moai starts for Claude Code (SPEC-20261122-host-small-fixes REQ-1, REQ-2).
+///
+/// On Windows only a native `claude.exe` is started, never a `.cmd` or `.bat` file: a name that
+/// ends in `.cmd` or `.bat` is refused; a name that ends in `.exe` is kept; for any other name
+/// `files` (what it resolves to, in search order, see [`candidates_in`]) decides: the first
+/// `.exe` wins whatever shims come before it, a list with only shims is refused, and an empty
+/// list leaves the name to the start itself, whose error names it. On every other target the
+/// name is returned as given. The target is an argument so every branch runs on every platform.
+pub fn choose_program(name: &str, windows: bool, files: &[PathBuf]) -> Result<PathBuf> {
+    if !windows {
+        return Ok(PathBuf::from(name));
+    }
+    match ending(name).as_deref() {
+        Some("cmd" | "bat") => return Err(refuse_shim(name)),
+        Some("exe") => return Ok(PathBuf::from(name)),
+        _ => {}
+    }
+    let mut shim: Option<&PathBuf> = None;
+    for file in files {
+        match ending(&file.to_string_lossy()).as_deref() {
+            Some("exe") => return Ok(file.clone()),
+            Some("cmd" | "bat") => shim = shim.or(Some(file)),
+            _ => {}
+        }
+    }
+    match shim {
+        Some(file) => Err(refuse_shim(&file.to_string_lossy())),
+        None => Ok(PathBuf::from(name)),
+    }
+}
+
+/// The files `name` can resolve to, in search order, that exist: for a bare name each folder of
+/// `dirs` in turn, for a name with a folder part the folder it names; in each place `.exe`, then
+/// `.cmd`, then `.bat` is tried (the official pages do not state the order Windows uses, so this
+/// is moai's own: a native executable first). A longer name that only starts like `name` is not
+/// mistaken for it, and a folder named like a file does not count.
+pub fn candidates_in(dirs: &[PathBuf], name: &str) -> Vec<PathBuf> {
+    let bases: Vec<String> = if name.contains(['/', '\\']) {
+        vec![name.to_string()]
+    } else {
+        dirs.iter()
+            .map(|d| d.join(name).to_string_lossy().into_owned())
+            .collect()
+    };
+    let mut found = Vec::new();
+    for base in bases {
+        for ending in ["exe", "cmd", "bat"] {
+            let candidate = PathBuf::from(format!("{base}.{ending}"));
+            if candidate.is_file() {
+                found.push(candidate);
+            }
+        }
+    }
+    found
+}
+
+/// What both places that start Claude Code call: the program for `name` on this platform. Off
+/// Windows it is the name as given; on Windows it follows [`choose_program`] over the files the
+/// `PATH` folders hold for the name (the current folder, which Windows searches first, is not
+/// read here).
 pub fn start_program(name: &str) -> Result<PathBuf> {
-    Ok(PathBuf::from(name))
+    if !cfg!(windows) {
+        return Ok(PathBuf::from(name));
+    }
+    let dirs: Vec<PathBuf> = std::env::var_os("PATH")
+        .map(|p| std::env::split_paths(&p).collect())
+        .unwrap_or_default();
+    choose_program(name, true, &candidates_in(&dirs, name))
 }
 
 /// `claude --version` with a fixed argv, bounded by `VERSION_TIMEOUT`. The probe runs in
 /// its own process group; timeout cleanup signals the group before reaping its
 /// leader and reports whether the system signal command acknowledged the request.
 pub(crate) fn claude_version() -> VersionProbe {
-    let mut cmd = Command::new("claude");
+    // On Windows a `.cmd` or `.bat` file is never started (REQ-1, REQ-2): no version is read.
+    let Ok(program) = start_program("claude") else {
+        return VersionProbe::NoVersion;
+    };
+    let mut cmd = Command::new(program);
     cmd.arg("--version")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
