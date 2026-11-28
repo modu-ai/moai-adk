@@ -133,6 +133,8 @@ Diagnose
   optimize-plan                    Preview space that can be freed
   baseline-inventory               List a checkout's baseline facts
   improve-signals                  Read the observed problems of a project as counted classes
+  improve-plan                     Plan lessons for a project skill or agent file
+  improve-note                     Append one observed problem to the project's notes file
 Lane and leader
   claim-acquire                    Claim a task with one Issue comment
   claim-verify                     Check claim ownership before a commit or push
