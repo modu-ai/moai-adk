@@ -381,6 +381,74 @@ mod preview {
         assert_eq!(n["warning"], json!(false), "{n}");
     }
 
+    /// SPEC-20261127-update-linked-profile-display AC-4 (REQ-7, REQ-8): when every entry of the
+    /// profile that the update writes is a link into the default folder, the notice names the
+    /// default folder's paths and does not warn that the update writes into the profile; one
+    /// entry that is a real folder in the profile names that place and keeps the warning.
+    #[test]
+    fn a_fully_linked_profile_is_shown_as_the_default_folder() {
+        use std::os::unix::fs::symlink;
+        let (_t, home, exe) = setup();
+        let default = home.join(".claude");
+        let profile = home.join("profiles/p");
+        fs::create_dir_all(&profile).unwrap();
+        for entry in ["skills", "agents", "output-styles", "rules"] {
+            fs::create_dir_all(default.join(entry)).unwrap();
+            symlink(default.join(entry), profile.join(entry)).unwrap();
+        }
+        fs::write(default.join("settings.json"), "{\"a\": 1}\n").unwrap();
+        symlink(default.join("settings.json"), profile.join("settings.json")).unwrap();
+        let vars = [("CLAUDE_CONFIG_DIR", profile.as_path())];
+
+        let n = folders_notice(&preview(&exe, &home, true, &vars));
+        assert_eq!(n["warning"], json!(false), "{n}");
+        for part in ["skills", "agents", "style", "rules"] {
+            assert_eq!(folder(&n, part), default, "{part}: {n}");
+        }
+        assert!(
+            !n.to_string().contains(profile.to_str().unwrap()),
+            "no profile path: {n}"
+        );
+        let reason = n["reason"].as_str().unwrap();
+        assert!(reason.contains(default.to_str().unwrap()), "{reason}");
+        assert!(!reason.contains("CLAUDE_CONFIG_DIR names"), "{reason}");
+
+        // One entry that is a real folder in the profile: that place and the warning.
+        fs::remove_file(profile.join("skills")).unwrap();
+        fs::create_dir_all(profile.join("skills")).unwrap();
+        let n = folders_notice(&preview(&exe, &home, true, &vars));
+        assert_eq!(n["warning"], json!(true), "{n}");
+        assert_eq!(folder(&n, "skills"), profile, "{n}");
+        let reason = n["reason"].as_str().unwrap();
+        assert!(reason.contains("CLAUDE_CONFIG_DIR names"), "{reason}");
+        assert!(reason.contains(profile.to_str().unwrap()), "{reason}");
+    }
+
+    /// Every entry of the profile is a link into the default folder except `settings.json`, a real
+    /// file there: the update writes the output style setting into that file, so the notice keeps
+    /// its warning and the profile's paths (the real-file side of the `settings.json` rule).
+    #[test]
+    fn a_real_settings_file_in_a_linked_profile_keeps_the_warning() {
+        use std::os::unix::fs::symlink;
+        let (_t, home, exe) = setup();
+        let default = home.join(".claude");
+        let profile = home.join("profiles/p");
+        fs::create_dir_all(&profile).unwrap();
+        for entry in ["skills", "agents", "output-styles", "rules"] {
+            fs::create_dir_all(default.join(entry)).unwrap();
+            symlink(default.join(entry), profile.join(entry)).unwrap();
+        }
+        fs::write(default.join("settings.json"), "{\"a\": 1}\n").unwrap();
+        fs::write(profile.join("settings.json"), "{\"a\": 1}\n").unwrap();
+        let vars = [("CLAUDE_CONFIG_DIR", profile.as_path())];
+
+        let n = folders_notice(&preview(&exe, &home, true, &vars));
+        assert_eq!(n["warning"], json!(true), "{n}");
+        let reason = n["reason"].as_str().unwrap();
+        assert!(reason.contains("CLAUDE_CONFIG_DIR names"), "{reason}");
+        assert!(reason.contains(profile.to_str().unwrap()), "{reason}");
+    }
+
     #[test]
     fn notice_is_read_only() {
         let (_t, home, exe) = setup();

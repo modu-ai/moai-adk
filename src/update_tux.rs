@@ -145,6 +145,9 @@ enum W {
     KeptMine,
     Linked,
     LinkedFile,
+    LinkedNote,
+    NotLinked,
+    NoCopyHere,
     ReferenceNote,
     Cleanup,
     Archive,
@@ -558,6 +561,27 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "linked"
             }
         }
+        LinkedNote => {
+            if ko {
+                "(이 프로필은 링크로 읽어요)"
+            } else {
+                "(this folder is read through a link)"
+            }
+        }
+        NotLinked => {
+            if ko {
+                "링크 안 됨"
+            } else {
+                "not linked"
+            }
+        }
+        NoCopyHere => {
+            if ko {
+                "moai는 기본 폴더에 사본 하나만 두고 이 폴더에는 쓰지 않아요"
+            } else {
+                "moai keeps one copy in the default folder and writes none in this folder"
+            }
+        }
         ReferenceNote => {
             if ko {
                 "<reference> 자리에는 되돌리기를 허락한 근거를 적어요"
@@ -943,7 +967,7 @@ fn tally(files: &[Value]) -> (usize, usize, usize, usize, usize) {
         match f["action"].as_str().unwrap_or("") {
             "unchanged" => t.0 += 1,
             "create" | "append" | "merge" | "set" => t.1 += 1,
-            "update" | "replace" | "replace_copy" => t.2 += 1,
+            "update" | "replace" | "replace_copy" | "retire" => t.2 += 1,
             "conflict" => t.3 += 1,
             _ => t.4 += 1,
         }
@@ -1166,7 +1190,44 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
     let mut parts = Vec::new();
     let mut flow_notes: Vec<String> = Vec::new();
     let mut worst = Mark::Ok;
-    for h in v["routing"]["hosts"].as_array().into_iter().flatten() {
+    let routing_hosts: Vec<&Value> = v["routing"]["hosts"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .collect();
+    let action_of = |h: &Value| h["section"]["action"].as_str().unwrap_or("").to_string();
+    // `agents::section_plan`: create (new file), append (block added to an existing file),
+    // merge (owned block rewritten), unchanged, conflict.
+    let state = |action: &str| -> (Mark, &'static str) {
+        match action {
+            "unchanged" => (Mark::Ok, w(lang, W::UpToDate)),
+            "create" | "append" => (Mark::Update, w(lang, W::New)),
+            "merge" | "update" => (Mark::Update, w(lang, W::ToUpdate)),
+            "conflict" => (Mark::Warn, w(lang, W::Conflict)),
+            _ => (Mark::Warn, w(lang, W::Skipped)),
+        }
+    };
+    // A profile's `linked` row carries the path of the default folder's row (the one file moai
+    // keeps): the index of that default row, when it is in the list.
+    let default_row_of = |h: &Value| -> Option<usize> {
+        let path = h["section"]["path"].as_str().filter(|p| !p.is_empty())?;
+        routing_hosts.iter().position(|d| {
+            d["preflight"].as_str() == Some("ok")
+                && d["section"]["path"].as_str() == Some(path)
+                && !matches!(action_of(d).as_str(), "linked" | "not_linked")
+        })
+    };
+    // The default rows that carry the note of a profile read through a link: only a default row
+    // that is `Ok` does, so a problem on the one real copy is never shown as fine.
+    let mut noted = vec![false; routing_hosts.len()];
+    for h in &routing_hosts {
+        if h["preflight"].as_str() == Some("ok") && action_of(h) == "linked" {
+            if let Some(i) = default_row_of(h) {
+                noted[i] |= state(&action_of(routing_hosts[i])).0 == Mark::Ok;
+            }
+        }
+    }
+    for (idx, h) in routing_hosts.iter().enumerate() {
         let file = short(h["file"].as_str().unwrap_or(""));
         if h["preflight"].as_str() != Some("ok") {
             worst = worst.max(Mark::Error);
@@ -1177,19 +1238,38 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
             ));
             continue;
         }
-        // `agents::section_plan`: create (new file), append (block added to an existing file),
-        // merge (owned block rewritten), unchanged, conflict.
-        let (m, word) = match h["section"]["action"].as_str().unwrap_or("") {
-            "unchanged" => (Mark::Ok, w(lang, W::UpToDate)),
-            "create" | "append" => (Mark::Update, w(lang, W::New)),
-            "merge" | "update" => (Mark::Update, w(lang, W::ToUpdate)),
-            "conflict" => (Mark::Warn, w(lang, W::Conflict)),
-            // A link to the file moai keeps in the default folder: no second copy is written.
-            "linked" => (Mark::Ok, w(lang, W::LinkedFile)),
-            _ => (Mark::Warn, w(lang, W::Skipped)),
+        let action = action_of(h);
+        let mut folded = false;
+        let (m, word) = match action.as_str() {
+            // A link to the file moai keeps in the default folder: no second copy is written. It
+            // is that folder's entry with a note when that entry is `Ok`, else it shows the
+            // default entry's mark and word.
+            "linked" => match default_row_of(h) {
+                Some(i) => {
+                    let s = state(&action_of(routing_hosts[i]));
+                    folded = s.0 == Mark::Ok;
+                    s
+                }
+                None => (Mark::Ok, w(lang, W::LinkedFile)),
+            },
+            // A folder with its own `rules` folder: a warning with the row's reason and next step.
+            "not_linked" => (Mark::Warn, w(lang, W::NotLinked)),
+            other => state(other),
         };
         worst = worst.max(m);
-        parts.push(format!("{file} {word}"));
+        if action == "not_linked" {
+            let reason = h["section"]["detail"]
+                .as_str()
+                .filter(|d| !d.trim().is_empty())
+                .unwrap_or_else(|| w(lang, W::NoCopyHere));
+            parts.push(format!("{file} {word}: {reason}"));
+        } else if folded {
+            // Shown on the default entry.
+        } else if noted[idx] {
+            parts.push(format!("{file} {word} {}", w(lang, W::LinkedNote)));
+        } else {
+            parts.push(format!("{file} {word}"));
+        }
         // The flow rule's own detail, such as an earlier build's file left in place for the user
         // to delete, is a line of its own.
         if let Some(detail) = h["flow"]["detail"].as_str() {
@@ -2248,9 +2328,8 @@ impl Out<'_> {
 
 fn change_mark(action: &str) -> Option<Mark> {
     match action {
-        "create" | "append" | "merge" | "set" | "update" | "replace" | "replace_copy" => {
-            Some(Mark::Update)
-        }
+        "create" | "append" | "merge" | "set" | "update" | "replace" | "replace_copy"
+        | "retire" => Some(Mark::Update),
         "conflict" => Some(Mark::Warn),
         _ => None,
     }
@@ -2548,7 +2627,15 @@ fn applied(v: &Value, view: &View) -> String {
                     ),
                 ));
             }
-            Some("unchanged") | None => {}
+            // A host whose folder is blocked (a link) writes nothing and answers `unchanged`; its
+            // reason is on the row and the run ends partly applied, never on Done.
+            Some("unchanged") | None => {
+                if r["blocked"].as_array().is_some_and(|b| !b.is_empty()) {
+                    bad = true;
+                    let msg = r["reason"].as_str().unwrap_or("blocked");
+                    rows.push(row(Mark::Warn, label, msg.to_string()));
+                }
+            }
             Some("skipped") => rows.push(row(Mark::Skip, label, w(lang, W::Skipped).into())),
             Some(other) => {
                 bad = true;

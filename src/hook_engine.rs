@@ -694,6 +694,22 @@ fn tool_preflight_deny(
         *fixed_reason = Some(reason);
         return Verdict::Deny(reason.to_string());
     }
+    // SPEC-20261126-shell-cd-guard: a session in a linked worktree keeps its folder.
+    if tool == "Bash" {
+        let project_dir = std::env::var_os("CLAUDE_PROJECT_DIR")
+            .filter(|v| !v.is_empty())
+            .map(std::path::PathBuf::from);
+        let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
+        if let Some(reason) = crate::hook_bash_boundary::session_cd(
+            input,
+            project_dir.as_deref(),
+            home.as_deref(),
+            cwd,
+        ) {
+            *fixed_reason = Some(reason);
+            return Verdict::Deny(reason.to_string());
+        }
+    }
     // Stage 7 opt-in rules (B3, B9; decision 6779829826): off unless ~/.moai-cli/hook-config.toml turns
     // them on; a missing or broken config leaves them off.
     let opt_in = if tool == "Bash" {

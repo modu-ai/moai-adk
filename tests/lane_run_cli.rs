@@ -336,7 +336,44 @@ fn facts_that_moai_cannot_read_are_reported_unread_and_never_block() {
     );
 }
 
-// ---- prompt_ (AC-3: REQ-4, REQ-5, REQ-6, REQ-12)
+/// SPEC-20261122-nonstop-lane AC-5: each version floor is told with the condition it holds under.
+#[test]
+fn facts_floors_name_each_version_with_its_condition() {
+    let p = project();
+    let shown = p.ok(&["show"]);
+    assert_once(
+        shown["floors"].as_str().unwrap(),
+        &[
+            "2.1.248 or later for the self-paced loop on Amazon Bedrock, Claude Platform on AWS, \
+             Google Cloud's Agent Platform or Microsoft Foundry, or with feature-flag fetching off",
+            "2.1.310 or later for Monitor on those providers, or with telemetry or non-essential \
+             traffic off",
+            "Git Bash on Windows",
+            "before 2.1.330 a loop ends after 7 days instead of 30",
+        ],
+    );
+}
+
+// ---- prompt_ (AC-3, AC-4: REQ-4..REQ-8, REQ-12, REQ-14)
+
+/// The prompt of the non-stop lane `agent-7` in a project whose pick is `nonstop`.
+fn nonstop_prompt() -> String {
+    let p = project();
+    p.ok(&["set", "nonstop"]);
+    let out = p.ok(&["prompt", "--lane", "agent-7"]);
+    out["prompt"].as_str().unwrap().to_string()
+}
+
+/// Each phrase stands exactly once in the text, so it pins one rule and no other.
+fn assert_once(text: &str, phrases: &[&str]) {
+    for phrase in phrases {
+        assert_eq!(
+            text.matches(phrase).count(),
+            1,
+            "{phrase:?} does not stand exactly once: {text}"
+        );
+    }
+}
 
 /// No card number, no key-shaped run and no absolute path outside the project.
 fn assert_clean(text: &str, root: &Path) {
@@ -390,7 +427,7 @@ fn prompt_for_a_nonstop_lane_names_every_rule_and_nothing_else() {
         !text.starts_with('/'),
         "a plain text, not a command: {text}"
     );
-    // Only commands that exist today: the watch command lands with a later slice.
+    // The watch is `moai card wait`: `lane-run` has no watch action.
     assert!(!text.contains("lane-run watch"), "{text}");
     assert_clean(text, &p.root);
     // The same lane and pick give the same text.
@@ -398,6 +435,135 @@ fn prompt_for_a_nonstop_lane_names_every_rule_and_nothing_else() {
         p.ok(&["prompt", "--lane", "agent-7"])["prompt"],
         out["prompt"]
     );
+}
+
+/// SPEC-20261122-nonstop-lane AC-3 (REQ-4, REQ-14).
+#[test]
+fn prompt_checks_the_leader_at_every_wake_and_reads_a_lapsed_entry() {
+    assert_once(
+        &nonstop_prompt(),
+        &[
+            "Lane agent-7: keep working without stopping, as a self-paced loop with no interval.",
+            "At every wake, first run `moai session-register --show --name leader`.",
+            "held means a leader is registered.",
+            "free means there is none, unless this session has already seen a registered leader \
+             or received a dispatch: then the entry has lapsed.",
+            "On a lapsed entry, any other answer or a failure, take no new card, continue only \
+             the cards you hold",
+            "write one note that names the answer on the card you worked last.",
+        ],
+    );
+}
+
+/// SPEC-20261122-nonstop-lane AC-3 (REQ-4).
+#[test]
+fn prompt_waits_for_a_dispatch_with_a_leader_and_takes_the_next_card_without_one() {
+    assert_once(
+        &nonstop_prompt(),
+        &[
+            "With a leader registered: after your READY note, hand the card back, send the one \
+             completion message and wait for the leader's dispatch",
+            "never take the next card on your own.",
+            "With no leader: when the ledger shows the previous card done or released, run \
+             `moai card next`, take the card it names and read its body and notes whole.",
+        ],
+    );
+}
+
+/// SPEC-20261122-nonstop-lane AC-3 (REQ-4): the current card, the verdict and the blocked note.
+#[test]
+fn prompt_keeps_the_card_puts_a_verdict_first_and_blocks_a_decision_on_the_card() {
+    assert_once(
+        &nonstop_prompt(),
+        &[
+            "Keep the current card: if a card is in progress, continue it first.",
+            "A verdict or a repair request comes first.",
+            "A decision you need goes into a LANE-BLOCKED kind=decision note on its card",
+            "do not ask the user from the loop.",
+        ],
+    );
+}
+
+/// SPEC-20261122-nonstop-lane AC-3 (REQ-4).
+#[test]
+fn prompt_never_ends_a_turn_without_a_card_a_watch_or_a_wake() {
+    assert_once(
+        &nonstop_prompt(),
+        &[
+            "never end a turn with neither a card in progress, a watch nor a scheduled wake",
+            "call ScheduleWakeup (1200 to 1800 seconds while a Monitor runs, 3600 with nothing \
+             to watch).",
+        ],
+    );
+}
+
+/// SPEC-20261122-nonstop-lane AC-3 (REQ-6): both idle rules.
+#[test]
+fn prompt_idle_rules_end_the_loop_without_a_leader_and_keep_a_wake_with_one() {
+    assert_once(
+        &nonstop_prompt(),
+        &[
+            "When there is no card you can work (a card that waits for a decision does not count)",
+            "print one idle line (lane agent-7 idle: no card to take) once.",
+            "If this session has seen no leader, stop the watch and end the loop with \
+             ScheduleWakeup and stop: true.",
+            "Otherwise keep one wake pending at 3600 seconds",
+            "end the loop only on the leader's session-end notice or the user's word.",
+        ],
+    );
+}
+
+/// SPEC-20261122-nonstop-lane AC-4 (REQ-7, REQ-8): the one watch is `moai card wait`.
+#[test]
+fn prompt_watches_the_lane_cards_with_card_wait_under_a_monitor() {
+    let text = nonstop_prompt();
+    assert_once(
+        &text,
+        &[
+            "those `moai card next` lists under mine",
+            "each card of `moai card list --state review` whose `moai card show` roles.authors \
+             holds the source_session_id that `moai session-current` prints.",
+            "Keep a Monitor, with its timeout at 30 minutes, that runs `moai card wait --card \
+             <card> --timeout 25m --not-author <your session id>`",
+            "one --card for each watched card.",
+            "With no card to watch, start no watch.",
+            "On a first start, start it and then read each watched card with `moai card show`.",
+            "When it ends, start it again with --since set to the highest note_id it returned, \
+             or to the mark it answered on a timeout",
+            "if it ended with no answer, do a first start again.",
+        ],
+    );
+    assert!(!text.contains("lane-run watch"), "{text}");
+}
+
+/// SPEC-20261122-nonstop-lane AC-3 (REQ-11, REQ-12): the ledger rule and the end of the loop.
+#[test]
+fn prompt_keeps_to_moai_commands_and_says_when_the_loop_ends() {
+    assert_once(
+        &nonstop_prompt(),
+        &[
+            "Read and write the ledger only through moai commands.",
+            "The loop ends 30 days after it starts (7 days before Claude Code 2.1.330) and is \
+             not restored by a resume.",
+        ],
+    );
+}
+
+/// The note beside the prompt says the same end of the loop as the prompt does.
+#[test]
+fn prompt_answer_note_says_the_loop_ends_30_days_after_it_starts() {
+    let p = project();
+    p.ok(&["set", "nonstop"]);
+    let out = p.ok(&["prompt", "--lane", "agent-7"]);
+    let note = out["note"].as_str().unwrap();
+    assert_once(
+        note,
+        &[
+            "it ends 30 days after it starts (7 days before Claude Code 2.1.330)",
+            "is not restored by a resume",
+        ],
+    );
+    assert!(!note.contains("seven days"), "{note}");
 }
 
 #[test]
@@ -448,6 +614,120 @@ fn prompt_refuses_a_lane_name_it_does_not_accept() {
     let (code, v) = p.run(&["prompt", "--lane", "-a"]);
     assert_ne!(code, 0, "{v}");
     assert_eq!(v["error"]["kind"], json!("usage"), "{v}");
+}
+
+// ---- help_ (AC-7: REQ-12)
+
+/// No card number (`C-<digits>` or `#<digits>`), and no `watch` action of `lane-run` named. The
+/// plain word "watch" is allowed: the loop text and prose use it.
+fn assert_no_card_number_and_no_watch_action(text: &str, what: &str) {
+    for w in text.split(|c: char| !(c.is_ascii_alphanumeric() || c == '-' || c == '#')) {
+        let card = w.strip_prefix("C-").or_else(|| w.strip_prefix('#'));
+        assert!(
+            !card.is_some_and(|n| n.starts_with(|c: char| c.is_ascii_digit())),
+            "card number {w:?} in {what}: {text}"
+        );
+    }
+    for named in ["lane-run watch", "`watch`"] {
+        assert!(!text.contains(named), "{named:?} in {what}: {text}");
+    }
+}
+
+/// The plain help text of `lane-run` or of one of its subcommands, from a clean environment.
+fn help(sub: Option<&str>) -> String {
+    let dir = tempfile::tempdir().unwrap();
+    let out = Command::new(common::MOAI_BIN)
+        .clean_env()
+        .env("HOME", dir.path())
+        .current_dir(dir.path())
+        .arg("lane-run")
+        .args(sub)
+        .arg("--help")
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(0), "{sub:?}");
+    String::from_utf8(out.stdout).unwrap()
+}
+
+/// SPEC-20261122-nonstop-lane AC-7.
+#[test]
+fn help_of_lane_run_and_its_subcommands_names_no_card_number_and_no_watch_action() {
+    let top = help(None);
+    assert!(top.contains("Usage: moai lane-run "), "{top}");
+    assert_no_card_number_and_no_watch_action(&top, "lane-run --help");
+    let actions: Vec<&str> = top
+        .lines()
+        .skip_while(|l| *l != "Commands:")
+        .skip(1)
+        .take_while(|l| !l.is_empty())
+        .filter_map(|l| l.split_whitespace().next())
+        .collect();
+    assert_eq!(actions, ["show", "set", "prompt", "goal", "help"], "{top}");
+    for sub in ["show", "set", "prompt", "goal"] {
+        let text = help(Some(sub));
+        assert!(
+            text.contains(&format!("Usage: moai lane-run {sub} ")),
+            "{text}"
+        );
+        assert_no_card_number_and_no_watch_action(&text, sub);
+    }
+}
+
+fn operations_document() -> String {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("docs/design-review/appendix/operations/lane_run.md");
+    fs::read_to_string(path).unwrap()
+}
+
+/// SPEC-20261122-nonstop-lane AC-7.
+#[test]
+fn help_operations_document_names_no_card_number_and_no_watch_action() {
+    let text = operations_document();
+    assert!(text.starts_with("# `lane-run`"), "{text}");
+    assert_no_card_number_and_no_watch_action(&text, "the operations document");
+}
+
+/// Runs one example line in the temporary project, with `<card>` replaced by a card name built
+/// here, and returns the action the line names. An example holds no `[` or `]`.
+fn run_example<'a>(p: &Project, line: &'a str) -> &'a str {
+    assert!(!line.contains('[') && !line.contains(']'), "{line}");
+    let rest = line
+        .strip_prefix("moai lane-run ")
+        .unwrap_or_else(|| panic!("not a lane-run example: {line:?}"));
+    let card = format!("C-{}", 7);
+    let args: Vec<&str> = rest
+        .split_whitespace()
+        .map(|w| if w == "<card>" { card.as_str() } else { w })
+        .collect();
+    p.ok(&args);
+    rest.split_whitespace().next().unwrap()
+}
+
+/// SPEC-20261122-nonstop-lane AC-7: `goal --help` gives an example that runs.
+#[test]
+fn help_of_goal_shows_an_example_that_runs() {
+    let text = help(Some("goal"));
+    let examples: Vec<&str> = text
+        .lines()
+        .filter_map(|l| l.trim().strip_prefix("Example: "))
+        .collect();
+    assert_eq!(examples, ["moai lane-run goal --card <card>"], "{text}");
+    assert_eq!(run_example(&project(), examples[0]), "goal");
+}
+
+/// SPEC-20261122-nonstop-lane AC-7: the one examples block of the operations document names all
+/// four commands, and each of its lines runs.
+#[test]
+fn help_operations_document_examples_name_all_four_commands_and_run() {
+    let text = operations_document();
+    let parts: Vec<&str> = text.split("```").collect();
+    assert_eq!(parts.len(), 3, "one examples block: {text}");
+    let block = parts[1]
+        .strip_prefix("sh\n")
+        .unwrap_or_else(|| panic!("not a shell block: {text}"));
+    let p = project();
+    let actions: Vec<&str> = block.lines().map(|l| run_example(&p, l)).collect();
+    assert_eq!(actions, ["show", "set", "prompt", "goal"], "{text}");
 }
 
 // ---- goal_ (AC-6: REQ-10)

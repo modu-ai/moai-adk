@@ -122,14 +122,21 @@ pub fn check_note(card: &str, text: &str) -> Result<(), String> {
 pub const LIST_LIMIT: usize = 200;
 
 /// Expected state of a primary checkout: ignored folders and files that a project keeps there on
-/// purpose, so they are never a leftover.
-fn is_expected(path: &str) -> bool {
+/// purpose, so they are never a leftover. `state_cache` is the project-relative folder of the
+/// status line cache (`<state folder>/state`, from [`crate::state_root::rel`]): the folder itself
+/// and what lies below it are expected, and nothing that only starts with the same letters.
+fn is_expected(path: &str, state_cache: &str) -> bool {
     let first = path.split('/').next().unwrap_or("");
     let last = path.trim_end_matches('/').rsplit('/').next().unwrap_or("");
+    let path = path.trim_end_matches('/');
     matches!(
         first,
         "target" | ".claude" | "CLAUDE.local.md" | ".mcp.json"
     ) || last == ".DS_Store"
+        || path == state_cache
+        || path
+            .strip_prefix(state_cache)
+            .is_some_and(|rest| rest.starts_with('/'))
 }
 
 /// The untracked (`??`) and ignored (`!!`) paths of `git status --porcelain=v1 -z` output.
@@ -260,9 +267,10 @@ pub fn shared_checkout_new(project: &Path, since: i64) -> Shared {
         Ok(t) => t,
         Err(e) => return Shared::NotChecked(e),
     };
+    let state_cache = crate::state_root::rel(primary, "state");
     let mut new: Vec<String> = untracked_and_ignored(&status)
         .into_iter()
-        .filter(|p| !is_expected(p))
+        .filter(|p| !is_expected(p, &state_cache))
         .filter(|p| is_new_since(newest_secs(&primary.join(p.trim_end_matches('/'))), since))
         .collect();
     new.sort();
@@ -277,6 +285,11 @@ mod tests {
 
     fn body(rest: &str) -> String {
         format!("{FIRST}\n{rest}")
+    }
+
+    /// The status line cache folder of a project that keeps its state in the current folder.
+    fn cache() -> String {
+        format!("{}/state", crate::state_root::MOAI_DIR)
     }
 
     #[test]
@@ -387,7 +400,7 @@ mod tests {
             "sub/.DS_Store",
             "sub/.DS_Store/",
         ] {
-            assert!(is_expected(path), "{path}");
+            assert!(is_expected(path, &cache()), "{path}");
         }
         for path in [
             "new.txt",
@@ -398,8 +411,42 @@ mod tests {
             "sub/.mcp.json",
             ".DS_Store.bak",
         ] {
-            assert!(!is_expected(path), "{path}");
+            assert!(!is_expected(path, &cache()), "{path}");
         }
+    }
+
+    #[test]
+    fn the_status_line_cache_folder_is_expected_state() {
+        let dir = crate::state_root::MOAI_DIR;
+        for path in [
+            format!("{dir}/state"),
+            format!("{dir}/state/"),
+            format!("{dir}/state/statusline.json"),
+            format!("{dir}/state/deep/cache.bin"),
+        ] {
+            assert!(is_expected(&path, &cache()), "{path}");
+        }
+        // Only the folder itself: a neighbour, a lookalike name and the same name elsewhere still
+        // count as a leftover.
+        for path in [
+            format!("{dir}/"),
+            format!("{dir}/other.log"),
+            format!("{dir}/state-old/"),
+            format!("{dir}/state-old/cache.bin"),
+            format!("{dir}/states/x"),
+            format!("{dir}/sub/state/x"),
+            "state/x".to_string(),
+            "src/state/x.txt".to_string(),
+            format!("sub/{dir}/state/x"),
+        ] {
+            assert!(!is_expected(&path, &cache()), "{path}");
+        }
+        // The folder is the project's own: a project on the earlier layout expects the cache in
+        // its own state folder, not in the other one.
+        let earlier = format!("{}/state", crate::PROJECT_STATE_DIR);
+        assert!(is_expected(&format!("{earlier}/x"), &earlier));
+        assert!(!is_expected(&format!("{dir}/state/x"), &earlier));
+        assert!(!is_expected(&format!("{earlier}/x"), &cache()));
     }
 
     #[test]

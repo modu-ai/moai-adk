@@ -669,9 +669,10 @@ fn the_settings_hold_names_the_keys_and_the_settings_step_does_not_say_current()
         "blocked",
         "held by .claude/settings.json (plansDirectory, statusLine); \
          .claude/settings.local.json (env); this update does not change those keys, so change \
-         or remove them yourself and run the update again; this update does not edit \
-         .claude/settings.local.json; edit or remove these keys yourself (env), then run \
-         `moai project-update-plan` again",
+         or remove them yourself and run the update again; `--rewrite-local-references` cannot \
+         move the folder yet: .claude/settings.json also names the folder and keeps it; then run \
+         `moai project-update-plan` again; a session never edits .claude/settings.local.json by \
+         hand",
     );
     assert!(
         !plan.to_string().contains("secret-name"),
@@ -2251,9 +2252,15 @@ fn the_settings_the_install_phase_wrote_are_not_moved_again() {
     assert!(fx.root.join(".claude/settings.json").is_file());
     let after = fx.plan();
     let go = step(&after, "go-state");
-    // The local settings still hold the Go folder (`blocked`, as before this change); what the
-    // install phase wrote is not offered for a second move.
-    assert_ne!(go["state"], "needs_decision", "{go}");
+    // The local settings still hold the Go folder: the only command offered carries the pick,
+    // and what the install phase wrote is not offered for a second move.
+    assert!(
+        go["apply"]["argv"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("--rewrite-local-references")),
+        "{go}"
+    );
     let settings = go["preview"]["items"]
         .as_array()
         .unwrap()
@@ -2268,6 +2275,58 @@ fn the_settings_the_install_phase_wrote_are_not_moved_again() {
         "{}",
         step(&after, "hooks")
     );
+}
+
+/// SPEC-20261126-go-local-settings-reference D-8: where only the pick is offered, the same
+/// preview prints it beside `ready` install commands. Run after the pick moved the state, each of
+/// those either refuses without a write or writes nothing into the earlier state folder.
+#[test]
+fn the_other_commands_of_the_preview_stay_safe_after_the_pick() {
+    let fx = Fx::new();
+    let status = json!({"statusLine": {
+        "type": "command",
+        "command": format!("{}/status.sh", moai_cli::state_root::MOAI_DIR),
+    }});
+    fx.go_project_moved(
+        &json!({"permissions": {"deny": ["x"]}}),
+        &format!("{status}\n"),
+        false,
+    );
+    fx.with_profile(false);
+    let preview = fx.plan();
+    let go = step(&preview, "go-state");
+    assert_eq!(go["state"], "needs_decision", "{go}");
+    let ready: Vec<&Value> = steps(&preview)
+        .into_iter()
+        .filter(|s| s["state"] == "ready")
+        .collect();
+    assert!(!ready.is_empty(), "{preview}");
+    let moved = fx.apply_step(go);
+    assert_eq!(moved["ok"], json!(true), "{moved}");
+    let earlier = fx.root.join(EARLIER_PROJECT_DIR);
+    let in_earlier = || -> Vec<(PathBuf, Node)> {
+        fx.tree()
+            .into_iter()
+            .filter(|(p, _)| p.starts_with(&earlier))
+            .collect()
+    };
+    for s in ready {
+        let (whole, kept) = (fx.tree(), in_earlier());
+        let out = fx.apply_step(s);
+        if out["ok"] == json!(true) {
+            for entry in in_earlier() {
+                assert!(
+                    kept.contains(&entry),
+                    "{}: wrote into the earlier state folder: {:?}",
+                    s["step"],
+                    entry.0
+                );
+            }
+        } else {
+            assert_eq!(fx.tree(), whole, "{}: a refusal writes nothing", s["step"]);
+        }
+        eprintln!("{}: ok={} {}", s["step"], out["ok"], out["error"]);
+    }
 }
 
 /// AC 13 (not committed): only a committed apply's receipt offers the hooks. A receipt that

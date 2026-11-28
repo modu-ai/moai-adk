@@ -28,6 +28,12 @@ pub struct TestFile {
     /// its own. A moved module keeps its old target name in `name`, so the selection does not
     /// change; only the step that runs it names the crate (SPEC-20261123-test-area-crates).
     pub area: Option<String>,
+    /// The files the target loads with `#[path]`: the repository path and the text, `None` when it
+    /// cannot be read. Never part of `text` (SPEC-20261126-affected-binary-tests REQ-3, REQ-6).
+    pub helpers: Vec<(String, Option<String>)>,
+    /// The changed paths whose command name the target holds (REQ-3, REQ-4). [`read_facts`] fills
+    /// it for the changed paths of its range.
+    pub command_paths: BTreeSet<String>,
 }
 
 /// Which set a caller gets: the full set (today's, the bare command) or the precise lane set
@@ -84,6 +90,9 @@ pub struct Selection {
     pub units: Vec<String>,
     /// The area crates whose every module is selected: the filterset names the crate once.
     pub whole: BTreeSet<String>,
+    /// The library tests a scan's check names, run beside `units`; empty whenever `units` is
+    /// (SPEC-20261126-affected-binary-tests REQ-9).
+    pub lib_tests: BTreeSet<String>,
 }
 
 /// The first word of an area name: `update_models` → `update`.
@@ -126,6 +135,41 @@ struct ScanEntry {
     always: bool,
     rules: Vec<String>,
     scope: Option<Vec<(String, Vec<String>)>>,
+    /// The library tests its `--lib` checks name, and whether one of them runs the whole library.
+    lib_tests: BTreeSet<String>,
+    lib_whole: bool,
+}
+
+/// The library tests one check command runs: `None` without `--lib`, else the names it filters
+/// by, none when it runs every library test. A command this reader does not fully know is read
+/// as running every library test (SPEC-20261126-affected-binary-tests REQ-9).
+fn lib_filter(check: &str) -> Option<Vec<String>> {
+    let words: Vec<&str> = check.split_whitespace().collect();
+    if !words.contains(&"--lib") {
+        return None;
+    }
+    let every = Some(Vec::new());
+    if !words.starts_with(&["cargo", "test"]) {
+        return every;
+    }
+    let name = |w: &str| {
+        w.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == ':')
+    };
+    let mut names = Vec::new();
+    let mut rest = words[2..].iter();
+    while let Some(w) = rest.next() {
+        match *w {
+            "--lib" | "--" | "--offline" | "--locked" | "--no-fail-fast" | "--exact"
+            | "--nocapture" => {}
+            "--test" | "--bin" => {
+                rest.next();
+            }
+            w if name(w) => names.push(w.to_string()),
+            _ => return every,
+        }
+    }
+    Some(names)
 }
 
 impl ScanEntry {
@@ -174,7 +218,13 @@ fn scan_entries(text: &str) -> Option<Vec<ScanEntry>> {
     let mut out = Vec::new();
     for scan in scans {
         let mut targets = BTreeSet::new();
+        let (mut lib_tests, mut lib_whole) = (BTreeSet::new(), false);
         for check in crate::repo_scans::checks_of(scan).ok()? {
+            match lib_filter(&check) {
+                Some(names) if names.is_empty() => lib_whole = true,
+                Some(names) => lib_tests.extend(names),
+                None => {}
+            }
             let words: Vec<&str> = check.split_whitespace().collect();
             for (i, w) in words.iter().enumerate() {
                 if *w == "--test" {
@@ -213,9 +263,202 @@ fn scan_entries(text: &str) -> Option<Vec<ScanEntry>> {
             always: scan.get("always").and_then(|a| a.as_bool()) == Some(true),
             rules: strings(scan.get("rules")),
             scope: (!scope.is_empty()).then_some(scope),
+            lib_tests,
+            lib_whole,
         });
     }
     Some(out)
+}
+
+/// The whole line by which a test joins every source change
+/// (SPEC-20261126-affected-binary-tests REQ-1).
+const EVERY_SOURCE_LINE: &str = "// check-affected: every-source-change";
+
+/// The start of the whole line by which a test file names a path it depends on (REQ-10).
+const WHEN_CHANGED: &str = "// check-affected: when-changed ";
+
+/// REQ-1: `path` is a source file and the test's own source carries the marker line.
+fn marked_for_source(path: &str, t: &TestFile) -> bool {
+    path.starts_with("src/")
+        && path.ends_with(".rs")
+        && t.text.lines().any(|l| l == EVERY_SOURCE_LINE)
+}
+
+/// REQ-3, REQ-4: the test holds the name of a command that `path` reaches.
+fn runs_command_of(path: &str, t: &TestFile) -> bool {
+    t.command_paths.contains(path)
+}
+
+/// REQ-8: `path` is under `tools/` and the test's own source holds it as text.
+fn names_tool(path: &str, t: &TestFile) -> bool {
+    path.starts_with("tools/") && t.text.contains(path)
+}
+
+/// REQ-10: the test's own source declares `path` in a whole line.
+fn declares_path(path: &str, t: &TestFile) -> bool {
+    t.text
+        .lines()
+        .any(|l| l.strip_prefix(WHEN_CHANGED) == Some(path))
+}
+
+/// The tests that drive what a changed path changes without naming its module: marked tests,
+/// tests of its command, of its `tools/` path and of a declaration. Every selection adds them and
+/// none loses a test by them (REQ-5).
+fn binary_rules(changed: &[String], tests: &[TestFile]) -> BTreeSet<String> {
+    tests
+        .iter()
+        .filter(|t| {
+            changed.iter().any(|p| {
+                marked_for_source(p, t)
+                    || runs_command_of(p, t)
+                    || names_tool(p, t)
+                    || declares_path(p, t)
+            })
+        })
+        .map(|t| t.name.clone())
+        .collect()
+}
+
+/// The command names the changed paths reach, as `(changed path, command)`, and the first
+/// command file the rules read that cannot be read (REQ-6). A changed `src/ops/<name>.rs` reaches
+/// its own command (REQ-3). A changed library file reaches each command file that names its module
+/// path and is named after its stem, or after the stem without its trailing `s` and then `_`
+/// (REQ-4).
+fn command_names(root: &Path, changed: &[String]) -> (Vec<(String, String)>, Option<String>) {
+    let (mut out, mut unread) = (Vec::new(), None);
+    let command = |name: &str| name.replace('_', "-");
+    for path in changed {
+        if let Some(name) = path
+            .strip_prefix("src/ops/")
+            .and_then(|p| p.strip_suffix(".rs"))
+        {
+            if name != "mod" && !name.contains('/') {
+                out.push((path.clone(), command(name)));
+            }
+            continue;
+        }
+        let Some((_, Some(key))) = module_of(path) else {
+            continue;
+        };
+        let own = stem(path.rsplit('/').next().unwrap_or(path)).replace('-', "_");
+        let prefix = format!("{}_", own.strip_suffix('s').unwrap_or(&own));
+        let entries = match std::fs::read_dir(root.join("src/ops")) {
+            Ok(entries) => entries,
+            Err(e) => {
+                if e.kind() != std::io::ErrorKind::NotFound {
+                    unread.get_or_insert(format!("cannot read src/ops: {e}"));
+                }
+                continue;
+            }
+        };
+        for entry in entries {
+            let entry = match entry {
+                Ok(entry) => entry,
+                Err(e) => {
+                    unread.get_or_insert(format!("cannot read src/ops: {e}"));
+                    continue;
+                }
+            };
+            let file = entry.file_name().to_string_lossy().into_owned();
+            let Some(other) = file.strip_suffix(".rs") else {
+                continue;
+            };
+            if other == "mod" || !(other == own || other.starts_with(&prefix)) {
+                continue;
+            }
+            match std::fs::read_to_string(entry.path()) {
+                Ok(text) if names_module(&text, &key) => {
+                    out.push((path.clone(), command(other)));
+                }
+                Ok(_) => {}
+                Err(e) => {
+                    unread.get_or_insert(format!("cannot read src/ops/{file}: {e}"));
+                }
+            }
+        }
+    }
+    (out, unread)
+}
+
+/// Note on each test the changed paths whose command name it holds as a whole string literal, in
+/// its own source or in a `#[path]` helper (REQ-3, REQ-4).
+fn note_commands(tests: &mut [TestFile], commands: &[(String, String)]) {
+    for (path, command) in commands {
+        let literal = format!("\"{command}\"");
+        for t in tests.iter_mut() {
+            if t.text.contains(&literal)
+                || t.helpers
+                    .iter()
+                    .any(|(_, h)| h.as_deref().is_some_and(|h| h.contains(&literal)))
+            {
+                t.command_paths.insert(path.clone());
+            }
+        }
+    }
+}
+
+/// REQ-6: stop a selection whose command rules cannot read a command file or, when they reach a
+/// command, a `#[path]` helper of a test. The error names the file.
+fn command_rules_readable(facts: &Facts) -> Result<()> {
+    let (commands, unread) = command_names(&facts.root, &facts.changed);
+    if let Some(why) = unread {
+        return Err(format!("check affected refused: {why}"));
+    }
+    if commands.is_empty() {
+        return Ok(());
+    }
+    for t in &facts.tests {
+        if let Some((file, _)) = t.helpers.iter().find(|(_, text)| text.is_none()) {
+            return Err(format!(
+                "check affected refused: cannot read {file}, a helper the test {} loads with #[path]",
+                t.name
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// The files a Rust source in `folder` (shown as `shown`) loads with `#[path = "<file>"]`, each
+/// with its text, `None` when it cannot be read. Only an attribute in code counts: one written
+/// inside a comment or a string loads nothing.
+fn loaded_helpers(folder: &Path, shown: &str, text: &str) -> Vec<(String, Option<String>)> {
+    literals_at(text)
+        .into_iter()
+        .filter(|(at, _)| {
+            text[..*at]
+                .trim_end()
+                .strip_suffix('=')
+                .and_then(|before| before.trim_end().strip_suffix("#[path"))
+                .is_some_and(|before| !before.rsplit('\n').next().unwrap_or(before).contains("//"))
+        })
+        .map(|(_, file)| {
+            let read = std::fs::read_to_string(folder.join(&file)).ok();
+            (format!("{shown}/{file}"), read)
+        })
+        .collect()
+}
+
+/// REQ-9: a narrowed library also runs the library tests of every scan whose scope holds a
+/// changed path; a check among them that names no test keeps the whole library.
+fn scan_library_tests(
+    entries: &[ScanEntry],
+    changed: &[String],
+    units: &mut BTreeSet<String>,
+) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    for entry in entries
+        .iter()
+        .filter(|e| changed.iter().any(|p| e.covers(p)))
+    {
+        if entry.lib_whole {
+            units.clear();
+        }
+        names.extend(entry.lib_tests.iter().cloned());
+    }
+    if units.is_empty() {
+        names.clear();
+    }
+    names
 }
 
 /// Whether `text` names the helper sub-module `common::<sub>`: `common::<sub>…` or `<sub>` as an
@@ -417,6 +660,7 @@ pub fn select_pick(
             }
         }
     }
+    rust.extend(binary_rules(changed, tests));
     let areas = areas_of(tests, &rust);
     Selection {
         rust,
@@ -424,6 +668,7 @@ pub fn select_pick(
         areas,
         units: Vec::new(),
         whole: BTreeSet::new(),
+        lib_tests: BTreeSet::new(),
     }
 }
 
@@ -922,10 +1167,15 @@ pub fn select_card_with_registry(
         reason,
         paths: wide_paths.iter().map(|(_, p)| p.clone()).collect(),
     });
+    // The tests that drive the built binary join whatever the rules above decided
+    // (SPEC-20261126-affected-binary-tests REQ-5).
+    rust.extend(binary_rules(changed, tests));
     let mut scans = Scans::None;
+    let mut lib_tests = BTreeSet::new();
     if let Some(text) = scan_list {
         match scan_entries(text) {
             Some(entries) => {
+                lib_tests = scan_library_tests(&entries, changed, &mut units);
                 // A scan's scope is what it reads, often the whole tree; the landing asks for
                 // those receipts (SPEC-20261123-land-repo-scans) and the batch's wide check runs
                 // them. The card set takes a scan only when one of its rule files changed (D-6).
@@ -965,6 +1215,7 @@ pub fn select_card_with_registry(
             areas,
             units: units.into_iter().collect(),
             whole,
+            lib_tests,
         },
         wide,
         ignored_words: ignored.into_iter().collect(),
@@ -1168,11 +1419,11 @@ pub fn runner_in(dir: &Path) -> Runner {
 
 /// The earlier and the new state folder names, built at run time (`tests/state_folder_literal_scan.rs`
 /// counts them the same way).
-fn earlier_state_name() -> String {
+pub(crate) fn earlier_state_name() -> String {
     format!(".{}-{}", "moai", "cli")
 }
 
-fn new_state_name() -> String {
+pub(crate) fn new_state_name() -> String {
     format!(".{}", "moai")
 }
 
@@ -1267,6 +1518,43 @@ pub fn table_violations(
     allow: Option<&str>,
     moved: &[String],
 ) -> Vec<String> {
+    table_violations_judging(added, added, tests, areas, allow, moved)
+}
+
+/// The test files of `present` (the changed files that still exist) that the cheap `test_tables`
+/// step reads, added or not (C-431): a top-level `tests/<name>.rs` and a module of a moved area,
+/// `tests/<area>/<name>.rs`. A file the range only edits is judged by the same rules the ledger
+/// tests apply to the whole tree, so a gain of a state folder name or of a tree read stops the run
+/// before cargo instead of in the ledger step.
+pub(crate) fn judged_test_paths(present: &[String], moved: &[String]) -> Vec<String> {
+    present
+        .iter()
+        .filter(|p| {
+            let Some(rest) = p.strip_prefix("tests/").and_then(|r| r.strip_suffix(".rs")) else {
+                return false;
+            };
+            match rest.split_once('/') {
+                None => true,
+                Some((area, name)) => {
+                    !name.contains('/') && name != "main" && moved.iter().any(|m| m == area)
+                }
+            }
+        })
+        .cloned()
+        .collect()
+}
+
+/// [`table_violations`] with the files the state-folder allow list counts given apart from the
+/// added ones: the area table reads only what the range `added` (a name that is not in it matters
+/// for a new file alone), the allow list reads every path of `judged`.
+pub fn table_violations_judging(
+    added: &[String],
+    judged: &[String],
+    tests: &[TestFile],
+    areas: Option<&str>,
+    allow: Option<&str>,
+    moved: &[String],
+) -> Vec<String> {
     let mut out = Vec::new();
     let stems: Vec<&str> = added
         .iter()
@@ -1310,13 +1598,15 @@ pub fn table_violations(
     if let Some(text) = allow {
         let rows = parse_allow_rows(text);
         let (earlier, new) = (earlier_state_name(), new_state_name());
-        // The added files whose text the allow list counts: `tests/<name>.rs` and a module of a
+        // The files whose text the allow list counts: `tests/<name>.rs` and a module of a
         // moved area, `tests/<area>/<name>.rs`, which the list names by that longer path.
-        let mut files: Vec<(String, &str, Option<&str>)> = stems
+        let mut files: Vec<(String, &str, Option<&str>)> = judged
             .iter()
-            .map(|s| (format!("tests/{s}.rs"), *s, None))
+            .filter_map(|p| p.strip_prefix("tests/")?.strip_suffix(".rs"))
+            .filter(|s| !s.contains('/'))
+            .map(|s| (format!("tests/{s}.rs"), s, None))
             .collect();
-        for p in added {
+        for p in judged {
             let Some((area, name)) = p
                 .strip_prefix("tests/")
                 .and_then(|r| r.strip_suffix(".rs"))
@@ -1528,6 +1818,11 @@ impl Tracked {
 /// The string literals of Rust source, escapes as written. Line and block comments, raw strings
 /// and the character literals `'"'` and `'\"'` are skipped so their quotes pair nothing.
 fn string_literals(text: &str) -> Vec<String> {
+    literals_at(text).into_iter().map(|(_, s)| s).collect()
+}
+
+/// [`string_literals`] with the byte offset of each literal's opening quote.
+fn literals_at(text: &str) -> Vec<(usize, String)> {
     let b = text.as_bytes();
     let ident = |c: u8| c.is_ascii_alphanumeric() || c == b'_';
     let (mut out, mut i) = (Vec::new(), 0);
@@ -1570,7 +1865,7 @@ fn string_literals(text: &str) -> Vec<String> {
                 if i >= b.len() {
                     break;
                 }
-                out.push(text[start..i].to_string());
+                out.push((start - 1, text[start..i].to_string()));
                 i += 1;
             }
             _ => i += 1,
@@ -1850,9 +2145,11 @@ pub(crate) fn step(label: &str, program: &str, args: &[&str], heavy: bool) -> St
 }
 
 /// The cheap step `test_tables` (SPEC-20261124-new-test-file-precheck): the added top-level
-/// `tests/*.rs` files checked against the area table and the state-folder allow list. `None`
-/// when the range adds no such file or the repository has neither table, so the plan, the log
-/// and the summary of every other run stay as they were.
+/// `tests/*.rs` files checked against the area table and the state-folder allow list, and, since
+/// C-431, every changed test file ([`judged_test_paths`]) against the allow list and the scan list.
+/// `None` when the range adds no top-level file and no changed test file breaks a table, or the
+/// repository has none of the tables, so the plan, the log and the summary of every other run stay
+/// as they were.
 fn table_step(facts: &Facts) -> Option<Step> {
     let added = facts
         .added
@@ -1863,7 +2160,8 @@ fn table_step(facts: &Facts) -> Option<Step> {
                 .is_some_and(|s| !s.contains('/'))
         })
         .count();
-    if added == 0
+    let judged = judged_test_paths(&facts.present, &facts.moved);
+    if (added == 0 && judged.is_empty())
         || (facts.areas_text.is_none()
             && facts.allow_text.is_none()
             && facts.scan_list.is_none()
@@ -1871,8 +2169,9 @@ fn table_step(facts: &Facts) -> Option<Step> {
     {
         return None;
     }
-    let mut lines = table_violations(
+    let mut lines = table_violations_judging(
         &facts.added,
+        &judged,
         &facts.tests,
         facts.areas_text.as_deref(),
         facts.allow_text.as_deref(),
@@ -1887,7 +2186,7 @@ fn table_step(facts: &Facts) -> Option<Step> {
         }
     }
     lines.extend(scan_violations(
-        &facts.added,
+        &judged,
         &facts.tests,
         facts.scan_list.as_deref(),
         facts.tracked.as_deref(),
@@ -1903,10 +2202,20 @@ fn table_step(facts: &Facts) -> Option<Step> {
             "{table}: the table exists but cannot be read ({error}){shape}; fix or restore it, it is not treated as absent"
         ));
     }
+    // A range that adds no top-level test file plans the step only to name a miss, so the plan,
+    // the log and the summary of a clean run that edits test files stay as they were.
+    if added == 0 && lines.is_empty() {
+        return None;
+    }
+    let what = if added > 0 {
+        format!("{added} added test file(s)")
+    } else {
+        format!("{} changed test file(s)", judged.len())
+    };
     let mut s = step(
         "test_tables",
         "(in-process)",
-        &["test_tables", &format!("{added} added test file(s)")],
+        &["test_tables", &what],
         false,
     );
     s.report = Some(lines);
@@ -2060,6 +2369,10 @@ fn area_filterset(sel: &Selection) -> String {
             .collect()
     };
     parts.push("kind(bin)".to_string());
+    if !sel.units.is_empty() {
+        let named = sel.lib_tests.iter();
+        parts.extend(named.map(|n| format!("(kind(lib) & test(/{n}/))")));
+    }
     let mut modules: std::collections::BTreeMap<&str, Vec<&str>> = Default::default();
     for t in &sel.rust {
         match sel.areas.get(t) {
@@ -2206,7 +2519,7 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
     .filter(|l| !l.is_empty())
     .map(String::from)
     .collect();
-    let present = changed
+    let present: Vec<String> = changed
         .iter()
         .filter(|p| dir.join(p).is_file())
         .cloned()
@@ -2236,14 +2549,18 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
                     name,
                     modules: declared_mods(&text),
                     os: os_names(&text),
+                    helpers: loaded_helpers(&dir.join("tests"), "tests", &text),
                     text,
                     area: None,
+                    command_paths: BTreeSet::new(),
                 });
             }
         }
     }
     tests.extend(area_modules);
     tests.sort_by(|a, b| a.name.cmp(&b.name));
+    // A file these rules cannot read stops `list` and a run, not every reader of the facts.
+    note_commands(&mut tests, &command_names(dir, &changed).0);
     let mut unreadable = Vec::new();
     // The scan list is `None` when it cannot be read, as it always was for the selection; the
     // table step reads the reason from `unreadable`. A check that names a module of an area crate
@@ -2254,12 +2571,9 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
         .iter()
         .any(|p| p == crate::gate::SCAN_REGISTRY)
         .then(|| read_registry_texts(dir, &base, &head, &moved));
-    let adds_test_file = added.iter().any(|p| {
-        p.strip_prefix("tests/")
-            .and_then(|r| r.strip_suffix(".rs"))
-            .is_some_and(|s| !s.contains('/'))
-    });
-    let tracked = if adds_test_file {
+    // The tracked files are read for any changed test file, as the scan step judges those too.
+    let changes_test_file = !judged_test_paths(&present, &moved).is_empty();
+    let tracked = if changes_test_file {
         git(dir, &["ls-files", "-z"]).ok().map(|out| {
             out.split('\0')
                 .filter(|p| !p.is_empty())
@@ -2366,8 +2680,10 @@ fn read_area_modules(path: &Path, area: &str) -> Vec<TestFile> {
             name: stem(name).to_string(),
             modules,
             os: os_names(&text),
+            helpers: loaded_helpers(path, &format!("tests/{area}"), &text),
             text,
             area: Some(area.to_string()),
+            command_paths: BTreeSet::new(),
         });
     }
     out
@@ -2566,6 +2882,7 @@ pub fn list(
     integration_ref: Option<&str>,
 ) -> Result<serde_json::Value> {
     let mut facts = read_facts(dir, range)?;
+    command_rules_readable(&facts)?;
     fork_point(&mut facts);
     let chosen = choose_with_registry(
         pick,
@@ -2813,6 +3130,7 @@ fn slot_folder(opts: &RunOptions) -> Result<std::path::PathBuf> {
 fn hold_slot(
     opts: &RunOptions,
     out: &Path,
+    repo: &Path,
 ) -> std::result::Result<(crate::heavy_slot::Held, usize), i32> {
     use std::io::Write;
     let mut log: Box<dyn Write> = match std::fs::File::create(out.join("heavy-slot.log")) {
@@ -2854,10 +3172,45 @@ fn hold_slot(
     let command: Vec<String> = std::env::args_os()
         .map(|a| a.to_string_lossy().into_owned())
         .collect();
-    let held = crate::heavy_slot::hold(&folder, max, name, &command, limits, &mut log)
-        .map_err(i32::from)?;
+    // A `--full` run of the confirmed leader session queues at the front; the log says which place
+    // the run took and why (SPEC-20261126-leader-slot-front REQ-1, REQ-4, REQ-7). A run that
+    // inherits a slot does not queue, so it says nothing.
+    let front = if opts.full && std::env::var_os(crate::heavy_slot::SLOT_FD_ENV).is_none() {
+        let verdict = front_place(repo);
+        let _ = match verdict {
+            Ok(()) => writeln!(
+                log,
+                "heavy-slot: queue front place (registered leader session)"
+            ),
+            Err(why) => writeln!(log, "heavy-slot: queue arrival order ({why})"),
+        };
+        verdict.is_ok()
+    } else {
+        false
+    };
+    let held =
+        crate::heavy_slot::hold_ordered(&folder, max, name, &command, limits, &mut log, front)
+            .map_err(i32::from)?;
     let _ = writeln!(log, "{}", held.taken_line(name));
     Ok((held, max))
+}
+
+/// Whether the session that makes this call is the one the live registry entry `leader` of mode
+/// leader names, as `card land-batch` confirms it (SPEC-20261126-leader-slot-front D-2): the
+/// session id comes from the host's environment variable and `repo` is any checkout of the
+/// repository, a linked worktree included. `Err` carries the reason for arrival order in fixed
+/// words; a refusal text of the registry check is never copied (REQ-4). Nothing is refused or
+/// written: a call that cannot be confirmed queues like every other.
+fn front_place(repo: &Path) -> std::result::Result<(), &'static str> {
+    let session = crate::session_current::resolve(|key| std::env::var(key).ok());
+    let Some(me) = session["source_session_id"].as_str() else {
+        return Err("no session id");
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64);
+    crate::card::land::batch::confirm_leader(repo, Some(me), now)
+        .map_err(|_| "not confirmed as the registered leader session")
 }
 
 /// An in-process step: its verdict lines go to the log and any line makes the exit code 1.
@@ -2911,6 +3264,7 @@ pub fn run_with(
     keep_going: bool,
 ) -> Result<serde_json::Value> {
     let mut facts = read_facts(dir, range)?;
+    command_rules_readable(&facts)?;
     let base_given = fork_point(&mut facts);
     let dir = facts.root.as_path();
     let at = git(dir, &["rev-parse", "HEAD"])?.trim().to_string();
@@ -3013,7 +3367,7 @@ pub fn run_with(
         }
         if planned[i].heavy && !tried {
             tried = true;
-            match hold_slot(opts, &out) {
+            match hold_slot(opts, &out, dir) {
                 Ok(h) => {
                     let r = runner_in(dir);
                     planned = tuned(plan(
@@ -3078,6 +3432,9 @@ pub fn run_with(
             "label": s.label, "exit": code, "log": log.to_string_lossy(), "command": words,
         }));
     }
+    // SPEC-20261126-heavy-slot-cpu-free REQ-7: how long the slot waited for CPU headroom, read
+    // before the slot is let go; `None` when it did not wait.
+    let slot_wait = held.as_ref().and_then(|(h, _)| h.cpu_waited_secs());
     drop(held);
     // Nothing verified a repository without Rust code that declares no check: that is `not_run`,
     // unless a step failed (REQ-3, REQ-4).
@@ -3118,6 +3475,9 @@ pub fn run_with(
     let mut extra = rerun.words(kept.as_deref());
     if !flaky.is_empty() {
         extra.push(format!("flaky={}", flaky.len()));
+    }
+    if let Some(secs) = slot_wait {
+        extra.push(format!("slot_wait={secs}"));
     }
     let line = crate::check_flaky::with_words(&line, &extra);
     let mut answer = serde_json::json!({
@@ -3567,6 +3927,169 @@ mod tests {
         assert!(found.is_empty(), "{}", found.join("\n"));
     }
 
+    /// The facts of a range that changes `changed` and adds `added`, with an allow list that holds
+    /// no row: what the step reads of a range, nothing else.
+    fn facts_for(changed: &[&str], added: &[&str], tests: Vec<TestFile>, moved: &[&str]) -> Facts {
+        Facts {
+            root: std::path::PathBuf::from("."),
+            base: "a".repeat(40),
+            head: "b".repeat(40),
+            changed: paths(changed),
+            present: paths(changed),
+            tests,
+            scan_list: None,
+            registry: None,
+            added: paths(added),
+            areas_text: None,
+            allow_text: Some("# none\n".to_string()),
+            unreadable: Vec::new(),
+            tracked: None,
+            moved: paths(moved),
+            stack: Stack::Rust,
+        }
+    }
+
+    /// C-431 (a), the shape of C-607 and C-460 on 2026-11-27: an existing test file that gains a
+    /// state folder name is named by the cheap step, before cargo, as a new file would be.
+    #[test]
+    fn a_changed_test_file_that_gains_a_state_folder_name_is_named_before_cargo() {
+        let text = format!("let p = \"{}/x\";", earlier_state_name());
+        let facts = facts_for(&["tests/zz_old.rs"], &[], vec![file("zz_old", &text)], &[]);
+        let step =
+            table_step(&facts).expect("a changed test file that breaks a table plans a step");
+        let lines = step.report.expect("an in-process report");
+        assert_eq!(lines.len(), 1, "{lines:?}");
+        assert!(
+            lines[0].starts_with("tests/zz_old.rs") && lines[0].contains("TempHome::state_dir"),
+            "{lines:?}"
+        );
+    }
+
+    /// C-431 (a), the shape of C-608: a module added alone to a moved area is no top-level file,
+    /// yet the allow list counts it by its longer path, so the step must run for it.
+    #[test]
+    fn a_module_added_alone_to_a_moved_area_plans_the_step() {
+        let text = format!("let p = \"{}/x\";", new_state_name());
+        let mut module = file("zz_new", &text);
+        module.area = Some("lane".to_string());
+        let path = "tests/lane/zz_new.rs";
+        let facts = facts_for(&[path], &[path], vec![module], &["lane"]);
+        let step = table_step(&facts).expect("a module added alone plans the step");
+        let lines = step.report.expect("an in-process report");
+        assert_eq!(lines.len(), 1, "{lines:?}");
+        assert!(lines[0].starts_with(path), "{lines:?}");
+    }
+
+    /// C-431 (a), the shape of C-460 and C-607: an existing test file that starts to read a
+    /// checked-in file is named by the scan list judge, with the line to add.
+    #[test]
+    fn a_changed_test_file_that_reads_a_checked_in_file_is_named_by_the_scan() {
+        let tests = vec![
+            file("zz_read", &rooted("fn t() { let _ = \"docs/a.md\"; }")),
+            file("repo_scans_table", EXEMPT_TEXT),
+        ];
+        let mut facts = facts_for(&["tests/zz_read.rs"], &[], tests, &[]);
+        facts.scan_list = Some(SCAN_LIST.to_string());
+        facts.tracked = Some(tracked());
+        let step = table_step(&facts).expect("a changed reader plans the step");
+        let lines = step.report.expect("an in-process report");
+        assert!(
+            lines
+                .iter()
+                .any(|l| l.starts_with("tests/zz_read.rs") && l.contains("docs/a.md")),
+            "{lines:?}"
+        );
+    }
+
+    /// C-431 (a): a changed test file that breaks nothing plans no step, so the plan, the log and
+    /// the summary of every such run stay as they were; an added one still plans it, with the
+    /// words it had.
+    #[test]
+    fn a_clean_changed_test_file_plans_no_step_and_an_added_one_keeps_its_words() {
+        let tests = vec![file("zz_clean", "fn t() {}")];
+        let changed = facts_for(&["tests/zz_clean.rs"], &[], tests.clone(), &[]);
+        assert!(table_step(&changed).is_none());
+        let added = facts_for(&["tests/zz_clean.rs"], &["tests/zz_clean.rs"], tests, &[]);
+        let step = table_step(&added).expect("an added test file plans the step");
+        assert_eq!(step.args[1], "1 added test file(s)");
+        assert_eq!(step.report, Some(Vec::new()));
+    }
+
+    /// C-431 (a), the shape of C-460's first run (its version of `tests/update_linked_config_files.rs`
+    /// gained a `copy_tree` helper with `read_dir(` and the first `CARGO_MANIFEST_DIR` of the file):
+    /// an existing test file that begins to walk the tree is named, with the line to add.
+    #[test]
+    fn a_changed_test_file_that_begins_to_walk_the_tree_is_named_by_the_scan() {
+        let body = "fn copy_tree() { let _ = std::fs::read_dir(\".\"); }";
+        let tests = vec![
+            file("zz_walk", &rooted(body)),
+            file("repo_scans_table", EXEMPT_TEXT),
+        ];
+        let mut facts = facts_for(&["tests/zz_walk.rs"], &[], tests, &[]);
+        facts.scan_list = Some(SCAN_LIST.to_string());
+        facts.tracked = Some(tracked());
+        let lines = table_step(&facts)
+            .expect("a changed walker plans the step")
+            .report
+            .expect("an in-process report");
+        assert!(
+            lines
+                .iter()
+                .any(|l| l.starts_with("tests/zz_walk.rs") && l.contains("walks the tree")),
+            "{lines:?}"
+        );
+    }
+
+    /// C-431 (a), no false positive: every `tests/**/*.rs` file of this checkout taken as changed,
+    /// modules of the moved areas included, plans no miss, so a lane that edits any of them passes
+    /// the cheap step. The two older repository tests read only the top-level files.
+    #[test]
+    fn the_repository_test_files_all_taken_as_changed_plan_no_miss() {
+        let root = Path::new(MANIFEST);
+        let mut facts = read_facts(root, "HEAD..HEAD").expect("read the facts of this checkout");
+        let listed = git(root, &["ls-files", "-z"]).expect("git ls-files");
+        let tracked: Vec<String> = listed
+            .split('\0')
+            .filter(|p| !p.is_empty())
+            .map(String::from)
+            .collect();
+        facts.present = tracked
+            .iter()
+            .filter(|p| p.starts_with("tests/") && p.ends_with(".rs"))
+            .cloned()
+            .collect();
+        facts.tracked = Some(tracked);
+        let judged = judged_test_paths(&facts.present, &facts.moved);
+        assert!(judged.len() > 100, "the scan found {} files", judged.len());
+        assert!(
+            judged.iter().any(|p| p.matches('/').count() == 2),
+            "no module of a moved area was judged"
+        );
+        let lines = table_step(&facts)
+            .and_then(|s| s.report)
+            .unwrap_or_default();
+        assert!(lines.is_empty(), "{}", lines.join("\n"));
+    }
+
+    /// C-431 (a): the files the step judges are the changed top-level test files and the modules of
+    /// a moved area, and nothing else: not the area's `main.rs`, not a deeper folder, not another
+    /// folder, not a file that is no Rust source.
+    #[test]
+    fn judged_test_paths_take_top_level_files_and_modules_of_moved_areas_only() {
+        let present = paths(&[
+            "tests/a.rs",
+            "tests/lane/x.rs",
+            "tests/lane/main.rs",
+            "tests/lane/deep/z.rs",
+            "tests/other/y.rs",
+            "tests/data.json",
+            "src/a.rs",
+        ]);
+        let got = judged_test_paths(&present, &paths(&["lane"]));
+        assert_eq!(got, paths(&["tests/a.rs", "tests/lane/x.rs"]));
+        assert!(judged_test_paths(&[], &paths(&["lane"])).is_empty());
+    }
+
     /// REQ-9: the guidance says where a new test file registers and that the step stops the run.
     #[test]
     fn the_guidance_says_where_a_new_test_file_registers() {
@@ -3844,6 +4367,12 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         }
         assert!(added.len() > 100, "the scan found {} files", added.len());
         let list = std::fs::read_to_string(root.join("tools/repo_scans.json")).unwrap();
+        // A list that no longer parses makes `scan_violations` answer nothing, which would pass
+        // this test empty (audit N1 of C-431).
+        assert!(
+            scan_entries(&list).is_some(),
+            "tools/repo_scans.json does not parse as a scan list"
+        );
         let listed = git(root, &["ls-files", "-z"]).expect("git ls-files");
         let tracked: Vec<String> = listed
             .split('\0')
@@ -3859,8 +4388,7 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
             name: name.to_string(),
             modules: modules.iter().map(|s| s.to_string()).collect(),
             os: os.iter().map(|s| s.to_string()).collect(),
-            text: String::new(),
-            area: None,
+            ..Default::default()
         }
     }
 

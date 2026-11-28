@@ -102,18 +102,18 @@ fn without_leading_color(mut argv: Vec<String>) -> Vec<String> {
 /// Options of `moai cc|glm` (00-F #2028).
 #[derive(Args)]
 struct LaunchOpts {
-    /// Start the coordination window: session `<project name>-leader`, the permission bypass
+    /// Start the coordination window: session `leader-<project name>`, the permission bypass
     /// (`--dangerously-skip-permissions`) unless `--permissions` is given, and the first input
     /// `/moai leader`.
     #[arg(short = 'l', long)]
     leader: bool,
-    /// Start a lane: session `<project name>-agent-<english name>` (a name chosen at random among
-    /// the free names of the launcher's list),
+    /// Start a lane: session `agent-<english name>` (a name chosen at random among the names of
+    /// the launcher's list that no other session on this machine holds),
     /// the permission bypass unless `--permissions` is given, and the first input `/moai agent`.
     #[arg(short = 'a', long)]
     agent: bool,
-    /// Session name (none by default; `-l` names it `<project name>-leader`, `-a` takes a name chosen
-    /// at random among the free `<project name>-agent-<english name>`; with a role flag this name replaces those).
+    /// Session name (none by default; `-l` names it `leader-<project name>`, `-a` takes a name chosen
+    /// at random among the free `agent-<english name>`; with a role flag this name replaces those and is held on this machine the same way).
     #[arg(long)]
     name: Option<String>,
     /// Main model (default `opus`).
@@ -122,9 +122,10 @@ struct LaunchOpts {
     /// Effort (default `medium` on `cc`, `high` on `glm`).
     #[arg(long)]
     effort: Option<String>,
-    /// Advisor model on Claude hosts (fable|opus|sonnet or a full claude-* id). None by default;
-    /// the user setting `launcher.advisor` can turn it on. May bill to usage credits.
-    #[arg(long)]
+    /// Advisor model on Claude hosts (fable|opus|sonnet or a full claude-* id); `opus` when the
+    /// model is left out. None by default, also with `-a`; the user setting `launcher.advisor` can
+    /// turn it on. May bill to usage credits.
+    #[arg(long, value_name = "MODEL", num_args = 0..=1, default_missing_value = "opus")]
     advisor: Option<String>,
     /// Pass no `--advisor` even when the user setting `launcher.advisor` turns it on.
     #[arg(long)]
@@ -926,6 +927,10 @@ enum Command {
         /// picks are part of the plan digest.
         #[arg(long = "set-aside", value_name = "ENTRY")]
         set_aside: Vec<String>,
+        /// Local settings that name `.moai/` keep the Go folder: plan to back the file up,
+        /// point those names at the Go backup folder and move the folder.
+        #[arg(long)]
+        rewrite_local_references: bool,
     },
     /// Move a previewed Go-era .moai folder
     ///
@@ -943,6 +948,9 @@ enum Command {
         /// digest stale.
         #[arg(long = "set-aside", value_name = "ENTRY")]
         set_aside: Vec<String>,
+        /// The confirmed preview was made with this pick, which writes the local settings.
+        #[arg(long)]
+        rewrite_local_references: bool,
     },
     /// Preview undoing a Go-era folder move
     ///
@@ -1005,10 +1013,14 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
-    /// Preview an update of every host copy
+    /// Preview what update writes to host copies
     ///
     /// Read-only UPDATE preview over every host projection (04-B #1999; the command name
     /// is P06 HOLD). HOME is the user home root; STAGE is the package directory to apply.
+    /// This is the low-level step under `update`: to update MoAI run `update` (it previews
+    /// with the installed package and asks once), and to preview a project's own files run
+    /// `project-update-plan`. Use this command only when you hold both a home folder and a
+    /// staged package.
     UpdatePlan {
         /// User home root whose `.moai-cli` and host projections are inspected.
         home: PathBuf,
@@ -1052,7 +1064,8 @@ enum Command {
     /// Start a Claude Code session
     ///
     /// Claude Code session launcher: `cc`. `-l` starts the coordination window and `-a` a lane,
-    /// named `<project name>-leader` and `<project name>-agent-<english name>`, in the permission bypass with
+    /// named `leader-<project name>` and `agent-<english name>` (no other session on this machine
+    /// holds the name), in the permission bypass with
     /// the first input `/moai leader` or `/moai agent`. Without a role flag the session is plain
     /// and `--name` names it; the role is then entered inside it with `/moai agent` or
     /// `/moai leader`.
@@ -1060,8 +1073,9 @@ enum Command {
     /// Start a Claude Code session on z.ai GLM
     ///
     /// Claude Code on z.ai GLM: `glm` (needs ANTHROPIC_AUTH_TOKEN in the environment or a key file).
-    /// `-l` starts the coordination window and `-a` a lane, named `<project name>-leader` and
-    /// `<project name>-agent-<english name>`, in the permission bypass with the first input `/moai leader` or
+    /// `-l` starts the coordination window and `-a` a lane, named `leader-<project name>` and
+    /// `agent-<english name>` (no other session on this machine holds the name), in the permission
+    /// bypass with the first input `/moai leader` or
     /// `/moai agent`. Without a role flag the session is plain and `--name` names it; the role
     /// is then entered inside it with `/moai agent` or `/moai leader`.
     Glm(HostLaunch),
@@ -1145,21 +1159,33 @@ fn launch(
     if first_input.is_some() && prompt.is_some() {
         return Err("a PROMPT cannot be given with `-l` or `-a`: those hand the host the first input themselves, and instructions arrive as a message".into());
     }
-    if first_input.is_some() && o.name.is_none() {
+    // SPEC-20261127-launcher-session-names: a role flag names the session `leader-<project name>`
+    // or `agent-<name>`, and the name is looked up machine-wide without making anything (REQ-5,
+    // REQ-8); the claim itself is made further down, after every refusal that takes no lock. A
+    // `--name` beside a role flag is looked up the same way (D-3).
+    let mut alternatives: Vec<String> = Vec::new();
+    let machine_wide = first_input.is_some();
+    if machine_wide {
+        use moai_cli::session::machine_names::{plan_fixed, plan_lane};
         let here = std::env::current_dir()
             .map_err(|_| "the current directory is unreadable".to_string())?;
-        o.name = Some(if o.leader {
-            moai_cli::session::leader_session_name(&here)
-        } else {
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| d.as_secs() as i64);
-            moai_cli::session::pick_agent_name(&here, now)?
-        });
+        let home = moai_cli::home_workdir::home()?;
+        let plan = match o.name.take() {
+            Some(name) => plan_fixed(&home, &name)?,
+            None if o.leader => plan_fixed(&home, &moai_cli::session::leader_session_name(&here))?,
+            None => {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |d| d.as_secs() as i64);
+                plan_lane(&home, moai_cli::session::agent_candidates(&here, now)?)?
+            }
+        };
+        o.name = Some(plan.name);
+        alternatives = plan.alternatives;
     }
     // Validate user configuration even for a CLI override. Resolution precedes host
-    // composition. No advisor by default (user decision 2026-11-12, #2476): only `--advisor`
-    // or the user setting `launcher.advisor`.
+    // composition. No advisor by default (user decision 2026-11-12, #2476), also with `-a` (user
+    // decision 2026-11-26): only `--advisor` or the user setting `launcher.advisor`.
     let settings = launch_settings(host, o.permissions, o.advisor.as_deref(), o.no_advisor)?;
     let advisor_note = (host == "claude"
         && settings.advisor.as_ref().map(|(_, s)| *s) == Some(AdvisorSource::UserSetting))
@@ -1171,19 +1197,12 @@ fn launch(
         (true, true) => moai_cli::session::Access::Prompt,
         (false, _) => settings.access,
     };
-    let request = SessionRequest {
+    let mut request = SessionRequest {
         role: None,
         host: host.into(),
         name: o.name,
         model: o.model,
         effort: o.effort,
-        // REQ-9: `-a` on `cc` passes `opus` when no option, no `--no-advisor` and no user
-        // setting decided; the model ranking check (D-14) happens where the model is known.
-        default_advisor: (o.agent
-            && host == "claude"
-            && !o.no_advisor
-            && settings.advisor.is_none())
-        .then(|| "opus".to_string()),
         advisor: settings.advisor.map(|(a, _)| a),
         access,
         prompt,
@@ -1207,6 +1226,8 @@ fn launch(
     // with a name holds `<name>.live` for as long as its host runs, so the read-only liveness
     // lookup can tell a live launcher from an exited one. Outside a git repository there is no
     // sessions folder: the launch goes on without a lock and the lookup answers unknown.
+    // SPEC-20261127-launcher-session-names REQ-4: a role flag's name is claimed machine-wide first
+    // (`<HOME>/.moai/session-names/<name>.live`), then in the clone; both are held with the host.
     let mut live_named = None;
     if !o.dry_run {
         if let Some(name) = request.name.clone() {
@@ -1218,13 +1239,20 @@ fn launch(
             if moai_cli::lane_registry::valid_name(&name) {
                 let here = std::env::current_dir()
                     .map_err(|_| "session live lock: the current directory is unreadable")?;
-                // No sessions folder (not a git repository): no lock, the lookup stays unknown.
-                if let Ok(dir) = moai_cli::session::agent_seq_dir(&here) {
-                    live_named = Some(
-                        moai_cli::session::lock_named_live(&dir, &name)
-                            .map_err(|e| format!("cannot start {name}: {e}"))?,
-                    );
-                }
+                let home = if machine_wide {
+                    Some(moai_cli::home_workdir::home()?)
+                } else {
+                    None
+                };
+                let (claimed, held) = moai_cli::session::machine_names::hold(
+                    &here,
+                    home.as_deref(),
+                    &name,
+                    &alternatives,
+                    machine_wide,
+                )?;
+                request.name = Some(claimed);
+                live_named = Some(held);
             }
         }
     }
@@ -1407,7 +1435,6 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
                     access: moai_cli::session::Access::Prompt,
                     prompt: None,
                     first_input: None,
-                    default_advisor: None,
                     claude_bin,
                 },
                 dry_run,
@@ -2033,6 +2060,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 repo_url: repo_url.as_deref(),
                 tmp_root: &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
             },
+            std::env::var_os("HOME")
+                .filter(|h| !h.is_empty())
+                .map(PathBuf::from)
+                .as_deref(),
         ),
         Command::Update {
             confirm,
@@ -2113,20 +2144,28 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 other => other,
             }
         }
-        Command::GoStatePlan { project, set_aside } => {
-            serde_json::to_value(moai_cli::go_state::plan_with(&project, &set_aside)?)
-                .map_err(|_| "encode failed".into())
-        }
+        Command::GoStatePlan {
+            project,
+            set_aside,
+            rewrite_local_references,
+        } => serde_json::to_value(moai_cli::go_state::plan_picked(
+            &project,
+            &set_aside,
+            rewrite_local_references,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::GoStateApply {
             project,
             plan_digest,
             permission_reference,
             set_aside,
+            rewrite_local_references,
         } => serde_json::to_value(moai_cli::go_state::apply_picked(
             &project,
             &plan_digest,
             &permission_reference,
             &set_aside,
+            rewrite_local_references,
         )?)
         .map_err(|_| "encode failed".into()),
         Command::GoStateRevertPlan { project, backup } => {

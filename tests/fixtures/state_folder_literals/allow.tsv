@@ -112,16 +112,16 @@ tests/generation_ref_slash.rs	2	0
 tests/git_hooks_cli.rs	0	1
 tests/github_inventory_collect.py	1	0
 tests/github_inventory_test.py	1	0
-tests/gitignore_block_cli.rs	226	74
+tests/gitignore_block_cli.rs	272	92
 tests/go_hooks_migrate.rs	2	1
 tests/go_project_real_run_cli.rs	1	6
 tests/go_settings_cli.rs	10	43
 tests/go_settings_defaults.rs	0	5
 tests/go_state_blocked_folders_cli.rs	0	15
 tests/go_state_classes_cli.rs	19	101
-tests/go_state_cli.rs	114	293
+tests/go_state_cli.rs	115	318
 tests/go_state_codex_cli.rs	2	17
-tests/go_state_digest_cli.rs	7	32
+tests/go_state_digest_cli.rs	7	33
 tests/go_state_preview_cli.rs	0	15
 tests/green_test_lock.rs	3	2
 tests/heavy_slot_cli.rs	0	1
@@ -158,6 +158,7 @@ tests/lane_handoff_cli.rs	6	0
 tests/lane_next_cli.rs	0	4
 tests/lane_next_proposals_cli.rs	1	0
 tests/lane_safe_to_reset.rs	0	2
+tests/lane_screen_followups_cli.rs	0	1
 tests/language_set_cli.rs	32	7
 tests/language_setting.rs	6	6
 tests/language_three_questions.rs	4	0
@@ -202,9 +203,9 @@ tests/project_update_plan_cli.rs	12	72
 tests/project_worktree_move_choice.rs	0	3
 tests/recovery_cli.rs	1	3
 tests/repo_claude_md.rs	2	9
-tests/repo_scans_table.rs	0	18
+tests/repo_scans_table.rs	4	20
 tests/report_rules_core.rs	0	1
-tests/reports_move_cli.rs	62	13
+tests/reports_move_cli.rs	72	13
 tests/retired_hosts_layer.rs	5	0
 tests/revert_twice_cli.rs	1	0
 tests/review_section_cli.rs	5	0
@@ -217,7 +218,6 @@ tests/session_registry_cli.rs	2	0
 tests/skeleton_language.rs	2	0
 tests/skill_entry_order.rs	0	1
 tests/skill_name_collision.rs	2	0
-tests/skill_references_test.py	1	1
 tests/smoke_harness_test.py	4	0
 tests/spec_approval_digest.rs	0	1
 tests/spec_before_code_hook.rs	0	26
@@ -272,5 +272,5 @@ tests/worktree_gc_apply.rs	11	8
 tests/worktree_gc_hygiene.rs	16	21
 tests/worktree_gc_install_dir.rs	4	0
 tests/worktree_move.rs	7	4
-tests/worktree_place_cli.rs	1	2
+tests/worktree_place_cli.rs	8	20
 tests/worktree_report.rs	8	0

@@ -59,7 +59,7 @@ pub fn check_receiver(to: &str) -> Result<()> {
 }
 
 /// The card's number; a host number (`#12`) needs a lookup, so the writing actions refuse it.
-fn card_id(action: &str, reference: &str) -> Result<i64> {
+pub(super) fn card_id(action: &str, reference: &str) -> Result<i64> {
     match input::parse_ref(reference).map_err(|e| format!("card {action} refused: {e}"))? {
         CardRef::Id(n) => Ok(n),
         CardRef::SourceNumber(_) => Err(format!(
@@ -158,6 +158,13 @@ pub fn ready(project: &Path, home: &Path, reference: &str, by: Option<&str>) -> 
             if let Some(why) = no_criteria_refusal(tx, "ready", card_id)? {
                 return Ok(Err(why));
             }
+            // A withdrawn or folded card left its SPEC room for another open card; reviving it
+            // without a relation must not make a second one (SPEC-20261124-card-help-gates REQ-8).
+            if from == "hold" {
+                if let Some(why) = spec_link::ready_conflict(tx, card_id)? {
+                    return Ok(Err(why));
+                }
+            }
             tx.execute(
                 "UPDATE card SET state = 'ready', updated_at = ?2 WHERE card_id = ?1",
                 params![card_id, now],
@@ -200,32 +207,6 @@ fn no_criteria_refusal(
         "card {action} refused: {name} has no acceptance criterion that is not withdrawn, so it \
          could never be closed; add one with `moai card criterion-add {name} --ac <text>`; nothing \
          was changed"
-    )))
-}
-
-/// The refusal for a card with a HOLD in force or a prerequisite that is not done, or `None`.
-/// A free-text HOLD is never read: only the `card.hold` event and the `blocks` links are.
-fn hold_gate_refusal(
-    conn: &rusqlite::Connection,
-    card_id: i64,
-) -> rusqlite::Result<Option<String>> {
-    let name = input::card_name(card_id);
-    if let Some(hold) = crate::ledger::workflow::current_hold(conn, card_id)? {
-        return Ok(Some(format!(
-            "card take refused: {name} is on HOLD ({}): {}; lift it with `moai card unhold {name} \
-             --reason <why> --by <name>` only when the decision is made; nothing was taken",
-            hold.category, hold.reason
-        )));
-    }
-    let needs = crate::ledger::workflow::unfinished_prerequisites(conn, card_id)?;
-    if needs.is_empty() {
-        return Ok(None);
-    }
-    let names: Vec<String> = needs.iter().map(|c| input::card_name(*c)).collect();
-    Ok(Some(format!(
-        "card take refused: {name} waits for {}, which {} not done; nothing was taken",
-        names.join(", "),
-        if names.len() == 1 { "is" } else { "are" }
     )))
 }
 
@@ -544,7 +525,9 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
     if is_ready {
         // A HOLD or an unfinished prerequisite is refused before any reservation is written
         // (SPEC-20261121-card-hold-gate); `card next` asks the same two functions.
-        if let Some(why) = hold_gate_refusal(ledger.conn(), card_id).map_err(|e| e.to_string())? {
+        if let Some(why) = crate::ledger::workflow::hold_gate_refusal(ledger.conn(), card_id)
+            .map_err(|e| e.to_string())?
+        {
             return Err(why);
         }
         if let Some(why) =
@@ -845,7 +828,7 @@ pub fn handoff(
 /// check `card note` uses; `card export` writes it out). The text is never repeated. The
 /// text is kept without its leading and trailing blanks; a line separator (U+2028, U+2029) or a
 /// control character anywhere in what was typed is refused.
-fn checked_reason(action: &str, reason: &str) -> Result<String> {
+pub(super) fn checked_reason(action: &str, reason: &str) -> Result<String> {
     let kept = reason.trim();
     if kept.is_empty()
         || kept.chars().count() > reservation::MAX_REASON_LEN
@@ -1051,16 +1034,23 @@ fn takeover_gates(
     // worktree REQ-6, D-6). A live lease, a reservation that is not `held` and a clock that
     // cannot be read all go through the strict gate, whose refusal text is the one the command
     // always had; the ledger then refuses a live lease with its own reason after it.
-    let lease_ended = cur.status == "held"
-        && ro
-            .conn()
-            .query_row("SELECT unixepoch()", [], |r| r.get::<_, i64>(0))
-            .is_ok_and(|now| reservation::lease_ended(cur.lease_until, now));
-    if lease_ended {
+    let clock = ro
+        .conn()
+        .query_row("SELECT unixepoch()", [], |r| r.get::<_, i64>(0));
+    if is_ended_lease_takeover(&cur.status, cur.lease_until, clock) {
         takeover_worktree_gate(project, cur.worktree.as_deref())
     } else {
         worktree_gate(project, cur.worktree.as_deref()).map(|()| None)
     }
+}
+
+/// Whether a reclaim is the takeover of an ended lease: the reservation is `held`, the clock
+/// reading succeeded and the lease has ended at that reading. Every other case (a reservation in
+/// another status, a clock that cannot be read, a live lease) is judged by the strict gate. The
+/// clock is a parameter so that a test can hand over an unreadable one
+/// (SPEC-20261124-card-help-gates REQ-11).
+fn is_ended_lease_takeover(status: &str, lease_until: i64, clock: rusqlite::Result<i64>) -> bool {
+    status == "held" && clock.is_ok_and(|now| reservation::lease_ended(lease_until, now))
 }
 
 /// REQ-1..3: refuse a worktree that exists and holds uncommitted or unpushed work, go on
@@ -1351,6 +1341,21 @@ fn git_run(dir: &Path, args: &[&str]) -> std::result::Result<std::process::Outpu
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// SPEC-20261124-card-help-gates AC-13 (REQ-6, REQ-11): only a `held` reservation whose lease
+    /// has ended at a readable clock is the takeover of an ended lease; a reservation in another
+    /// status, an unreadable clock and a lease that has not ended each go to the strict gate.
+    #[test]
+    fn the_takeover_gate_choice_follows_status_clock_and_lease() {
+        let unreadable = || Err(rusqlite::Error::QueryReturnedNoRows);
+        // lease_until <= now is an ended lease, so 100 at 100 and at 101 are ended, at 99 is not.
+        assert!(is_ended_lease_takeover("held", 100, Ok(101)));
+        assert!(is_ended_lease_takeover("held", 100, Ok(100)));
+        assert!(!is_ended_lease_takeover("held", 100, Ok(99)));
+        assert!(!is_ended_lease_takeover("held_for_review", 100, Ok(101)));
+        assert!(!is_ended_lease_takeover("expired_candidate", 100, Ok(101)));
+        assert!(!is_ended_lease_takeover("held", 100, unreadable()));
+    }
 
     /// SPEC-20261122-test-defects-session-reclaim AC-9: `-z` entries keep a space as written; in
     /// `git status` output a rename or copy carries its origin as one more field, which is part

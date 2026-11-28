@@ -1,31 +1,36 @@
-# MoAI-ADK installer (Rust edition) for PowerShell — served at https://adk.mo.ai.kr/install.ps1 (#2935).
+# MoAI-ADK installer (Rust edition) for PowerShell — served at https://adk.mo.ai.kr/install.ps1.
 #
 #   irm https://adk.mo.ai.kr/install.ps1 | iex
 #
-# Same contract as install.sh: download the `moai-cli` release archive for this machine,
-# verify its SHA-256 before anything is written (a missing, malformed or different checksum
-# stops the install), and place it in the version folder the binary itself names
-# (`moai-cli install-inspect` -> `home_state_root`):
+# Same contract as install.sh: download the release archive for this machine
+# (`moai-cli-<target>`), verify its SHA-256 before anything is written (a missing, malformed or
+# different checksum stops the install), and place its binary in the version folder the binary
+# itself names (`moai install-inspect` -> `home_state_root`):
 #
-#   <state home>\versions\<version>\bin\moai-cli.exe   (+ moai.exe, a hard link to it)
-#   <link dir>\moai-cli.exe, <link dir>\moai.exe       (default <state home>\path)
+#   <state home>\versions\<version>\bin\moai.exe   (a regular file; no bin\moai-cli.exe is made)
+#   <link dir>\moai.exe                            (default <state home>\path)
+#
+# The archive's `moai` is the binary; an archive that holds only an earlier `moai-cli` is copied
+# under the name `moai`, and an archive with neither stops before anything is written
+# (SPEC-20261127-installed-binary-name-moai). A `moai-cli` that an earlier install left is never
+# changed or removed.
 #
 # The User PATH and shell profiles are never edited, and an existing Go-edition `moai` is never
 # touched: the script prints what to run next instead. Requires PowerShell 5.1 or later; on
 # macOS and Linux `pwsh` runs the same flow with the `.tar.xz` archive.
 #
-# The language of the conversation with the model (#2935 L1) comes from --language, else
+# The language of the conversation with the model comes from --language, else
 # MOAI_LANGUAGE, else (at a terminal) a numbered menu, else the locale, else English. After the
-# commands are linked the script runs `moai-cli language-set --home --if-absent <code>` once;
+# commands are linked the script runs `moai language-set --home --if-absent <code>` once;
 # that records only when nothing is recorded yet, so a reinstall never overwrites an earlier
-# choice, and a moai-cli without it only costs a warning. Everything this script prints stays
+# choice, and a moai without it only costs a warning. Everything this script prints stays
 # English whatever the language.
 #
 # A release archive carries the skill package and the base agents beside the binary (`skills\`,
 # `agents\`); they go into the version folder next to `bin\`, where `moai update` reads them
 # (SPEC-20261117-installer-skill-agents). Into the host (Claude Code) they go only
-# through the product's own preview and confirmed apply, `moai-cli update --json` and then
-# `moai-cli update --confirm <plan_digest> --json`: this script copies nothing into a host
+# through the product's own preview and confirmed apply, `moai update --json` and then
+# `moai update --confirm <plan_digest> --json`: this script copies nothing into a host
 # folder. It shows the folders the preview names, asks once at a terminal (--yes answers for a
 # run without one) and then names the next steps for each host it found.
 
@@ -63,7 +68,7 @@ function Show-Usage {
     Write-Host ""
     Write-Host "Options:"
     Write-Host "  --version VERSION     Install a specific version, for example 4.2647.12 (default: latest)"
-    Write-Host "  --install-dir DIR     Put the moai and moai-cli commands in DIR (default: <state home>\path)"
+    Write-Host "  --install-dir DIR     Put the moai command in DIR (default: <state home>\path)"
     Write-Host "  --channel CHANNEL     stable (default) or rc: rc also takes releases marked as pre-releases"
     Write-Host "  --language CODE       Language of your conversation with the model, for example en, ko, ja or"
     Write-Host "                        zh (default: asked at a terminal, else MOAI_LANGUAGE, else your locale,"
@@ -87,8 +92,8 @@ function Test-Version([string]$V) {
     return ($V -match '^[0-9][0-9A-Za-z.+-]*$') -and ($V -notmatch '\.\.')
 }
 
-# The conversation language is one of the four codes the language module holds (#2935 L1, G6):
-# en, ko, ja and zh, the same list the install menu offers and moai-cli accepts. Anything else —
+# The conversation language is one of the four codes the language module holds:
+# en, ko, ja and zh, the same list the install menu offers and moai accepts. Anything else —
 # a well-shaped code like fr or pt-BR included — is refused here, so nothing outside the list
 # reaches the binary or the recorded file.
 function Test-Language([string]$V) {
@@ -143,7 +148,7 @@ function Read-LanguageChoice([string]$Default) {
     return $Default
 }
 
-# The supported platforms (user decision 2026-11-17, SPEC-20261117-supported-platforms): macOS on
+# The supported platforms (SPEC-20261117-supported-platforms): macOS on
 # Apple silicon, Linux x86_64 and Windows x86_64. Anything else stops before a download or a write.
 $SupportedPlatforms = "macOS arm64 (Apple silicon), Linux x86_64, Windows x86_64"
 
@@ -227,8 +232,7 @@ function Select-Version($Candidates, [string]$Channel) {
 # The newest moai-adk-v<version> release. /releases/latest is the Go edition's (Rust final
 # releases are published with --latest=false). First the REST list (100 newest, with the draft
 # and prerelease fields); when it cannot be read (no network to the API, or the
-# unauthenticated limit is spent), the releases feed, which holds only the 10 newest entries
-# (audit #2943 B1).
+# unauthenticated limit is spent), the releases feed, which holds only the 10 newest entries.
 function Get-LatestVersion([string]$Channel) {
     $v = $null
     $api = Join-Path $script:TmpDir "releases.json"
@@ -292,7 +296,7 @@ function Get-Hosts {
     return $found
 }
 
-# Runs `moai-cli update` with these arguments from the version folder (so the hooks of the project
+# Runs `moai update` with these arguments from the version folder (so the hooks of the project
 # the user stands in are not part of the plan). Returns the exit code, the parsed envelope ($null
 # for an answer that is not JSON) and the first error line.
 function Invoke-Update([string]$Cli, [string]$Folder, [string[]]$UpdateArgs) {
@@ -310,12 +314,12 @@ function Invoke-Update([string]$Cli, [string]$Folder, [string[]]$UpdateArgs) {
     return [pscustomobject]@{ Code = $code; Json = $parsed; Err = "$first" }
 }
 
-# A failed `moai-cli update`: the binary stays installed, and the product's own message is shown.
+# A failed `moai update`: the binary stays installed, and the product's own message is shown.
 function Write-UpdateFailed($Answer) {
     $msg = ""
     if ($Answer -and $Answer.Json -and $Answer.Json.error) { $msg = [string]$Answer.Json.error.message }
     if (-not $msg -and $Answer) { $msg = $Answer.Err }
-    if (-not $msg) { $msg = "moai-cli update did not succeed" }
+    if (-not $msg) { $msg = "moai update did not succeed" }
     Print-Warning "The MoAI skill and agents were not installed: $msg"
     Print-Info "The moai command is installed; try again later with: moai update"
 }
@@ -467,21 +471,26 @@ function Main {
         else { & tar -xJf $archive -C $x; if ($LASTEXITCODE -ne 0) { throw "tar exit $LASTEXITCODE" } }
     }
     catch { Fail "Failed to extract the archive: $_" }
-    $newBin = Get-ChildItem -LiteralPath $x -Recurse -Depth 1 -File -Filter "moai-cli$Exe" | Select-Object -First 1
-    if (-not $newBin) { Fail "moai-cli$Exe not found in the archive" }
+    # The archive's `moai` is the binary; an archive that holds only the earlier `moai-cli` is
+    # placed under the name `moai`. Nothing is written outside the temporary folder before this.
+    $newBin = Get-ChildItem -LiteralPath $x -Recurse -Depth 1 -File -Filter "moai$Exe" | Select-Object -First 1
+    if (-not $newBin) {
+        $newBin = Get-ChildItem -LiteralPath $x -Recurse -Depth 1 -File -Filter "moai-cli$Exe" | Select-Object -First 1
+    }
+    if (-not $newBin) { Fail "The archive holds neither moai$Exe nor moai-cli${Exe}: nothing is installed" }
     $newBin = $newBin.FullName
     if (-not $IsWin) { & chmod 755 $newBin }
 
     # Ask the downloaded binary where its state lives and what `moai` on PATH is (read only).
-    # moai-cli reads HOME; Windows often has only USERPROFILE (codex review P1 on #2943).
+    # moai reads HOME; Windows often has only USERPROFILE.
     if (-not $env:HOME -and $env:USERPROFILE) { $env:HOME = $env:USERPROFILE }
     try {
         $inspect = (& $newBin install-inspect 2>$null | Out-String) | ConvertFrom-Json
     }
-    catch { Fail "The downloaded moai-cli does not run on this machine" }
+    catch { Fail "The downloaded moai does not run on this machine" }
     $stateHome = [string]$inspect.result.home_state_root
     if (-not $stateHome -or -not [System.IO.Path]::IsPathRooted($stateHome)) {
-        Fail "The downloaded moai-cli did not name an absolute state folder: nothing is installed"
+        Fail "The downloaded moai did not name an absolute state folder: nothing is installed"
     }
     $goOnPath = ("$($inspect.result.path_first_moai.generation)" -eq "go")
 
@@ -489,9 +498,9 @@ function Main {
     # existing one is kept when it holds these bytes and refused otherwise.
     $versions = Join-Path $stateHome "versions"
     $dest = Join-Path $versions $Version
-    $destCli = Join-Path (Join-Path $dest "bin") "moai-cli$Exe"
+    $destMoai = Join-Path (Join-Path $dest "bin") "moai$Exe"
     if (Test-Path -LiteralPath $dest) {
-        if ((Test-Path -LiteralPath $destCli -PathType Leaf) -and ((Get-Sha256 $destCli) -eq (Get-Sha256 $newBin))) {
+        if ((Test-Path -LiteralPath $destMoai -PathType Leaf) -and ((Get-Sha256 $destMoai) -eq (Get-Sha256 $newBin))) {
             Print-Success "$Version is already installed: $dest"
             # A folder an earlier installer placed holds bin only: add what this archive carries.
             $added = @(Add-ReleaseParts (Split-Path -Parent $newBin) $dest)
@@ -507,9 +516,8 @@ function Main {
         $script:StageDir = Join-Path $versions ".install-$Version.$([System.Guid]::NewGuid().ToString('N'))"
         $stageBin = Join-Path $script:StageDir "bin"
         New-Item -ItemType Directory -Path $stageBin -Force | Out-Null
-        Copy-Item -LiteralPath $newBin -Destination (Join-Path $stageBin "moai-cli$Exe")
-        if (-not $IsWin) { & chmod 755 (Join-Path $stageBin "moai-cli$Exe") }
-        New-Item -ItemType HardLink -Path (Join-Path $stageBin "moai$Exe") -Target (Join-Path $stageBin "moai-cli$Exe") | Out-Null
+        Copy-Item -LiteralPath $newBin -Destination (Join-Path $stageBin "moai$Exe")
+        if (-not $IsWin) { & chmod 755 (Join-Path $stageBin "moai$Exe") }
         $added = @(Add-ReleaseParts (Split-Path -Parent $newBin) $script:StageDir)
         Move-Item -LiteralPath $script:StageDir -Destination $dest
         $script:StageDir = $null
@@ -522,7 +530,8 @@ function Main {
     $linkDir = if ($InstallDir) { $InstallDir } else { Join-Path $stateHome "path" }
     New-Item -ItemType Directory -Path $linkDir -Force | Out-Null
     $versionsPrefix = (Join-Path $stateHome "versions") + [System.IO.Path]::DirectorySeparatorChar
-    foreach ($name in @("moai-cli$Exe", "moai$Exe")) {
+    # The command `moai` only; a `moai-cli` an earlier install left is never touched.
+    foreach ($name in @("moai$Exe")) {
         $link = Join-Path $linkDir $name
         $src = Join-Path (Join-Path $dest "bin") $name
         $item = Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue
@@ -532,7 +541,7 @@ function Main {
                 $have = Get-Sha256 $link
                 if ($have -eq (Get-Sha256 $src)) { continue }
                 # A copy of a version this installer placed is its own and is replaced on an
-                # upgrade (codex review P2 on #2943); any other file is someone else's.
+                # upgrade; any other file is someone else's.
                 $owned = Get-ChildItem -LiteralPath (Join-Path $stateHome "versions") -Directory -ErrorAction SilentlyContinue |
                     Where-Object { $f = Join-Path (Join-Path $_.FullName "bin") $name; (Test-Path -LiteralPath $f) -and ((Get-Sha256 $f) -eq $have) }
                 if (-not $owned) { Print-Warning "$link is not a copy this installer placed; left as it is"; continue }
@@ -547,7 +556,7 @@ function Main {
             $current = "$($item.Target)"
             if ($current -eq $src) { continue }
             # Only a link into a version folder this installer placed is replaced; a link to the
-            # Go edition's moai, say, is someone else's (codex review P1 on #2943).
+            # Go edition's moai, say, is someone else's.
             if (-not $current.StartsWith($versionsPrefix)) {
                 Print-Warning "$link points to $current, not a version this installer placed; left as it is"
                 continue
@@ -559,11 +568,11 @@ function Main {
         Print-Success "Linked: $link -> $src"
     }
 
-    # Record the language once, with the installed moai-cli. It passes the record-once mode
+    # Record the language once, with the installed moai. It passes the record-once mode
     # (--if-absent), so a value that is already recorded is never overwritten: only an explicit
-    # `moai language-set --home <code>` replaces it. A moai-cli that has no language-set (an
+    # `moai language-set --home <code>` replaces it. A moai that has no language-set (an
     # older pinned version) or refuses the code costs a warning, not the install.
-    $cli = Join-Path (Join-Path $dest "bin") "moai-cli$Exe"
+    $cli = Join-Path (Join-Path $dest "bin") "moai$Exe"
     $recorded = $null
     try {
         $answer = (& $cli language-set --home --if-absent $Language 2>$null | Out-String)
@@ -571,7 +580,7 @@ function Main {
     }
     catch { $recorded = $null }
     if (-not $recorded) {
-        Print-Warning "Could not record the conversation language ($Language): this moai-cli has no language-set or does not accept the code. The install is complete."
+        Print-Warning "Could not record the conversation language ($Language): this moai has no language-set or does not accept the code. The install is complete."
     }
     elseif ($recorded.result.written -eq $true) { Print-Success "Conversation language recorded: $Language" }
     elseif ("$($recorded.result.reason)" -eq "exists") { Print-Info "A conversation language is already recorded; left as it is" }

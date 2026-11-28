@@ -194,6 +194,13 @@ pub fn apply(
         chosen.extend(all.iter().filter(|c| c.class == "go_same").cloned());
     }
     for pick in picks {
+        // REQ-4: a file something still reads, or one kept because a reader could not be read,
+        // is never picked; the refusal names the reader.
+        if let Some(why) = crate::go_residue::kept_because(&survey, pick) {
+            return Err(format!(
+                "go-residue-apply refused: {pick} is not moved: {why}; nothing was written"
+            ));
+        }
         match all
             .iter()
             .find(|c| &c.path == pick && c.class == "go_changed")

@@ -321,8 +321,17 @@ fn ac1_a_start_names_the_branch_and_the_reserved_card_in_one_json_line() {
             "{source}"
         );
     }
+    // The two PreToolUse names get a PreToolUse call (a SessionStart call is a refused event of
+    // theirs, SPEC-20261126-hook-write-boundary REQ-8) and stay silent.
+    let pre_tool_use = serde_json::json!({
+        "hook_event_name": "PreToolUse",
+        "session_id": "s1",
+        "cwd": fx.checkout.to_str().unwrap(),
+    })
+    .to_string()
+    .into_bytes();
     for name in ["bash-boundary", "write-boundary"] {
-        let r = fx.hook(name, &fx.input("startup"));
+        let r = fx.hook(name, &pre_tool_use);
         assert_eq!(
             (r.code, r.stdout.as_str(), r.stderr.as_str()),
             (Some(0), "", ""),
@@ -841,10 +850,34 @@ fn ac8_links_under_home_are_not_followed() {
         let r = fx.hook("session-context", &fx.input("startup"));
         assert_eq!(r.stderr.lines().count(), 1, "{what}: {:?}", r.stderr);
         assert_eq!(context_of(&r), BRANCH_ONLY, "{what}");
-        // A bad input does not write a receipt behind the link.
+        // A bad input does not write a receipt behind the link, and the call is denied all the
+        // same (SPEC-20261126-hook-unreadable-input REQ-1, REQ-5).
         let r = fx.hook("bash-boundary", b"not json");
         assert_eq!(r.code, Some(0), "{what}");
-        assert_eq!(r.stdout, "", "{what}");
+        assert_eq!(
+            r.stdout.lines().count(),
+            1,
+            "{what}: no deny object on one line of stdout, got {:?}",
+            r.stdout
+        );
+        let v: Value = serde_json::from_str(r.stdout.trim_end()).unwrap();
+        let reason = v["hookSpecificOutput"]["permissionDecisionReason"]
+            .as_str()
+            .unwrap_or_default()
+            .to_owned();
+        assert!(
+            reason.starts_with("moai-boundary/unreadable:"),
+            "{what}: {reason:?}"
+        );
+        assert_eq!(
+            v,
+            serde_json::json!({"hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": reason,
+            }}),
+            "{what}"
+        );
         assert_eq!(r.stderr.lines().count(), 1, "{what}: {:?}", r.stderr);
         assert_eq!(before, snapshot(&target_home), "{what}: the target changed");
     }

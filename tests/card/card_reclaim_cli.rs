@@ -1174,7 +1174,13 @@ fn reclaim_gates_refuse_a_recorded_path_that_is_not_absolute() {
     // A relative path names another folder under another working directory: "not found here"
     // proves nothing, so the gate refuses instead of reading it as "gone" (audit-c43 B1).
     let w = world();
-    let name = w.ended_card_at("wt-rel");
+    let name = w.ended_card_at("/placeholder/wt-rel");
+    // `card take` records the absolute top of a checkout now, so a reservation that names a
+    // relative path is an older record: made here by hand, the way the earlier take wrote it.
+    let n: i64 = name.trim_start_matches("C-").parse().unwrap();
+    w.sql(&format!(
+        "UPDATE reservation SET worktree = 'wt-rel' WHERE card_id = {n} AND status = 'held'"
+    ));
     let before = w.dump();
     let (kind, message) = refusal(&w.reclaim(Some(S_B), &name, "1"));
     assert_eq!(kind, "conflict", "{message}");

@@ -308,6 +308,54 @@ fn identity_reports_git_failure_separately_from_no_git() {
     }
 }
 
+/// SPEC-20261124-identity-home-arg AC-26 (REQ-36): the edge of the identity command hands over the
+/// process HOME together with the HOME it gives, so the file `GIT_CONFIG_GLOBAL` names still
+/// reaches git: a repository that git counts as owned by another user is refused without that
+/// file (the control) and trusted with it.
+#[test]
+fn home_arg_rest_process_home_callers_keep_the_environment_git_config() {
+    let repo = TempDir::new().unwrap();
+    let home = TempDir::new().unwrap();
+    committed_repo(repo.path());
+    let trust = home.path().join("trusting.gitconfig");
+    fs::write(&trust, "[safe]\n\tdirectory = *\n").unwrap();
+    let owner = ("GIT_TEST_ASSUME_DIFFERENT_OWNER", "1");
+    let (out, _) = ident_env(repo.path(), home.path(), None, &[owner]);
+    assert_eq!(out.status.code(), Some(1), "{:?}", out.stderr);
+    let trusting = ("GIT_CONFIG_GLOBAL", trust.to_str().unwrap());
+    let (out, v) = ident_env(repo.path(), home.path(), None, &[owner, trusting]);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert_eq!(v["identity_status"], json!("ok"));
+}
+
+/// SPEC-20261124-identity-home-arg AC-21 (REQ-25): an unset or empty HOME is no HOME, so the
+/// command names no home state root.
+#[test]
+fn home_arg_rest_identity_command_answers_null_without_a_home() {
+    let repo = TempDir::new().unwrap();
+    committed_repo(repo.path());
+    for home in [None, Some("")] {
+        let mut cmd = Command::new(crate::common::MOAI_BIN);
+        cmd.arg("identity")
+            .arg(repo.path())
+            .current_dir(repo.path())
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env_remove("GIT_DIR")
+            .env_remove("GIT_WORK_TREE");
+        match home {
+            Some(value) => cmd.env("HOME", value),
+            None => cmd.env_remove("HOME"),
+        };
+        let out = cmd.output().unwrap();
+        assert!(out.status.success(), "{home:?}: {:?}", out.stderr);
+        let envelope: Value = serde_json::from_slice(&out.stdout).unwrap();
+        let v = &envelope["result"];
+        assert_eq!(v["identity_status"], json!("ok"), "{home:?}: {v}");
+        assert_eq!(v["home_state_root"], Value::Null, "{home:?}: {v}");
+    }
+}
+
 #[test]
 fn identity_refuses_symlinks_and_bad_paths_without_echo() {
     let base = TempDir::new().unwrap();

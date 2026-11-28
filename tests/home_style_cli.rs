@@ -1,7 +1,12 @@
-//! #2875 (#2871 I3): the MoAI-Easy output style in the user layer, against a temporary HOME
+//! #2875 (#2871 I3): the MoAI-Style output style in the user layer, against a temporary HOME
 //! only — never the real one. Covers create, idempotence, a changed source, the user's own
 //! style file and setting (conflicts, bytes kept), symlinks, a stale digest, and revert. The
 //! Codex block is no longer written (SPEC-20261122-codex-home-update-removed).
+//!
+//! SPEC-20261127-output-style-moai-style: the style was named MoAI-Easy before; the tests named
+//! `ac1_` to `ac8_` at the end cover the move of an installed old file and old value (plan,
+//! apply, revert, receipts of the earlier format, links). The old name is written out below only
+//! as that move's source (`OLD_*`).
 
 mod common;
 use moai_cli::home_style::{apply, plan, render_style_file, revert, Plan, SOURCE, STYLE_NAME};
@@ -10,8 +15,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const PERM: &str = "test-permission";
-const STYLE: &str = ".claude/output-styles/MoAI-Easy.md";
+const STYLE: &str = ".claude/output-styles/MoAI-Style.md";
 const SETTINGS: &str = ".claude/settings.json";
+/// The earlier style file and `outputStyle` value: what `moai update` moves away from.
+const OLD_STYLE: &str = ".claude/output-styles/MoAI-Easy.md";
+const OLD_NAME: &str = "MoAI-Easy";
 
 fn package() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
@@ -112,7 +120,7 @@ fn the_other_settings_keys_keep_their_values_and_order() {
 #[test]
 fn the_users_own_choices_are_conflicts_and_keep_every_byte() {
     let (_t, home) = home();
-    let style = "---\nname: MoAI-Easy\n---\n\nmy own style\n";
+    let style = "---\nname: MoAI-Style\n---\n\nmy own style\n";
     let set = "{\"outputStyle\": \"Explanatory\"}\n";
     write(&home, STYLE, style);
     write(&home, SETTINGS, set);
@@ -182,7 +190,7 @@ fn a_symlinked_folder_or_file_blocks_its_target() {
     let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
     assert_eq!(r["state"], "unchanged");
     // Nothing went through the linked folder.
-    assert!(!other.join("MoAI-Easy.md").exists());
+    assert!(!other.join("MoAI-Style.md").exists());
 }
 
 #[test]
@@ -213,7 +221,7 @@ fn revert_removes_what_it_created_and_restores_what_it_changed() {
     write(
         &home,
         SETTINGS,
-        "{\"a\": 1, \"outputStyle\": \"MoAI-Easy\", \"b\": 2}\n",
+        "{\"a\": 1, \"outputStyle\": \"MoAI-Style\", \"b\": 2}\n",
     );
     let r = revert(&home, &id, PERM).unwrap();
     assert_eq!(r["state"], "reverted");
@@ -281,7 +289,7 @@ fn the_shipped_source_carries_the_style_items() {
 /// value that differs only in case is a conflict whose detail says so; the exact name is fine.
 #[test]
 fn the_setting_plan_says_the_style_name_is_case_sensitive() {
-    for wrong in ["moai-easy", "MOAI-EASY"] {
+    for wrong in ["moai-style", "MOAI-STYLE"] {
         let (_t, home) = home();
         write(
             &home,
@@ -297,7 +305,7 @@ fn the_setting_plan_says_the_style_name_is_case_sensitive() {
         );
     }
     let (_t, home) = home();
-    write(&home, SETTINGS, "{\"outputStyle\": \"MoAI-Easy\"}\n");
+    write(&home, SETTINGS, "{\"outputStyle\": \"MoAI-Style\"}\n");
     let p = plan(&home, &package()).unwrap();
     assert_eq!(action(&p, "setting"), "unchanged");
     // A different name is still only the user's choice, with no case note.
@@ -365,7 +373,7 @@ fn a_project_setting_that_hides_the_style_gives_a_notice_and_writes_nothing() {
     let (_t2, quiet) = project_with(&[
         (
             ".claude/settings.local.json",
-            "{\"outputStyle\": \"MoAI-Easy\"}\n",
+            "{\"outputStyle\": \"MoAI-Style\"}\n",
         ),
         (".claude/settings.json", "{\"a\": 1}\n"),
     ]);
@@ -547,7 +555,7 @@ fn two_config_folders_keep_two_records() {
         "the default folder keeps its record name"
     );
     assert!(records.join(second_record_name(&second)).is_file());
-    let style_b = second.join("output-styles/MoAI-Easy.md");
+    let style_b = second.join("output-styles/MoAI-Style.md");
     assert_eq!(
         fs::read(&style_b).unwrap(),
         fs::read(home.join(STYLE)).unwrap()
@@ -621,7 +629,7 @@ fn a_receipt_reverts_only_in_the_config_folder_it_was_applied_in() {
     let id_b = id_b.unwrap();
     assert!(id_a.is_some());
     let style_a = home.join(STYLE);
-    let style_b = second.join("output-styles/MoAI-Easy.md");
+    let style_b = second.join("output-styles/MoAI-Style.md");
     let snapshot = |p: &Path| fs::read(p).ok();
     let before = (
         snapshot(&style_a),
@@ -731,7 +739,7 @@ fn a_second_folder_is_blocked_while_the_state_root_is_not_this_generations() {
     for t in targets {
         assert_eq!(t["action"], "blocked", "{t}");
         let d = t["detail"].as_str().unwrap();
-        assert!(d.contains("state") && d.contains("generation"), "{d}");
+        assert!(d.contains("env -u CLAUDE_CONFIG_DIR moai update"), "{d}");
     }
     let digest = in_b["result"]["plan_digest"].as_str().unwrap().to_string();
     let applied = folder_run(
@@ -755,6 +763,78 @@ fn a_second_folder_is_blocked_while_the_state_root_is_not_this_generations() {
     let in_a = folder_run(&home, None, &["home-style-plan", h, pkg]);
     assert_eq!(folder_action(&in_a["result"], "style_file"), "create");
     assert_eq!(folder_action(&in_a["result"], "setting"), "set");
+}
+
+/// SPEC-20261127-update-linked-profile-display AC-3 (REQ-5, REQ-6): a second folder blocked on a
+/// HOME of the earlier generation says which folder it is and both ways out in plain words, and a
+/// block for another reason keeps its own reason and next step.
+#[cfg(unix)]
+#[test]
+fn a_blocked_second_folder_names_the_way_out_without_internal_words() {
+    let (_t, home) = home();
+    let h = home.to_str().unwrap();
+    let pkg = package();
+    let pkg = pkg.to_str().unwrap();
+    fs::create_dir_all(home.join(moai_cli::HOME_STATE_DIR)).unwrap();
+    let second = home.join("profiles/b");
+    let planned = folder_run(&home, Some(&second), &["home-style-plan", h, pkg]);
+    let targets = planned["result"]["targets"].as_array().unwrap();
+    assert!(!targets.is_empty(), "{planned}");
+    let default_styles = home.join(".claude/output-styles");
+    for t in targets {
+        assert_eq!(t["action"], "blocked", "{t}");
+        let d = t["detail"].as_str().unwrap();
+        for inside in ["state root", "generation", "moved state folder"] {
+            assert!(!d.contains(inside), "{inside}: {d}");
+        }
+        assert!(
+            d.contains(second.to_str().unwrap()),
+            "names the folder: {d}"
+        );
+        assert!(d.contains("next:"), "{d}");
+        assert!(
+            d.contains("this HOME is still set up by an earlier moai"),
+            "says the block belongs to this HOME's earlier setup: {d}"
+        );
+        assert!(
+            d.contains("env -u CLAUDE_CONFIG_DIR moai update"),
+            "the way out without the variable: {d}"
+        );
+        assert!(
+            d.contains(&format!(
+                "link {} to {}",
+                second.join("output-styles").display(),
+                default_styles.display()
+            )),
+            "the way out by a link: {d}"
+        );
+    }
+
+    // A link that the rules refuse keeps its own reason and next step.
+    let (_t, home) = fresh();
+    assert!(moai_cli::home_root::adopt_new(&home, "test").unwrap());
+    let h = home.to_str().unwrap();
+    let profile = home.join("profiles/q");
+    fs::create_dir_all(&profile).unwrap();
+    std::os::unix::fs::symlink(
+        home.join("outside/no-such-folder"),
+        profile.join("output-styles"),
+    )
+    .unwrap();
+    let planned = folder_run(&home, Some(&profile), &["home-style-plan", h, pkg]);
+    let t = planned["result"]["targets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["kind"] == "style_file")
+        .unwrap();
+    assert_eq!(t["action"], "blocked", "{planned}");
+    let d = t["detail"].as_str().unwrap();
+    assert!(d.contains("next:"), "{d}");
+    assert!(
+        !d.contains("env -u CLAUDE_CONFIG_DIR"),
+        "a refused link is not a second folder: {d}"
+    );
 }
 
 /// The three operations, through the binary, against a temporary HOME passed as an argument.
@@ -812,10 +892,10 @@ fn settings_keep_every_byte_through_apply_and_revert() {
     for (before, after) in [
         (
             "{\n    \"a\": 1,\n    \"n\": 12345678901234567890123,\n    \"f\": 1.50\n}\n",
-            "{\n    \"a\": 1,\n    \"n\": 12345678901234567890123,\n    \"f\": 1.50,\n    \"outputStyle\": \"MoAI-Easy\"\n}\n",
+            "{\n    \"a\": 1,\n    \"n\": 12345678901234567890123,\n    \"f\": 1.50,\n    \"outputStyle\": \"MoAI-Style\"\n}\n",
         ),
-        ("{\"a\":1.0}", "{\"a\":1.0, \"outputStyle\": \"MoAI-Easy\"}"),
-        ("{ }\n", "{\"outputStyle\": \"MoAI-Easy\" }\n"),
+        ("{\"a\":1.0}", "{\"a\":1.0, \"outputStyle\": \"MoAI-Style\"}"),
+        ("{ }\n", "{\"outputStyle\": \"MoAI-Style\" }\n"),
     ] {
         let (_t, home) = home();
         write(&home, SETTINGS, before);
@@ -862,7 +942,7 @@ fn a_changed_settings_file_loses_only_the_inserted_text_or_is_skipped() {
         .as_str()
         .unwrap()
         .to_string();
-    let rewritten = "{\"n\":1.5,\"outputStyle\":\"MoAI-Easy\"}";
+    let rewritten = "{\"n\":1.5,\"outputStyle\":\"MoAI-Style\"}";
     fs::write(other.join(SETTINGS), rewritten).unwrap();
     let r = revert(&other, &id, PERM).unwrap();
     assert_eq!(r["skipped"][0]["target"], "claude:setting");
@@ -870,7 +950,7 @@ fn a_changed_settings_file_loses_only_the_inserted_text_or_is_skipped() {
 }
 
 /// #2875 audit B2: the style file's frontmatter is plain YAML — every value that holds `: ` is
-/// quoted, so a strict parser reads `name: MoAI-Easy`.
+/// quoted, so a strict parser reads `name: MoAI-Style`.
 #[test]
 fn the_style_frontmatter_is_valid_yaml() {
     let out = render_style_file(&src());
@@ -890,7 +970,7 @@ fn the_style_frontmatter_is_valid_yaml() {
         }
     }
     assert_eq!(keys, ["name", "description", "keep-coding-instructions"]);
-    assert!(front.starts_with("name: MoAI-Easy\n"));
+    assert!(front.starts_with("name: MoAI-Style\n"));
 }
 
 /// #2875 audit B3: a `receipts` folder swapped for a link is never followed by a revert.
@@ -1032,14 +1112,14 @@ fn language_key_plan_sets_the_saved_conversation_language() {
     // Only the language is missing: the style is already the default.
     let (_t, home) = fresh();
     save_language(&home, "ko");
-    write(&home, SETTINGS, "{\"outputStyle\": \"MoAI-Easy\"}\n");
+    write(&home, SETTINGS, "{\"outputStyle\": \"MoAI-Style\"}\n");
     let p = plan(&home, &package()).unwrap();
     assert_eq!(action(&p, "setting"), "set");
     assert_eq!(key_list(&p), [pair("language", name.clone())]);
     apply(&home, &package(), &p.plan_digest, PERM).unwrap();
     assert_eq!(
         settings(&home),
-        json!({"outputStyle": "MoAI-Easy", "language": "korean"})
+        json!({"outputStyle": "MoAI-Style", "language": "korean"})
     );
 
     // The user's own output style is kept and still says so; the language is filled.
@@ -1060,7 +1140,7 @@ fn language_key_plan_sets_the_saved_conversation_language() {
     // A style file MoAI does not own keeps `outputStyle` out; the language is still filled.
     let (_t, home) = fresh();
     save_language(&home, "ko");
-    let style = "---\nname: MoAI-Easy\n---\n\nmy own style\n";
+    let style = "---\nname: MoAI-Style\n---\n\nmy own style\n";
     write(&home, STYLE, style);
     let p = plan(&home, &package()).unwrap();
     assert_eq!(action(&p, "style_file"), "conflict");
@@ -1119,14 +1199,14 @@ fn language_key_user_value_is_kept_and_said_so() {
         // Every byte of the user's key stays; only `outputStyle` is added after it.
         assert_eq!(
             fs::read_to_string(home.join(SETTINGS)).unwrap(),
-            format!("{{\"language\": {text}, \"outputStyle\": \"MoAI-Easy\"}}\n"),
+            format!("{{\"language\": {text}, \"outputStyle\": \"MoAI-Style\"}}\n"),
             "{text}"
         );
     }
     // Style already ours and the language the user's: nothing to write at all.
     let (_t, home) = fresh();
     save_language(&home, "ko");
-    let both = "{\"outputStyle\": \"MoAI-Easy\", \"language\": \"japanese\"}\n";
+    let both = "{\"outputStyle\": \"MoAI-Style\", \"language\": \"japanese\"}\n";
     write(&home, SETTINGS, both);
     let p = plan(&home, &package()).unwrap();
     assert_eq!(action(&p, "setting"), "unchanged");
@@ -1170,7 +1250,7 @@ fn language_key_unknown_language_names_the_reason() {
     // Nothing else to write and no language to name: the target stays unchanged, with the reason.
     let (_t, home) = fresh();
     save_unnamed_language(&home, "fr");
-    write(&home, SETTINGS, "{\"outputStyle\": \"MoAI-Easy\"}\n");
+    write(&home, SETTINGS, "{\"outputStyle\": \"MoAI-Style\"}\n");
     let p = plan(&home, &package()).unwrap();
     assert_eq!(action(&p, "setting"), "unchanged");
     assert!(key_list(&p).is_empty());
@@ -1203,7 +1283,7 @@ fn reverted(rev: &Value, target: &str) -> bool {
 #[test]
 fn language_key_one_apply_one_receipt_revert_removes_only_those() {
     let before = "{\n  \"theme\": \"dark\",\n  \"n\": 1.50\n}\n";
-    let after = "{\n  \"theme\": \"dark\",\n  \"n\": 1.50,\n  \"outputStyle\": \"MoAI-Easy\",\n  \"language\": \"korean\"\n}\n";
+    let after = "{\n  \"theme\": \"dark\",\n  \"n\": 1.50,\n  \"outputStyle\": \"MoAI-Style\",\n  \"language\": \"korean\"\n}\n";
     // A HOME with `before` applied: its receipt id and the apply's answer.
     let applied = |code: Option<&str>| {
         let (t, home) = fresh();
@@ -1284,7 +1364,7 @@ fn language_key_one_apply_one_receipt_revert_removes_only_those() {
     let (_t, home, id, _) = applied(Some("ko"));
     fs::write(
         home.join(SETTINGS),
-        after.replace("\"MoAI-Easy\"", "\"Learning\""),
+        after.replace("\"MoAI-Style\"", "\"Learning\""),
     )
     .unwrap();
     let rev = revert(&home, &id, PERM).unwrap();
@@ -1298,7 +1378,7 @@ fn language_key_one_apply_one_receipt_revert_removes_only_those() {
     // Both changed since: nothing is written and the target is skipped as before.
     let (_t, home, id, _) = applied(Some("ko"));
     let both = after
-        .replace("\"MoAI-Easy\"", "\"Learning\"")
+        .replace("\"MoAI-Style\"", "\"Learning\"")
         .replace("\"korean\"", "\"english\"");
     fs::write(home.join(SETTINGS), &both).unwrap();
     let rev = revert(&home, &id, PERM).unwrap();
@@ -1389,7 +1469,7 @@ fn language_key_config_dir_profile_gets_its_own_settings() {
     );
     assert_eq!(
         fs::read_to_string(third.join("settings.json")).unwrap(),
-        "{\"language\": \"japanese\", \"outputStyle\": \"MoAI-Easy\"}\n"
+        "{\"language\": \"japanese\", \"outputStyle\": \"MoAI-Style\"}\n"
     );
     assert!(!home.join(".claude").exists());
 
@@ -1411,4 +1491,487 @@ fn language_key_config_dir_profile_gets_its_own_settings() {
     assert_eq!(v["result"]["state"], "reverted", "{v}");
     assert!(!second.join("settings.json").exists());
     assert!(!home.join(".claude").exists());
+}
+
+// SPEC-20261127-output-style-moai-style: the style is `MoAI-Style`; `moai update` moves an
+// installed `MoAI-Easy.md` and an `outputStyle` of `MoAI-Easy` through the receipt.
+
+/// The render of the text MoAI shipped under the earlier name (`tests/fixtures/home-style/render-8.md`,
+/// the text before this SPEC): a file with these bytes is MoAI's own old style file.
+fn old_render() -> String {
+    fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/home-style/render-8.md"),
+    )
+    .unwrap()
+}
+
+fn record_path(home: &Path) -> PathBuf {
+    moai_cli::home_root::path(home).join("home-style/claude.json")
+}
+
+/// The owned-text record as the installer writes it.
+fn record_naming(text: &str) -> String {
+    format!(
+        "{{\n  \"schema_version\": 1,\n  \"owned_sha256\": \"{}\"\n}}\n",
+        moai_cli::digest(text.as_bytes())
+    )
+}
+
+fn kinds(p: &Plan) -> Vec<String> {
+    p.targets.iter().map(|t| t.kind.clone()).collect()
+}
+
+/// A HOME that an earlier `moai update` installed: the old style file (its text named by the
+/// record) and the given `settings.json`.
+fn home_with_old(settings_text: &str) -> (tempfile::TempDir, PathBuf) {
+    let (t, home) = home();
+    write(&home, OLD_STYLE, &old_render());
+    write_record(&home, &old_render());
+    write(&home, SETTINGS, settings_text);
+    (t, home)
+}
+
+fn write_record(home: &Path, text: &str) {
+    let path = record_path(home);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(path, record_naming(text)).unwrap();
+}
+
+/// The settings text an earlier install left, with a value and spacing the move must not touch.
+const OLD_SETTINGS: &str =
+    "{\n  \"a\": 1,\n  \"outputStyle\": \"MoAI-Easy\",\n  \"b\": [1,  2]\n}\n";
+
+/// AC-1 (REQ-1): a first install names the style file and the value `MoAI-Style`, writes no old
+/// file and plans no old-file target.
+#[test]
+fn ac1_a_first_install_writes_the_new_names_and_no_old_file() {
+    let (_t, home) = home();
+    assert_eq!(STYLE_NAME, "MoAI-Style");
+    assert_ne!(STYLE_NAME, OLD_NAME);
+    let p = plan(&home, &package()).unwrap();
+    let file = p.targets.iter().find(|t| t.kind == "style_file").unwrap();
+    assert!(
+        file.path.ends_with("output-styles/MoAI-Style.md"),
+        "{}",
+        file.path
+    );
+    assert_eq!(file.action, "create");
+    assert_eq!(key_list(&p), [pair("outputStyle", json!("MoAI-Style"))]);
+    assert_eq!(kinds(&p), ["style_file", "setting"]);
+    apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+    let text = fs::read_to_string(home.join(STYLE)).unwrap();
+    assert!(text.starts_with("---\nname: MoAI-Style\n"), "{text}");
+    assert_eq!(settings(&home), json!({"outputStyle": "MoAI-Style"}));
+    assert!(!home.join(OLD_STYLE).exists(), "no old file is made");
+}
+
+/// AC-2 (REQ-2, REQ-3, REQ-4, REQ-10, REQ-14): an old file with MoAI's bytes is retired and the
+/// exact old value is replaced as text; the apply writes the new file, then the setting, then
+/// removes the old file, keeps the old bytes in the receipt and points the record at the new file.
+#[test]
+fn ac2_an_old_file_and_value_are_retired_and_replaced_as_text() {
+    let (_t, home) = home_with_old(OLD_SETTINGS);
+    let old = old_render();
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(kinds(&p), ["style_file", "setting", "old_style_file"]);
+    assert_eq!(action(&p, "style_file"), "create");
+    assert_eq!(action(&p, "setting"), "replace");
+    assert_eq!(action(&p, "old_style_file"), "retire");
+    let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+    assert_eq!(r["state"], "applied");
+    assert_eq!(
+        fs::read_to_string(home.join(SETTINGS)).unwrap(),
+        OLD_SETTINGS.replace("\"MoAI-Easy\"", "\"MoAI-Style\""),
+        "one value text changes and every other byte stays"
+    );
+    assert!(!home.join(OLD_STYLE).exists());
+    assert_eq!(
+        fs::read_to_string(home.join(STYLE)).unwrap(),
+        render_style_file(&src())
+    );
+    let id = r["receipt"].as_str().unwrap().to_string();
+    let receipt = receipt_json(&home, &id);
+    let entries = receipt["entries"].as_array().unwrap();
+    let order: Vec<&str> = entries
+        .iter()
+        .map(|e| e["kind"].as_str().unwrap())
+        .collect();
+    assert_eq!(order, ["style_file", "setting", "old_style_file"]);
+    let old_entry = &entries[2];
+    assert_eq!(old_entry["action"], "retire");
+    assert_eq!(
+        old_entry["before_sha256"],
+        json!(moai_cli::digest(old.as_bytes()))
+    );
+    let kept = moai_cli::home_root::path(&home)
+        .join("home-style/receipts")
+        .join(&id)
+        .join("claude-old_style_file.before");
+    assert_eq!(fs::read_to_string(kept).unwrap(), old);
+    assert_eq!(
+        fs::read_to_string(record_path(&home)).unwrap(),
+        record_naming(&render_style_file(&src())),
+        "the record names the new file"
+    );
+    // A HOME without an old file has no old-file target.
+    let (_t2, clean) = fresh();
+    assert!(!kinds(&plan(&clean, &package()).unwrap()).contains(&"old_style_file".to_string()));
+}
+
+/// AC-3 (REQ-11, REQ-12): the revert gives back the old file, the old value text, the settings
+/// bytes and the record; a settings file edited elsewhere gets only the value text back; a new
+/// file changed since is skipped by name.
+#[test]
+fn ac3_the_revert_gives_back_the_old_file_the_value_and_the_record() {
+    let old = old_render();
+    let (_t, home) = home_with_old(OLD_SETTINGS);
+    let p = plan(&home, &package()).unwrap();
+    let id = apply(&home, &package(), &p.plan_digest, PERM).unwrap()["receipt"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let r = revert(&home, &id, PERM).unwrap();
+    assert_eq!(r["state"], "reverted");
+    for target in [
+        "claude:old_style_file",
+        "claude:setting",
+        "claude:style_file",
+    ] {
+        assert!(reverted(&r, target), "{target}: {r}");
+    }
+    assert_eq!(fs::read_to_string(home.join(OLD_STYLE)).unwrap(), old);
+    assert!(!home.join(STYLE).exists());
+    assert_eq!(
+        fs::read(home.join(SETTINGS)).unwrap(),
+        OLD_SETTINGS.as_bytes()
+    );
+    assert_eq!(
+        fs::read_to_string(record_path(&home)).unwrap(),
+        record_naming(&old),
+        "the record names the old file again"
+    );
+
+    // The user edited the settings elsewhere after the apply: only the value text goes back.
+    let (_t2, home) = home_with_old(OLD_SETTINGS);
+    let p = plan(&home, &package()).unwrap();
+    let id = apply(&home, &package(), &p.plan_digest, PERM).unwrap()["receipt"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let edited = fs::read_to_string(home.join(SETTINGS))
+        .unwrap()
+        .replace("\"b\": [1,  2]", "\"b\": [1,  2],\n  \"c\": 3");
+    fs::write(home.join(SETTINGS), &edited).unwrap();
+    revert(&home, &id, PERM).unwrap();
+    assert_eq!(
+        fs::read_to_string(home.join(SETTINGS)).unwrap(),
+        OLD_SETTINGS.replace("\"b\": [1,  2]", "\"b\": [1,  2],\n  \"c\": 3")
+    );
+
+    // The new style file changed since the apply: that target is skipped and named.
+    let (_t3, home) = home_with_old(OLD_SETTINGS);
+    let p = plan(&home, &package()).unwrap();
+    let id = apply(&home, &package(), &p.plan_digest, PERM).unwrap()["receipt"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let mine = fs::read_to_string(home.join(STYLE)).unwrap() + "mine\n";
+    fs::write(home.join(STYLE), &mine).unwrap();
+    let r = revert(&home, &id, PERM).unwrap();
+    let skipped = skipped_of(&r, "claude:style_file");
+    assert_eq!(skipped.len(), 1, "{r}");
+    assert_eq!(skipped[0]["reason"], "user_changed_since_apply");
+    assert_eq!(fs::read_to_string(home.join(STYLE)).unwrap(), mine);
+    assert_eq!(fs::read_to_string(home.join(OLD_STYLE)).unwrap(), old);
+    assert_eq!(
+        fs::read(home.join(SETTINGS)).unwrap(),
+        OLD_SETTINGS.as_bytes()
+    );
+}
+
+/// REQ-11, found by a guard mutant: the revert never writes over a file that is now at the
+/// old path. The user's file stays as it is and the target is skipped as
+/// `user_changed_since_apply`; the other targets still revert.
+#[test]
+fn revert_never_overwrites_a_file_put_at_the_old_style_path_since_the_apply() {
+    let (_t, home) = home_with_old(OLD_SETTINGS);
+    let p = plan(&home, &package()).unwrap();
+    let id = apply(&home, &package(), &p.plan_digest, PERM).unwrap()["receipt"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(!home.join(OLD_STYLE).exists());
+    fs::write(home.join(OLD_STYLE), "my own style\n").unwrap();
+    let r = revert(&home, &id, PERM).unwrap();
+    let skipped = skipped_of(&r, "claude:old_style_file");
+    assert_eq!(skipped.len(), 1, "{r}");
+    assert_eq!(skipped[0]["reason"], "user_changed_since_apply");
+    assert_eq!(
+        fs::read_to_string(home.join(OLD_STYLE)).unwrap(),
+        "my own style\n"
+    );
+    assert!(reverted(&r, "claude:style_file"), "{r}");
+}
+
+/// AC-4 (REQ-5, REQ-6, REQ-7): an old file the user edited is a `conflict`; it and `outputStyle`
+/// stay byte for byte, the new file is still written, and a notice names the old file and says
+/// how to choose the style.
+#[test]
+fn ac4_an_old_file_the_user_edited_stays_with_its_value_and_a_notice_says_so() {
+    let (_t, home) = home_with_old("{\"outputStyle\": \"MoAI-Easy\"}\n");
+    let edited = format!("{}my own line\n", old_render());
+    fs::write(home.join(OLD_STYLE), &edited).unwrap();
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(action(&p, "old_style_file"), "conflict");
+    assert_eq!(action(&p, "style_file"), "create");
+    assert_ne!(action(&p, "setting"), "replace");
+    let (_pt, project) = project_with(&[]);
+    let said = reasons(&moai_cli::home_style::notices(&p, &project));
+    assert!(
+        said.iter()
+            .any(|r| r.contains("MoAI-Easy.md") && r.contains("MoAI-Style")),
+        "{said:?}"
+    );
+    apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+    assert_eq!(fs::read_to_string(home.join(OLD_STYLE)).unwrap(), edited);
+    assert_eq!(
+        fs::read_to_string(home.join(SETTINGS)).unwrap(),
+        "{\"outputStyle\": \"MoAI-Easy\"}\n"
+    );
+    assert_eq!(
+        fs::read_to_string(home.join(STYLE)).unwrap(),
+        render_style_file(&src())
+    );
+}
+
+/// AC-5 (REQ-4): with no old file the value `MoAI-Easy` is replaced, an absent value is added as
+/// before, and any other value (a near miss in case, the user's own style) is a `conflict` left
+/// as written; an own old file does not make another value replaceable.
+#[test]
+fn ac5_the_value_is_replaced_only_when_it_is_exactly_the_old_name() {
+    let (_t, home) = home();
+    write(&home, SETTINGS, "{\"outputStyle\": \"MoAI-Easy\"}\n");
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(kinds(&p), ["style_file", "setting"]);
+    assert_eq!(action(&p, "setting"), "replace");
+    apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+    assert_eq!(
+        fs::read_to_string(home.join(SETTINGS)).unwrap(),
+        "{\"outputStyle\": \"MoAI-Style\"}\n"
+    );
+    let (_t, home) = fresh();
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(action(&p, "setting"), "set");
+    for other in ["moai-easy", "MOAI-EASY", "Explanatory"] {
+        let text = format!("{{\"outputStyle\": \"{other}\"}}\n");
+        // With no old file, and with MoAI's own old file next to the value.
+        for old_file in [false, true] {
+            let (_t, home) = fresh();
+            write(&home, SETTINGS, &text);
+            if old_file {
+                write(&home, OLD_STYLE, &old_render());
+                write_record(&home, &old_render());
+            }
+            let p = plan(&home, &package()).unwrap();
+            assert_eq!(action(&p, "setting"), "conflict", "{other} {old_file}");
+            apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+            assert_eq!(
+                fs::read_to_string(home.join(SETTINGS)).unwrap(),
+                text,
+                "{other} {old_file}"
+            );
+        }
+    }
+}
+
+/// AC-6 (REQ-13): a receipt written before this SPEC (entries without a path, an `outputStyle`
+/// text recorded in `inserted`) reverts with the old path and the old value; the new file name
+/// is never written or removed for it.
+#[test]
+fn ac6_an_old_format_receipt_reverts_with_the_old_path_and_the_old_value() {
+    let (_t, home) = home();
+    let old = old_render();
+    write(&home, OLD_STYLE, &old);
+    write(
+        &home,
+        SETTINGS,
+        "{\"a\": 1, \"outputStyle\": \"MoAI-Easy\", \"b\": 2}\n",
+    );
+    let sha = |text: &str| moai_cli::digest(text.as_bytes());
+    let dir = moai_cli::home_root::path(&home).join("home-style/receipts/style-1-0");
+    fs::create_dir_all(&dir).unwrap();
+    let receipt = json!({
+        "schema_version": 1,
+        "id": "style-1-0",
+        "plan_digest": "sha256:fixture",
+        "permission_reference": PERM,
+        "status": "committed",
+        "entries": [
+            {
+                "host": "claude", "kind": "style_file", "action": "create",
+                "before_sha256": null, "after_sha256": sha(&old), "baseline_before": null
+            },
+            {
+                "host": "claude", "kind": "setting", "action": "set",
+                "before_sha256": sha("{\"a\": 1}\n"),
+                "after_sha256": sha("{\"a\": 1, \"outputStyle\": \"MoAI-Easy\"}\n"),
+                "baseline_before": null,
+                "inserted": ", \"outputStyle\": \"MoAI-Easy\""
+            }
+        ]
+    });
+    fs::write(
+        dir.join("receipt.json"),
+        serde_json::to_vec_pretty(&receipt).unwrap(),
+    )
+    .unwrap();
+    let r = revert(&home, "style-1-0", PERM).unwrap();
+    assert_eq!(r["state"], "reverted", "{r}");
+    assert!(reverted(&r, "claude:style_file"), "{r}");
+    assert!(reverted(&r, "claude:setting"), "{r}");
+    assert!(!home.join(OLD_STYLE).exists(), "the old file is removed");
+    assert!(!home.join(STYLE).exists(), "the new name is never written");
+    assert_eq!(
+        fs::read_to_string(home.join(SETTINGS)).unwrap(),
+        "{\"a\": 1, \"b\": 2}\n"
+    );
+}
+
+/// AC-7 (REQ-8): a `MoAI-Style.md` that is not MoAI's is a `conflict`; the old file and the
+/// value stay byte for byte and nothing is written.
+#[test]
+fn ac7_a_style_file_of_the_user_named_like_the_new_one_leaves_the_old_file_and_value() {
+    let (_t, home) = home_with_old("{\"outputStyle\": \"MoAI-Easy\"}\n");
+    let mine = "---\nname: MoAI-Style\n---\n\nmy own style\n";
+    write(&home, STYLE, mine);
+    let p = plan(&home, &package()).unwrap();
+    assert_eq!(action(&p, "style_file"), "conflict");
+    assert_eq!(action(&p, "old_style_file"), "skipped");
+    assert_ne!(action(&p, "setting"), "replace");
+    let r = apply(&home, &package(), &p.plan_digest, PERM).unwrap();
+    assert_eq!(r["state"], "unchanged");
+    assert_eq!(fs::read_to_string(home.join(STYLE)).unwrap(), mine);
+    assert_eq!(
+        fs::read_to_string(home.join(OLD_STYLE)).unwrap(),
+        old_render()
+    );
+    assert_eq!(
+        fs::read_to_string(home.join(SETTINGS)).unwrap(),
+        "{\"outputStyle\": \"MoAI-Easy\"}\n"
+    );
+}
+
+/// AC-8 (REQ-9): in a `CLAUDE_CONFIG_DIR` profile whose `output-styles` and `settings.json` are
+/// links into the default folder the old file is moved by the same link rules; a link the rules
+/// refuse (outside the default folder, pointing at nothing) blocks the old-file target with the
+/// style file's reason and nothing is moved.
+#[cfg(unix)]
+#[test]
+fn ac8_the_old_file_follows_the_link_rules_of_the_style_file() {
+    use std::os::unix::fs::symlink;
+    let is_link = |p: &Path| fs::symlink_metadata(p).unwrap().file_type().is_symlink();
+    let h_of = |home: &Path| home.to_str().unwrap().to_string();
+    let pkg = package();
+    let pkg = pkg.to_str().unwrap().to_string();
+
+    // Links into the default folder are followed for the old file too.
+    let (_t, home) = home();
+    assert!(moai_cli::home_root::adopt_new(&home, "test").unwrap());
+    let profile = home.join("profiles/p");
+    write(&home, OLD_STYLE, &old_render());
+    write(&home, SETTINGS, "{\"outputStyle\": \"MoAI-Easy\"}\n");
+    fs::create_dir_all(&profile).unwrap();
+    symlink(
+        home.join(".claude/output-styles"),
+        profile.join("output-styles"),
+    )
+    .unwrap();
+    symlink(
+        home.join(".claude/settings.json"),
+        profile.join("settings.json"),
+    )
+    .unwrap();
+    let (planned, id) = folder_install(&home, Some(&profile));
+    assert_eq!(
+        folder_action(&planned, "old_style_file"),
+        "retire",
+        "{planned}"
+    );
+    assert_eq!(folder_action(&planned, "setting"), "replace", "{planned}");
+    assert!(id.is_some());
+    assert!(!home.join(OLD_STYLE).exists());
+    assert!(home.join(STYLE).is_file());
+    assert_eq!(settings(&home), json!({"outputStyle": "MoAI-Style"}));
+    assert!(is_link(&profile.join("output-styles")) && is_link(&profile.join("settings.json")));
+
+    // A link the rules refuse blocks both file targets with the same reason; nothing moves.
+    for pointing in ["styles-elsewhere", "no-such-folder"] {
+        let (_t, home) = fresh();
+        assert!(moai_cli::home_root::adopt_new(&home, "test").unwrap());
+        let profile = home.join("profiles/q");
+        let target = home.join("outside").join(pointing);
+        if pointing == "styles-elsewhere" {
+            write_at_path(&target.join("MoAI-Easy.md"), &old_render());
+        }
+        fs::create_dir_all(&profile).unwrap();
+        symlink(&target, profile.join("output-styles")).unwrap();
+        write_at_path(
+            &profile.join("settings.json"),
+            "{\"outputStyle\": \"MoAI-Easy\"}\n",
+        );
+        let h = h_of(&home);
+        let planned = folder_run(&home, Some(&profile), &["home-style-plan", &h, &pkg]);
+        let targets = planned["result"]["targets"].as_array().unwrap();
+        let of = |kind: &str| targets.iter().find(|t| t["kind"] == kind).unwrap();
+        assert_eq!(
+            of("style_file")["action"],
+            "blocked",
+            "{pointing}: {planned}"
+        );
+        assert_eq!(
+            of("old_style_file")["action"],
+            "blocked",
+            "{pointing}: {planned}"
+        );
+        assert_eq!(
+            of("old_style_file")["detail"],
+            of("style_file")["detail"],
+            "{pointing}"
+        );
+        assert_ne!(of("setting")["action"], "replace", "{pointing}");
+        let digest = planned["result"]["plan_digest"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let applied = folder_run(
+            &home,
+            Some(&profile),
+            &[
+                "home-style-apply",
+                &h,
+                &pkg,
+                "--plan-digest",
+                &digest,
+                "--permission-reference",
+                PERM,
+            ],
+        );
+        assert_eq!(applied["result"]["state"], "unchanged", "{pointing}");
+        assert_eq!(
+            fs::read_to_string(profile.join("settings.json")).unwrap(),
+            "{\"outputStyle\": \"MoAI-Easy\"}\n"
+        );
+        if pointing == "styles-elsewhere" {
+            assert_eq!(
+                fs::read_to_string(target.join("MoAI-Easy.md")).unwrap(),
+                old_render()
+            );
+            assert!(!target.join("MoAI-Style.md").exists());
+        }
+    }
+}
+
+fn write_at_path(path: &Path, text: &str) {
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(path, text).unwrap();
 }

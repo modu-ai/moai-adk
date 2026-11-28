@@ -598,6 +598,11 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
                         e["candidate"] = json!(cand.commit);
                         e["moved"] = done["moved"].clone();
                         e["closed"] = done["closed"].clone();
+                        // A held head stays open: the batch says which verdicts hold it.
+                        if let Some(held) = done.get("held") {
+                            e["held"] = held.clone();
+                            e["open_criteria"] = done["open_criteria"].clone();
+                        }
                         landed_cards.push(e);
                         pending.retain(|p| p.name != cand.item.name);
                     }
@@ -618,12 +623,17 @@ pub fn land_batch(project: &Path, home: &Path, req: &BatchRequest<'_>) -> Result
             Some("not run: the batch stopped before this head"),
         ));
     }
-    Ok(json!({
+    let mut answer = json!({
         "action": "land-batch", "branch": branch,
         "landed": landed_cards, "dropped": dropped, "not_run": not_run,
         "runs": runs, "checks_run": runs.len(), "stopped": stopped,
         "writes": !landed_cards.is_empty(),
-    }))
+    });
+    // RC1 observes a record that names another branch than the profile and refuses nothing.
+    if let Some(stale) = crate::card::guard::repoint::observation(project) {
+        answer["guard_record_stale"] = stale;
+    }
+    Ok(answer)
 }
 
 /// Whether landing `commit` on `tip` changes the branch (it is not inside the tip).

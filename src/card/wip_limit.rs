@@ -82,12 +82,16 @@ pub fn live_lanes(project: &Path) -> Lanes {
         }
     };
     let now = now_secs();
-    // One project name for both: each `session::*_name` call reads the git identity again, and a
-    // git process costs far more than the registry scan. The forms mirror
-    // `session::leader_session_name` and `session::agent_prefix`; a unit test pins them.
-    let project_name = crate::session::project_name(project);
-    let leader_name = format!("{project_name}-leader");
-    let project_prefix = format!("{project_name}-agent-");
+    // One project name for all four forms: each `session::*_name` call reads the git identity
+    // again, and a git process costs far more than the registry scan. The forms mirror
+    // `session::leader_session_name`, `session::agent_prefix` and their earlier project-prefixed
+    // spellings (SPEC-20261127-launcher-session-names REQ-11, D-5); a unit test pins them.
+    let names = crate::session::project_names(project);
+    let leader_names = [
+        format!("leader-{}", names.current),
+        format!("{}-leader", names.earlier),
+    ];
+    let project_prefix = format!("{}-agent-", names.earlier);
     let lane_prefixes = ["agent-".to_string(), project_prefix.clone()];
     // The one name of a lane: the project-prefixed form reads as the short form.
     let canon = |name: &str| match name.strip_prefix(project_prefix.as_str()) {
@@ -99,7 +103,7 @@ pub fn live_lanes(project: &Path) -> Lanes {
     // name (an entry without a session, or a name whose lock is held).
     let mut live: std::collections::BTreeSet<(bool, String)> = std::collections::BTreeSet::new();
     for entry in &scan.entries {
-        let leader = entry.mode.as_deref() == Some("leader") || entry.name == leader_name;
+        let leader = entry.mode.as_deref() == Some("leader") || leader_names.contains(&entry.name);
         let name = canon(&entry.name);
         let by_lock = locked.contains(&name);
         if leader || !(entry.lease_until > now || by_lock) {
@@ -114,7 +118,7 @@ pub fn live_lanes(project: &Path) -> Lanes {
         let name_canon = canon(name);
         let has_entry = scan.entries.iter().any(|e| canon(&e.name) == name_canon);
         let lane_like = lane_prefixes.iter().any(|p| name.starts_with(p.as_str()));
-        if !has_entry && *name != leader_name && lane_like {
+        if !has_entry && !leader_names.contains(name) && lane_like {
             live.insert((false, name_canon));
         }
     }
@@ -199,7 +203,7 @@ impl InWork {
 /// The head that the newest hand-back note of the card names, only while that note belongs to the
 /// card's present work: its `card.note` event is newer than every event that put the card back
 /// into work. `None` when this cannot be confirmed; an older note is never read instead.
-fn current_head(conn: &Connection, card_id: i64) -> Result<Option<String>, String> {
+pub(super) fn current_head(conn: &Connection, card_id: i64) -> Result<Option<String>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT note_id, kind, author, body FROM card_note \

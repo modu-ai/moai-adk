@@ -68,18 +68,28 @@ pub struct AgentsRequest {
 /// and skills alone is not held up by a hand-edited managed file
 /// (SPEC-20261120-project-harness-research, revision 2). Its name belongs to the request file,
 /// never to a question or an option shown to the user.
+/// `keep-harness` leaves the project agent and skill files a generation manifest owns but its
+/// request does not name as they are, and this engine plans its own files as usual
+/// (SPEC-20261127-update-old-manifest-way). Only the generation planner reads it; like
+/// `harness-only`, its name belongs to the request file, never to a question or an option shown
+/// to the user.
 /// `personal-file` creates `CLAUDE.local.md` once. The earlier picks `import` and `claude-import`
 /// are gone: they are refused like any unknown id, and no code reads them by name.
-pub const PICKS: [&str; 5] = [
+pub const PICKS: [&str; 6] = [
     "append-managed",
     "skip-conflicts",
     "move",
     "personal-file",
     HARNESS_ONLY,
+    KEEP_HARNESS,
 ];
 
 /// The pick that plans every file of this engine as `skip` (see [`PICKS`]).
 pub(crate) const HARNESS_ONLY: &str = "harness-only";
+
+/// The pick that keeps the owned project agent and skill files a request does not name (see
+/// [`PICKS`]).
+pub(crate) const KEEP_HARNESS: &str = "keep-harness";
 
 fn picked(r: &AgentsRequest, id: &str) -> bool {
     r.picks.iter().any(|p| p == id)
@@ -549,20 +559,60 @@ pub(crate) fn fresh_texts(p: &Profile, root: &Path) -> Result<(String, String)> 
 /// (SPEC-20261120-moai-layout). The list is [`crate::state_root::KEPT`], one place; its order is
 /// the order of the block's `!` lines, so the earlier nine keep their places and a block written
 /// before a later line was added differs only by that line. Everything else in the folder is
-/// machine output under `local/` and is ignored.
+/// machine output under `local/` and is ignored. Three of the folders are allowed only by one
+/// pattern ([`crate::state_root::KEPT_NARROW`], SPEC-20261127-state-kept-narrowing): the block
+/// writes their narrow lines right after their `!` line.
 const STATE_KEPT: [&str; 11] = crate::state_root::KEPT;
 
 /// File names that never go to git anywhere under the state folder, `tools/` and `evals/`
-/// included (SPEC-20261120-moai-layout REQ-11): the credential files of an earlier generation's
-/// template, `credentials.json` and the `.env` family. The lines come after the allow-list, so an
-/// allow line cannot lift them.
-const STATE_SECRETS: [&str; 5] = [
+/// included (SPEC-20261120-moai-layout REQ-11, REQ-19): first the credential files of an earlier
+/// generation's template, `credentials.json` and the `.env` family, then the researched credential
+/// and key files. A name is added only when the file is there to hold a usable secret (plain text,
+/// a value that can be turned back, a private key or a token) and the name is narrow. General
+/// settings files, encrypted or hashed files, extensions with several uses and files with no fixed
+/// name stay off the list (D-10). The lines come after the allow-list, so an allow line cannot
+/// lift them.
+const STATE_SECRETS: [&str; 35] = [
     "**/credentials.yaml",
     "**/credentials.json",
     "**/*.credentials",
     "**/.env",
     "**/.env.*",
+    "**/.git-credentials",
+    "**/.netrc",
+    "**/_netrc",
+    "**/.pgpass",
+    "**/pgpass.conf",
+    "**/.pypirc",
+    "**/.credentials.json",
+    "**/credentials.tfrc.json",
+    "**/application_default_credentials.json",
+    "**/credentials.toml",
+    "**/.vault-token",
+    "**/.mylogin.cnf",
+    "**/master.key",
+    "**/keystore.properties",
+    "**/id_rsa",
+    "**/id_dsa",
+    "**/id_ecdsa",
+    "**/id_ecdsa_sk",
+    "**/id_ed25519",
+    "**/id_ed25519_sk",
+    "**/id_mldsa44_ed25519",
+    "**/*.ppk",
+    "**/*.tfstate",
+    "**/*.tfstate.*",
+    "**/.dev.vars",
+    "**/.dev.vars.*",
+    "**/.aws/credentials",
+    "**/.cargo/credentials",
+    "**/.gem/credentials",
+    "**/.streamlit/secrets.toml",
 ];
+
+/// The `.gitignore` line for the folders an update sets aside (`.moai.rust-<UTC>/`): the last
+/// line of the managed block, spelled the same in every project.
+const RUST_SET_ASIDE_GLOB: &str = ".moai.rust-*/";
 
 /// How many `now visible:` lines the plan shows before it counts the rest.
 const VISIBLE_NOTE_CAP: usize = 20;
@@ -577,8 +627,16 @@ const IGNORE_KIND_STATE_ONLY: &str = "agents:ignore-state";
 /// out of git), and the line `AGENTS.local.md` when the block already carried it (`keep_earlier`:
 /// that file is still the user's, and the block never drops a line that keeps it out of git).
 ///
-/// `allow` is the list of `!` paths the block carries, in order (see [`ignore_block`]).
-fn render_ignore(root: &Path, list_local: bool, keep_earlier: bool, allow: &[String]) -> String {
+/// `allow` is the list of `!` paths the block carries, in order (see [`ignore_block`]). `narrow`
+/// says whether the folders of [`state_root::KEPT_NARROW`] are allowed whole or only by their one
+/// pattern, and which tracked paths get an exact `!` line of their own.
+fn render_ignore(
+    root: &Path,
+    list_local: bool,
+    keep_earlier: bool,
+    allow: &[String],
+    narrow: &Narrowing,
+) -> String {
     let (begin, end) = markers(IGNORE_SECTION, "hash");
     let state = state_root::dir(root);
     let mut body = String::new();
@@ -600,10 +658,38 @@ fn render_ignore(root: &Path, list_local: bool, keep_earlier: bool, allow: &[Str
         // `ignore_block` refused a name that cannot be written, so the fallback is not reached.
         let line = escape_ignore_path(path).unwrap_or_else(|| path.clone());
         body.push_str(&format!("!{line}\n"));
+        // A narrowed folder is allowed again, then ignored below its own level, then allowed back
+        // by its one pattern (git reads the last matching line).
+        if let Some((folder, pattern)) = narrow
+            .on
+            .then(|| {
+                state_root::KEPT_NARROW
+                    .iter()
+                    .find(|(folder, _)| *path == format!("{state}/{folder}/"))
+            })
+            .flatten()
+        {
+            let base = format!("{state}/{folder}/");
+            let base = escape_ignore_path(&base).unwrap_or(base);
+            body.push_str(&format!("{base}*\n"));
+            if !narrow.skip_allow_back.contains(folder) {
+                body.push_str(&format!("!{base}{pattern}\n"));
+            }
+        }
+    }
+    // A tracked file the narrow lines would hide keeps its place: its exact path, after the
+    // ignore line of its folder.
+    for path in &narrow.exact {
+        let line = escape_ignore_path(path).unwrap_or_else(|| path.clone());
+        body.push_str(&format!("!{line}\n"));
     }
     for pattern in STATE_SECRETS {
         body.push_str(&format!("{state}/{pattern}\n"));
     }
+    // The update's set-aside folders (`.moai.rust-<UTC>/`) sit beside the state folder; the
+    // line is the block's last one and is written as it reads, whatever the state folder is.
+    body.push_str(RUST_SET_ASIDE_GLOB);
+    body.push('\n');
     format!("{begin}\n{body}{end}\n")
 }
 
@@ -628,6 +714,21 @@ fn escape_ignore_path(path: &str) -> Option<String> {
         out.push_str("\\ ");
     }
     Some(out)
+}
+
+/// How the block treats the folders of [`state_root::KEPT_NARROW`] (SPEC-20261127-state-kept-
+/// narrowing).
+struct Narrowing {
+    /// The narrow lines are written. Off when git cannot list the tracked paths: the block then
+    /// allows every kept folder whole, as it did before the narrowing (REQ-11).
+    on: bool,
+    /// Folders whose allow-back line is left out because a rule of the user's already ignores the
+    /// paths of that shape: the block never changes what one of the user's rules does.
+    skip_allow_back: Vec<&'static str>,
+    /// Paths git tracks that the narrow lines would ignore, each with its folders below the kept
+    /// folder first (`<state>/manifests/sub/`, then `<state>/manifests/sub/y.json`), so no tracked
+    /// file becomes ignored (REQ-5). Sorted, no repeats.
+    exact: Vec<String>,
 }
 
 /// The rendered block and what the plan tells about how it was made.
@@ -683,7 +784,24 @@ fn ignore_block(root: &Path, list_local: bool, ignore_text: Option<&str>) -> Res
             asked.push(path.clone());
         }
     }
+    // The narrow lines allow one pattern back per folder; a path of that shape stands in the same
+    // question, so a rule of the user's that ignores it keeps its effect (that line is left out).
+    let probes: Vec<(&'static str, String)> = state_root::KEPT_NARROW
+        .iter()
+        .map(|(folder, pattern)| {
+            (
+                *folder,
+                format!("{state}/{folder}/{}", pattern.replace('*', "x")),
+            )
+        })
+        .collect();
+    asked.extend(probes.iter().map(|(_, probe)| probe.clone()));
     let hits = user_rule_hits(root, &user, &asked, &[], &mut notes)?;
+    let skip_allow_back: Vec<&'static str> = probes
+        .iter()
+        .filter(|(_, probe)| hits.iter().any(|h| h.path == *probe))
+        .map(|(folder, _)| *folder)
+        .collect();
     let mut shown: Vec<String> = Vec::new();
     for h in &hits {
         let line = match moved.iter().find(|(_, path)| *path == h.path) {
@@ -718,7 +836,16 @@ fn ignore_block(root: &Path, list_local: bool, ignore_text: Option<&str>) -> Res
     }
     // The block of an earlier version listed `AGENTS.local.md`: that line stays.
     let keep_earlier = ignore_text.is_some_and(|text| block_lists(text, LOCAL_NAMES[0]));
-    let rendered = render_ignore(root, list_local, keep_earlier, &allow);
+    let narrow = narrowing(
+        root,
+        state,
+        &user,
+        (list_local, keep_earlier),
+        &allow,
+        skip_allow_back,
+        &mut shown,
+    )?;
+    let rendered = render_ignore(root, list_local, keep_earlier, &allow, &narrow);
     let mut visible_notes: Vec<String> = Vec::new();
     shown.append(&mut newly_visible(
         root,
@@ -736,6 +863,158 @@ fn ignore_block(root: &Path, list_local: bool, ignore_text: Option<&str>) -> Res
     Ok(IgnoreBlock {
         rendered,
         notes: shown,
+    })
+}
+
+/// The narrowing of the block for this project (SPEC-20261127-state-kept-narrowing): the narrow
+/// lines on, and an exact `!` line for each path git tracks under a narrowed folder that they
+/// would ignore (REQ-5), named in `notes` as `now hidden: <path>` (REQ-6). What git tracks under
+/// the earlier state folder counts too when the update moves it into this one. Git answers which
+/// of the tracked paths each block ignores, as `user_rule_hits` asks it (a throw-away repository,
+/// `check-ignore --no-index`): the paths the narrow lines add to what the whole-folder block and
+/// the user's rules already ignore are the hidden ones. When git is missing the tracked paths
+/// cannot be listed, so the narrow lines stay off and the block is the whole-folder one (REQ-11).
+fn narrowing(
+    root: &Path,
+    state: &str,
+    user: &str,
+    (list_local, keep_earlier): (bool, bool),
+    allow: &[String],
+    skip_allow_back: Vec<&'static str>,
+    notes: &mut Vec<String>,
+) -> Result<Narrowing> {
+    let off = Narrowing {
+        on: false,
+        skip_allow_back: Vec::new(),
+        exact: Vec::new(),
+    };
+    let on = Narrowing {
+        on: true,
+        skip_allow_back,
+        exact: Vec::new(),
+    };
+    // The folders the narrow lines act on in this block (a user rule can have taken a `!` line).
+    let acts_on: Vec<String> = state_root::KEPT_NARROW
+        .iter()
+        .map(|(folder, _)| format!("{state}/{folder}/"))
+        .filter(|path| allow.contains(path))
+        .collect();
+    if acts_on.is_empty() {
+        return Ok(off);
+    }
+    let mut prefixes = vec![state.to_string()];
+    if state == state_root::MOAI_DIR {
+        prefixes.push(state_root::EARLIER_PROJECT_DIR.to_string());
+    }
+    let mut specs: Vec<String> = Vec::new();
+    for prefix in &prefixes {
+        for path in &acts_on {
+            specs.push(format!("{prefix}/{}", &path[state.len() + 1..]));
+        }
+    }
+    let mut args: Vec<&str> = vec!["ls-files", "-z", "--"];
+    args.extend(specs.iter().map(String::as_str));
+    let stdout = match git_output(root, &args, b"") {
+        Err(e) if e == GIT_UNAVAILABLE => {
+            note_git_missing(notes);
+            notes.push(
+                "the narrow lines for manifests/, workflows/ and decisions/ are left out: git is \
+                 not available to list the files it tracks there"
+                    .to_string(),
+            );
+            return Ok(off);
+        }
+        Err(e) => return Err(e),
+        Ok(out) if out.status.success() => out.stdout,
+        Ok(out)
+            if String::from_utf8_lossy(&out.stderr).contains(crate::identity::NOT_A_REPOSITORY) =>
+        {
+            return Ok(on);
+        }
+        Ok(out) => {
+            return Err(git_failure(
+                "which files git tracks in the folders the block narrows",
+                &out,
+            ))
+        }
+    };
+    // The tracked paths as they will stand in this state folder.
+    let mut candidates = std::collections::BTreeSet::new();
+    for path in stdout.split(|b| *b == 0).filter(|p| !p.is_empty()) {
+        let path = std::str::from_utf8(path).map_err(|_| {
+            format!("git tracks a name under {state}/ that is not UTF-8 text; rename it before the update")
+        })?;
+        let here = prefixes
+            .iter()
+            .find_map(|prefix| {
+                path.strip_prefix(prefix.as_str())
+                    .filter(|r| r.starts_with('/'))
+            })
+            .map(|rest| format!("{state}{rest}"));
+        candidates.insert(here.unwrap_or_else(|| path.to_string()));
+    }
+    if candidates.is_empty() {
+        return Ok(on);
+    }
+    let candidates: Vec<String> = candidates.into_iter().collect();
+    let ignored_by = |narrow: &Narrowing| -> Result<Vec<String>> {
+        let block = render_ignore(root, list_local, keep_earlier, allow, narrow);
+        let mut scratch: Vec<String> = Vec::new();
+        let hits = user_rule_hits(
+            root,
+            &format!("{user}\n{block}"),
+            &candidates,
+            &[],
+            &mut scratch,
+        )?;
+        Ok(hits.into_iter().map(|h| h.path).collect())
+    };
+    let whole = ignored_by(&off)?;
+    let narrow = ignored_by(&on)?;
+    let hidden: Vec<&String> = candidates
+        .iter()
+        .filter(|c| narrow.contains(*c) && !whole.contains(*c))
+        .collect();
+    if hidden.is_empty() {
+        return Ok(on);
+    }
+    let mut exact: Vec<String> = Vec::new();
+    for path in &hidden {
+        if escape_ignore_path(path).is_none() {
+            return Err(format!(
+                "git tracks {path}, a name a .gitignore line cannot hold (it has a line break); \
+                 rename it before the update"
+            ));
+        }
+        // The folders between the kept folder and the file: an ignored folder cannot hold a
+        // file that is allowed back, so each is allowed again first.
+        let kept_folder = acts_on
+            .iter()
+            .find(|folder| path.starts_with(folder.as_str()))
+            .map_or(0, |folder| folder.len());
+        for (at, _) in path.match_indices('/').filter(|(at, _)| *at >= kept_folder) {
+            let folder = format!("{}/", &path[..at]);
+            if at + 1 < path.len() && !exact.contains(&folder) {
+                exact.push(folder);
+            }
+        }
+        if !exact.contains(path) {
+            exact.push((*path).clone());
+        }
+    }
+    for path in hidden.iter().take(VISIBLE_NOTE_CAP) {
+        notes.push(format!("now hidden: {path}"));
+    }
+    if hidden.len() > VISIBLE_NOTE_CAP {
+        notes.push(format!(
+            "now hidden: and {} more files under {state}/",
+            hidden.len() - VISIBLE_NOTE_CAP
+        ));
+    }
+    Ok(Narrowing {
+        on: true,
+        skip_allow_back: on.skip_allow_back,
+        exact,
     })
 }
 
@@ -835,38 +1114,54 @@ fn is_below(path: &str, dir: &str) -> bool {
 }
 
 /// The bytes of the `.gitignore` at `rel` (a path from the project root), or `None` when the plan
-/// must not read it: a path piece that is not a plain name, a link anywhere on the path (a linked
-/// parent folder as well as a linked file, so nothing outside the project is read through it), a
-/// file that is not a regular file, one larger than [`NESTED_IGNORE_MAX_BYTES`], or one that cannot
-/// be read.
+/// must not read it: [`open_below`] refuses the path (a piece that is not a plain name, or a link
+/// anywhere below the root, a linked parent folder as well as a linked file), the opened file is
+/// not a regular file or is larger than [`NESTED_IGNORE_MAX_BYTES`], or it cannot be read.
 fn read_nested_ignore(root: &Path, rel: &str) -> Option<Vec<u8>> {
     use std::io::Read;
-    let mut at = root.to_path_buf();
-    let mut len = 0;
-    let mut is_file = false;
-    for piece in Path::new(rel).components() {
-        let std::path::Component::Normal(name) = piece else {
-            return None;
-        };
-        at.push(name);
-        let meta = std::fs::symlink_metadata(&at).ok()?;
-        if meta.file_type().is_symlink() {
-            return None;
-        }
-        len = meta.len();
-        is_file = meta.is_file();
-    }
-    if !is_file || len > NESTED_IGNORE_MAX_BYTES {
+    let file = open_below(root, rel)?;
+    // Asked of the opened handle, so the answer is about the file that is read.
+    let meta = file.metadata().ok()?;
+    if !meta.is_file() || meta.len() > NESTED_IGNORE_MAX_BYTES {
         return None;
     }
     // The size can change between the check and the read: read one byte past the limit and refuse.
     let mut bytes = Vec::new();
-    std::fs::File::open(&at)
-        .ok()?
-        .take(NESTED_IGNORE_MAX_BYTES + 1)
+    file.take(NESTED_IGNORE_MAX_BYTES + 1)
         .read_to_end(&mut bytes)
         .ok()?;
     (bytes.len() as u64 <= NESTED_IGNORE_MAX_BYTES).then_some(bytes)
+}
+
+/// Opens the file at `rel` (a path from `root`) for reading, one piece at a time from a directory
+/// handle on `root`, following no link below it: each parent folder is opened from the handle
+/// before it with `open_dir_nofollow`, and the last piece with `FollowSymlinks::No`, so no earlier
+/// look at the path is relied on. `root` itself is opened as given. `None` when `rel` is empty, a
+/// piece is not a plain name, or an open fails. What opened need not be a regular file: the caller
+/// asks the handle. On Unix the open does not wait for a pipe (`O_NONBLOCK`). The same model as
+/// the code map's reads (`docs/index-generation.md`).
+fn open_below(root: &Path, rel: &str) -> Option<std::fs::File> {
+    use cap_fs_ext::{DirExt, FollowSymlinks, OpenOptionsFollowExt};
+    #[cfg(unix)]
+    use cap_std::fs::OpenOptionsExt;
+    use cap_std::fs::{Dir, OpenOptions};
+    let mut dir = Dir::open_ambient_dir(root, cap_std::ambient_authority()).ok()?;
+    let mut pieces = Path::new(rel).components().peekable();
+    while let Some(piece) = pieces.next() {
+        let std::path::Component::Normal(name) = piece else {
+            return None;
+        };
+        if pieces.peek().is_some() {
+            dir = dir.open_dir_nofollow(name).ok()?;
+            continue;
+        }
+        let mut options = OpenOptions::new();
+        options.read(true).follow(FollowSymlinks::No);
+        #[cfg(unix)]
+        options.custom_flags(libc::O_NONBLOCK);
+        return Some(dir.open_with(name, &options).ok()?.into_std());
+    }
+    None
 }
 
 /// The `.gitignore` files the project keeps under its state folder (the folder itself, `tools/`
@@ -3160,4 +3455,138 @@ mod tests {
     }
 
     // relative_paths_are_bounded moved to src/apply.rs with the shared helper.
+
+    /// A project root and a folder beside it, outside the root, in one temporary folder.
+    #[cfg(unix)]
+    fn project_and_outside() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let root = tmp.path().join("project");
+        let outside = tmp.path().join("outside");
+        fs::create_dir_all(&root).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        (tmp, root, outside)
+    }
+
+    /// Writes `rules` to `path`, creating its parent folders.
+    #[cfg(unix)]
+    fn put_rules(path: &Path, rules: &str) {
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, rules).unwrap();
+    }
+
+    /// `open_below` and `read_nested_ignore` both refuse `rel`, although a reader that follows
+    /// links gets `rules` through it (so the fixture's link resolves).
+    #[cfg(unix)]
+    fn assert_link_refused(root: &Path, rel: &str, rules: &str) {
+        assert_eq!(fs::read_to_string(root.join(rel)).unwrap(), rules);
+        assert!(open_below(root, rel).is_none(), "{rel} was opened");
+        assert_eq!(read_nested_ignore(root, rel), None);
+    }
+
+    /// Replaces the file `sub/.gitignore` under `root` with a link to `target`.
+    #[cfg(unix)]
+    fn swap_file_for_link(root: &Path, target: &Path) {
+        let file = root.join("sub/.gitignore");
+        put_rules(&file, "before\n");
+        fs::remove_file(&file).unwrap();
+        std::os::unix::fs::symlink(target, &file).unwrap();
+    }
+
+    /// Replaces the folder `sub` under `root`, which holds a `.gitignore`, with a link to
+    /// `target`.
+    #[cfg(unix)]
+    fn swap_parent_for_link(root: &Path, target: &Path) {
+        let folder = root.join("sub");
+        put_rules(&folder.join(".gitignore"), "before\n");
+        fs::remove_dir_all(&folder).unwrap();
+        std::os::unix::fs::symlink(target, &folder).unwrap();
+    }
+
+    /// SPEC-20261120-moai-layout REQ-18: a file swapped for a link to a file outside the project
+    /// root is not opened.
+    #[cfg(unix)]
+    #[test]
+    fn a_file_swapped_for_a_link_to_outside_the_root_is_not_opened() {
+        let (_tmp, root, outside) = project_and_outside();
+        put_rules(&outside.join("rules"), "*.sh\n");
+        swap_file_for_link(&root, &outside.join("rules"));
+        assert_link_refused(&root, "sub/.gitignore", "*.sh\n");
+    }
+
+    /// SPEC-20261120-moai-layout REQ-18: a file swapped for a link to a file inside the project
+    /// root is not opened. The target is a name in the same folder: `cap-std` refuses an
+    /// absolute target, and one that climbs out of the folder handle the link is opened from,
+    /// even in an open that follows links, so only this shape shows that the link itself is
+    /// refused.
+    #[cfg(unix)]
+    #[test]
+    fn a_file_swapped_for_a_link_inside_the_root_is_not_opened() {
+        let (_tmp, root, _outside) = project_and_outside();
+        put_rules(&root.join("sub/rules"), "*.sh\n");
+        swap_file_for_link(&root, Path::new("rules"));
+        assert_link_refused(&root, "sub/.gitignore", "*.sh\n");
+    }
+
+    /// SPEC-20261120-moai-layout REQ-18: a parent folder swapped for a link to a folder outside
+    /// the project root is not walked through.
+    #[cfg(unix)]
+    #[test]
+    fn a_parent_swapped_for_a_link_to_outside_the_root_is_not_opened() {
+        let (_tmp, root, outside) = project_and_outside();
+        put_rules(&outside.join(".gitignore"), "*.sh\n");
+        swap_parent_for_link(&root, &outside);
+        assert_link_refused(&root, "sub/.gitignore", "*.sh\n");
+    }
+
+    /// SPEC-20261120-moai-layout REQ-18: a parent folder swapped for a link to a folder inside
+    /// the project root is not walked through. The target is relative and stays under the root
+    /// handle the link is opened from, for the reason above.
+    #[cfg(unix)]
+    #[test]
+    fn a_parent_swapped_for_a_link_inside_the_root_is_not_opened() {
+        let (_tmp, root, _outside) = project_and_outside();
+        put_rules(&root.join("kept/.gitignore"), "*.sh\n");
+        swap_parent_for_link(&root, Path::new("kept"));
+        assert_link_refused(&root, "sub/.gitignore", "*.sh\n");
+    }
+
+    /// SPEC-20261120-moai-layout REQ-18: a pipe in the file's place is neither waited on nor
+    /// read. The calls run on their own thread, so an open that blocks fails the test.
+    #[cfg(unix)]
+    #[test]
+    fn a_pipe_is_neither_waited_on_nor_read() {
+        let (_tmp, root, _outside) = project_and_outside();
+        fs::create_dir_all(root.join("sub")).unwrap();
+        let made = std::process::Command::new("mkfifo")
+            .arg(root.join("sub/.gitignore"))
+            .status()
+            .unwrap();
+        assert!(made.success(), "{made}");
+        let (send, receive) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let regular = open_below(&root, "sub/.gitignore")
+                .is_some_and(|file| file.metadata().unwrap().is_file());
+            let read = read_nested_ignore(&root, "sub/.gitignore");
+            let _ = send.send((regular, read));
+        });
+        let (regular, read) = receive
+            .recv_timeout(std::time::Duration::from_secs(10))
+            .expect("the open waited on the pipe");
+        assert!(!regular);
+        assert_eq!(read, None);
+    }
+
+    /// SPEC-20261120-moai-layout REQ-17: a plain nested file is opened and read.
+    #[cfg(unix)]
+    #[test]
+    fn a_plain_nested_file_is_opened_and_read() {
+        let (_tmp, root, _outside) = project_and_outside();
+        put_rules(&root.join("sub/deeper/.gitignore"), "*.sh\n");
+        let opened = open_below(&root, "sub/deeper/.gitignore").expect("a plain file opens");
+        assert!(opened.metadata().unwrap().is_file());
+        assert_eq!(
+            read_nested_ignore(&root, "sub/deeper/.gitignore"),
+            Some(b"*.sh\n".to_vec())
+        );
+    }
 }

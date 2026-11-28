@@ -1,32 +1,37 @@
 #!/bin/sh
-# MoAI-ADK installer (Rust edition) — served at https://adk.mo.ai.kr/install.sh (#2935).
+# MoAI-ADK installer (Rust edition) — served at https://adk.mo.ai.kr/install.sh.
 #
 #   curl -fsSL https://adk.mo.ai.kr/install.sh | sh
 #
-# Downloads the `moai-cli` release archive for this machine, verifies its SHA-256 before
-# anything is written (a missing, malformed or different checksum stops the install), and
-# places it in the version folder the binary itself names:
+# Downloads the release archive for this machine (`moai-cli-<target>.tar.xz`), verifies its
+# SHA-256 before anything is written (a missing, malformed or different checksum stops the
+# install), and places its binary in the version folder the binary itself names:
 #
-#   <state home>/versions/<version>/bin/moai-cli   (+ bin/moai, a hard link to it)
-#   <link dir>/moai-cli, <link dir>/moai          (symbolic links; default <state home>/path)
+#   <state home>/versions/<version>/bin/moai   (a regular file; no bin/moai-cli is made)
+#   <link dir>/moai                            (a symbolic link; default <state home>/path)
 #
-# <state home> is the `home_state_root` that `moai-cli install-inspect` reports, so the one
-# rule for it lives in the binary (#2871 I2), not here. The shell configuration and PATH are
+# The archive's `moai` is the binary; an archive that holds only an earlier `moai-cli` is copied
+# under the name `moai`, and an archive with neither stops before anything is written
+# (SPEC-20261127-installed-binary-name-moai). A `moai-cli` that an earlier install left, in a
+# version folder or as a link in the link folder, is never changed or removed.
+#
+# <state home> is the `home_state_root` that `moai install-inspect` reports, so the one
+# rule for it lives in the binary, not here. The shell configuration and PATH are
 # never edited, and an existing Go-edition `moai` is never touched: the script prints what to
 # run next instead. POSIX sh, so it runs under `sh` and `bash` alike.
 #
-# The language of the conversation with the model (#2935 L1) comes from --language, else
+# The language of the conversation with the model comes from --language, else
 # MOAI_LANGUAGE, else (at a terminal) a numbered menu, else the locale, else English. After the
-# commands are linked the script runs `moai-cli language-set --home --if-absent <code>` once;
+# commands are linked the script runs `moai language-set --home --if-absent <code>` once;
 # that records only when nothing is recorded yet, so a reinstall never overwrites an earlier
-# choice, and a moai-cli without it only costs a warning. Everything this script prints stays
+# choice, and a moai without it only costs a warning. Everything this script prints stays
 # English whatever the language.
 #
 # A release archive carries the skill package and the base agents beside the binary (`skills/`,
 # `agents/`); they go into the version folder next to `bin/`, where `moai update` reads them
 # (SPEC-20261117-installer-skill-agents). Into the host (Claude Code) they go only
-# through the product's own preview and confirmed apply, `moai-cli update --json` and then
-# `moai-cli update --confirm <plan_digest> --json`: this script copies nothing into a host
+# through the product's own preview and confirmed apply, `moai update --json` and then
+# `moai update --confirm <plan_digest> --json`: this script copies nothing into a host
 # folder. It shows the folders the preview names, asks once at a terminal (--yes answers for a
 # run without one) and then names the next steps for each host it found.
 
@@ -72,7 +77,7 @@ Usage: install.sh [OPTIONS]
 
 Options:
   --version VERSION     Install a specific version, for example 4.2647.12 (default: latest)
-  --install-dir DIR     Put the moai and moai-cli commands in DIR (default: <state home>/path)
+  --install-dir DIR     Put the moai command link in DIR (default: <state home>/path)
   --channel CHANNEL     stable (default) or rc: rc also takes releases marked as pre-releases
   --language CODE       Language of your conversation with the model, for example en, ko, ja or
                         zh (default: asked at a terminal, else MOAI_LANGUAGE, else your locale,
@@ -90,8 +95,8 @@ Examples:
 EOF
 }
 
-# The conversation language is one of the four codes the language module holds (#2935 L1, G6):
-# en, ko, ja and zh, the same list the install menu offers and moai-cli accepts. Anything else —
+# The conversation language is one of the four codes the language module holds:
+# en, ko, ja and zh, the same list the install menu offers and moai accepts. Anything else —
 # a well-shaped code like fr or pt-BR included — is refused here, so nothing outside the list
 # reaches the binary or the recorded file, and no multi-line value can slip through.
 valid_language() {
@@ -191,13 +196,13 @@ resolve_language() {
     fi
 }
 
-# Records the language once, with the installed moai-cli. It passes the record-once mode
+# Records the language once, with the installed moai. It passes the record-once mode
 # (--if-absent), so a value that is already recorded is never overwritten: only an explicit
-# `moai language-set --home <code>` replaces it. A moai-cli that has no language-set (an older
+# `moai language-set --home <code>` replaces it. A moai that has no language-set (an older
 # pinned version) or refuses the code costs a warning, not the install.
 record_language() {
-    if ! out=$("$DEST/bin/moai-cli" language-set --home --if-absent "$LANGUAGE_CODE" </dev/null 2>/dev/null); then
-        print_warning "Could not record the conversation language ($LANGUAGE_CODE): this moai-cli has no language-set or does not accept the code. The install is complete."
+    if ! out=$("$DEST/bin/moai" language-set --home --if-absent "$LANGUAGE_CODE" </dev/null 2>/dev/null); then
+        print_warning "Could not record the conversation language ($LANGUAGE_CODE): this moai has no language-set or does not accept the code. The install is complete."
         return 0
     fi
     case "$out" in
@@ -221,7 +226,7 @@ valid_version() {
     return 1
 }
 
-# The supported platforms (user decision 2026-11-17, SPEC-20261117-supported-platforms): macOS on
+# The supported platforms (SPEC-20261117-supported-platforms): macOS on
 # Apple silicon, Linux x86_64 and Windows x86_64 (install.ps1). Anything else stops here, before a
 # download or a write.
 detect_target() {
@@ -253,7 +258,7 @@ detect_target() {
 # fetch URL FILE — curl first, wget second; file:// works with curl (tests use it).
 fetch() {
     if command -v curl >/dev/null 2>&1; then
-        # No redirect may leave https (audit #2943 note 2); file:// is for the tests.
+        # No redirect may leave https; file:// is for the tests.
         curl -fsSL --proto '=https,file' --proto-redir '=https' --connect-timeout 10 --max-time 300 "$1" -o "$2"
     elif command -v wget >/dev/null 2>&1; then
         wget -q --timeout=30 --tries=2 "$1" -O "$2"
@@ -287,7 +292,7 @@ pick_version() {
 # keeps its latest (docs/release-checklist.md). First the REST list (100 newest, with the
 # draft and prerelease fields); when it cannot be read (no network to the API, or the
 # unauthenticated limit of 60 requests an hour is spent), the releases feed, which is not
-# rate limited but holds only the 10 newest entries (audit #2943 B1).
+# rate limited but holds only the 10 newest entries.
 latest_version() {
     VERSION=""
     api_file="$TMP_DIR/releases.json"
@@ -359,8 +364,13 @@ extract() {
     mkdir "$TMP_DIR/x"
     tar -xJf "$ARCHIVE" -C "$TMP_DIR/x" ||
         die "Failed to extract the archive (tar needs xz support: install xz-utils)"
-    NEW_BIN=$(find "$TMP_DIR/x" -maxdepth 2 -type f -name moai-cli | head -n 1)
-    [ -n "$NEW_BIN" ] || die "moai-cli not found in the archive"
+    # The archive's `moai` is the binary; an archive that holds only the earlier `moai-cli` is
+    # placed under the name `moai`. Nothing is written outside TMP_DIR before this check.
+    NEW_BIN=$(find "$TMP_DIR/x" -maxdepth 2 -type f -name moai | head -n 1)
+    if [ -z "$NEW_BIN" ]; then
+        NEW_BIN=$(find "$TMP_DIR/x" -maxdepth 2 -type f -name moai-cli | head -n 1)
+    fi
+    [ -n "$NEW_BIN" ] || die "The archive holds neither moai nor moai-cli: nothing is installed"
     chmod 755 "$NEW_BIN"
     ARCHIVE_ROOT=$(dirname "$NEW_BIN")
 }
@@ -384,16 +394,16 @@ add_parts() {
 
 # Asks the downloaded binary where its state lives and what `moai` on PATH is. Read only.
 #
-# Every `moai-cli` child below reads its standard input from /dev/null
+# Every `moai` child below reads its standard input from /dev/null
 # (SPEC-20261118-installer-stdin-null): under `curl ... | sh` this script itself is standard
 # input, and a child that read it would eat the part not yet run. Answers are read by `ask_line`,
 # from standard input or /dev/tty, never by a child.
 inspect() {
-    out=$("$NEW_BIN" install-inspect </dev/null 2>/dev/null) || die "The downloaded moai-cli does not run on this machine"
+    out=$("$NEW_BIN" install-inspect </dev/null 2>/dev/null) || die "The downloaded moai does not run on this machine"
     STATE_HOME=$(printf '%s' "$out" | sed -n 's/.*"home_state_root":"\([^"\\]*\)".*/\1/p')
     case "$STATE_HOME" in
         /*) ;;
-        *) die "The downloaded moai-cli did not name an absolute state folder: nothing is installed" ;;
+        *) die "The downloaded moai did not name an absolute state folder: nothing is installed" ;;
     esac
     GO_ON_PATH=""
     case "$out" in
@@ -405,7 +415,7 @@ place() {
     versions="$STATE_HOME/versions"
     DEST="$versions/$VERSION"
     if [ -e "$DEST" ] || [ -L "$DEST" ]; then
-        if [ -f "$DEST/bin/moai-cli" ] && [ "$(sha256_of "$DEST/bin/moai-cli")" = "$(sha256_of "$NEW_BIN")" ]; then
+        if [ -f "$DEST/bin/moai" ] && [ "$(sha256_of "$DEST/bin/moai")" = "$(sha256_of "$NEW_BIN")" ]; then
             print_success "$VERSION is already installed: $DEST"
             # A folder an earlier installer placed holds bin/ only: add what this archive carries.
             PARTS_ADDED=""
@@ -419,9 +429,8 @@ place() {
     mkdir -p "$versions"
     STAGE_DIR=$(mktemp -d "$versions/.install-$VERSION.XXXXXX")
     mkdir "$STAGE_DIR/bin"
-    cp "$NEW_BIN" "$STAGE_DIR/bin/moai-cli"
-    chmod 755 "$STAGE_DIR/bin/moai-cli"
-    ln "$STAGE_DIR/bin/moai-cli" "$STAGE_DIR/bin/moai"
+    cp "$NEW_BIN" "$STAGE_DIR/bin/moai"
+    chmod 755 "$STAGE_DIR/bin/moai"
     chmod 755 "$STAGE_DIR"
     PARTS_ADDED=""
     add_parts "$STAGE_DIR"
@@ -442,15 +451,15 @@ detect_hosts() {
     done
 }
 
-# A failed `moai-cli update`: the binary stays installed, and the product's own message is shown.
+# A failed `moai update`: the binary stays installed, and the product's own message is shown.
 update_failed() {
     msg=$(printf '%s' "$1" | sed -n 's/.*"message":"\([^"]*\)".*/\1/p' | head -n 1)
     [ -n "$msg" ] || msg=$(head -n 1 "$TMP_DIR/update.err" 2>/dev/null || true)
-    print_warning "The MoAI skill and agents were not installed: ${msg:-moai-cli update did not succeed}"
+    print_warning "The MoAI skill and agents were not installed: ${msg:-moai update did not succeed}"
     print_info "The moai command is installed; try again later with: moai update"
 }
 
-# Installs the skill and the agents into the hosts found, through `moai-cli update` run from the
+# Installs the skill and the agents into the hosts found, through `moai update` run from the
 # version folder (so the hooks of the project the user stands in are not part of the plan).
 install_skill() {
     SKILL_READY=""
@@ -462,10 +471,10 @@ install_skill() {
         return 0
     fi
     print_info "Previewing the MoAI skill and agents for your hosts (writes nothing):"
-    # Both `moai-cli update` calls keep their stderr in a file: on the person's terminal, what
+    # Both `moai update` calls keep their stderr in a file: on the person's terminal, what
     # the product prints there (or a question it asks) would wait unseen behind this script's
     # own prompt (SPEC-20261117-installer-tty REQ-3).
-    if ! preview=$(cd "$DEST" && "$DEST/bin/moai-cli" update --json </dev/null 2>"$TMP_DIR/update.err"); then
+    if ! preview=$(cd "$DEST" && "$DEST/bin/moai" update --json </dev/null 2>"$TMP_DIR/update.err"); then
         update_failed "$preview"
         return 0
     fi
@@ -507,7 +516,7 @@ install_skill() {
         print_info "Nothing was written to your home folder (no terminal to ask at). Install them with: moai update (or run this installer with --yes)"
         return 0
     fi
-    if ! out=$(cd "$DEST" && "$DEST/bin/moai-cli" update --confirm "$digest" --json </dev/null 2>"$TMP_DIR/update.err"); then
+    if ! out=$(cd "$DEST" && "$DEST/bin/moai" update --confirm "$digest" --json </dev/null 2>"$TMP_DIR/update.err"); then
         update_failed "$out"
         return 0
     fi
@@ -523,7 +532,9 @@ install_skill() {
 link_commands() {
     LINK_DIR="${INSTALL_DIR:-$STATE_HOME/path}"
     mkdir -p "$LINK_DIR"
-    for name in moai-cli moai; do
+    # The link `moai` only; a `moai-cli` link an earlier install left is never touched
+    # (SPEC-20261127-installed-binary-name-moai REQ-4).
+    for name in moai; do
         link="$LINK_DIR/$name"
         if [ -L "$link" ]; then
             current=$(readlink "$link")
@@ -551,12 +562,12 @@ link_commands() {
 }
 
 finish() {
-    "$DEST/bin/moai-cli" --version </dev/null || print_warning "moai-cli did not report its version"
+    "$DEST/bin/moai" --version </dev/null || print_warning "moai did not report its version"
     if [ -n "$GO_ON_PATH" ]; then
         echo ""
         print_warning "The moai first on your PATH is the Go edition; it was not changed."
         print_info "Preview what moving to the Rust edition changes (writes nothing):"
-        echo "  $DEST/bin/moai-cli update"
+        echo "  $DEST/bin/moai update"
     fi
     case ":$PATH:" in
         *":$LINK_DIR:"*) ;;

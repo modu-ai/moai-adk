@@ -1445,6 +1445,88 @@ fn go_state_fact(root: &Path) -> Value {
     json!({"moai_dir": moai_dir, "go_manifest": go_manifest})
 }
 
+/// Release tools and the file that shows each one, with the versioning scheme the tool assumes:
+/// a release drafter resolves the next version from major, minor and patch labels, semantic-release
+/// from commit types, release-please and changesets from conventional bumps. Only the presence of
+/// the file is read; its text never enters the output.
+const RELEASE_TOOLS: &[(&str, &[&str], &str)] = &[
+    ("changesets", &[".changeset/config.json"], "semver"),
+    (
+        "release-drafter",
+        &[
+            ".github/release-drafter.yml",
+            ".github/release-drafter.yaml",
+        ],
+        "semver",
+    ),
+    (
+        "release-please",
+        &[
+            "release-please-config.json",
+            ".release-please-manifest.json",
+        ],
+        "semver",
+    ),
+    (
+        "semantic-release",
+        &[
+            ".releaserc",
+            ".releaserc.json",
+            ".releaserc.yaml",
+            ".releaserc.yml",
+            ".releaserc.js",
+            ".releaserc.cjs",
+            ".releaserc.mjs",
+            "release.config.js",
+            "release.config.cjs",
+            "release.config.mjs",
+            "release.config.ts",
+        ],
+        "semver",
+    ),
+];
+
+/// The `release_tooling` fact of `project-detect` (C-157): each release tool found, the scheme
+/// they assume, and a `conflict` line when the project's versions already follow another scheme
+/// (`versioning_scheme` is the `versioning` fact's), so the versioning question can warn before
+/// a pick breaks the tool. Reads no file text and follows no link; starts no program.
+fn release_tooling_fact(root: &Path, versioning_scheme: Option<&str>) -> Value {
+    let mut tools: Vec<(&str, &str, &str)> = Vec::new();
+    for (tool, files, assumes) in RELEASE_TOOLS {
+        for file in *files {
+            let parts: Vec<&str> = file.split('/').collect();
+            if is_file_in(root, &parts) {
+                tools.push((tool, file, assumes));
+            }
+        }
+    }
+    tools.sort();
+    let assumed: BTreeSet<&str> = tools.iter().map(|(_, _, a)| *a).collect();
+    let assumes = match assumed.len() {
+        1 => assumed.iter().next().copied(),
+        _ => None,
+    };
+    let conflict = match (assumes, versioning_scheme) {
+        (Some(assumed), Some(found)) if found != assumed && found != "none" && found != "mixed" => {
+            let names: BTreeSet<&str> = tools.iter().map(|(t, _, _)| *t).collect();
+            Some(format!(
+                "{} assumes {assumed} versions, but this project's versions follow {found}: a \
+                 {found} pick can break it; show this line next to the versioning question",
+                names.into_iter().collect::<Vec<_>>().join(", ")
+            ))
+        }
+        _ => None,
+    };
+    json!({
+        "tools": tools
+            .iter()
+            .map(|(tool, file, assumes)| json!({"tool": tool, "file": file, "assumes": assumes}))
+            .collect::<Vec<_>>(),
+        "assumes": assumes,
+        "conflict": conflict,
+    })
+}
+
 /// `project-detect`: the facts, and — when the project has a profile — that profile with
 /// `detected` set, ready for `project-plan`. Writes nothing.
 pub fn detect_cli(root: &Path) -> Result<Value> {
@@ -1519,6 +1601,8 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
             reasons.join("; ")
         ));
     }
+    let versioning = crate::versioning::fact(root);
+    let release_tooling = release_tooling_fact(root, versioning["scheme"].as_str());
     Ok(json!({
         "detected": detected,
         "manifest_walk": {"complete": walk_complete, "over_cap": over_cap},
@@ -1539,7 +1623,10 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
         ),
         // C-69: the versioning scheme the tag names and root manifests already show, a fact
         // beside `detected` like the commands; the interview offers keeping it.
-        "versioning": crate::versioning::fact(root),
+        "versioning": versioning,
+        // C-157: the release tools the project already runs and the scheme they assume, with a
+        // conflict line when the project's versions follow another one.
+        "release_tooling": release_tooling,
         // SPEC-20261122-project-scale: small, large single tree or monorepo, a fact beside
         // `detected` that the user's pick can override; never recorded inside `detected`.
         "scale": crate::project_scale_detect::read(root),

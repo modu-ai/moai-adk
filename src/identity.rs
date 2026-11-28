@@ -108,13 +108,15 @@ pub(crate) fn failure_summary(stderr: &[u8]) -> String {
 /// reconfigure git are removed and the locale is fixed. stderr is read only to classify a
 /// failure; what reaches the caller is `failure_summary`, never a path.
 ///
-/// With a `home` that is not the process's own HOME the child runs with that HOME and without
-/// `XDG_CONFIG_HOME` and `GIT_CONFIG_GLOBAL`, so git reads that HOME's `.gitconfig` and
-/// `.config/git/config` and neither the environment's files nor the file the environment names. A
-/// `home` equal to the process's own HOME, and no `home` at all, leave the child the process's own
-/// environment, so a user's `XDG_CONFIG_HOME` and `GIT_CONFIG_GLOBAL` keep working
-/// (SPEC-20261124-home-env-readers D-8; git(1), FILES and ENVIRONMENT).
-fn rev_parse(dir: &Path, args: &[&str], home: Option<&Path>) -> Git {
+/// With a `home` that is not `process_home` (the process's own HOME, given by the caller; none
+/// counts as another) the child runs with that HOME and without `XDG_CONFIG_HOME` and
+/// `GIT_CONFIG_GLOBAL`, so git reads that HOME's `.gitconfig` and `.config/git/config` and neither
+/// the environment's files nor the file the environment names. A `home` equal to `process_home`,
+/// and no `home` at all, leave the child the process's own environment, so a user's
+/// `XDG_CONFIG_HOME` and `GIT_CONFIG_GLOBAL` keep working (SPEC-20261124-home-env-readers D-8;
+/// SPEC-20261124-identity-home-arg REQ-32..34; git(1), FILES and ENVIRONMENT). No environment
+/// variable named HOME is read here.
+fn rev_parse(dir: &Path, args: &[&str], home: Option<&Path>, process_home: Option<&Path>) -> Git {
     let mut cmd = Command::new("git");
     cmd.arg("--no-optional-locks")
         .arg("-C")
@@ -123,7 +125,7 @@ fn rev_parse(dir: &Path, args: &[&str], home: Option<&Path>) -> Git {
         .args(args);
     scrub_git_env(&mut cmd);
     if let Some(home) = home.filter(|h| !h.as_os_str().is_empty()) {
-        if crate::layout::environment_home().as_deref() != Some(home) {
+        if process_home != Some(home) {
             cmd.env("HOME", home)
                 .env_remove("XDG_CONFIG_HOME")
                 .env_remove("GIT_CONFIG_GLOBAL");
@@ -201,8 +203,9 @@ fn empty(status: &str, reason: &str, home: Value) -> Value {
     })
 }
 
-/// The `ok` answers kept inside one [`with_memo`] scope, by the path asked and the HOME given.
-type Memo = HashMap<(PathBuf, Option<PathBuf>), Value>;
+/// The `ok` answers kept inside one [`with_memo`] scope, by the path asked, the HOME given and the
+/// process HOME given with it (the last decides the environment of the git children).
+type Memo = HashMap<(PathBuf, Option<PathBuf>, Option<PathBuf>), Value>;
 
 thread_local! {
     static MEMO: RefCell<Option<Memo>> = const { RefCell::new(None) };
@@ -230,27 +233,35 @@ pub fn with_memo<T>(f: impl FnOnce() -> T) -> T {
     f()
 }
 
-/// The process-edge reader of the environment HOME (SPEC-20261124-identity-home-arg): the one
-/// place in this module that reads it. A command's edge uses this; code that is not about the
-/// HOME calls [`identity_in`] with `None`, and code that is hands it the HOME it was given.
+/// Resolves the identity of `path` against the HOME given (SPEC-20261124-identity-home-arg: the
+/// HOME is an argument, and every caller reads or passes its own). Never writes. Returns `Err`
+/// only for an unusable input path, a refused symlink or a git failure (`git failed: ...`); "not a
+/// repository" and "git missing" are typed statuses.
 ///
-/// Resolves the identity of `path`. Never writes. Returns `Err` only for an unusable input
-/// path, a refused symlink or a git failure (`git failed: ...`); "not a repository" and "git
-/// missing" are typed statuses. An unset or empty HOME counts as no HOME.
-pub fn identity(path: &Path) -> Result<Value> {
-    let home = std::env::var_os("HOME")
-        .filter(|h| !h.is_empty())
-        .map(PathBuf::from);
-    identity_in(path, home.as_deref())
+/// `home_state_root` is the home state root of `home`, or `null` for `None` (and for an empty
+/// HOME, which counts as none), for which no home state root is resolved; no other field depends
+/// on it. `home_state_root` is found from no environment variable. The `git` children read the
+/// global git configuration of `home` when one is given and, with `None`, keep the process's own
+/// lookup, so the environment HOME's configuration reaches them only through the caller that
+/// passes no HOME (SPEC-20261124-home-env-readers D-8).
+pub fn identity_in(path: &Path, home: Option<&Path>) -> Result<Value> {
+    // Slice 2c-1 of SPEC-20261124-identity-home-arg: this function still reads the environment HOME
+    // for the comparison, so its answers stay what they were; slice 2c-2 gives `None` here once
+    // every caller that gives a HOME has moved to `identity_in_from`.
+    identity_in_from(path, home, crate::layout::environment_home().as_deref())
 }
 
-/// [`identity`] with the HOME given instead of read from the environment. `home_state_root` is
-/// the home state root of `home`, or `null` for `None`, for which no home state root is resolved;
-/// no other field depends on it. `home_state_root` is found from no environment variable. The
-/// `git` children read the global git configuration of `home` when one is given
-/// and, with `None`, keep the process's own lookup, so the environment HOME's configuration
-/// reaches them only through the caller that passes no HOME (SPEC-20261124-home-env-readers D-8).
-pub fn identity_in(path: &Path, home: Option<&Path>) -> Result<Value> {
+/// [`identity_in`] with the process's own HOME given as an argument (SPEC-20261124-identity-home-arg
+/// D-17). It reads no environment variable named HOME: `process_home` is the HOME the process runs
+/// with, as the caller's command edge read it, and it alone decides the environment of the git
+/// children. A `home` equal to `process_home` leaves them the process's own environment (the user's
+/// `XDG_CONFIG_HOME` and `GIT_CONFIG_GLOBAL` keep working); a `home` that differs, or no
+/// `process_home`, makes `home` the only source of the global git configuration.
+pub fn identity_in_from(
+    path: &Path,
+    home: Option<&Path>,
+    process_home: Option<&Path>,
+) -> Result<Value> {
     let meta = fs::symlink_metadata(path).map_err(|_| "path unavailable")?;
     if meta.file_type().is_symlink() {
         return Err("path is a symlink; refused".into());
@@ -258,6 +269,8 @@ pub fn identity_in(path: &Path, home: Option<&Path>) -> Result<Value> {
     if !meta.is_dir() {
         return Err("path must be a directory".into());
     }
+    // An empty HOME is no HOME: joined with the state folder name it would name a relative path.
+    let home = home.filter(|h| !h.as_os_str().is_empty());
     let given = home;
     let home = match home {
         Some(h) => {
@@ -267,11 +280,15 @@ pub fn identity_in(path: &Path, home: Option<&Path>) -> Result<Value> {
         }
         None => Value::Null,
     };
-    let key = (path.to_path_buf(), given.map(Path::to_path_buf));
+    let key = (
+        path.to_path_buf(),
+        given.map(Path::to_path_buf),
+        process_home.map(Path::to_path_buf),
+    );
     if let Some(known) = MEMO.with(|m| m.borrow().as_ref().and_then(|m| m.get(&key).cloned())) {
         return Ok(known);
     }
-    let answer = ask_git(path, given, home)?;
+    let answer = ask_git(path, given, process_home, home)?;
     if answer["identity_status"] == "ok" {
         MEMO.with(|m| {
             if let Some(m) = m.borrow_mut().as_mut() {
@@ -282,9 +299,15 @@ pub fn identity_in(path: &Path, home: Option<&Path>) -> Result<Value> {
     Ok(answer)
 }
 
-/// The part of [`identity_in`] that asks git, after the checks of the given path and HOME. `given`
-/// is the HOME of the caller and `home` the `home_state_root` field made from it.
-fn ask_git(path: &Path, given: Option<&Path>, home: Value) -> Result<Value> {
+/// The part of [`identity_in_from`] that asks git, after the checks of the given path and HOME.
+/// `given` is the HOME of the caller, `process_home` the process HOME it gave with it and `home`
+/// the `home_state_root` field made from `given`.
+fn ask_git(
+    path: &Path,
+    given: Option<&Path>,
+    process_home: Option<&Path>,
+    home: Value,
+) -> Result<Value> {
     let lines = match rev_parse(
         path,
         &[
@@ -295,6 +318,7 @@ fn ask_git(path: &Path, given: Option<&Path>, home: Value) -> Result<Value> {
             "--is-inside-work-tree",
         ],
         given,
+        process_home,
     ) {
         Git::Unavailable => return Ok(empty("git_unavailable", "git was not found on PATH", home)),
         Git::Failed(summary) => return failed(&summary, home),
@@ -306,7 +330,12 @@ fn ask_git(path: &Path, given: Option<&Path>, home: Value) -> Result<Value> {
     let bare = lines[2] == "true";
     let in_work_tree = lines[3] == "true";
     let work_tree = if in_work_tree {
-        match rev_parse(path, &["--path-format=absolute", "--show-toplevel"], given) {
+        match rev_parse(
+            path,
+            &["--path-format=absolute", "--show-toplevel"],
+            given,
+            process_home,
+        ) {
             Git::Lines(l) if l.len() == 1 => Some(canonical(&l[0])?),
             Git::Unavailable => {
                 return Ok(empty("git_unavailable", "git was not found on PATH", home))
@@ -528,9 +557,9 @@ mod scrub_tests {
 /// SPEC-20261124-identity-home-arg slice 2a: the shared fixture of a test that proves code which
 /// asks `identity_in(path, None)` no longer touches the home state of the environment HOME. The
 /// test re-runs itself in a child process whose HOME holds a symlinked home state folder, the one
-/// state `identity` refuses, so no test changes this process's environment and none reads the real
-/// HOME. The child first checks that `identity` still refuses that HOME (the refusal where the
-/// home state is read stays), then runs the test body.
+/// state `identity_in` refuses, so no test changes this process's environment and none reads the
+/// real HOME. The child first checks that `identity_in` still refuses that HOME when it is handed
+/// over (the refusal where the home state is read stays), then runs the test body.
 #[cfg(all(test, unix))]
 pub(crate) mod linked_home_test {
     use std::{
@@ -614,8 +643,9 @@ pub(crate) mod linked_home_test {
     pub(crate) fn run(module: &str, test: &str, body: impl FnOnce(&Folders)) {
         if let Some(project) = std::env::var_os(CHILD_PROJECT) {
             let folders = folders_of(Path::new(&project));
+            let env_home = crate::layout::environment_home();
             assert_eq!(
-                super::identity(&folders.project).unwrap_err(),
+                super::identity_in(&folders.project, env_home.as_deref()).unwrap_err(),
                 "home state root is a symlink; refused",
                 "where the home state is read, the environment HOME is still refused"
             );
@@ -667,14 +697,14 @@ pub(crate) mod linked_home_test {
     }
 }
 
-/// SPEC-20261124-identity-home-arg: `identity_in` takes the HOME as an argument and `identity` is
-/// the one process-edge reader of the environment HOME. A test that must see the environment HOME
-/// run as another value re-runs itself in a child process, so no test changes this process's
-/// environment and none reads the real HOME.
+/// SPEC-20261124-identity-home-arg: `identity_in` takes the HOME as an argument and reads no
+/// environment variable for it. A test that must see the environment HOME run as another value
+/// re-runs itself in a child process, so no test changes this process's environment and none
+/// reads the real HOME.
 #[cfg(all(test, unix))]
 mod home_arg_tests {
+    use super::identity_in;
     use super::linked_home_test::symlinked_home;
-    use super::{identity, identity_in};
     use std::{
         ffi::OsString,
         path::{Path, PathBuf},
@@ -683,9 +713,6 @@ mod home_arg_tests {
 
     /// Set in the child process; names the work folder the child resolves identities for.
     const CHILD_WORK: &str = "MOAI_IDENTITY_TEST_WORK";
-    /// Set in the child process of the equality test; the HOME `identity` must have read, absent
-    /// when the child's HOME is unset or empty.
-    const CHILD_EXPECT: &str = "MOAI_IDENTITY_TEST_EXPECT_HOME";
 
     /// The libtest name of `test` in this module, as `--exact` wants it (no crate prefix).
     fn libtest_name(test: &str) -> String {
@@ -747,8 +774,8 @@ mod home_arg_tests {
     }
 
     /// AC-2 (REQ-2), child side: the environment HOME holds a symlinked state folder, so a read of
-    /// it would be refused. `identity` reads it and is refused; `identity_in` with no HOME does
-    /// not read it and answers `home_state_root: null`.
+    /// it would be refused. `identity_in` with that HOME handed over is refused; `identity_in`
+    /// with no HOME does not read it and answers `home_state_root: null`.
     #[test]
     fn identity_in_without_a_home_ignores_the_environment_home() {
         let Some(work) = child_work() else {
@@ -764,7 +791,9 @@ mod home_arg_tests {
             );
             return;
         };
-        let refused = identity(&work).expect_err("identity reads the environment HOME");
+        let env_home = crate::layout::environment_home();
+        let refused =
+            identity_in(&work, env_home.as_deref()).expect_err("the environment HOME is refused");
         assert_eq!(refused, "home state root is a symlink; refused");
         let v = identity_in(&work, None).expect("no HOME, no refusal");
         assert!(v["home_state_root"].is_null(), "{v}");
@@ -781,32 +810,13 @@ mod home_arg_tests {
         assert_eq!(refused, "home state root is a symlink; refused");
     }
 
-    /// AC-4 (REQ-5), child side: `identity` answers what `identity_in` answers for the HOME the
-    /// parent put in the environment (`CHILD_EXPECT`), or for no HOME when it did not.
+    /// SPEC-20261124-identity-home-arg AC-12 (REQ-10): an empty HOME is no HOME. Joined with the
+    /// state folder name it would name a home state root relative to the current directory.
     #[test]
-    fn identity_equals_identity_in_with_the_environment_home() {
-        let Some(work) = child_work() else {
-            let dir = tempfile::tempdir().unwrap();
-            let work = dir.path().join("work");
-            std::fs::create_dir(&work).unwrap();
-            let home = dir.path().join("home");
-            std::fs::create_dir(&home).unwrap();
-            let test = "identity_equals_identity_in_with_the_environment_home";
-            run_in_child(
-                test,
-                Some(&home.clone().into_os_string()),
-                &work,
-                &[(CHILD_EXPECT, &home)],
-            );
-            run_in_child(test, Some(&OsString::new()), &work, &[]);
-            run_in_child(test, None, &work, &[]);
-            return;
-        };
-        let expect = std::env::var_os(CHILD_EXPECT).map(PathBuf::from);
-        assert_eq!(
-            identity(&work).unwrap(),
-            identity_in(&work, expect.as_deref()).unwrap()
-        );
+    fn home_arg_rest_identity_in_treats_an_empty_home_as_none() {
+        let work = tempfile::tempdir().unwrap();
+        let v = identity_in(work.path(), Some(Path::new(""))).unwrap();
+        assert!(v["home_state_root"].is_null(), "{v}");
     }
 }
 
@@ -818,7 +828,7 @@ mod home_arg_tests {
 /// test changes this process's environment and none reads the real HOME.
 #[cfg(all(test, unix))]
 mod git_config_tests {
-    use super::{identity, identity_in};
+    use super::{identity_in, identity_in_from};
     use crate::layout::home_arg_tests::{child_var, init_repo, run_in_child_of};
     use std::{
         ffi::OsString,
@@ -946,7 +956,8 @@ mod git_config_tests {
         refused(identity_in(&work, Some(&plain)));
     }
 
-    /// AC-15 (REQ-10), child side: `identity` runs git with the environment as it is. Trust that
+    /// AC-15 (REQ-10), child side: `identity_in` given the environment HOME runs git with the
+    /// environment as it is. Trust that
     /// the environment keeps in `$XDG_CONFIG_HOME/git/config`, or in the file `GIT_CONFIG_GLOBAL`
     /// names, counts; with neither the repository is refused (the control).
     #[test]
@@ -987,11 +998,13 @@ mod git_config_tests {
             }
             return;
         };
+        // The environment HOME handed over, as a command's edge hands it.
+        let env_home = crate::layout::environment_home();
         if case == Path::new("none") {
-            refused(identity(&work));
+            refused(identity_in(&work, env_home.as_deref()));
         } else {
             assert_eq!(
-                identity(&work).unwrap()["identity_status"],
+                identity_in(&work, env_home.as_deref()).unwrap()["identity_status"],
                 "ok",
                 "{case:?}"
             );
@@ -1043,7 +1056,112 @@ mod git_config_tests {
             return;
         };
         // The control: the environment really trusts the repository.
-        assert_eq!(identity(&work).unwrap()["identity_status"], "ok");
+        let env_home = crate::layout::environment_home();
+        assert_eq!(
+            identity_in(&work, env_home.as_deref()).unwrap()["identity_status"],
+            "ok"
+        );
         refused(identity_in(&work, Some(&plain)));
+    }
+
+    /// The child of the `identity_in_from` tests (SPEC-20261124-identity-home-arg REQ-32..34). Its
+    /// HOME is a folder without any git configuration, one environment route (`case`: `xdg` or
+    /// `global`) trusts every repository, and git counts the repository as owned by another user.
+    /// The parent runs the child once per route and gets `None`; the child gets the repository,
+    /// a second HOME without configuration and the route.
+    fn from_child(test: &str) -> Option<(PathBuf, PathBuf, PathBuf)> {
+        const WORK: &str = "MOAI_IDENTITY_FROM_TEST_WORK";
+        const OTHER: &str = "MOAI_IDENTITY_FROM_TEST_OTHER_HOME";
+        const CASE: &str = "MOAI_IDENTITY_FROM_TEST_CASE";
+        if let (Some(work), Some(other), Some(case)) =
+            (child_var(WORK), child_var(OTHER), child_var(CASE))
+        {
+            return Some((work, other, case));
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let work = dir.path().join("work");
+        fs::create_dir(&work).unwrap();
+        init_repo(&work);
+        let env_home = dir.path().join("env_home");
+        fs::create_dir(&env_home).unwrap();
+        let other = dir.path().join("other");
+        fs::create_dir(&other).unwrap();
+        let xdg = dir.path().join("xdg");
+        trusting_config(&xdg.join("git/config"));
+        let global = dir.path().join("trusting.gitconfig");
+        trusting_config(&global);
+        for (case, route) in [
+            ("xdg", ("XDG_CONFIG_HOME", &xdg)),
+            ("global", ("GIT_CONFIG_GLOBAL", &global)),
+        ] {
+            let case_name = PathBuf::from(case);
+            let mut extra: Vec<(&str, &Path)> = vec![
+                (WORK, &work),
+                (OTHER, &other),
+                (CASE, &case_name),
+                (route.0, route.1.as_path()),
+            ];
+            extra.extend(OWNER_SWITCHES.iter().map(|(k, v)| (*k, Path::new(*v))));
+            run_in_child_of(
+                module_path!(),
+                test,
+                Some(&OsString::from(env_home.as_os_str())),
+                &extra,
+            );
+        }
+        None
+    }
+
+    /// AC-25 (REQ-33), child side: a `home` equal to the `process_home` given leaves the git child
+    /// the process's own environment, so the trust that `XDG_CONFIG_HOME` or `GIT_CONFIG_GLOBAL`
+    /// names counts.
+    #[test]
+    fn identity_in_from_keeps_the_process_environment_for_the_process_home() {
+        let test = "identity_in_from_keeps_the_process_environment_for_the_process_home";
+        let Some((work, _other, case)) = from_child(test) else {
+            return;
+        };
+        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+        assert_eq!(
+            identity_in_from(&work, Some(&home), Some(&home)).unwrap()["identity_status"],
+            "ok",
+            "{case:?}"
+        );
+    }
+
+    /// AC-25 (REQ-32, REQ-34), child side: a `home` that is not the `process_home` given decides
+    /// alone, whatever the environment HOME holds: another folder, and the environment HOME
+    /// itself when the `process_home` handed over is another folder (no HOME variable is read).
+    #[test]
+    fn identity_in_from_uses_only_the_given_home_for_another_one() {
+        let test = "identity_in_from_uses_only_the_given_home_for_another_one";
+        let Some((work, other, case)) = from_child(test) else {
+            return;
+        };
+        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+        refused(identity_in_from(&work, Some(&other), Some(&home)));
+        refused(identity_in_from(&work, Some(&home), Some(&other)));
+        // The control: the same route trusts the repository when the HOMEs are the same.
+        assert_eq!(
+            identity_in_from(&work, Some(&home), Some(&home)).unwrap()["identity_status"],
+            "ok",
+            "{case:?}"
+        );
+    }
+
+    /// AC-25 (REQ-34), child side: no `process_home` means the `home` given is another HOME.
+    #[test]
+    fn identity_in_from_without_a_process_home_treats_the_home_as_another_one() {
+        let test = "identity_in_from_without_a_process_home_treats_the_home_as_another_one";
+        let Some((work, _other, case)) = from_child(test) else {
+            return;
+        };
+        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+        refused(identity_in_from(&work, Some(&home), None));
+        assert_eq!(
+            identity_in_from(&work, Some(&home), Some(&home)).unwrap()["identity_status"],
+            "ok",
+            "{case:?}"
+        );
     }
 }

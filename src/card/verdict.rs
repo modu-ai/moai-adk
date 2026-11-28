@@ -25,6 +25,8 @@ pub struct VerdictRequest<'a> {
     /// The head the receipt names, with `steps` (`NAME=EXIT` each).
     pub receipt_head: Option<&'a str>,
     pub steps: &'a [String],
+    /// The criteria this PASS holds open (`--open N`, SPEC-20261126-land-open-criteria).
+    pub open: &'a [i64],
 }
 
 fn refused(why: impl std::fmt::Display) -> String {
@@ -75,7 +77,7 @@ fn step_of(text: &str) -> Result<VerdictStep> {
 }
 
 /// `card verdict C-n --head H --base B --verdict pass|fail --tier N --evidence TEXT
-/// [--receipt-head H --receipt-step NAME=EXIT …]`.
+/// [--receipt-head H --receipt-step NAME=EXIT …] [--open N …]`.
 pub fn verdict(
     project: &Path,
     home: &Path,
@@ -91,12 +93,16 @@ pub fn verdict(
     };
     hash_option("--head", req.head)?;
     hash_option("--base", req.base)?;
-    let pass = match req.verdict {
+    // The word is read without regard to case or surrounding blanks (`PASS`, `Fail`): it is the
+    // right word, and a lane that wrote it in capitals lost a call to the spelling alone
+    // (card C-608). The refusal below still quotes what was given.
+    let pass = match req.verdict.trim().to_ascii_lowercase().as_str() {
         "pass" => true,
         "fail" => false,
-        other => {
+        _ => {
             return Err(refused(format!(
-                "--verdict is `pass` or `fail`, not `{other}`"
+                "--verdict is `pass` or `fail`, not `{}`",
+                req.verdict
             )))
         }
     };
@@ -153,6 +159,10 @@ pub fn verdict(
         ))
     })?;
 
+    let mut open = req.open.to_vec();
+    open.sort_unstable();
+    open.dedup();
+
     let (id, mut ledger) = open_for_write(project, home)?;
     let recorded = workflow::record_verdict(
         &mut ledger,
@@ -165,18 +175,24 @@ pub fn verdict(
             evidence: req.evidence,
             receipt: receipt.as_ref(),
             reviewer,
+            open: &open,
         },
     )
     .map_err(|e| match e {
         WorkflowError::InvalidInput(why) => refused(why),
         other => other.to_string(),
     })?;
-    Ok(json!({
+    let mut answer = json!({
         "action": "verdict", "project_id": id,
         "name": input::card_name(card), "card_id": card,
         "event": recorded.event_id, "written": recorded.written,
-        "head": req.head, "base": req.base, "verdict": req.verdict, "tier": req.tier,
+        "head": req.head, "base": req.base,
+        "verdict": if pass { "pass" } else { "fail" }, "tier": req.tier,
         "reviewer": reviewer,
         "events": u8::from(recorded.written), "writes": recorded.written,
-    }))
+    });
+    if !open.is_empty() {
+        answer["open"] = json!(open);
+    }
+    Ok(answer)
 }

@@ -905,18 +905,21 @@ pub struct HoldInfo {
     pub at: i64,
 }
 
+/// The query that reads the newest hold event of a card (`?1` is the card id). It is a constant so
+/// a test can ask SQLite for its plan: the lookup must go through the `event_card_kind` index and
+/// not read the whole `event` table (SPEC-20261127-card-prereq-remove REQ-12).
+pub const HOLD_READ_SQL: &str = "SELECT kind, payload, at FROM event \
+     WHERE card_id = ?1 AND kind IN ('card.hold', 'card.unhold') \
+     ORDER BY event_id DESC LIMIT 1";
+
 /// The HOLD in force on a card, or `None` when its newest hold event is a `card.unhold` or it has
 /// none. Only the two event kinds are read: free text in a note or a body never counts, and no
 /// code but [`unhold`] writes a `card.unhold`.
 pub fn current_hold(conn: &Connection, card_id: i64) -> rusqlite::Result<Option<HoldInfo>> {
     let newest: Option<(String, String, i64)> = conn
-        .query_row(
-            "SELECT kind, payload, at FROM event \
-             WHERE card_id = ?1 AND kind IN ('card.hold', 'card.unhold') \
-             ORDER BY event_id DESC LIMIT 1",
-            [card_id],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
-        )
+        .query_row(HOLD_READ_SQL, [card_id], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+        })
         .optional()?;
     Ok(newest.and_then(|(kind, payload, at)| {
         if kind != "card.hold" {
@@ -934,15 +937,47 @@ pub fn current_hold(conn: &Connection, card_id: i64) -> rusqlite::Result<Option<
 }
 
 /// The cards `card_id` waits for: those with an active `blocks` link to it that are not `done`,
-/// in card order.
+/// in card order. A withdrawn card (state `hold` whose newest `card.withdraw` or `card.fold` event
+/// is a `card.withdraw`) no longer counts: its work is given up. A folded card still counts, since
+/// its work moved to another card, and so does a plain `hold` card with neither event
+/// (SPEC-20261127-card-prereq-remove REQ-9, REQ-10). `COALESCE` keeps a card with no such event
+/// counting: a bare `NOT (… = …)` over a missing event would drop the row.
 pub fn unfinished_prerequisites(conn: &Connection, card_id: i64) -> rusqlite::Result<Vec<i64>> {
     let mut stmt = conn.prepare(
         "SELECT l.from_card FROM card_link l JOIN card c ON c.card_id = l.from_card \
          WHERE l.kind = 'blocks' AND l.state = 'active' AND l.to_card = ?1 AND c.state <> 'done' \
+         AND NOT (c.state = 'hold' AND COALESCE((SELECT e.kind FROM event e \
+                  WHERE e.card_id = c.card_id AND e.kind IN ('card.withdraw', 'card.fold') \
+                  ORDER BY e.event_id DESC LIMIT 1), '') = 'card.withdraw') \
          ORDER BY l.from_card",
     )?;
     let rows = stmt.query_map([card_id], |r| r.get(0))?;
     rows.collect()
+}
+
+/// The refusal for a card with a HOLD in force or a prerequisite that is not done, or `None`. A
+/// free-text HOLD is never read: only the `card.hold` event and the `blocks` links are. `card
+/// take` calls it before it reserves and the reservation transaction calls it again inside its
+/// write transaction, so the words and the order (HOLD first) are one.
+pub fn hold_gate_refusal(conn: &Connection, card_id: i64) -> rusqlite::Result<Option<String>> {
+    let name = format!("C-{card_id}");
+    if let Some(hold) = current_hold(conn, card_id)? {
+        return Ok(Some(format!(
+            "card take refused: {name} is on HOLD ({}): {}; lift it with `moai card unhold {name} \
+             --reason <why> --by <name>` only when the decision is made; nothing was taken",
+            hold.category, hold.reason
+        )));
+    }
+    let needs = unfinished_prerequisites(conn, card_id)?;
+    if needs.is_empty() {
+        return Ok(None);
+    }
+    let names: Vec<String> = needs.iter().map(|c| format!("C-{c}")).collect();
+    Ok(Some(format!(
+        "card take refused: {name} waits for {}, which {} not done; nothing was taken",
+        names.join(", "),
+        if names.len() == 1 { "is" } else { "are" }
+    )))
 }
 
 /// Why a HOLD was not set or lifted.
@@ -1114,10 +1149,13 @@ pub enum PrereqError {
     CardNotFound(i64),
     /// A card cannot need itself.
     SelfNeed(i64),
-    /// `needs` already needs `card_id`, so the two would wait for each other.
+    /// `needs` already needs `card_id`, directly or through other cards, so the cards of the loop
+    /// would wait for each other. `path` is the loop in order, from `card_id` through `needs`
+    /// back to `card_id`: each card needs the next one.
     Cycle {
         card_id: i64,
         needs: i64,
+        path: Vec<i64>,
     },
     InvalidInput(String),
     Ledger(LedgerError),
@@ -1128,10 +1166,24 @@ impl std::fmt::Display for PrereqError {
         match self {
             PrereqError::CardNotFound(id) => write!(f, "card not found: C-{id}"),
             PrereqError::SelfNeed(id) => write!(f, "the card C-{id} cannot need itself"),
-            PrereqError::Cycle { card_id, needs } => write!(
+            // Two cards keep the words they always had.
+            PrereqError::Cycle {
+                card_id,
+                needs,
+                path,
+            } if path.len() <= 3 => write!(
                 f,
                 "C-{needs} already needs C-{card_id}, so they would wait for each other"
             ),
+            PrereqError::Cycle { path, .. } => {
+                let names: Vec<String> = path.iter().map(|c| format!("C-{c}")).collect();
+                write!(
+                    f,
+                    "the cards would wait for each other in a loop ({}); remove one link with \
+                     `moai card prereq <card> --needs <card> --remove --by <name>` first",
+                    names.join(" -> ")
+                )
+            }
             PrereqError::InvalidInput(why) => write!(f, "{why}"),
             PrereqError::Ledger(e) => write!(f, "{e}"),
         }
@@ -1146,9 +1198,54 @@ impl From<LedgerError> for PrereqError {
     }
 }
 
+/// The loop that `card_id` needing `needs` would close, or `None`. It follows the active `blocks`
+/// links breadth first from `needs` (a card's prerequisites are the `from_card` of the links that
+/// reach it) and stops when it reaches `card_id`; every active link counts whatever the state of
+/// the cards on it. The answer is `card_id, needs, …, card_id`: each card needs the next one.
+/// Retired links are not followed. Each card is visited once, so the walk ends on any ledger.
+fn prerequisite_loop(
+    conn: &Connection,
+    card_id: i64,
+    needs: i64,
+) -> rusqlite::Result<Option<Vec<i64>>> {
+    let mut stmt = conn.prepare(
+        "SELECT from_card FROM card_link \
+         WHERE kind = 'blocks' AND state = 'active' AND to_card = ?1 ORDER BY from_card",
+    )?;
+    let mut parent: std::collections::HashMap<i64, i64> = std::collections::HashMap::new();
+    let mut queue = std::collections::VecDeque::from([needs]);
+    parent.insert(needs, card_id);
+    while let Some(card) = queue.pop_front() {
+        let next: Vec<i64> = stmt
+            .query_map([card], |r| r.get(0))?
+            .collect::<rusqlite::Result<_>>()?;
+        for prerequisite in next {
+            if prerequisite == card_id {
+                // `card` needs `card_id`. Walk back from `card` to `needs` through the cards that
+                // discovered each one, then put `card_id` at both ends.
+                let mut middle = vec![card];
+                while *middle.last().expect("one card") != needs {
+                    middle.push(parent[middle.last().expect("one card")]);
+                }
+                middle.reverse();
+                let mut path = vec![card_id];
+                path.extend(middle);
+                path.push(card_id);
+                return Ok(Some(path));
+            }
+            if let std::collections::hash_map::Entry::Vacant(slot) = parent.entry(prerequisite) {
+                slot.insert(card);
+                queue.push_back(prerequisite);
+            }
+        }
+    }
+    Ok(None)
+}
+
 /// Records that `card_id` needs `needs` done first: one active `blocks` link from `needs` to
 /// `card_id` and one `card.prereq` event. `Ok(false)` when the link is already there (nothing
-/// is written). A card that needs itself, or one that `needs` already needs, is refused.
+/// is written). A card that needs itself, or one that `needs` needs back through any number of
+/// cards, is refused and the answer names the loop.
 pub fn add_prerequisite(
     w: &mut WriteLedger,
     card_id: i64,
@@ -1187,8 +1284,12 @@ pub fn add_prerequisite(
         if existing.as_deref() == Some("active") {
             return Ok(Ok(false));
         }
-        if link(card_id, needs)?.as_deref() == Some("active") {
-            return Ok(Err(PrereqError::Cycle { card_id, needs }));
+        if let Some(path) = prerequisite_loop(tx, card_id, needs)? {
+            return Ok(Err(PrereqError::Cycle {
+                card_id,
+                needs,
+                path,
+            }));
         }
         if existing.is_some() {
             tx.execute(
@@ -1209,6 +1310,54 @@ pub fn add_prerequisite(
             session.unwrap_or("user"),
             card_id,
             "card.prereq",
+            &json!({"needs": needs, "by": by}),
+        )?;
+        Ok(Ok(true))
+    })
+    .map_err(PrereqError::from)?
+}
+
+/// Takes back that `card_id` needs `needs`: the active `blocks` link from `needs` to `card_id`
+/// becomes `retired` (the row stays, the schema forbids deleting it) and one
+/// `card.prereq_remove` event records `needs` and the by. `Ok(false)` when there is no active
+/// link (nothing is written). A later [`add_prerequisite`] for the same pair makes the same row
+/// active again after the loop check. SPEC-20261127-card-prereq-remove REQ-3 to REQ-6.
+pub fn retire_prerequisite(
+    w: &mut WriteLedger,
+    card_id: i64,
+    needs: i64,
+    by: &str,
+    session: Option<&str>,
+) -> Result<bool, PrereqError> {
+    one_line("the by", by, MAX_AUTHOR_CHARS).map_err(PrereqError::InvalidInput)?;
+    if let Some(session) = session {
+        one_line("the session id", session, MAX_AUTHOR_CHARS).map_err(PrereqError::InvalidInput)?;
+    }
+    w.with_write_tx(|tx, now| {
+        for id in [card_id, needs] {
+            let exists: bool = tx.query_row(
+                "SELECT count(*) > 0 FROM card WHERE card_id = ?1",
+                [id],
+                |r| r.get(0),
+            )?;
+            if !exists {
+                return Ok(Err(PrereqError::CardNotFound(id)));
+            }
+        }
+        let changed = tx.execute(
+            "UPDATE card_link SET state = 'retired', updated_at = ?3 \
+             WHERE kind = 'blocks' AND from_card = ?1 AND to_card = ?2 AND state = 'active'",
+            params![needs, card_id, now],
+        )?;
+        if changed == 0 {
+            return Ok(Ok(false));
+        }
+        reservation::add_event(
+            tx,
+            now,
+            session.unwrap_or("user"),
+            card_id,
+            "card.prereq_remove",
             &json!({"needs": needs, "by": by}),
         )?;
         Ok(Ok(true))
@@ -1853,6 +2002,7 @@ fn finish_plan(
     evidence: &FinishEvidence<'_>,
     met: &[(i64, String)],
     generation: Option<i64>,
+    held: &[i64],
     now: i64,
 ) -> Result<Result<FinishPlan, WorkflowError>, LedgerError> {
     let refused = |why: String| Ok(Err(WorkflowError::FinishRefused(why)));
@@ -1898,13 +2048,22 @@ fn finish_plan(
             }
         }
     }
-    // Every open criterion is named by exactly one met option, and only open ones are.
+    // Every open criterion is named by exactly one met option, and only open ones are. A criterion
+    // a verdict holds open counts as open even when it is marked met
+    // (SPEC-20261126-land-open-criteria): the landing opens it again.
     let open: Vec<i64> = {
         let mut stmt = conn.prepare(
-            "SELECT seq FROM card_ac WHERE card_id = ?1 AND status = 'open' ORDER BY seq",
+            "SELECT seq, status FROM card_ac WHERE card_id = ?1 AND status IN ('open', 'met') \
+             ORDER BY seq",
         )?;
-        let rows = stmt.query_map([card_id], |r| r.get(0))?;
-        rows.collect::<Result<_, _>>()?
+        let rows = stmt.query_map([card_id], |r| {
+            Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?))
+        })?;
+        rows.collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .filter(|(seq, status)| status == "open" || held.contains(seq))
+            .map(|(seq, _)| seq)
+            .collect()
     };
     if let Some((seq, _)) = met.iter().find(|(seq, _)| !open.contains(seq)) {
         return refused(format!(
@@ -2065,6 +2224,10 @@ pub struct NewVerdict<'a> {
     pub receipt: Option<&'a VerdictReceipt>,
     /// The session that records the verdict, read from the host's session id.
     pub reviewer: &'a str,
+    /// The criteria this verdict holds open, sorted and without repeats
+    /// (SPEC-20261126-land-open-criteria): `card land` marks none of them met and keeps the card
+    /// open. Empty for a verdict that holds nothing.
+    pub open: &'a [i64],
 }
 
 /// One verdict event as `card land` reads it.
@@ -2078,6 +2241,8 @@ pub struct VerdictEvent {
     pub tier: u8,
     pub evidence: String,
     pub receipt: Option<VerdictReceipt>,
+    /// The criteria this verdict holds open.
+    pub open: Vec<i64>,
 }
 
 /// The answer of [`record_verdict`]: the event and whether this call wrote it.
@@ -2089,14 +2254,74 @@ pub struct VerdictRecorded {
 
 impl NewVerdict<'_> {
     fn payload(&self) -> serde_json::Value {
-        json!({
+        let mut payload = json!({
             "head": self.head, "base": self.base,
             "verdict": if self.pass { "pass" } else { "fail" },
             "tier": self.tier, "evidence": self.evidence,
             "receipt": self.receipt.map(VerdictReceipt::json),
             "reviewer": self.reviewer,
-        })
+        });
+        // No key for no hold, so a repeat of an earlier verdict still finds its event.
+        if !self.open.is_empty() {
+            payload["open"] = json!(self.open);
+        }
+        payload
     }
+}
+
+/// The stored `open` of a verdict: absent is no hold; anything but a list of positive numbers is
+/// unreadable, and then the whole event is no verdict.
+fn held_of(payload: &serde_json::Value) -> Option<Vec<i64>> {
+    match payload.get("open") {
+        None => Some(Vec::new()),
+        Some(open) => open
+            .as_array()?
+            .iter()
+            .map(|n| n.as_i64().filter(|n| *n >= 1))
+            .collect(),
+    }
+}
+
+/// Why a verdict cannot hold `verdict.open`, or `None` when it can: only a PASS holds, and only
+/// criteria the card has and has not withdrawn.
+fn hold_refusal(
+    conn: &Connection,
+    card_id: i64,
+    verdict: &NewVerdict<'_>,
+) -> Result<Option<String>, LedgerError> {
+    if !verdict.open.is_empty() && !verdict.pass {
+        return Ok(Some(
+            "--open is only for a `pass` verdict: a `fail` verdict already stops the landing; \
+             nothing was written"
+                .to_string(),
+        ));
+    }
+    let name = format!("C-{card_id}");
+    for seq in verdict.open {
+        let status: Option<String> = conn
+            .query_row(
+                "SELECT status FROM card_ac WHERE card_id = ?1 AND seq = ?2",
+                params![card_id, seq],
+                |r| r.get(0),
+            )
+            .optional()?;
+        match status.as_deref() {
+            None => {
+                return Ok(Some(format!(
+                    "--open names criterion {seq}, and {name} has no such criterion; nothing was \
+                     written"
+                )))
+            }
+            Some("withdrawn") => {
+                return Ok(Some(format!(
+                    "--open names criterion {seq}, which is withdrawn on {name}; nothing was \
+                     written"
+                )))
+            }
+            Some(_) => {}
+        }
+    }
+    Ok(None)
 }
 
 fn verdict_from_row(event_id: i64, actor: &str, payload: &str) -> Option<VerdictEvent> {
@@ -2124,12 +2349,29 @@ fn verdict_from_row(event_id: i64, actor: &str, payload: &str) -> Option<Verdict
         tier: u8::try_from(v.get("tier")?.as_u64()?).ok()?,
         evidence: v.get("evidence")?.as_str()?.to_string(),
         receipt,
+        open: held_of(&v)?,
     })
+}
+
+/// Whether `verdict` is a PASS that holds other criteria than the newest verdict of its reviewer
+/// on its head, that one a PASS too. A FAIL in between is never undone by a repeat.
+fn changes_a_hold(
+    conn: &Connection,
+    card_id: i64,
+    verdict: &NewVerdict<'_>,
+) -> Result<bool, LedgerError> {
+    let events = verdict_events(conn, card_id)?;
+    let newest = events
+        .iter()
+        .rev()
+        .find(|e| e.head == verdict.head && e.reviewer.eq_ignore_ascii_case(verdict.reviewer));
+    Ok(verdict.pass && newest.is_some_and(|e| e.pass && e.open != verdict.open))
 }
 
 /// Appends one `card.verdict` event of the card, or finds the one a repeat of the same call
 /// wrote (the same head, base, verdict, tier, evidence, receipt and reviewer): then nothing is
-/// written. The checks of the values (hex shape, commits, secret screen) are the caller's.
+/// written, unless the call changes the reviewer's hold ([`changes_a_hold`]). The checks of the
+/// values (hex shape, commits, secret screen) are the caller's.
 pub fn record_verdict(
     w: &mut WriteLedger,
     card_id: i64,
@@ -2162,6 +2404,7 @@ pub fn record_verdict(
         let rows = st.query_map(params![card_id, VERDICT_KIND], |r| {
             Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?))
         })?;
+        let mut repeated = None;
         for row in rows {
             let (event_id, text) = row?;
             if serde_json::from_str::<serde_json::Value>(&text)
@@ -2169,13 +2412,25 @@ pub fn record_verdict(
                 .as_ref()
                 == Some(&payload)
             {
+                repeated = Some(event_id);
+            }
+        }
+        drop(st);
+        // A repeat of an earlier call writes nothing, unless it changes what the reviewer holds
+        // now: a hold set again after a release, or a release repeated after a new hold.
+        if let Some(event_id) = repeated {
+            if !changes_a_hold(tx, card_id, verdict)? {
                 return Ok(Ok(VerdictRecorded {
                     event_id,
                     written: false,
                 }));
             }
         }
-        drop(st);
+        // Judged after the repeat above: a repeat writes nothing, so a criterion withdrawn since
+        // does not turn it into a refusal.
+        if let Some(why) = hold_refusal(tx, card_id, verdict)? {
+            return Ok(Err(WorkflowError::InvalidInput(why)));
+        }
         reservation::add_event(tx, now, verdict.reviewer, card_id, VERDICT_KIND, &payload)?;
         let event_id = tx.last_insert_rowid();
         // The card waited in `review` for this verdict; its lane needs time to act on it
@@ -2305,13 +2560,17 @@ pub fn record_land_started(
     evidence: &FinishEvidence<'_>,
     met: &[(i64, String)],
     generation: Option<i64>,
+    held: &[i64],
     branch: &str,
     from_tip: &str,
     verdict: Option<&serde_json::Value>,
 ) -> Result<bool, WorkflowError> {
     finish_input_checks(by, met, evidence)?;
     w.with_write_tx(|tx, now| {
-        if let Err(e) = finish_plan(tx, card_id, session, by, evidence, met, generation, now)? {
+        let plan = finish_plan(
+            tx, card_id, session, by, evidence, met, generation, held, now,
+        )?;
+        if let Err(e) = plan {
             return Ok(Err(e));
         }
         let FinishEvidence::Landing { head, .. } = evidence else {
@@ -2372,6 +2631,7 @@ pub fn record_tip_restored(
 /// checks, run against the ledger as it is now. `Ok(())` is no promise: a call that gets in
 /// between can change the ledger, and the write transaction checks again. `card land` uses it so
 /// that a refusal comes before the integration branch moves.
+#[allow(clippy::too_many_arguments)]
 pub fn finish_preflight(
     conn: &Connection,
     card_id: i64,
@@ -2380,12 +2640,15 @@ pub fn finish_preflight(
     evidence: &FinishEvidence<'_>,
     met: &[(i64, String)],
     generation: Option<i64>,
+    held: &[i64],
 ) -> Result<(), WorkflowError> {
     finish_input_checks(by, met, evidence)?;
     let now: i64 = conn
         .query_row("SELECT unixepoch()", [], |r| r.get(0))
         .map_err(LedgerError::from)?;
-    finish_plan(conn, card_id, session, by, evidence, met, generation, now)??;
+    finish_plan(
+        conn, card_id, session, by, evidence, met, generation, held, now,
+    )??;
     Ok(())
 }
 
@@ -2430,6 +2693,7 @@ pub fn finish(
         generation,
         LandedVerdict::StartRow,
         false,
+        &[],
     )
 }
 
@@ -2447,7 +2711,9 @@ pub enum LandedVerdict<'a> {
 /// [`finish`], with the verdict the landing event names given by the caller. `keep_open` marks
 /// the landing event as a slice that stays open on purpose (`card land --keep-open`,
 /// SPEC-20261124-land-closes-card): the payload gets `keep_open` true, and `card next` does not
-/// skip the card for it.
+/// skip the card for it. `held` are the criteria the verdicts of the head hold open
+/// (SPEC-20261126-land-open-criteria): the one that is `met` is `open` again after the landing
+/// event is written, in the same transaction, and the event names the evidence it had.
 #[allow(clippy::too_many_arguments)]
 pub fn finish_naming(
     w: &mut WriteLedger,
@@ -2459,6 +2725,7 @@ pub fn finish_naming(
     generation: Option<i64>,
     named: LandedVerdict<'_>,
     keep_open: bool,
+    held: &[i64],
 ) -> Result<Finished, WorkflowError> {
     finish_input_checks(by, met, evidence)?;
     w.with_write_tx(|tx, now| {
@@ -2469,7 +2736,9 @@ pub fn finish_naming(
             uncovered,
             landing_only,
             record_landing,
-        } = match finish_plan(tx, card_id, session, by, evidence, met, generation, now)? {
+        } = match finish_plan(
+            tx, card_id, session, by, evidence, met, generation, held, now,
+        )? {
             Ok(plan) => plan,
             Err(e) => return Ok(Err(e)),
         };
@@ -2504,8 +2773,26 @@ pub fn finish_naming(
             if keep_open {
                 payload["keep_open"] = json!(true);
             }
+            if !held.is_empty() {
+                payload["held"] = json!(held);
+                let reopened = reopen_held(tx, card_id, held, now)?;
+                if !reopened.is_empty() {
+                    payload["reopened"] = json!(reopened);
+                }
+            }
             reservation::add_event(tx, now, actor, card_id, "card.landed", &payload)?;
             events += 1;
+        } else if !held.is_empty() {
+            // The landing event of this head is already recorded, so a held criterion marked met
+            // since is opened again with an event of its own that keeps the replaced evidence.
+            let reopened = reopen_held(tx, card_id, held, now)?;
+            if !reopened.is_empty() {
+                let payload = json!({
+                    "head": head, "held": held, "reopened": reopened, "by": by,
+                });
+                reservation::add_event(tx, now, actor, card_id, HELD_REOPENED_KIND, &payload)?;
+                events += 1;
+            }
         }
         if landing_only {
             return Ok(Ok(Finished {
@@ -2586,6 +2873,40 @@ pub fn finish_naming(
             events,
         }))
     })?
+}
+
+/// The event of held criteria opened again on a rerun, when the landing event is already there.
+const HELD_REOPENED_KIND: &str = "card.held_reopened";
+
+/// Sets each held criterion that is `met` back to `open` and returns `{seq, evidence}` for each,
+/// the evidence it had. The caller's transaction writes the event that records them with it.
+fn reopen_held(
+    conn: &Connection,
+    card_id: i64,
+    held: &[i64],
+    now: i64,
+) -> Result<Vec<serde_json::Value>, LedgerError> {
+    let mut reopened = Vec::new();
+    for seq in held {
+        let evidence: Option<String> = conn
+            .query_row(
+                "SELECT evidence_ref FROM card_ac \
+                 WHERE card_id = ?1 AND seq = ?2 AND status = 'met'",
+                params![card_id, seq],
+                |r| r.get(0),
+            )
+            .optional()?;
+        let Some(evidence) = evidence else {
+            continue;
+        };
+        conn.execute(
+            "UPDATE card_ac SET status = 'open', evidence_ref = NULL, updated_at = ?1 \
+             WHERE card_id = ?2 AND seq = ?3",
+            params![now, card_id, seq],
+        )?;
+        reopened.push(json!({"seq": seq, "evidence": evidence}));
+    }
+    Ok(reopened)
 }
 
 /// What the ledger records about a landing of one card that is not `done`.

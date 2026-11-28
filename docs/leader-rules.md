@@ -7,6 +7,7 @@ The detail behind the "Leader rules" section of `CLAUDE.md`. The leader is the s
 Evidence, not status labels:
 
 - The cards: `moai card list`, `moai card next`, `moai card inbox` (the lane notes that wait for the leader) and `moai card show` for the reservation, notes and criteria.
+- Many cards, the reservations or single notes: `moai card query` (reads only, one JSON answer). `--card C-n,C-m` gives each card's head, newest verdict, head verdict and open criteria, and `--notes N` adds the headers of its newest notes. `--reservations` lists every reservation that holds a card, one with an ended lease included, with its session and worktree. `--note <id>` gives the whole text of a note. The leader reads the ledger through the `moai card` commands and never opens the ledger file itself.
 - `ListAgents`: who is live, busy or idle, and duplicate names.
 - Each lane worktree's `git status --short`, and the lane's last reported command and exit code.
 - Stage changes come from the ledger and git (reservation, branch, landed head), never from a lane message or an idle notice alone.
@@ -41,7 +42,7 @@ The leader makes the lane worktree and its branch before the lane has picked its
 - A landing batch is 2 to 4 audited heads (`moai card land-batch`), one head alone only for a risk or an exception; a head that fails the batch check is dropped and the rest ships. The heads of a release (`release/<40hex>`) are a release bundle, never called a batch.
 - Clear after every card: a READY, REPAIRED or MERGE-READY note and a `LANE-DONE` line hand a card back and are never done. The leader reads the ledger and the lane screen and sends `/clear` through `orca terminal send` to the exact existing window only when the ledger shows the lane's card done or released and nothing is open (no card in review, no live reservation, no run of the lane's own, no unsaved change, no prompt on the screen). After `/clear` it confirms the new session is ready, sends the next line once and reads the new reservation back (the ACK); with no ACK it inspects and does not send again. Stages: `skills/moai/references/flows/next-flow.md`.
 - Every five landings the leader runs every Rust test on the integration tip once; a run of exactly the same checks on that tip is not repeated, and risk and release evidence stays. A red test stops landings until it is fixed.
-- Lease: a card reservation lasts four hours unless `--lease-secs` says otherwise (14400 seconds by default); expiry is displayed only, and `moai card reclaim` takes over a card whose reservation has ended.
+- Lease: a card reservation lasts four hours unless `--lease-secs` says otherwise (14400 seconds by default); expiry is displayed only. The holder of an ended reservation that nobody reclaimed or swept keeps it at the same generation with `moai card renew`; `moai card reclaim` takes over a card whose reservation has ended for another session.
 
 ## Landing and the release pull request
 

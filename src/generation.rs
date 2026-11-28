@@ -198,6 +198,13 @@ fn is_harness_only(r: &GenerationRequest) -> bool {
     r.picks.iter().any(|p| p == crate::agents::HARNESS_ONLY)
 }
 
+/// The request keeps the owned project agent and skill files it does not name (the pick
+/// `keep-harness`, SPEC-20261127-update-old-manifest-way): they get no `remove` and no conflict
+/// row, and the apply leaves them and their manifest lines as they are.
+fn is_keep_harness(r: &GenerationRequest) -> bool {
+    r.picks.iter().any(|p| p == crate::agents::KEEP_HARNESS)
+}
+
 fn project_skill_hosts(s: &ProjectSkill) -> Vec<String> {
     if s.hosts.is_empty() {
         vec!["claude".into()]
@@ -1151,7 +1158,11 @@ fn plan_filtered(
                 .collect()
         })
         .unwrap_or_default();
-    for (kind, rel, baseline) in owned.into_iter().filter(|_| !harness_only) {
+    // The pick `keep-harness` leaves the owned files the request does not name as they are
+    // (SPEC-20261127-update-old-manifest-way REQ-5): a manifest without a recorded request cannot
+    // say what it still names.
+    let keep_harness = is_keep_harness(&request);
+    for (kind, rel, baseline) in owned.into_iter().filter(|_| !harness_only && !keep_harness) {
         // A file of a retired host: no conflict, no removal; the entry only leaves the manifest.
         if owned_entry_retired(&kind, active) {
             continue;
@@ -1568,7 +1579,14 @@ fn record_generation(
         .or_insert_with(|| json!([]))
         .as_array_mut()
         .expect("owned_files array");
+    // Under `keep-harness` the entries stay where they are and a row rewrites its own entry in
+    // place, so the kept project entries and the managed ones keep their order and an unchanged
+    // plan predicts the manifest bytes already on disk (SPEC-20261127-update-old-manifest-way).
+    let in_place = is_keep_harness(&p.request);
     list.retain(|f| {
+        if in_place {
+            return true;
+        }
         let path = f.get("path").and_then(Value::as_str).unwrap_or("");
         // A `skip` row keeps the entry it already has.
         !p.files.iter().any(|pf| {
@@ -1591,7 +1609,7 @@ fn record_generation(
         let Some(rendered) = &f.rendered_sha256 else {
             continue;
         };
-        list.push(json!({
+        let entry = json!({
             "path": f.path,
             // The bare kind (#2109) is the primary discriminator; the
             // generation:… section_id tag stays for readers of manifests
@@ -1601,7 +1619,17 @@ fn record_generation(
             }),
             "section_id": kind,
             "baseline_sha256": rendered,
-        }));
+        });
+        let at = in_place
+            .then(|| {
+                list.iter()
+                    .position(|e| e.get("path").and_then(Value::as_str) == Some(f.path.as_str()))
+            })
+            .flatten();
+        match at {
+            Some(i) => list[i] = entry,
+            None => list.push(entry),
+        }
     }
     // SPEC-20261125-generation-request-record: the project agents and skills this apply built
     // are recorded as the request's own lists, so a later plan from the stored state can rebuild
@@ -1612,19 +1640,23 @@ fn record_generation(
     let harness_only = is_harness_only(r);
     let names_none =
         r.native_roles.is_empty() && r.skill_projections.is_empty() && r.project_skills.is_empty();
-    if names_none {
-        if !harness_only {
-            map.remove(RECORD_KEY);
+    // A request that keeps the files it does not name says nothing about the record: it does not
+    // know what the record would hold for them (SPEC-20261127-update-old-manifest-way REQ-8).
+    if !is_keep_harness(r) {
+        if names_none {
+            if !harness_only {
+                map.remove(RECORD_KEY);
+            }
+        } else {
+            map.insert(
+                RECORD_KEY.into(),
+                json!({
+                    "native_roles": r.native_roles,
+                    "skill_projections": r.skill_projections,
+                    "project_skills": r.project_skills,
+                }),
+            );
         }
-    } else {
-        map.insert(
-            RECORD_KEY.into(),
-            json!({
-                "native_roles": r.native_roles,
-                "skill_projections": r.skill_projections,
-                "project_skills": r.project_skills,
-            }),
-        );
     }
     // A request for the harness alone says nothing about the files the linkage vouches for: the
     // workflow id and the interview revision are carried by the engine, and the profile digest
@@ -1933,7 +1965,7 @@ pub fn generation_apply_in(
             "execution_verified is false: nothing that was generated was run",
         ],
         "next_actions": [
-            "start a new host session in this project so it loads AGENTS.md and the generated files",
+            "start a new host session in this project so it loads the project instructions and the generated files",
             "run project-update-plan to see which steps remain",
         ],
         "receipt": request_id,

@@ -188,6 +188,20 @@ pub fn list_filtered(
     for row in rows {
         cards.push(row.map_err(|e| LedgerError::from(e).to_string())?);
     }
+    // A card that landed and keeps open criteria is a partial landing: two keys more, only on
+    // such a card (the other cards keep exactly the keys they had).
+    let partial: HashMap<i64, i64> = ledger::partial::partial_landings(conn)
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .map(|p| (p.card_id, p.open_criteria))
+        .collect();
+    for card in &mut cards {
+        let left = card["card_id"].as_i64().and_then(|n| partial.get(&n));
+        if let Some(left) = left {
+            card["partial_landing"] = json!(true);
+            card["open_criteria"] = json!(left);
+        }
+    }
     Ok(json!({
         "action": "list", "project_id": id, "ledger": "ready",
         "count": cards.len(), "cards": cards, "writes": false,
@@ -205,11 +219,32 @@ const NOTE_EVENTS_SQL: &str = "SELECT json_extract(payload, '$.note_id'), \
             json_extract(payload, '$.session') \
        FROM event WHERE card_id = ?1 AND kind = 'card.note' ORDER BY event_id";
 
+/// The criteria of a card in number order, in the shape `card show` prints them.
+pub(super) fn criteria_of(
+    conn: &Connection,
+    card_id: i64,
+) -> std::result::Result<Vec<Value>, rusqlite::Error> {
+    let mut stmt = conn.prepare(
+        "SELECT seq, text, verify, status, evidence_ref, withdrawn_reason, updated_at \
+           FROM card_ac WHERE card_id = ?1 ORDER BY seq",
+    )?;
+    let rows = stmt.query_map([card_id], |r| {
+        Ok(json!({
+            "seq": r.get::<_, i64>(0)?, "text": r.get::<_, String>(1)?,
+            "verify": r.get::<_, String>(2)?, "status": r.get::<_, String>(3)?,
+            "evidence_ref": r.get::<_, Option<String>>(4)?,
+            "withdrawn_reason": r.get::<_, Option<String>>(5)?,
+            "updated_at": r.get::<_, i64>(6)?,
+        }))
+    })?;
+    rows.collect()
+}
+
 /// The session of each note of `card_id`, from its `card.note` events: the first event (lowest
 /// event id) that names a note decides, even when its session is `null`; a note no event names
 /// is not in the map. A note id that is not an integer, or a session that is neither text nor
 /// `null`, is skipped (the tool writes neither).
-fn note_sessions(
+pub(super) fn note_sessions(
     conn: &Connection,
     card_id: i64,
 ) -> std::result::Result<HashMap<i64, Option<String>>, rusqlite::Error> {
@@ -272,25 +307,7 @@ pub fn show(project: &Path, home: &Path, reference: &str) -> Result<Value> {
         .map_err(|e| e.to_string())?
         .ok_or_else(|| format!("card not found: there is no {}", input::card_name(card_id)))?;
 
-    let mut stmt = conn
-        .prepare(
-            "SELECT seq, text, verify, status, evidence_ref, withdrawn_reason, updated_at \
-               FROM card_ac WHERE card_id = ?1 ORDER BY seq",
-        )
-        .map_err(sql_err)?;
-    let criteria = stmt
-        .query_map([card_id], |r| {
-            Ok(json!({
-                "seq": r.get::<_, i64>(0)?, "text": r.get::<_, String>(1)?,
-                "verify": r.get::<_, String>(2)?, "status": r.get::<_, String>(3)?,
-                "evidence_ref": r.get::<_, Option<String>>(4)?,
-                "withdrawn_reason": r.get::<_, Option<String>>(5)?,
-                "updated_at": r.get::<_, i64>(6)?,
-            }))
-        })
-        .map_err(sql_err)?
-        .collect::<std::result::Result<Vec<_>, _>>()
-        .map_err(sql_err)?;
+    let criteria = criteria_of(conn, card_id).map_err(sql_err)?;
 
     let mut stmt = conn.prepare(NOTES_SQL).map_err(sql_err)?;
     // `session`: the session that wrote the note, from its `card.note` event (`null` for a note

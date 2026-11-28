@@ -44,18 +44,18 @@ fn commit(dir: &Path, message: &str) {
 
 /// The `cargo` of this test run, as Cargo or nextest name it.
 fn cargo_path() -> String {
-    std::env::var("CARGO").unwrap_or_else(|_| "cargo".into())
+    common::cargo::cargo_path()
+        .into_string()
+        .unwrap_or_else(|_| "cargo".into())
 }
 
 /// A `cargo` run for the fixture's own set-up and for what the tests measure directly.
 fn cargo(dir: &Path, args: &[&str]) -> std::process::Output {
-    Command::new(cargo_path())
+    common::cargo::cargo_at(cargo_path())
         .args(args)
         .current_dir(dir)
         .env_remove("CARGO_TARGET_DIR")
         .env_remove("CARGO_BUILD_TARGET_DIR")
-        .env_remove("RUSTC_WRAPPER")
-        .env_remove("CARGO_BUILD_RUSTC_WRAPPER")
         .env_remove("CARGO_INCREMENTAL")
         .output()
         .unwrap()

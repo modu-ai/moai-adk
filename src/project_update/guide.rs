@@ -270,24 +270,70 @@ fn options(has_steps: bool) -> Value {
     }
 }
 
+/// A leftover of an earlier generation that waits for the user's answer
+/// (SPEC-20261127-update-leftovers-action): it is not a step and never makes the plan ask, but
+/// the end of the update lists it.
+pub struct OpenLeftover<'a> {
+    /// The path as the plan prints it.
+    pub path: &'a str,
+    /// Whether the plan offers to move it into a backup; otherwise it can only be kept.
+    pub archive: bool,
+}
+
+/// The sentence for one open leftover.
+fn leftover_say(l: &OpenLeftover) -> String {
+    if l.archive {
+        format!(
+            "{} was left by an earlier version and is still open, so choose to move it into a backup or to keep it where it is.",
+            l.path
+        )
+    } else {
+        format!(
+            "{} was left by an earlier version and cannot be moved here, so choose to keep it where it is.",
+            l.path
+        )
+    }
+}
+
 /// The three keys the plan adds on top: `ask`, `chain` and `finish`.
 ///
 /// - `ask` is one object while a step has `next` `apply` or `ask`; otherwise null.
 /// - `chain` holds the `apply_order` (the ids of the steps of `ask`) and the places to preview
 ///   again; with no `ask` both lists are empty.
-/// - `finish` is an object while `ask` is null, and null otherwise.
-pub fn overview(facts: &[Fact], all_unchanged: bool) -> (Value, Value, Value) {
+/// - `finish` is an object while `ask` is null, and null otherwise. Its `open` lists the steps
+///   that still need attention and then the open `leftovers` (`{"leftover": path, "say": …}`);
+///   the finish never says that nothing is left while one is listed.
+pub fn overview(
+    facts: &[Fact],
+    all_unchanged: bool,
+    leftovers: &[OpenLeftover],
+) -> (Value, Value, Value) {
     let asks = facts.iter().any(|f| matches!(f.next, "apply" | "ask"));
     if !asks {
-        let open: Vec<Value> = facts
+        let mut open: Vec<Value> = facts
             .iter()
             .filter(|f| matches!(f.next, "report" | "wait"))
             .map(|f| json!({"step": f.step, "next": f.next, "say": f.say}))
             .collect();
-        let say = if all_unchanged {
-            "Nothing is left to apply, so the update ends without a question."
-        } else {
-            "No step can run on its own, so the update ends here without a question; the steps listed still need attention."
+        let steps_open = !open.is_empty();
+        open.extend(
+            leftovers
+                .iter()
+                .map(|l| json!({"leftover": l.path, "say": leftover_say(l)})),
+        );
+        let say = match (leftovers.is_empty(), steps_open) {
+            (true, _) if all_unchanged => {
+                "Nothing is left to apply, so the update ends without a question."
+            }
+            (true, _) => {
+                "No step can run on its own, so the update ends here without a question; the steps listed still need attention."
+            }
+            (false, true) => {
+                "No step can run on its own, so the update ends here without a question; the steps and leftovers listed still need attention."
+            }
+            (false, false) => {
+                "No step can run on its own, so the update ends here without a question; the leftovers listed are still open and need your answer."
+            }
         };
         let chain = json!({"apply_order": [], "preview_again": []});
         return (Value::Null, chain, json!({"say": say, "open": open}));
@@ -453,5 +499,57 @@ mod tests {
         }
         let harness = say("generation", "unchanged", "none", false);
         assert!(!harness.contains("up to date"), "{harness}");
+    }
+
+    /// An open leftover is listed in `finish.open` with a plain sentence and never makes the plan
+    /// ask; the finish does not say that nothing is left while one is open, and keeps saying it
+    /// when none is.
+    #[test]
+    fn an_open_leftover_is_listed_and_is_not_settled() {
+        let open = [
+            OpenLeftover {
+                path: crate::fixed_state!(""),
+                archive: true,
+            },
+            OpenLeftover {
+                path: ".moai/.update.lock",
+                archive: false,
+            },
+        ];
+        for l in &open {
+            plain(&leftover_say(l));
+        }
+        let step_open = [Fact {
+            step: "go-state",
+            next: "report",
+            say: "The old Go tool files cannot be moved here and need a look first.".into(),
+            pick: None,
+            behind: &[],
+        }];
+        for facts in [&[][..], &step_open[..]] {
+            let (ask, _, finish) = overview(facts, false, &open);
+            assert!(ask.is_null());
+            let listed = finish["open"].as_array().unwrap();
+            let leftovers: Vec<&Value> = listed
+                .iter()
+                .filter(|e| e.get("leftover").is_some())
+                .collect();
+            assert_eq!(leftovers.len(), 2, "{finish}");
+            assert_eq!(leftovers[0]["leftover"], crate::fixed_state!(""));
+            assert_ne!(leftovers[0]["say"], leftovers[1]["say"]);
+            let say = finish["say"].as_str().unwrap();
+            plain(say);
+            assert!(!say.to_lowercase().contains("nothing is left"), "{say}");
+            assert!(say.contains("leftovers"), "{say}");
+        }
+        let (_, _, done) = overview(&[], true, &[]);
+        assert!(done["say"].as_str().unwrap().contains("Nothing is left"));
+        assert_eq!(done["open"], json!([]));
+        // Without a leftover the sentence of a step that needs attention is the one it always was.
+        let (_, _, held) = overview(&step_open, false, &[]);
+        assert!(held["say"]
+            .as_str()
+            .unwrap()
+            .ends_with("the steps listed still need attention."));
     }
 }

@@ -11,7 +11,7 @@
 //! are not installed. HOME itself and the file-system root are never initialized. Without git
 //! on PATH the launcher stops with the install guidance for this OS.
 use crate::generation::{generation_apply, generation_plan, GenerationRequest};
-use crate::{identity::identity, profile};
+use crate::{identity::identity_in_from, profile};
 use serde_json::{json, Value};
 use std::{
     fs::{self, OpenOptions},
@@ -141,12 +141,15 @@ fn stopped(line: String) -> Prepared {
 fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String> {
     // An identity error (a git failure, a refused path) initializes nothing and leaves the
     // launch as it was before #2481: numbering reports its own error, other launches go on.
-    let Ok(id) = identity(cwd) else {
+    // The HOME the vault uses, as it is returned (not canonicalized): `identity_in_from` compares
+    // it with the process HOME, the environment HOME read here once and as written, not the
+    // `USERPROFILE` fallback the vault may use (SPEC-20261124-identity-home-arg D-11, D-17, D-19).
+    let raw_home = crate::key_vault::home().ok();
+    let process_home = crate::layout::environment_home();
+    let Ok(id) = identity_in_from(cwd, raw_home.as_deref(), process_home.as_deref()) else {
         return Ok(Prepared::default());
     };
-    let home = crate::key_vault::home()
-        .ok()
-        .and_then(|h| h.canonicalize().ok());
+    let home = raw_home.as_deref().and_then(|h| h.canonicalize().ok());
     let guard = |dir: &Path| home_or_root(dir, home.as_deref());
     match id["identity_status"].as_str() {
         Some("git_unavailable") => Err(install_guidance()),
@@ -175,7 +178,7 @@ fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, St
                     git_pending: true,
                 });
             }
-            git_init(&dir)?;
+            git_init(&dir, raw_home.as_deref(), process_home.as_deref())?;
             let mut done = vec!["git init".to_string()];
             done.extend(settings(&dir, &dir.join(".git"), host)?);
             Ok(Prepared {
@@ -296,7 +299,7 @@ fn wait_for_initializer(lock: &Path) {
 /// `git init -q` in `dir` with the same variable scrub as every other git subprocess. A
 /// concurrent launch may have initialized the folder meanwhile: a failed `init` that leaves a
 /// repository behind is accepted.
-fn git_init(dir: &Path) -> Result<(), String> {
+fn git_init(dir: &Path, home: Option<&Path>, process_home: Option<&Path>) -> Result<(), String> {
     // Concurrent first launches in one folder (Issue #2489): two `git init` runs race on
     // `.git/config`; the loser fails while the winner is still writing, so a re-check right
     // after the failure can still see "not a repository". Serialize the init on a lock that
@@ -304,7 +307,7 @@ fn git_init(dir: &Path) -> Result<(), String> {
     // neither the folder nor HOME gets an extra file — and re-check under the lock: a launch
     // that waited finds the repository the first one made and runs no `git init` itself.
     let lock = init_lock(dir);
-    if identity(dir).is_ok_and(|id| id["identity_status"] == "ok") {
+    if identity_in_from(dir, home, process_home).is_ok_and(|id| id["identity_status"] == "ok") {
         drop(lock);
         return Ok(());
     }
@@ -317,7 +320,8 @@ fn git_init(dir: &Path) -> Result<(), String> {
         .stderr(Stdio::null())
         .status()
         .is_ok_and(|s| s.success());
-    let ready = ok || identity(dir).is_ok_and(|id| id["identity_status"] == "ok");
+    let ready = ok
+        || identity_in_from(dir, home, process_home).is_ok_and(|id| id["identity_status"] == "ok");
     drop(lock);
     if ready {
         Ok(())
@@ -649,5 +653,27 @@ mod tests {
         assert_eq!(primary_name(Path::new("/x/example.git/.git")), "example");
         assert_eq!(primary_name(Path::new("/x/plain/.git")), "plain");
         assert_eq!(primary_name(Path::new("/x/bare.git")), "bare");
+    }
+
+    /// SPEC-20261124-identity-home-arg AC-15 (REQ-13, REQ-14): the environment HOME holds a
+    /// symlinked home state root, so the identity of a folder that is no repository is refused and
+    /// the first launch runs no `git init` and creates no project file.
+    #[cfg(unix)]
+    #[test]
+    fn home_arg_rest_a_linked_home_initializes_nothing() {
+        crate::identity::linked_home_test::run(
+            module_path!(),
+            "home_arg_rest_a_linked_home_initializes_nothing",
+            |folders| {
+                let prepared = prepare_project(&folders.scratch, "claude", false).unwrap();
+                assert_eq!(prepared.note, None);
+                assert!(!prepared.git_pending);
+                assert_eq!(
+                    fs::read_dir(&folders.scratch).unwrap().count(),
+                    0,
+                    "the folder was initialized"
+                );
+            },
+        );
     }
 }
