@@ -364,6 +364,7 @@ fn windows_candidates_follow_the_search_folders_and_the_endings() {
     for (dir, name) in [
         (&a, "claude.cmd"),
         (&b, "claude.exe"),
+        (&b, "claude.cmd"),
         (&b, "claude.bat"),
         (&b, "claudex.exe"),
     ] {
@@ -377,6 +378,7 @@ fn windows_candidates_follow_the_search_folders_and_the_endings() {
         vec![
             a.path().join("claude.cmd"),
             b.path().join("claude.exe"),
+            b.path().join("claude.cmd"),
             b.path().join("claude.bat"),
         ]
     );
@@ -384,7 +386,11 @@ fn windows_candidates_follow_the_search_folders_and_the_endings() {
     let got = moai_cli::claude::candidates_in(&[], beside.to_str().unwrap());
     assert_eq!(
         got,
-        vec![b.path().join("claude.exe"), b.path().join("claude.bat")]
+        vec![
+            b.path().join("claude.exe"),
+            b.path().join("claude.cmd"),
+            b.path().join("claude.bat"),
+        ]
     );
 }
 
