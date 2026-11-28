@@ -1,7 +1,8 @@
 //! SPEC-20261121-go-path-removal revision 6 (REQ-13 to REQ-18): the switch part of `moai update`
 //! at library level. A known routing script (the v1 or the v2 one) at `<state folder>/path/moai`
 //! is kept as `moai.before-<UTC>` and replaced by a relative link to the Rust launcher
-//! `path/moai-cli`; the revert puts the kept copy back. Temporary HOME folders only; the real HOME
+//! `bin/moai` of the running build (SPEC-20261127-installed-binary-name-moai D-4); the revert
+//! puts the kept copy back. Temporary HOME folders only; the real HOME
 //! is never read or written. The two scripts are read from the preserved copies of the v2 SPEC at
 //! build time: the product file that carried the v2 script left the tree.
 #![cfg(unix)]
@@ -19,7 +20,8 @@ const V1: &[u8] = include_bytes!("../.moai/specs/SPEC-20261119-switch-script-v2/
 const V2: &[u8] = include_bytes!("../.moai/specs/SPEC-20261119-switch-script-v2/preview/moai.v2");
 const NOW: &str = "2026-11-24T07:47:22Z";
 const STAMP: &str = "20261124T074722Z";
-const LINK: &str = "moai-cli";
+/// The relative link the step makes: the running build's `bin/moai`, seen from `path/`.
+const LINK: &str = "../versions/a/bin/moai";
 
 /// The fault seam (`MOAI_TEST_FAULT`) is a process-wide variable: every test that applies
 /// takes this gate, so a fault set by one test is never seen by another.
@@ -62,8 +64,14 @@ impl Home {
         let root = fs::canonicalize(t.path()).unwrap();
         let h = Home { _t: t, root };
         fs::create_dir_all(h.dir()).unwrap();
+        fs::create_dir_all(h.exe().parent().unwrap()).unwrap();
         h.put(V1);
         h
+    }
+
+    /// The running build's `bin/moai`: the launcher the step looks for (it may not exist yet).
+    fn exe(&self) -> PathBuf {
+        self.root.join(".moai-cli/versions/a/bin/moai")
     }
 
     fn dir(&self) -> PathBuf {
@@ -75,7 +83,7 @@ impl Home {
     }
 
     fn launcher_file(&self) -> PathBuf {
-        self.dir().join(LINK)
+        self.exe()
     }
 
     fn saved(&self, stamp: &str) -> PathBuf {
@@ -142,7 +150,7 @@ impl Home {
     }
 
     fn token(&self) -> String {
-        switch::plan(&self.root)
+        switch::plan_for(&self.root, &self.exe())
             .unwrap()
             .token()
             .expect("a token")
@@ -150,7 +158,10 @@ impl Home {
     }
 
     fn part(&self) -> Option<Value> {
-        switch::plan(&self.root).unwrap().to_json().cloned()
+        switch::plan_for(&self.root, &self.exe())
+            .unwrap()
+            .to_json()
+            .cloned()
     }
 
     fn go_bin(&self, bytes: &[u8]) -> PathBuf {
@@ -207,7 +218,7 @@ fn plan_offers_link_for_the_known_v1_script() {
     let h = Home::new();
     let launcher = h.rust_launcher();
     let before = h.names();
-    let layer = switch::plan(&h.root).unwrap();
+    let layer = switch::plan_for(&h.root, &h.exe()).unwrap();
     let p = layer
         .to_json()
         .expect("a known script beside a Rust launcher has a switch part");
@@ -249,7 +260,7 @@ fn plan_offers_link_for_v2_too() {
     let h = Home::new();
     h.put(V2);
     h.rust_launcher();
-    let layer = switch::plan(&h.root).unwrap();
+    let layer = switch::plan_for(&h.root, &h.exe()).unwrap();
     let p = layer.to_json().expect("v2 is a known script too");
     assert_eq!(p["action"], json!("link"), "{p}");
     assert_eq!(p["script"], json!("v2"));
@@ -280,7 +291,10 @@ fn plan_has_no_part_for_a_link_an_absent_file_or_no_state_folder() {
     // no state folder at all
     let t = TempDir::new().unwrap();
     let empty = fs::canonicalize(t.path()).unwrap();
-    assert!(switch::plan(&empty).unwrap().to_json().is_none());
+    assert!(switch::plan_for(&empty, &empty.join("bin/moai"))
+        .unwrap()
+        .to_json()
+        .is_none());
 }
 
 #[test]
@@ -299,7 +313,7 @@ fn plan_leaves_an_unknown_file_alone() {
         // A launcher beside it does not make an unknown file the step's.
         h.rust_launcher();
         h.put(&bytes);
-        let layer = switch::plan(&h.root).unwrap();
+        let layer = switch::plan_for(&h.root, &h.exe()).unwrap();
         let p = layer.to_json().expect("an unknown file is shown");
         assert_eq!(p["action"], json!("left"), "{p}");
         assert!(p["reason"].as_str().unwrap().contains("not"), "{p}");
@@ -308,7 +322,7 @@ fn plan_leaves_an_unknown_file_alone() {
             "{p}"
         );
         assert!(p["apply_flag"].is_null(), "{p}");
-        assert!(switch::apply(&h.root, "switch:0000000000000000", NOW).is_err());
+        assert!(switch::apply_for(&h.root, &h.exe(), "switch:0000000000000000", NOW).is_err());
         assert_eq!(h.read(), bytes, "the file stays as it is");
         assert!(!h.saved(STAMP).exists());
     }
@@ -321,7 +335,7 @@ fn plan_is_held_while_the_launcher_is_not_shown_to_be_rust() {
     let _g = gate();
     let mut held = 0;
     let mut check = |h: &Home, what: &str| {
-        let layer = switch::plan(&h.root).unwrap();
+        let layer = switch::plan_for(&h.root, &h.exe()).unwrap();
         let p = layer.to_json().expect("the known script is still shown");
         assert_eq!(p["action"], json!("held"), "{what}: {p}");
         assert!(layer.token().is_none(), "{what}: {p}");
@@ -330,9 +344,12 @@ fn plan_is_held_while_the_launcher_is_not_shown_to_be_rust() {
             "{what}: {p}"
         );
         let reason = p["reason"].as_str().unwrap();
-        assert!(reason.contains(LINK), "{what}: {reason}");
+        assert!(
+            reason.contains(h.launcher_file().to_str().unwrap()),
+            "{what}: {reason}"
+        );
         assert!(!layer.summary().is_empty(), "{what}");
-        let e = switch::apply(&h.root, "switch:0000000000000000", NOW).unwrap_err();
+        let e = switch::apply_for(&h.root, &h.exe(), "switch:0000000000000000", NOW).unwrap_err();
         assert!(e.contains("preview again"), "{what}: {e}");
         assert_eq!(h.read(), V1, "{what}: the script stays");
         assert!(!h.saved(STAMP).exists(), "{what}: nothing is written");
@@ -374,7 +391,7 @@ fn plan_is_held_while_the_launcher_is_not_shown_to_be_rust() {
         h.launcher(&format!("#!/bin/sh\necho '{}'\n", rust_line()));
     });
     h.launcher("#!/bin/sh\necho 'moai 9.9.9 (rust)'\n");
-    let e = switch::apply(&h.root, &first, NOW).unwrap_err();
+    let e = switch::apply_for(&h.root, &h.exe(), &first, NOW).unwrap_err();
     assert!(e.contains("preview again"), "{e}");
     assert_eq!(h.read(), V1);
     assert_eq!(held, 8);
@@ -418,7 +435,7 @@ fn go_bin_is_reported_and_never_written() {
     );
     // apply leaves it untouched: bytes, mode and modification time
     let t = h.token();
-    switch::apply(&h.root, &t, NOW).unwrap();
+    switch::apply_for(&h.root, &h.exe(), &t, NOW).unwrap();
     let after = fs::metadata(&g).unwrap();
     assert_eq!(fs::read(&g).unwrap(), V1);
     assert_eq!(after.permissions().mode(), before.permissions().mode());
@@ -440,7 +457,7 @@ fn apply_keeps_v1_and_makes_the_link() {
     h.rust_launcher();
     h.moai_old();
     let token = h.token();
-    let r = switch::apply(&h.root, &token, NOW).unwrap();
+    let r = switch::apply_for(&h.root, &h.exe(), &token, NOW).unwrap();
     assert_eq!(r["state"], json!("applied"), "{r}");
     assert_eq!(r["stamp"], json!(STAMP));
     assert_eq!(r["script"], json!("v1"), "{r}");
@@ -467,10 +484,7 @@ fn apply_keeps_v1_and_makes_the_link() {
             h.moai().display()
         ))
     );
-    assert_eq!(
-        h.names(),
-        vec!["moai", LINK, &format!("moai.before-{STAMP}")[..]]
-    );
+    assert_eq!(h.names(), vec!["moai", &format!("moai.before-{STAMP}")[..]]);
     // Through the link a word only the Go build had reaches the launcher, and
     // `moai.old` is not started. Before that the product itself started the launcher only to
     // ask its version: once for the preview that gave the token and once inside the apply.
@@ -504,7 +518,7 @@ fn apply_keeps_v2_and_makes_the_link() {
     let h = Home::new();
     h.put(V2);
     h.rust_launcher();
-    let r = switch::apply(&h.root, &h.token(), NOW).unwrap();
+    let r = switch::apply_for(&h.root, &h.exe(), &h.token(), NOW).unwrap();
     assert_eq!(r["script"], json!("v2"), "{r}");
     assert_eq!(fs::read(h.saved(STAMP)).unwrap(), V2);
     assert!(h.is_the_link());
@@ -517,7 +531,7 @@ fn apply_keeps_the_mode_of_the_old_script() {
     let h = Home::new();
     h.put_mode(V1, 0o700);
     h.rust_launcher();
-    switch::apply(&h.root, &h.token(), NOW).unwrap();
+    switch::apply_for(&h.root, &h.exe(), &h.token(), NOW).unwrap();
     assert_eq!(mode_of(&h.saved(STAMP)), 0o700);
 }
 
@@ -526,10 +540,10 @@ fn apply_refuses_a_wrong_or_stale_token() {
     let _g = gate();
     let h = Home::new();
     h.rust_launcher();
-    let layer = switch::plan(&h.root).unwrap();
+    let layer = switch::plan_for(&h.root, &h.exe()).unwrap();
     let token = layer.token().unwrap().to_string();
     for bad in ["switch:0000000000000000", "home:aaaaaaaaaaaaaaaa", ""] {
-        let e = switch::apply(&h.root, bad, NOW).unwrap_err();
+        let e = switch::apply_for(&h.root, &h.exe(), bad, NOW).unwrap_err();
         assert!(e.contains("token") && e.contains("preview again"), "{e}");
         assert_eq!(h.read(), V1);
         assert!(!h.saved(STAMP).exists());
@@ -545,13 +559,17 @@ fn apply_refuses_a_wrong_or_stale_token() {
     }
     // No token where the step is held or has nothing to do.
     let held = Home::new();
-    assert!(switch::check_token(&switch::plan(&held.root).unwrap(), Some(token.as_str())).is_err());
+    assert!(switch::check_token(
+        &switch::plan_for(&held.root, &held.exe()).unwrap(),
+        Some(token.as_str())
+    )
+    .is_err());
     // Stale: the script changed after the preview.
     let h = Home::new();
     h.rust_launcher();
     let token = h.token();
     h.put(b"#!/bin/sh\necho edited after the preview\n");
-    let e = switch::apply(&h.root, &token, NOW).unwrap_err();
+    let e = switch::apply_for(&h.root, &h.exe(), &token, NOW).unwrap_err();
     assert!(e.contains("preview again"), "{e}");
     assert_eq!(h.read(), b"#!/bin/sh\necho edited after the preview\n");
     assert!(!h.saved(STAMP).exists());
@@ -560,7 +578,7 @@ fn apply_refuses_a_wrong_or_stale_token() {
     h.rust_launcher();
     let token = h.token();
     h.put(V2);
-    assert!(switch::apply(&h.root, &token, NOW).is_err());
+    assert!(switch::apply_for(&h.root, &h.exe(), &token, NOW).is_err());
     assert_eq!(h.read(), V2);
     assert!(!h.saved(STAMP).exists());
 }
@@ -573,7 +591,7 @@ fn apply_checks_everything_before_the_first_write() {
     h.rust_launcher();
     let token = h.token();
     fs::write(h.saved(STAMP), b"keep me").unwrap();
-    let e = switch::apply(&h.root, &token, NOW).unwrap_err();
+    let e = switch::apply_for(&h.root, &h.exe(), &token, NOW).unwrap_err();
     assert!(e.contains("already exists"), "{e}");
     assert_eq!(fs::read(h.saved(STAMP)).unwrap(), b"keep me");
     assert_eq!(h.read(), V1);
@@ -585,7 +603,7 @@ fn apply_checks_everything_before_the_first_write() {
     let token = h.token();
     let temp = h.dir().join(format!(".moai.switch-{STAMP}"));
     fs::write(&temp, b"taken").unwrap();
-    let e = switch::apply(&h.root, &token, NOW).unwrap_err();
+    let e = switch::apply_for(&h.root, &h.exe(), &token, NOW).unwrap_err();
     assert!(e.contains("already exists"), "{e}");
     assert_eq!(fs::read(&temp).unwrap(), b"taken");
     assert!(!h.saved(STAMP).exists());
@@ -598,7 +616,7 @@ fn apply_checks_everything_before_the_first_write() {
     let real = h.root.join(".moai-cli/path-real");
     fs::rename(h.dir(), &real).unwrap();
     symlink(&real, h.dir()).unwrap();
-    let e = switch::apply(&h.root, &token, NOW).unwrap_err();
+    let e = switch::apply_for(&h.root, &h.exe(), &token, NOW).unwrap_err();
     assert!(e.contains("preview again") || e.contains("link"), "{e}");
     assert_eq!(fs::read(real.join("moai")).unwrap(), V1);
     assert_eq!(
@@ -615,9 +633,9 @@ fn apply_checks_everything_before_the_first_write() {
     fs::write(&target, V1).unwrap();
     fs::remove_file(h.moai()).unwrap();
     symlink(&target, h.moai()).unwrap();
-    assert!(switch::apply(&h.root, &token, NOW).is_err());
+    assert!(switch::apply_for(&h.root, &h.exe(), &token, NOW).is_err());
     assert_eq!(fs::read(&target).unwrap(), V1);
-    assert_eq!(h.names(), vec!["moai", LINK]);
+    assert_eq!(h.names(), vec!["moai"]);
     assert!(!h.saved(STAMP).exists());
 
     // The launcher went away after the preview.
@@ -625,7 +643,7 @@ fn apply_checks_everything_before_the_first_write() {
     h.rust_launcher();
     let token = h.token();
     fs::remove_file(h.launcher_file()).unwrap();
-    assert!(switch::apply(&h.root, &token, NOW).is_err());
+    assert!(switch::apply_for(&h.root, &h.exe(), &token, NOW).is_err());
     assert_eq!(h.read(), V1);
     assert!(!h.saved(STAMP).exists());
 
@@ -634,7 +652,7 @@ fn apply_checks_everything_before_the_first_write() {
     h.rust_launcher();
     let token = h.token();
     for bad in ["not a time", "../../x", "", "2026-11-24 07:47:22"] {
-        let e = switch::apply(&h.root, &token, bad).unwrap_err();
+        let e = switch::apply_for(&h.root, &h.exe(), &token, bad).unwrap_err();
         assert!(e.contains("UTC"), "{bad}: {e}");
         assert!(!h.saved(STAMP).exists(), "{bad}");
         assert_eq!(h.read(), V1, "{bad}");
@@ -651,7 +669,7 @@ fn a_failed_step_leaves_a_whole_script() {
     fs::set_permissions(h.dir(), fs::Permissions::from_mode(0o555)).unwrap();
     let probe = fs::write(h.dir().join("probe"), b"x");
     if probe.is_err() {
-        let e = switch::apply(&h.root, &token, NOW).unwrap_err();
+        let e = switch::apply_for(&h.root, &h.exe(), &token, NOW).unwrap_err();
         assert!(!e.is_empty());
         fs::set_permissions(h.dir(), fs::Permissions::from_mode(0o755)).unwrap();
         assert_eq!(h.read(), V1, "still the whole v1");
@@ -669,7 +687,7 @@ fn a_failed_step_leaves_a_whole_script() {
             h.rust_launcher();
             let token = h.token();
             std::env::set_var("MOAI_TEST_FAULT", point);
-            let r = switch::apply(&h.root, &token, NOW);
+            let r = switch::apply_for(&h.root, &h.exe(), &token, NOW);
             std::env::remove_var("MOAI_TEST_FAULT");
             let e = r.unwrap_err();
             assert!(e.contains(point), "{name} {point}: {e}");
@@ -677,7 +695,7 @@ fn a_failed_step_leaves_a_whole_script() {
             assert!(!h.is_the_link(), "{name} {point}");
             assert_eq!(
                 h.names(),
-                vec!["moai", LINK, &format!("moai.before-{STAMP}")[..]],
+                vec!["moai", &format!("moai.before-{STAMP}")[..]],
                 "{name} {point}: no temporary file left"
             );
             assert!(
@@ -686,7 +704,8 @@ fn a_failed_step_leaves_a_whole_script() {
             );
             assert_eq!(fs::read(h.saved(STAMP)).unwrap(), bytes);
             // The next apply, with a new stamp, still works and keeps the first copy.
-            let r = switch::apply(&h.root, &h.token(), "2026-11-24T07:48:00Z").unwrap();
+            let r =
+                switch::apply_for(&h.root, &h.exe(), &h.token(), "2026-11-24T07:48:00Z").unwrap();
             assert_eq!(r["state"], json!("applied"), "{name} {point}: {r}");
             assert!(h.is_the_link());
             assert_eq!(fs::read(h.saved(STAMP)).unwrap(), bytes);
@@ -701,7 +720,7 @@ fn revert_puts_the_kept_script_back_and_refuses_anything_else() {
     let _g = gate();
     let h = Home::new();
     h.rust_launcher();
-    switch::apply(&h.root, &h.token(), NOW).unwrap();
+    switch::apply_for(&h.root, &h.exe(), &h.token(), NOW).unwrap();
     // Every refusal changes nothing.
     let state = |h: &Home| (h.is_the_link(), fs::read(h.saved(STAMP)).unwrap());
     let before = state(&h);
@@ -763,7 +782,7 @@ fn revert_puts_the_kept_script_back_and_refuses_anything_else() {
         .unwrap()
         .file_type()
         .is_symlink());
-    assert_eq!(h.names(), vec!["moai", LINK]);
+    assert_eq!(h.names(), vec!["moai"]);
     // A second revert finds nothing.
     let e = switch::revert(&h.root, STAMP).unwrap_err();
     assert!(e.contains("no saved copy"), "{e}");
@@ -779,7 +798,7 @@ fn revert_puts_v2_back_too_and_refuses_a_copy_of_the_old_step() {
     let h = Home::new();
     h.put(V2);
     h.rust_launcher();
-    switch::apply(&h.root, &h.token(), NOW).unwrap();
+    switch::apply_for(&h.root, &h.exe(), &h.token(), NOW).unwrap();
     let r = switch::revert(&h.root, STAMP).unwrap();
     assert_eq!(r["script"], json!("v2"), "{r}");
     assert_eq!(h.read(), V2);
@@ -805,7 +824,7 @@ fn revert_switch_runs_alone_and_is_refused_beside_a_confirming_flag() {
     let _g = gate();
     let h = Home::new();
     h.rust_launcher();
-    switch::apply(&h.root, &h.token(), NOW).unwrap();
+    switch::apply_for(&h.root, &h.exe(), &h.token(), NOW).unwrap();
     let ask = |_: &str, _: &Value| Ok(false);
     let flags: [[Option<&str>; 4]; 4] = [
         [Some("x"), None, None, None],
