@@ -274,4 +274,5 @@ tests/worktree_gc_install_dir.rs	4	0
 tests/worktree_move.rs	7	4
 tests/worktree_place_cli.rs	8	20
 tests/worktree_place_older_cli.rs	1	3
+tests/worktree_place_oldest_cli.rs	3	9
 tests/worktree_report.rs	8	0
