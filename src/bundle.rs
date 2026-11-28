@@ -805,7 +805,7 @@ fn judge(
     let mut passes: Vec<(i64, String, String)> = Vec::new(); // (note, head, line)
     for n in &notes {
         let first = n.first_line();
-        if !first.starts_with("AUDIT ") {
+        if !crate::review_names::starts_verdict(first, " ") {
             continue;
         }
         match gate::parse_verdict(first) {
