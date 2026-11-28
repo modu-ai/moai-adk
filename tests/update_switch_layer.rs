@@ -188,6 +188,11 @@ impl Home {
         )
     }
 
+    /// Whether `path/moai` is a link with exactly this target.
+    fn is_a_link_to(&self, target: &str) -> bool {
+        fs::read_link(self.moai()).is_ok_and(|t| t == Path::new(target))
+    }
+
     /// Whether `path/moai` is the relative link this step makes.
     fn is_the_link(&self) -> bool {
         fs::read_link(self.moai()).is_ok_and(|t| t == Path::new(LINK))
@@ -839,6 +844,37 @@ fn revert_puts_v2_back_too_and_refuses_a_copy_of_the_old_step() {
     assert!(e.contains("link"), "{e}");
     assert_eq!(h.read(), V2);
     assert_eq!(fs::read(h.saved(STAMP)).unwrap(), V1);
+}
+
+/// A link the earlier shape of this step made (`moai` -> `moai-cli`) is still put back, and a
+/// relative link to something that is neither shape is not.
+#[test]
+fn revert_takes_the_earlier_moai_cli_link_and_no_other_shape() {
+    let _g = gate();
+    for (target, reverts) in [
+        ("moai-cli", true),
+        ("../versions/a/bin/moai", true),
+        ("../versions/a/bin/moai-cli", false),
+        ("../elsewhere/a/bin/moai", false),
+        ("../versions/a/b/bin/moai", false),
+        ("/usr/bin/true", false),
+    ] {
+        let h = Home::new();
+        h.rust_launcher();
+        fs::write(h.saved(STAMP), V1).unwrap();
+        fs::set_permissions(h.saved(STAMP), fs::Permissions::from_mode(0o755)).unwrap();
+        fs::remove_file(h.moai()).unwrap();
+        symlink(Path::new(target), h.moai()).unwrap();
+        let r = switch::revert(&h.root, STAMP);
+        assert_eq!(r.is_ok(), reverts, "{target}: {r:?}");
+        if reverts {
+            assert_eq!(h.read(), V1, "{target}");
+            assert!(!h.saved(STAMP).exists(), "{target}");
+        } else {
+            assert!(h.is_a_link_to(target), "{target}");
+            assert_eq!(fs::read(h.saved(STAMP)).unwrap(), V1, "{target}");
+        }
+    }
 }
 
 // ---- the update command, library part (REQ-16) ------------------------------
