@@ -301,6 +301,15 @@ fn secret_suspects(text: &str) -> Vec<(usize, &'static str)> {
         .collect()
 }
 
+// The characters the run scan consumed, counted by the test probe below: the clamp keeps this
+// linear in the line's length, so the probe checks it without a clock and the check holds on a
+// loaded machine too. Per thread, because the parallel test threads would race on one
+// process-wide counter. The product build carries none of it.
+#[cfg(test)]
+thread_local! {
+    static RUN_SCAN_CHARS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 /// A token of `prefix` followed by at least `min` token characters, the prefix not inside a word.
 fn has_token(line: &str, prefix: &str, min: usize, upper_digit_only: bool) -> bool {
     line.match_indices(prefix).any(|(i, _)| {
@@ -311,6 +320,8 @@ fn has_token(line: &str, prefix: &str, min: usize, upper_digit_only: bool) -> bo
         let run = line[i + prefix.len()..]
             .chars()
             .take_while(|c| {
+                #[cfg(test)]
+                RUN_SCAN_CHARS.with(|n| n.set(n.get() + 1));
                 if upper_digit_only {
                     c.is_ascii_uppercase() || c.is_ascii_digit()
                 } else {
@@ -2304,12 +2315,34 @@ mod tests {
             let start = std::time::Instant::now();
             let _ = secret_suspects(&line);
             assert!(
-                start.elapsed().as_secs() < 3,
+                start.elapsed().as_secs() < 30,
                 "{:?} for a line starting {:?}",
                 start.elapsed(),
                 &line[..12]
             );
         }
+    }
+
+    /// The repeated-prefix scan stays linear in the line's length (the re-audit N6' clamp). The
+    /// probe counts the characters the run scan consumes instead of reading a clock, so it
+    /// passes on a loaded machine too, and the clamp-removal mutation still fails it on any
+    /// machine. The clock test above keeps a generous ceiling as the backstop only.
+    #[test]
+    fn the_repeated_prefix_scan_consumes_characters_linearly() {
+        let line = format!("{}Abcdef12", "xsk-".repeat(32_768));
+        RUN_SCAN_CHARS.with(|n| n.set(0));
+        let _ = secret_suspects(&line);
+        let consumed = RUN_SCAN_CHARS.with(std::cell::Cell::get);
+        // The clamp ends every run at `min` characters plus the one that ends it, so each of the
+        // len/4 prefix positions costs a bounded constant and the whole scan stays within a small
+        // multiple of the line's length; without the clamp the scan is quadratic, orders of
+        // magnitude past this bound. Eight times lets the clamp pass and still catches a
+        // middle-ground slowdown.
+        assert!(
+            consumed <= line.len() * 8,
+            "the run scan consumed {consumed} characters for a {}-character line: quadratic",
+            line.len()
+        );
     }
 
     /// Look-alikes before a real credential on the same line must not hide it (re-audit N6'').
