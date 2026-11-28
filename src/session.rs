@@ -406,7 +406,10 @@ fn glm_token() -> Result<Option<(String, KeySource)>, crate::key_vault::Blocked>
         return Ok(Some((token, KeySource::Env)));
     }
     if let Ok(home) = crate::key_vault::home() {
-        if let Some((token, scope)) = crate::key_vault::read_here(&home, "glm")? {
+        let process_home = crate::layout::environment_home();
+        if let Some((token, scope)) =
+            crate::key_vault::read_here_from(&home, "glm", process_home.as_deref())?
+        {
             return Ok(Some((token, KeySource::Vault(scope))));
         }
         if let Some(file) = legacy_key_file(&home) {

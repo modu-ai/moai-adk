@@ -645,8 +645,29 @@ pub fn glm_key_step<R: BufRead, W: Write>(
     picks: &[Pick],
     hidden: bool,
 ) -> io::Result<()> {
+    glm_key_step_from(input, out, home, picks, hidden, None)
+}
+
+/// [`glm_key_step`] with the process's own HOME as the command edge read it, which decides the
+/// environment of the git children (SPEC-20261124-identity-home-arg REQ-36).
+pub fn glm_key_step_from<R: BufRead, W: Write>(
+    input: &mut R,
+    out: &mut W,
+    home: &Path,
+    picks: &[Pick],
+    hidden: bool,
+    process_home: Option<&Path>,
+) -> io::Result<()> {
     let cwd = std::env::current_dir().ok();
-    glm_key_step_in(cwd.as_deref(), input, out, home, picks, hidden)
+    glm_key_step_in(
+        cwd.as_deref(),
+        input,
+        out,
+        home,
+        picks,
+        hidden,
+        process_home,
+    )
 }
 
 /// [`glm_key_step`] for the folder it is given; `None` is a current directory that cannot be
@@ -658,11 +679,13 @@ fn glm_key_step_in<R: BufRead, W: Write>(
     home: &Path,
     picks: &[Pick],
     hidden: bool,
+    process_home: Option<&Path>,
 ) -> io::Result<()> {
     if !picks.iter().any(|p| p.tool == "glm") {
         return Ok(());
     }
-    let resolved = folder.map(|dir| crate::key_vault::project_scope_in(dir, Some(home)));
+    let resolved =
+        folder.map(|dir| crate::key_vault::project_scope_in_from(dir, Some(home), process_home));
     let Some(Ok(project)) = resolved else {
         writeln!(
             out,
@@ -756,7 +779,7 @@ mod tests {
         }];
         let mut input = Cursor::new("FAKE-glm-key-that-must-not-be-read\n");
         let mut out = Vec::new();
-        glm_key_step_in(folder, &mut input, &mut out, home, &picks, false)
+        glm_key_step_in(folder, &mut input, &mut out, home, &picks, false, None)
             .expect("a skip does not end the model step, so the pick is kept");
         let text = String::from_utf8(out).unwrap();
         assert_eq!(text.lines().count(), 1, "one line: {text}");

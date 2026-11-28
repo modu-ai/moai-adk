@@ -118,8 +118,20 @@ pub fn evidence_dir(home_state_root: &Path, project_id: &str, pr: u64, head: &st
 }
 
 /// Plans the clone of `req`. `home` is the HOME whose home state root holds the evidence folder
-/// (the caller reads it from the environment); with `None` no evidence folder is named.
+/// (the caller reads it from the environment); with `None` no evidence folder is named. It is
+/// [`plan_from`] with no process HOME.
 pub fn plan(project: &Path, req: &Request, home: Option<&Path>) -> Result<Value> {
+    plan_from(project, req, home, None)
+}
+
+/// [`plan`] with the process's own HOME as the command edge read it, which decides the environment
+/// of the git children (SPEC-20261124-identity-home-arg REQ-36).
+pub fn plan_from(
+    project: &Path,
+    req: &Request,
+    home: Option<&Path>,
+    process_home: Option<&Path>,
+) -> Result<Value> {
     if req.pr == 0 {
         return Err("audit clone refused: --pr must be a pull request number".into());
     }
@@ -147,7 +159,7 @@ pub fn plan(project: &Path, req: &Request, home: Option<&Path>) -> Result<Value>
     let dir = req.tmp_root.join(format!("moai-audit-{}-{head8}", req.pr));
     let dir_s = dir.to_string_lossy().into_owned();
     let base_ref = format!("refs/remotes/origin/{}", req.base_branch);
-    let id = crate::identity::identity_in(project, home)?;
+    let id = crate::identity::identity_in_from(project, home, process_home)?;
     let (evidence, evidence_reason) = match (
         id["project_id"].as_str(),
         id["home_state_root"].as_str(),

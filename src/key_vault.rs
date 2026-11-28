@@ -203,7 +203,17 @@ pub fn folder_name(project_id: Option<&str>, primary_dir: &str, clone_hex: &str)
 /// is refused. `None` resolves no home state, as `identity_in` does. No git command is started
 /// here beyond the identity's own.
 pub fn project_scope_in(dir: &Path, home: Option<&Path>) -> Result<Option<Scope>> {
-    scope_of_identity(&crate::identity::identity_in(dir, home)?)
+    project_scope_in_from(dir, home, None)
+}
+
+/// [`project_scope_in`] with the process's own HOME as the command edge read it, which decides the
+/// environment of the git children (SPEC-20261124-identity-home-arg REQ-36).
+pub fn project_scope_in_from(
+    dir: &Path,
+    home: Option<&Path>,
+    process_home: Option<&Path>,
+) -> Result<Option<Scope>> {
+    scope_of_identity(&crate::identity::identity_in_from(dir, home, process_home)?)
 }
 
 fn scope_of_identity(id: &Value) -> Result<Option<Scope>> {
@@ -242,10 +252,20 @@ fn scope_of_identity(id: &Value) -> Result<Option<Scope>> {
 /// The scope a `key-*` command works on: `--shared`, else the project of `dir` resolved against
 /// `home`. Outside a git work tree only `--shared` is possible.
 pub fn scope_for(dir: &Path, shared: bool, home: Option<&Path>) -> Result<Scope> {
+    scope_for_from(dir, shared, home, None)
+}
+
+/// [`scope_for`] with the process's own HOME (see [`project_scope_in_from`]).
+pub fn scope_for_from(
+    dir: &Path,
+    shared: bool,
+    home: Option<&Path>,
+    process_home: Option<&Path>,
+) -> Result<Scope> {
     if shared {
         return Ok(Scope::Shared);
     }
-    project_scope_in(dir, home)?.ok_or_else(|| {
+    project_scope_in_from(dir, home, process_home)?.ok_or_else(|| {
         "not inside a git work tree: run it in the project, or use --shared for a key every project uses".to_string()
     })
 }
@@ -254,7 +274,13 @@ pub fn scope_for(dir: &Path, shared: bool, home: Option<&Path>) -> Result<Scope>
 /// none, no HOME is given.
 pub fn scope_here(shared: bool) -> Result<Scope> {
     let dir = std::env::current_dir().map_err(|_| "the current directory is unreadable")?;
-    scope_for(&dir, shared, home().ok().as_deref())
+    let process_home = crate::layout::environment_home();
+    scope_for_from(
+        &dir,
+        shared,
+        home().ok().as_deref(),
+        process_home.as_deref(),
+    )
 }
 
 fn state_dir(home: &Path) -> PathBuf {
@@ -610,6 +636,15 @@ pub fn read_here(
     home: &Path,
     provider: &str,
 ) -> std::result::Result<Option<(String, Scope)>, Blocked> {
+    read_here_from(home, provider, None)
+}
+
+/// [`read_here`] with the process's own HOME (see [`project_scope_in_from`]).
+pub fn read_here_from(
+    home: &Path,
+    provider: &str,
+    process_home: Option<&Path>,
+) -> std::result::Result<Option<(String, Scope)>, Blocked> {
     let unresolved = |why: String| {
         Blocked::new(
             "key_absent",
@@ -619,7 +654,7 @@ pub fn read_here(
     };
     let dir = std::env::current_dir()
         .map_err(|_| unresolved("the current directory is unreadable".into()))?;
-    let project = project_scope_in(&dir, Some(home)).map_err(unresolved)?;
+    let project = project_scope_in_from(&dir, Some(home), process_home).map_err(unresolved)?;
     read(home, project.as_ref(), provider)
 }
 

@@ -44,7 +44,9 @@ const EDGE_READS: &[Read] = &[
     ("src/ops/home_state_plan.rs", "run", 1),
     ("src/ops/home_state_revert.rs", "run", 1),
     ("src/ops/host_wake.rs", "run", 1),
+    ("src/ops/identity.rs", "run", 1),
     ("src/ops/install_inspect.rs", "run", 1),
+    ("src/ops/lane_next.rs", "run", 1),
     ("src/ops/star_ask.rs", "run", 1),
     ("src/statusline/mod.rs", "run", 1),
 ];
@@ -145,8 +147,27 @@ const ADAPTER_CALLS: &[Call] = &[
     ("layout::default_home_root", "src/layout.rs", "plan_cli", 1),
     (
         "layout::environment_home",
+        "src/apply.rs",
+        "identity_fields",
+        1,
+    ),
+    ("layout::environment_home", "src/audit.rs", "observe", 1),
+    (
+        "layout::environment_home",
         "src/claim.rs",
         "journal_root",
+        1,
+    ),
+    (
+        "layout::environment_home",
+        "src/key_vault.rs",
+        "scope_here",
+        1,
+    ),
+    (
+        "layout::environment_home",
+        "src/launcher_init.rs",
+        "prepare_project",
         1,
     ),
     (
@@ -167,6 +188,7 @@ const ADAPTER_CALLS: &[Call] = &[
         "switched_dir_checked",
         1,
     ),
+    ("layout::environment_home", "src/session.rs", "glm_token", 1),
     (
         "layout::environment_home",
         "src/worktree.rs",

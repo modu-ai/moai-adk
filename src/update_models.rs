@@ -164,9 +164,20 @@ fn preview<W: Write>(out: &mut W, plan: &Plan) -> std::io::Result<()> {
 /// settings are not written before a yes, and a refusal of the apply leaves the file as it was;
 /// the glm key is stored when it is answered, so a no at the save question keeps it.
 pub fn stage<R: BufRead, W: Write>(home: &Path, input: &mut R, out: &mut W) -> Value {
+    stage_from(home, input, out, None)
+}
+
+/// [`stage`] with the process's own HOME as the command edge read it, which decides the
+/// environment of the git children of the glm key step (SPEC-20261124-identity-home-arg REQ-36).
+pub fn stage_from<R: BufRead, W: Write>(
+    home: &Path,
+    input: &mut R,
+    out: &mut W,
+    process_home: Option<&Path>,
+) -> Value {
     // The hidden prompt needs the person's terminal on stdin and on stderr, where it asks.
     let hidden = std::io::stdin().is_terminal() && std::io::stderr().is_terminal();
-    stage_with(home, input, out, hidden)
+    stage_with_from(home, input, out, hidden, process_home)
 }
 
 /// [`stage`] with the hidden key prompt chosen by the caller: `false` reads the glm key as one
@@ -177,6 +188,17 @@ pub fn stage_with<R: BufRead, W: Write>(
     input: &mut R,
     out: &mut W,
     hidden: bool,
+) -> Value {
+    stage_with_from(home, input, out, hidden, None)
+}
+
+/// [`stage_with`] with the process's own HOME (see [`stage_from`]).
+pub fn stage_with_from<R: BufRead, W: Write>(
+    home: &Path,
+    input: &mut R,
+    out: &mut W,
+    hidden: bool,
+    process_home: Option<&Path>,
 ) -> Value {
     let path = settings_path(home);
     // The saved choices are the defaults of the questions; an unusable file ends the stage here.
@@ -190,7 +212,9 @@ pub fn stage_with<R: BufRead, W: Write>(
         Ok(Outcome::Cancelled) => return json!({"state": "cancelled"}),
         Err(_) => return error("the answers could not be read"),
     };
-    if let Err(message) = questions::glm_key_step(input, out, home, &picks, hidden) {
+    if let Err(message) =
+        questions::glm_key_step_from(input, out, home, &picks, hidden, process_home)
+    {
         return error(&message.to_string());
     }
     let plan = match questions::plan_file(&path, &picks) {

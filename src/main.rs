@@ -2050,21 +2050,25 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             base_branch,
             repo_url,
             tmp_root,
-        } => moai_cli::audit_clone::plan(
-            &project,
-            &moai_cli::audit_clone::Request {
-                pr,
-                head: &head,
-                head_branch: &head_branch,
-                base_branch: &base_branch,
-                repo_url: repo_url.as_deref(),
-                tmp_root: &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
-            },
-            std::env::var_os("HOME")
+        } => {
+            // Read once: the HOME this command uses is the process HOME (REQ-36).
+            let home = std::env::var_os("HOME")
                 .filter(|h| !h.is_empty())
-                .map(PathBuf::from)
-                .as_deref(),
-        ),
+                .map(PathBuf::from);
+            moai_cli::audit_clone::plan_from(
+                &project,
+                &moai_cli::audit_clone::Request {
+                    pr,
+                    head: &head,
+                    head_branch: &head_branch,
+                    base_branch: &base_branch,
+                    repo_url: repo_url.as_deref(),
+                    tmp_root: &tmp_root.unwrap_or_else(|| PathBuf::from("/tmp")),
+                },
+                home.as_deref(),
+                home.as_deref(),
+            )
+        }
         Command::Update {
             confirm,
             confirm_cleanup,
@@ -2094,6 +2098,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &confirm_conflict_replace,
                 revert_switch.as_deref(),
                 allow_older,
+                Some(&home),
                 |summary, preview| {
                     use moai_cli::ui_text::Msg;
                     if !tux::human() {
@@ -2138,6 +2143,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                         None,
                         None,
                         allow_older,
+                        Some(&home),
                         |_, _| Ok(false),
                     )
                 }
