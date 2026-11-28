@@ -1,4 +1,6 @@
-//! SPEC-20261119-project-worktree-move (card C-59, criterion 3): the PROJECT workflow reports a
+//! SPEC-20261119-project-worktree-move (card C-59, criterion 3): the workflow that moves earlier
+//! generation state (`update.md` since SPEC-20261124-moai-project-interview revision 4; the PROJECT
+//! workflow only names `/moai update` for it) reports a
 //! git worktree registered under the Go `.moai/` folder with the worktree-move choice. The
 //! tests read the workflow text and the sources that print the reason, the plan fields and the
 //! apply arguments, so the text only quotes what the code really says. No host, no HOME, no
@@ -11,30 +13,18 @@ fn read(rel: &str) -> String {
         .unwrap_or_else(|e| panic!("{rel}: {e}"))
 }
 
-/// Step 2 of `project.md` (the earlier-generation state) up to the next numbered step.
+/// The text of `update.md`, which carries the earlier-generation move steps (the project workflow
+/// only names `/moai update` for them): the worktree-move preview, ask and apply live there.
 fn step_2() -> String {
-    let text = read("skills/moai/workflows/project.md");
-    let mut out = String::new();
-    let mut inside = false;
-    for line in text.lines() {
-        if line.starts_with("2. **Earlier-generation state") {
-            inside = true;
-        } else if inside && line.starts_with("3. ") {
-            break;
-        }
-        if inside {
-            out.push_str(line);
-            out.push('\n');
-        }
-    }
-    assert!(!out.is_empty(), "project.md has no step 2");
+    let out = read("skills/moai/workflows/update.md");
+    assert!(!out.is_empty(), "update.md is empty");
     out
 }
 
 /// Where `needle` first stands in `text`; a missing sentence fails with its own words.
 fn at(text: &str, needle: &str) -> usize {
     text.find(needle)
-        .unwrap_or_else(|| panic!("step 2 of project.md lacks: {needle}"))
+        .unwrap_or_else(|| panic!("update.md lacks: {needle}"))
 }
 
 #[test]
@@ -48,10 +38,7 @@ fn go_state_worktree_reason_is_reported_with_the_worktree_move_choice() {
         "name the worktree move as the way to let the folder move",
         "`worktree-move-plan`",
     ] {
-        assert!(
-            step.contains(phrase),
-            "step 2 of project.md lacks: {phrase}"
-        );
+        assert!(step.contains(phrase), "update.md lacks: {phrase}");
     }
 }
 
@@ -86,7 +73,7 @@ fn worktree_move_is_previewed_then_asked_once_then_applied_only_after_the_pick()
         // The folder moves only on a new preview that reads it as `move`.
         "run `moai go-state-plan <project>` again",
     ] {
-        assert!(step.contains(phrase), "step 2 of project.md lacks: {phrase}");
+        assert!(step.contains(phrase), "update.md lacks: {phrase}");
     }
 }
 
@@ -139,9 +126,6 @@ fn quoted_names_are_the_ones_the_code_prints() {
         "--root",
         "--observations",
     ] {
-        assert!(
-            step.contains(argument),
-            "step 2 of project.md lacks {argument}"
-        );
+        assert!(step.contains(argument), "update.md lacks {argument}");
     }
 }

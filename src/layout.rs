@@ -878,8 +878,8 @@ pub(crate) mod home_arg_tests {
     }
 
     /// AC-4 (REQ-5), child side: the environment HOME's state folder is a symlink, which a read
-    /// of it refuses. `identity` reads it and is refused; `claims_legacy_dir` does not read it
-    /// and answers the clone's claims folder.
+    /// of it refuses. `identity_in` given that HOME is refused; `claims_legacy_dir` does not read
+    /// it and answers the clone's claims folder.
     #[test]
     fn claims_legacy_dir_ignores_the_environment_home() {
         let (Some(work), Some(claims)) = (child_var(CHILD_PROJECT), child_var(CHILD_EXPECT)) else {
@@ -898,8 +898,9 @@ pub(crate) mod home_arg_tests {
             );
             return;
         };
-        let refused =
-            crate::identity::identity(&work).expect_err("identity reads the environment HOME");
+        let env_home = environment_home();
+        let refused = crate::identity::identity_in(&work, env_home.as_deref())
+            .expect_err("the environment HOME handed to identity_in is refused");
         assert_eq!(refused, "home state root is a symlink; refused");
         assert_eq!(claims_legacy_dir(&work), Ok(Some(claims)));
     }

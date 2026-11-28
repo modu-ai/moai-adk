@@ -293,7 +293,8 @@ fn a_glm_pick_on_a_terminal_reads_the_key_hidden_and_goes_on_by_itself() {
     assert!(!text.contains(FAKE_KEY), "the key is not echoed: {text}");
     let saved: Value = serde_json::from_str(&saved_settings(&fx).expect("saved")).unwrap();
     assert!(saved["launcher"]["models"]["glm"]["model"].is_string());
-    let scope = moai_cli::model_effort_questions::glm_key_scope(&project, &fx.home)
+    let scope = moai_cli::key_vault::project_scope_in(&project, Some(&fx.home))
+        .unwrap()
         .expect("the project is a git work tree");
     assert_eq!(
         moai_cli::key_vault::read_entry(&fx.home, &scope, "glm")
@@ -309,18 +310,120 @@ fn a_glm_pick_on_a_terminal_reads_the_key_hidden_and_goes_on_by_itself() {
     );
 }
 
-/// Outside a git work tree the glm key has no project folder: the key question is skipped with a
-/// line that says how to store the key, the step goes on, and the pick is saved.
+const KEEP_QUESTION: &str = "type n to enter a new one.";
+const SHARED_WORDS: &str = "shared by every project";
+const OLD_FAKE_KEY: &str = "FAKE-tty-glm-key-that-was-there-before";
+
+/// A folder inside the temporary HOME that is no git work tree. The premise is checked: a
+/// temporary folder inside a repository would silently put the run inside a project.
+fn plain_folder(fx: &Fx) -> PathBuf {
+    let folder = fx.home.join("plain");
+    fs::create_dir_all(&folder).unwrap();
+    assert_eq!(
+        moai_cli::key_vault::project_scope_in(&folder, Some(&fx.home)).unwrap(),
+        None,
+        "the folder is no git work tree"
+    );
+    folder
+}
+
+fn shared_key(fx: &Fx) -> Option<String> {
+    moai_cli::key_vault::read_entry(&fx.home, &moai_cli::key_vault::Scope::Shared, "glm").unwrap()
+}
+
+fn store_shared_key(fx: &Fx, value: &str) {
+    moai_cli::key_vault::set(&fx.home, &moai_cli::key_vault::Scope::Shared, "glm", value).unwrap();
+}
+
+fn assert_glm_pick_saved(fx: &Fx) {
+    let saved: Value = serde_json::from_str(&saved_settings(fx).expect("saved")).unwrap();
+    assert!(
+        saved["launcher"]["models"]["glm"]["model"].is_string(),
+        "{saved}"
+    );
+}
+
+/// SPEC-20261124-glm-key-scope AC-4 (REQ-4, REQ-5): outside a git work tree picking glm asks for
+/// the key and says it is shared by every project; the typed key is read from the Shared folder of
+/// the temporary HOME, is in no other file and on no screen, and the pick is saved.
 #[test]
-fn a_glm_pick_outside_a_project_skips_the_key_and_saves_the_pick() {
+fn a_glm_pick_outside_a_project_asks_and_stores_a_shared_key() {
     let fx = installed_like_the_installer();
+    let folder = plain_folder(&fx);
     let text = on_a_terminal_in(
         &fx,
-        &fx.home,
-        &[(TOOL_QUESTION, "2\n\n\n"), (SAVE_QUESTION, "y\n")],
+        &folder,
+        &[
+            (TOOL_QUESTION, "2\n\n\n"),
+            (KEY_QUESTION, &format!("{FAKE_KEY}\n")),
+            (SAVE_QUESTION, "y\n"),
+        ],
     );
-    assert!(text.contains("not inside one"), "{text}");
+    assert!(text.contains("GLM API key"), "{text}");
+    assert!(text.contains(SHARED_WORDS), "{text}");
+    assert!(!text.contains(FAKE_KEY), "the key is not echoed: {text}");
+    assert_eq!(
+        shared_key(&fx).as_deref(),
+        Some(FAKE_KEY),
+        "the Shared folder of the temporary HOME holds the key"
+    );
+    assert_eq!(
+        files_holding(&fx.home, FAKE_KEY),
+        Vec::<PathBuf>::new(),
+        "the plain key is in no file"
+    );
+    assert_glm_pick_saved(&fx);
+}
+
+/// SPEC-20261124-glm-key-scope AC-5 (REQ-4, REQ-5): outside a git work tree a Shared glm key that
+/// already exists is kept on Enter, and the question says it is shared by every project.
+#[test]
+fn a_glm_pick_outside_a_project_keeps_the_shared_key_on_enter() {
+    let fx = installed_like_the_installer();
+    let folder = plain_folder(&fx);
+    store_shared_key(&fx, OLD_FAKE_KEY);
+    let text = on_a_terminal_in(
+        &fx,
+        &folder,
+        &[
+            (TOOL_QUESTION, "2\n\n\n"),
+            (KEEP_QUESTION, "\n"),
+            (SAVE_QUESTION, "y\n"),
+        ],
+    );
+    assert!(text.contains("already in the key vault"), "{text}");
+    assert!(text.contains(SHARED_WORDS), "{text}");
     assert!(!text.contains(KEY_QUESTION), "no key prompt: {text}");
-    let saved: Value = serde_json::from_str(&saved_settings(&fx).expect("saved")).unwrap();
-    assert!(saved["launcher"]["models"]["glm"]["model"].is_string());
+    assert!(!text.contains(OLD_FAKE_KEY), "the key is not shown: {text}");
+    assert_eq!(shared_key(&fx).as_deref(), Some(OLD_FAKE_KEY));
+    assert_glm_pick_saved(&fx);
+}
+
+/// SPEC-20261124-glm-key-scope AC-5 (REQ-4): outside a git work tree `n` replaces the Shared glm
+/// key with the one typed at the hidden prompt.
+#[test]
+fn a_glm_pick_outside_a_project_replaces_the_shared_key_on_n() {
+    let fx = installed_like_the_installer();
+    let folder = plain_folder(&fx);
+    store_shared_key(&fx, OLD_FAKE_KEY);
+    let text = on_a_terminal_in(
+        &fx,
+        &folder,
+        &[
+            (TOOL_QUESTION, "2\n\n\n"),
+            (KEEP_QUESTION, "n\n"),
+            (KEY_QUESTION, &format!("{FAKE_KEY}\n")),
+            (SAVE_QUESTION, "y\n"),
+        ],
+    );
+    assert!(text.contains(SHARED_WORDS), "{text}");
+    assert!(!text.contains(FAKE_KEY), "the key is not echoed: {text}");
+    assert!(!text.contains(OLD_FAKE_KEY), "the key is not shown: {text}");
+    assert_eq!(shared_key(&fx).as_deref(), Some(FAKE_KEY));
+    assert_eq!(
+        files_holding(&fx.home, FAKE_KEY),
+        Vec::<PathBuf>::new(),
+        "the plain key is in no file"
+    );
+    assert_glm_pick_saved(&fx);
 }

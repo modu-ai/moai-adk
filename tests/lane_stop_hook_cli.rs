@@ -1,177 +1,110 @@
-//! #2904 stage 2 (O5, #2899 B, user decision D-O2): the lane Stop command. `lane-stop-hook`
-//! answers a Stop with `{"decision":"block",…}` until the end condition. No host file carries the
-//! command any more (the Codex project layer was removed), so every case runs the command line
-//! itself, in a temporary project and HOME, with saved `lane-next` snapshots: no git, no network.
+//! SPEC-20261121-lane-goal-leader-codex-removed: the lane Stop hook was removed with its host,
+//! but a hook file an earlier release wrote still runs `lane-stop-hook`. Such a run must neither
+//! block nor fail: one line on standard error, nothing on standard output, exit 0, and nothing
+//! written in the project or the HOME. Standard input is never read.
 mod common;
 
 use common::CleanEnv;
-use serde_json::{json, Value};
 use std::fs;
-use std::io::Write as _;
+use std::io::Read as _;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 
-struct Fixture {
-    _tmp: tempfile::TempDir,
-    home: PathBuf,
-    project: PathBuf,
-}
-
-fn setup() -> Fixture {
-    let tmp = tempfile::tempdir().unwrap();
-    let root = fs::canonicalize(tmp.path()).unwrap();
-    let (home, project) = (root.join("home"), root.join("project"));
-    fs::create_dir_all(&home).unwrap();
-    // The state folder a block count is written into (an install used to make it).
-    fs::create_dir_all(project.join(moai_cli::state_root::dir(&project))).unwrap();
-    Fixture {
-        _tmp: tmp,
-        home,
-        project,
+/// Every path below `dir`, relative and sorted.
+fn listing(dir: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        for e in fs::read_dir(&d).unwrap().flatten() {
+            let p = e.path();
+            if e.file_type().unwrap().is_dir() {
+                stack.push(p.clone());
+            }
+            out.push(p.strip_prefix(dir).unwrap().to_path_buf());
+        }
     }
+    out.sort();
+    out
 }
 
-fn run_in(f: &Fixture, exe: &str, args: &[&str], stdin: &[u8]) -> Output {
-    let mut child = Command::new(exe)
+/// Runs the command with standard input held open and never written, and fails when it does not
+/// end by itself: a command that read standard input would hang here.
+fn run_with_open_stdin(root: &Path, args: &[&str]) -> (Option<i32>, String, String) {
+    let mut child = Command::new(common::MOAI_BIN)
         .clean_env()
-        .env("HOME", &f.home)
+        .env("HOME", root.join("home"))
         .env("PATH", "/usr/bin:/bin")
-        .current_dir(&f.project)
+        .current_dir(root.join("project"))
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    child.stdin.take().unwrap().write_all(stdin).unwrap();
-    child.wait_with_output().unwrap()
-}
-
-/// The command line a lane Stop hook runs, without its leading `moai`.
-const COMMAND: &str = "lane-stop-hook --lane agent-1 --repo o/r";
-
-fn fixture(name: &str) -> String {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/lane_loop")
-        .join(name)
-        .to_str()
+    let held = child.stdin.take().unwrap();
+    let start = Instant::now();
+    let status = loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            break status;
+        }
+        if start.elapsed() > Duration::from_secs(60) {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            panic!("{args:?} did not end while standard input was open");
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    drop(held);
+    let (mut out, mut err) = (String::new(), String::new());
+    child
+        .stdout
+        .take()
         .unwrap()
-        .to_string()
+        .read_to_string(&mut out)
+        .unwrap();
+    child
+        .stderr
+        .take()
+        .unwrap()
+        .read_to_string(&mut err)
+        .unwrap();
+    (status.code(), out, err)
 }
 
-/// Runs the lane Stop command with `--snapshot` added.
-fn stop(f: &Fixture, snapshot: &str, stdin: &[u8]) -> (i32, String) {
-    let mut args: Vec<String> = COMMAND.split_whitespace().map(str::to_string).collect();
-    args.extend(["--snapshot".to_string(), fixture(snapshot)]);
-    let args: Vec<&str> = args.iter().map(String::as_str).collect();
-    let out = run_in(f, common::MOAI_BIN, &args, stdin);
-    (
-        out.status.code().unwrap_or(-1),
-        String::from_utf8(out.stdout).unwrap(),
-    )
-}
-
-const STOP_INPUT: &[u8] = br#"{"session_id":"s","transcript_path":null,"cwd":".","hook_event_name":"Stop","model":"m","turn_id":"t","stop_hook_active":true}"#;
-
-fn block_reason(out: &str) -> String {
-    assert!(out.ends_with('\n') && out.lines().count() == 1, "{out:?}");
-    let v: Value = serde_json::from_str(out).unwrap();
-    assert_eq!(v["decision"], json!("block"), "{v}");
-    assert_eq!(v.as_object().unwrap().len(), 2, "{v}");
-    v["reason"].as_str().unwrap().to_string()
-}
-
-fn state_file(f: &Fixture) -> PathBuf {
-    moai_cli::lane_loop::stop_state_path(&f.project, "agent-1")
-}
-
-/// AC-2a: the Stop command blocks while the lane has work or open pull requests remain, passes at
-/// the end condition, and passes an unknown reading the second time.
+/// The command lines old hook files carry (with either flag set, with none, and with values the
+/// old command refused) all get the same one-line answer.
 #[test]
-fn stop_command_blocks_until_end_condition() {
-    let f = setup();
-    // stop_hook_active is ignored (Q1 (a)).
-    let (code, out) = stop(&f, "work.json", STOP_INPUT);
-    assert_eq!(code, 0);
-    let reason = block_reason(&out);
-    assert!(reason.contains("lane-next: P2 pick_issue #7"), "{reason}");
-    assert!(
-        reason.contains("moai lane-next --lane agent-1 --repo o/r"),
-        "{reason}"
-    );
-    // No text read from GitHub (the Issue title) reaches the reason.
-    assert!(!reason.contains("nobody claims"), "{reason}");
-    // Bad or empty stdin still gets an answer.
-    for input in [&b"not json"[..], b""] {
-        let (code, out) = stop(&f, "work.json", input);
-        assert_eq!(code, 0);
-        block_reason(&out);
+fn an_old_stop_hook_gets_one_line_and_exit_zero_and_writes_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(dir.path()).unwrap();
+    fs::create_dir(root.join("home")).unwrap();
+    let project = root.join("project");
+    // The state folder the old command counted into.
+    fs::create_dir_all(project.join(moai_cli::state_root::dir(&project))).unwrap();
+    let before = listing(&root);
+    for args in [
+        &["lane-stop-hook", "--lane", "agent-1", "--repo", "o/r"][..],
+        &[
+            "lane-stop-hook",
+            "--lane",
+            "agent-1",
+            "--repo",
+            "o/r",
+            "--snapshot",
+            "missing.json",
+        ],
+        &["lane-stop-hook", "--lane", "a b", "--repo", "no-slash"],
+        &["lane-stop-hook"],
+    ] {
+        let (code, out, err) = run_with_open_stdin(&root, args);
+        assert_eq!(code, Some(0), "{args:?}: {err}");
+        assert_eq!(out, "", "{args:?}");
+        assert_eq!(
+            err,
+            "moai lane-stop-hook: the lane Stop hook was removed; MoAI serves Claude Code only\n",
+            "{args:?}"
+        );
+        assert_eq!(listing(&root), before, "{args:?} wrote something");
     }
-    let (_, out) = stop(&f, "wait_prs.json", STOP_INPUT);
-    let reason = block_reason(&out);
-    assert!(
-        reason.contains("moai lane-next --lane agent-1 --repo o/r --wait 1800"),
-        "{reason}"
-    );
-    // The end condition: nothing on stdout, exit 0.
-    assert_eq!(stop(&f, "end.json", STOP_INPUT), (0, String::new()));
-    // Unknown (a partial read, an unreadable snapshot): block once, then pass.
-    for snapshot in ["partial.json", "missing.json"] {
-        block_reason(&stop(&f, snapshot, STOP_INPUT).1);
-        assert_eq!(stop(&f, snapshot, STOP_INPUT), (0, String::new()));
-    }
-    // A malformed command line is a non-blocking hook error: exit 1, stdout empty.
-    let out = run_in(
-        &f,
-        common::MOAI_BIN,
-        &["lane-stop-hook", "--lane", "a"],
-        b"",
-    );
-    assert_eq!(out.status.code(), Some(1));
-    assert!(out.stdout.is_empty());
-    let out = run_in(
-        &f,
-        common::MOAI_BIN,
-        &["lane-stop-hook", "--lane", "a b", "--repo", "o/r"],
-        b"",
-    );
-    assert_eq!(out.status.code(), Some(1));
-    assert!(out.stdout.is_empty());
-}
-
-/// The cap: 48 blocks in a row for one next task, the 49th stop passes; a new next task
-/// starts the count again.
-#[test]
-fn stop_command_passes_after_48_blocks_in_a_row() {
-    let f = setup();
-    block_reason(&stop(&f, "work.json", STOP_INPUT).1);
-    let path = state_file(&f);
-    let mut st: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-    assert_eq!(st["blocks"], json!(1));
-    st["blocks"] = json!(46);
-    fs::write(&path, st.to_string()).unwrap();
-    block_reason(&stop(&f, "work.json", STOP_INPUT).1); // 47th
-    block_reason(&stop(&f, "work.json", STOP_INPUT).1); // 48th
-    assert_eq!(stop(&f, "work.json", STOP_INPUT), (0, String::new())); // 49th
-    let st: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-    assert_eq!(st["blocks"], json!(48));
-    let reason = block_reason(&stop(&f, "work_other.json", STOP_INPUT).1);
-    assert!(reason.contains("#8"), "{reason}");
-    let st: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-    assert_eq!(st["blocks"], json!(1));
-}
-
-/// #2926 audit B1: two next tasks that alternate block 96 stops, and the 97th passes.
-#[test]
-fn alternating_next_tasks_pass_after_96_blocks() {
-    let f = setup();
-    let snapshots = ["work.json", "work_other.json"];
-    for i in 0..96 {
-        block_reason(&stop(&f, snapshots[i % 2], STOP_INPUT).1);
-    }
-    let path = state_file(&f);
-    let st: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-    assert_eq!(st["since_pass"], json!(96));
-    assert_eq!(stop(&f, "work.json", STOP_INPUT), (0, String::new())); // 97th
-    block_reason(&stop(&f, "work_other.json", STOP_INPUT).1);
 }

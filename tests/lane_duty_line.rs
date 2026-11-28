@@ -55,19 +55,14 @@ fn refused(args: &[&str]) -> String {
 }
 
 #[test]
-fn the_line_is_the_fixed_wording_for_each_host() {
-    let slash = format!("레인 3 — {BODY}");
-    assert_eq!(line(&["--lane", "3"]), slash, "claude is the default host");
-    assert_eq!(line(&["--lane", "3", "--host", "claude"]), slash);
-    // OMP takes the skill only as `/skill:moai` (SPEC-20261118-omp-launcher REQ-22; audit #3203 B1).
+fn the_line_is_the_fixed_wording() {
+    let wording = format!("레인 3 — {BODY}");
     assert_eq!(
-        line(&["--lane", "3", "--host", "omp"]),
-        format!("레인 3 — {BODY}")
+        line(&["--lane", "3"]),
+        wording,
+        "claude is the default host"
     );
-    assert_eq!(
-        line(&["--lane", "3", "--host", "codex"]),
-        format!("$moai work 레인 3 — {BODY}")
-    );
+    assert_eq!(line(&["--lane", "3", "--host", "claude"]), wording);
 }
 
 #[test]
@@ -76,17 +71,25 @@ fn first_task_is_appended_after_the_body() {
         line(&["--lane", "agent-1", "--first", "#2902 O3a 구현"]),
         format!("레인 agent-1 — {BODY} 먼저: #2902 O3a 구현")
     );
-    assert_eq!(
-        line(&["--lane", "3", "--host", "codex", "--first", "PR #2824 감사"]),
-        format!("$moai work 레인 3 — {BODY} 먼저: PR #2824 감사")
-    );
 }
 
+/// Claude Code is the only host: the removed host words are usage errors like any other word,
+/// and the help the error points at lists `claude` alone.
 #[test]
 fn an_unknown_host_is_a_usage_error() {
-    let out = run(&["--lane", "3", "--host", "cursor"]);
-    assert_eq!(out.status.code(), Some(2));
-    assert_eq!(envelope(&out)["error"]["kind"], "usage");
+    for host in ["codex", "omp", "cursor"] {
+        let out = run(&["--lane", "3", "--host", host]);
+        assert_eq!(out.status.code(), Some(2), "{host}");
+        let v = envelope(&out);
+        assert_eq!(v["error"]["kind"], "usage", "{host}: {v}");
+        assert!(v.get("result").is_none(), "{host}: {v}");
+        let message = v["error"]["message"].as_str().unwrap();
+        assert!(message.contains("see --help"), "{host}: {message}");
+    }
+    let help = run(&["--help"]);
+    assert_eq!(help.status.code(), Some(0));
+    let text = String::from_utf8_lossy(&help.stdout);
+    assert!(text.contains("[possible values: claude]"), "{text}");
 }
 
 /// The name rule is `lane_registry::valid_name`: 64 characters pass, 65 are refused.

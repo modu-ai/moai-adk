@@ -172,7 +172,9 @@ fn built_checks(scan: &Value) -> Vec<String> {
     checks_of(scan).unwrap_or_else(|e| panic!("{}: {e}", id(scan)))
 }
 
-/// Every file below `dir` (recursive), as paths relative to the repository root with `/`.
+/// Every file below `dir` (recursive), as paths relative to the repository root with `/`. A
+/// `.claude/worktrees` folder is not entered: it holds other checkouts, not this tree
+/// (SPEC-20261122-worktree-place D-13).
 fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
@@ -181,6 +183,7 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
         let path = entry.path();
         // A link is never followed: the walk reads the checked-in tree, not what it points to.
         match entry.file_type() {
+            Ok(t) if t.is_dir() && path.ends_with(".claude/worktrees") => {}
             Ok(t) if t.is_dir() => walk(&path, out),
             Ok(t) if t.is_file() => out.push(path),
             _ => {}
@@ -757,6 +760,20 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         "names of files in the temporary project it builds (a planted link target, the launch text)",
     ),
     (
+        "tests/gitignore_block_cli.rs",
+        &[
+            ".moai-cli/manifests",
+            ".moai-cli/manifests/generation.json",
+            ".moai-cli/manifests/profile-baseline.json",
+            ".moai-cli/project.yaml",
+            ".moai/project.yaml",
+            ".moai/specs",
+            "CLAUDE.md",
+            "skills/moai/workflows",
+        ],
+        "names of files in the temporary projects it builds; its one read of the checkout is the source scan, covered by the reads-gitignore-block-cli scan",
+    ),
+    (
         "tests/ops_table_gen_cli.rs",
         &["src/main.rs", "src/lib.rs"],
         "the shared file names it looks for in the research table text",
@@ -810,6 +827,11 @@ const FILE_READ_EXEMPT: &[(&str, &[&str], &str)] = &[
         "tests/worktree_cli.rs",
         &["src/lib.rs"],
         "path names in the overlap lists",
+    ),
+    (
+        "tests/worktree_place_cli.rs",
+        &[".gitignore", "README.md"],
+        "both are written into the temporary repositories it builds (`fs::write`, then `git add` there) and looked for in the worktrees made from them",
     ),
 ];
 

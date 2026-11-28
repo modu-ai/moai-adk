@@ -37,6 +37,8 @@ use std::{
 
 /// The skill folders installed beside the moai skill (SPEC-20261122-html-report-install).
 pub mod extra_skill;
+/// The record one confirmed `moai update` leaves, with the written skill files read back (C-513).
+pub mod run_receipt;
 /// The name-switch script part of `moai update` (card C-33 S3, SPEC-20261119-update-switch-layer).
 pub mod switch;
 
@@ -699,7 +701,9 @@ pub struct HostReceipt {
     pub status: String,
     pub started_at: String,
     pub finished_at: Option<String>,
-    /// This apply's file actions (before/after per file).
+    /// This apply's file actions (before/after per file). When a committed ordinary apply keeps
+    /// a `backup`, its writes come first, in write order, followed by one `unchanged` entry at
+    /// the owned digest for every other owned path (SPEC-20261126-keep-restore-backup REQ-2).
     pub entries: Vec<HostReceiptEntry>,
     /// Ownership manifest: every file this host owns and its sha at this receipt's
     /// commit point. The plan's baseline comes from here (REQ-04B-01). A pending
@@ -712,7 +716,9 @@ pub struct HostReceipt {
     /// them. serde-default keeps pre-#2268 receipts readable.
     #[serde(default)]
     pub top_skills_existed_before: bool,
-    /// #2483: set by a backup-then-replace apply; recovery restores from it.
+    /// #2483: set by a backup-then-replace apply; recovery restores from it. A later ordinary
+    /// apply of the same installation that commits keeps it from that installation's committed
+    /// receipt; a failed one does not (SPEC-20261126-keep-restore-backup REQ-1, REQ-6, REQ-7).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub backup: Option<ReplaceBackup>,
 }
@@ -880,6 +886,72 @@ fn known_good_copies(
         }
     }
     Ok(())
+}
+
+/// SPEC-20261125-update-installed-from-link REQ-4 to REQ-8 and REQ-10 to REQ-12: an apply that
+/// writes no file for a host leaves this build's version in the host's receipt, so the receipt no
+/// longer names a build that is gone. Whether anything is recorded is decided on the baseline
+/// receipt the plan used: only one that is committed or recovered and names another version counts;
+/// an absent or pending one, or one that already names this build, writes nothing.
+///
+/// When this installation has its own receipt, it is updated in place and only its version, finish
+/// time and owned list (the baseline's) change: `recovery-plan` reads this installation's receipt,
+/// its `backup` and `entries` included, and a receipt built anew would drop the way back to the
+/// folder a backup-then-replace moved aside. An own receipt that is neither committed nor
+/// recovered is left as it is. Without an own receipt a new one is written, with the baseline's
+/// owned list, no entries and no backup.
+///
+/// Every write goes through [`save_host_receipt`] (under this installation's id, like every
+/// apply); a failing save is an error. A blocked or pending host never gets here: the apply skips
+/// it before. Returns the saved receipt's status, or `None` when nothing was written.
+fn record_version_only(
+    home: &Path,
+    canonical_home: &Path,
+    install_id: &str,
+    host: &str,
+    target_version: &str,
+    plan_digest: &str,
+    package_digest: &str,
+) -> Result<Option<String>> {
+    let Some(previous) = resolve_host_receipt(canonical_home, install_id, host)?.receipt else {
+        return Ok(None);
+    };
+    if !matches!(previous.status.as_str(), "committed" | "recovered")
+        || previous.package_version == target_version
+    {
+        return Ok(None);
+    }
+    let now = now_rfc3339();
+    let owned = owned_vec(host, &owned_map(Some(&previous)));
+    let own = load_host_receipt(&host_receipt_path(canonical_home, install_id, host, false)?)?;
+    let receipt = match own {
+        Some(own) if !matches!(own.status.as_str(), "committed" | "recovered") => return Ok(None),
+        Some(mut own) => {
+            own.package_version = target_version.to_string();
+            own.finished_at = Some(now);
+            own.owned = owned;
+            own
+        }
+        None => HostReceipt {
+            schema_version: crate::install::RECEIPT_SCHEMA_VERSION,
+            install_id: install_id.to_string(),
+            host: host.to_string(),
+            operation: "update.apply".into(),
+            plan_digest: plan_digest.to_string(),
+            package_digest: package_digest.to_string(),
+            package_version: target_version.to_string(),
+            version_before: Some(previous.package_version.clone()),
+            top_skills_existed_before: fs::symlink_metadata(skills_parent(home, host)?).is_ok(),
+            status: "committed".into(),
+            started_at: now.clone(),
+            finished_at: Some(now),
+            entries: Vec::new(),
+            owned,
+            backup: None,
+        },
+    };
+    save_host_receipt(canonical_home, install_id, &receipt)?;
+    Ok(Some(receipt.status))
 }
 
 pub(crate) fn owned_map(receipt: Option<&HostReceipt>) -> BTreeMap<String, String> {
@@ -1131,6 +1203,37 @@ fn layout_folder(canonical_home: &Path, canonical_exe: &Path) -> Option<(PathBuf
     let versions = crate::bin_names::versions_dir_of(canonical_home, bin)?;
     let folder = bin.parent()?;
     Some((versions, PathBuf::from(folder.file_name()?)))
+}
+
+/// The version the execution link under `home` points to: the name of the version folder
+/// (`<state>/versions/<v>`) that the link's target sits in. Reads only under the `home` argument;
+/// it never reads the process HOME or PATH and never runs a `--version`.
+///
+/// The candidates are read in a fixed order, `<state>/path/moai`, `<state>/path/moai-cli`,
+/// `<state>/bin/moai`, and the first that counts wins. A candidate counts only when it is a
+/// symlink, its canonical target is a regular file, that file sits exactly in the layout
+/// ([`layout_folder`]) and the folder name is UTF-8 and version-shaped. A missing or dangling
+/// link, a plain file, a target outside `versions/` and a name such as `a` all give `None`
+/// for that candidate, and an unreadable one is skipped the same way.
+pub(crate) fn execution_link_version(home: &Path) -> Option<String> {
+    let canonical_home = fs::canonicalize(home).ok()?;
+    let state = crate::home_root::path(&canonical_home);
+    [("path", "moai"), ("path", "moai-cli"), ("bin", "moai")]
+        .iter()
+        .find_map(|(folder, name)| {
+            let link = state.join(folder).join(name);
+            if !fs::symlink_metadata(&link).ok()?.file_type().is_symlink() {
+                return None;
+            }
+            let target = fs::canonicalize(&link).ok()?;
+            if !fs::metadata(&target).ok()?.is_file() {
+                return None;
+            }
+            let (_, folder) = layout_folder(&canonical_home, &target)?;
+            let version = folder.to_str()?;
+            crate::headver::compare(version, version)?;
+            Some(version.to_string())
+        })
 }
 
 /// The install ids the builds in the earlier version folders `folders` (names under
@@ -1860,13 +1963,13 @@ pub fn installed_agents_dir() -> Result<PathBuf> {
 }
 
 /// The user layer `moai-cli update` installs (#2638): the skill copies, the base agents, the
-/// routing section of the global instruction files and the MoAI-Easy output style (#2875), all
+/// routing section of the global instruction files and the MoAI-Style output style (#2875), all
 /// from one package snapshot.
 pub struct UserLayerPlan {
     pub skills: UpdatePlan,
     pub agents: crate::agent_install::Plan,
     pub routing: crate::home_routing::Plan,
-    /// The MoAI-Easy output style (#2875): Claude's style file and `outputStyle`.
+    /// The MoAI-Style output style (#2875): Claude's style file and `outputStyle`.
     pub style: crate::home_style::Plan,
     /// The `moai` hard link in this build's version folder (#2791 AC-1).
     pub bin_names: crate::bin_names::Plan,
@@ -1969,12 +2072,16 @@ fn user_layer_plan_in(
     // A project value of `outputStyle` that hides ours, and the `/status` pointer after a style
     // write: notices only, read-only and outside every digest (install-checks SPEC).
     let mut notices = crate::home_style::notices(&style, &cwd);
-    notices.extend(claude_folders_notice(home));
+    notices.extend(claude_folders_notice(home, &style));
     let hooks = crate::update_hooks::plan(home, &cwd)?;
     let keys = crate::update_keys::plan(home)?;
     let home_layer = crate::update_home::plan(home)?;
     let switch_layer = switch::plan(home)?;
-    let git_hooks_layer = crate::git_hooks::update::plan(home, &cwd)?;
+    let git_hooks_layer =
+        crate::git_hooks::update::plan_with_guard(home, &cwd, guard_answer(&cwd))?;
+    // SPEC-20261126-guard-record-repoint REQ-9: one notice while the guard record is stale,
+    // read-only and built after every digest, so it changes no digest and no token.
+    notices.extend(repoint_notice(&cwd));
     // SPEC-20261122-html-report-install: planned on its own, whatever the moai skill copy says.
     let extra_skills = extra_skill::plan(home, package, allow_older)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
@@ -2027,7 +2134,16 @@ fn user_layer_plan_in(
 /// a login shell export and a restart and otherwise reads `~/.claude`, with the run that targets
 /// `~/.claude`. Text only: it reads the environment and writes nothing, and it is no part of any
 /// digest. `None` when a folder cannot be resolved; the part plans name that problem themselves.
-fn claude_folders_notice(home: &Path) -> Option<serde_json::Value> {
+///
+/// SPEC-20261127-update-linked-profile-display REQ-7, REQ-8: the warning is for a write that lands
+/// in the folder the variable names. When every entry this update writes there (the skills,
+/// agents and output-styles bases, and the `settings.json` the style plan writes) is a link into
+/// the default folder, nothing lands in it and there is no warning; one entry that is a real file
+/// or folder in it keeps the warning and its path.
+fn claude_folders_notice(
+    home: &Path,
+    style_plan: &crate::home_style::Plan,
+) -> Option<serde_json::Value> {
     use crate::host_home::{place, resolve, Host};
     let home = std::fs::canonicalize(home).unwrap_or_else(|_| home.to_path_buf());
     let default = home.join(Host::Claude.default_dir());
@@ -2041,7 +2157,16 @@ fn claude_folders_notice(home: &Path) -> Option<serde_json::Value> {
                 (Ok(x), Ok(y)) if x == y
             )
     };
-    let warning = !same_folder(&configured, &default);
+    // A part writes into the named folder when its base is not the default folder, or when the
+    // style plan writes a file (`settings.json`) that is not behind a link into the default one.
+    let writes_in_default_only = [&skills, &agents, &style]
+        .iter()
+        .all(|b| same_folder(b, &default))
+        && !style_plan.targets.iter().any(|t| {
+            !["unchanged", "skipped", "blocked"].contains(&t.action.as_str())
+                && Path::new(&t.path).starts_with(&configured)
+        });
+    let warning = !same_folder(&configured, &default) && !writes_in_default_only;
     let shown = |p: &Path| p.display().to_string();
     let parts = format!(
         "skills {}, agents {}, output style {} and rules {}",
@@ -2074,6 +2199,40 @@ fn claude_folders_notice(home: &Path) -> Option<serde_json::Value> {
             "rules": shown(&default),
         },
         "warning": warning,
+    }))
+}
+
+/// The guard answer the git-hook plan and both apply sites of `moai update` share, so the preview's
+/// token is the one the apply accepts (SPEC-20261126-guard-record-repoint REQ-7, REQ-8, D-2): the
+/// guard hook is offered when the guard can act in `cwd` and withheld while the record is stale,
+/// in a linked worktree as in the primary one (SPEC-20261127-guard-repoint-followups REQ-5; the
+/// notice of [`repoint_notice`] stays primary-only).
+fn guard_answer(cwd: &Path) -> bool {
+    crate::card::guard::can_act(cwd) && crate::card::guard::repoint::disagrees(cwd).is_none()
+}
+
+/// The confirmed git-hook apply of `moai update`, given the preview's guard answer, followed by
+/// the guard record when it is absent: the answer carries `guard: {record, ..}` the way
+/// `git-hooks-apply` does (D-9). An existing record, stale or not, is never rewritten.
+fn apply_git_hooks(cwd: &Path, token: &str, now: &str) -> Result<serde_json::Value> {
+    let mut answer = crate::git_hooks::update::apply_guarded(cwd, token, now, guard_answer(cwd))?;
+    answer["guard"] = crate::card::guard::seed_record(cwd);
+    Ok(answer)
+}
+
+/// The notice of a stale guard record in the preview (REQ-9, REQ-10): it names the record, the
+/// profile branch and the command that re-points it. Text only, no part of any digest; `None`
+/// when the record is current or the state cannot be read.
+fn repoint_notice(cwd: &Path) -> Option<serde_json::Value> {
+    let stale = crate::card::guard::repoint::stale(cwd)?;
+    Some(json!({
+        "kind": "guard_record_stale",
+        "part": "guard",
+        "host": "git",
+        "reason": format!(
+            "the guard record names {} but the profile's integration branch is {}: the guard hook is withheld while the record names another branch than the profile. Preview the fix with: moai card guard-repoint",
+            stale.record, stale.profile_branch
+        ),
     }))
 }
 
@@ -2193,22 +2352,21 @@ fn gate_on_skills(skills: &serde_json::Value, layer: &UserLayerPlan) -> SkillGat
         style: Vec::new(),
         skipped: Vec::new(),
     };
+    let reason = run_receipt::GATE_REASON;
     for h in &layer.agents.hosts {
         if landed(&h.host) {
             gate.agents.push(h.host.clone());
         } else {
-            gate.skipped.push(
-                json!({"part": "agents", "host": h.host, "reason": "the skill copy did not apply"}),
-            );
+            gate.skipped
+                .push(json!({"part": "agents", "host": h.host, "reason": reason}));
         }
     }
     for h in &layer.routing.hosts {
         if landed(&h.host) {
             gate.routing.push(h.host.clone());
         } else {
-            gate.skipped.push(
-                json!({"part": "routing", "host": h.host, "reason": "the skill copy did not apply"}),
-            );
+            gate.skipped
+                .push(json!({"part": "routing", "host": h.host, "reason": reason}));
         }
     }
     let mut style_hosts: Vec<&str> = layer
@@ -2222,9 +2380,8 @@ fn gate_on_skills(skills: &serde_json::Value, layer: &UserLayerPlan) -> SkillGat
         if landed(h) {
             gate.style.push(h.to_string());
         } else {
-            gate.skipped.push(
-                json!({"part": "style", "host": h, "reason": "the skill copy did not apply"}),
-            );
+            gate.skipped
+                .push(json!({"part": "style", "host": h, "reason": reason}));
         }
     }
     gate
@@ -2293,6 +2450,17 @@ fn routing_writes_anything(p: &crate::home_routing::Plan) -> bool {
     })
 }
 
+/// The file a routing row of the terminal summary names (SPEC-20261127-update-linked-profile-
+/// display REQ-7). A `linked` row is the default folder's file reached through the profile's
+/// link: it names that file, the one place the update writes (`section.path`); every other row,
+/// with or without a section, names its own file.
+fn routing_summary_file(h: &crate::home_routing::HostPlan) -> &str {
+    h.section
+        .as_ref()
+        .filter(|s| s.action == "linked")
+        .map_or(h.file.as_str(), |s| s.path.as_str())
+}
+
 /// The terminal question's text: every skill host, every agent file action and each global
 /// instruction file (#2638).
 pub fn layer_summary(p: &UserLayerPlan) -> String {
@@ -2316,9 +2484,10 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
     out.push_str("routing section\n");
     for h in &p.routing.hosts {
         let action = h.section.as_ref().map_or("—", |s| s.action.as_str());
+        let file = routing_summary_file(h);
         out.push_str(&format!(
-            "  {}: {} — {action} {}\n",
-            h.host, h.preflight, h.file
+            "  {}: {} — {action} {file}\n",
+            h.host, h.preflight
         ));
     }
     out.push_str("output style\n");
@@ -2329,6 +2498,9 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
         ));
     }
     out.push_str(&format!("command names\n  moai: {}\n", p.bin_names.state));
+    for left in &p.bin_names.left_in_place {
+        out.push_str(&format!("  left in place: {}\n", left.display()));
+    }
     out.push_str(&p.hooks.summary());
     out.push_str(&p.keys.summary());
     out.push_str(&p.home.summary());
@@ -2351,7 +2523,7 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
 
 /// #2522, #2638: one-line `moai-cli update` over the package installed with this binary — the
 /// user layer: the skill copies, the base agents (`agent_install`), the routing section of
-/// the global instruction files (`home_routing`) and the MoAI-Easy output style (`home_style`,
+/// the global instruction files (`home_routing`) and the MoAI-Style output style (`home_style`,
 /// #2875).
 ///
 /// Always computes every preview from one package snapshot. Without a confirmation it
@@ -2455,6 +2627,11 @@ fn update_command_core(
                 layer.plan_digest
             ),
         });
+        // SPEC-20261125-update-installed-from-link: only a HOME whose execution link names a
+        // version folder shows `installed_version`; it sits outside the plan and its digest.
+        if let Some(v) = execution_link_version(home) {
+            out["installed_version"] = json!(v);
+        }
         // SPEC-20261122-html-report-install: only a release with another skill folder shows it.
         if let Some(x) = layer.extra_skills.to_json() {
             out["extra_skills"] = x;
@@ -2513,7 +2690,7 @@ fn update_command_core(
             if let Some(t) = git_hooks_token {
                 let cwd = std::env::current_dir()
                     .map_err(|_| "current directory unavailable".to_string())?;
-                let r = crate::git_hooks::update::apply(&cwd, t, &crate::audit::utc_now())?;
+                let r = apply_git_hooks(&cwd, t, &crate::audit::utc_now())?;
                 out["revert"]["git_hooks"] = r["revert"].clone();
                 out["revert_order"] = json!(revert_order(&out["revert"]));
                 out["git_hooks_result"] = r;
@@ -2548,6 +2725,9 @@ fn update_command_core(
         r.unwrap_or_else(|e| json!({"state": "error", "message": e}))
     };
     let agents = part((|| {
+        // Test seam: `MOAI_TEST_FAULT=update_part_agents` fails this part after the skills
+        // landed (the run receipt names it as remaining). Debug builds only.
+        test_fault("update_part_agents")?;
         let p = crate::agent_install::plan_for(home, &package, &agents_dir, &agent_hosts)?;
         // Same hosts as confirmed: the plan must be the confirmed one (note 2).
         if agent_hosts.len() == fresh.agents.hosts.len()
@@ -2585,15 +2765,13 @@ fn update_command_core(
             &chosen,
         )
     })());
-    let routing = part(routing_part(
-        home,
-        &package,
-        &routing_hosts,
-        &fresh.routing,
-        PERMISSION,
-    ));
+    let routing =
+        part(test_fault("update_part_routing").and_then(|()| {
+            routing_part(home, &package, &routing_hosts, &fresh.routing, PERMISSION)
+        }));
     // #2875: the style, for the same confirmed hosts whose skill copy applied.
     let style = part((|| {
+        test_fault("update_part_style")?;
         let p = crate::home_style::plan_for(home, &package, &style_hosts)?;
         // The apply of an earlier part may have just changed a file: compare what is written.
         if style_hosts.len() == count_hosts(&fresh.style)
@@ -2658,7 +2836,7 @@ fn update_command_core(
         part((|| {
             let cwd =
                 std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
-            crate::git_hooks::update::apply(&cwd, t, &crate::audit::utc_now())
+            apply_git_hooks(&cwd, t, &crate::audit::utc_now())
         })())
     });
     let revert = |op: &str, r: &serde_json::Value| {
@@ -2731,6 +2909,9 @@ fn update_command_core(
         out["git_hooks_result"] = g;
     }
     out["revert_order"] = json!(revert_order(&out["revert"]));
+    // C-513 S7: one record of the whole run, built from the parts above, with the written skill
+    // files read back; the end screen is drawn from it.
+    out["run"] = run_receipt::finish(home, &out);
     Ok(out)
 }
 
@@ -3179,11 +3360,22 @@ fn apply_update_in(
                 .iter()
                 .map(|f| file_result(f, false, None))
                 .collect();
+            // SPEC-20261125-update-installed-from-link REQ-4: no file moves, but the receipt keeps
+            // the version of the build that checked the host.
+            let recorded = record_version_only(
+                home,
+                &canonical_home,
+                &install_id,
+                host,
+                &fresh.target_version,
+                plan_digest,
+                &staged.digest,
+            )?;
             outcomes.push(HostOutcome {
                 host: host.to_string(),
                 status: status.into(),
                 files,
-                receipt_status: None,
+                receipt_status: recorded,
                 reload_required: "no".into(),
                 reload_basis: "no files written".into(),
                 blocked_reason: None,
@@ -3247,6 +3439,17 @@ fn apply_update_in(
         // read, never written; the new receipt goes under this installation's id).
         let previous = resolve_host_receipt(&canonical_home, &install_id, host)?.receipt;
         let pre_owned = owned_map(previous.as_ref());
+        // SPEC-20261126-keep-restore-backup REQ-5, REQ-6: only this installation's own committed
+        // receipt hands its backup on, never `previous`, which may be another installation's. It
+        // is read here because the pending save below overwrites it.
+        let kept_backup = load_host_receipt(&host_receipt_path(
+            &canonical_home,
+            &install_id,
+            host,
+            false,
+        )?)?
+        .filter(|r| r.status == "committed")
+        .and_then(|r| r.backup);
         let top_skills_existed = fs::symlink_metadata(skills_parent(home, host)?).is_ok();
         let mut receipt = HostReceipt {
             schema_version: crate::install::RECEIPT_SCHEMA_VERSION,
@@ -3396,6 +3599,26 @@ fn apply_update_in(
             if now != m.current_sha256 {
                 return Err("a file changed during apply; run recovery-plan".into());
             }
+        }
+        // SPEC-20261126-keep-restore-backup REQ-1, REQ-2: the restore offer stays. Recovery
+        // restores only when every file under the root has an entry with its bytes, so each owned
+        // path this apply did not write gets one after the writes. Only the commit save carries
+        // this; a failed apply keeps the pending receipt without it (REQ-7).
+        if let Some(backup) = kept_backup {
+            for (path, sha) in &owned_now {
+                if writes.iter().any(|w| &w.path == path) {
+                    continue;
+                }
+                receipt.entries.push(HostReceiptEntry {
+                    path: path.clone(),
+                    action: "unchanged".into(),
+                    before_sha256: Some(sha.clone()),
+                    after_sha256: Some(sha.clone()),
+                    published: false,
+                    error: None,
+                });
+            }
+            receipt.backup = Some(backup);
         }
         receipt.owned = owned_vec(host, &owned_now);
         receipt.status = "committed".into();
@@ -3928,11 +4151,200 @@ mod version_folder_tests {
             crate::install::install_id(&versions.join(&good).join("bin").join("moai-cli")).unwrap()
         );
     }
+
+    /// A temporary HOME (canonical, so the paths a test builds equal the ones the function reads)
+    /// with this generation's marker, so [`crate::home_root::path`] keeps naming the same state
+    /// folder while the test adds `versions/`, `path/` and `bin/` under it (without a marker a
+    /// state folder holding those names reads as unknown and the state folder moves).
+    #[cfg(unix)]
+    fn link_home() -> (tempfile::TempDir, PathBuf) {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = fs::canonicalize(tmp.path()).unwrap();
+        let state = home.join(crate::home_root::MOAI_DIR);
+        fs::create_dir_all(&state).unwrap();
+        fs::write(
+            state.join(crate::state_root::NEW_MARKER),
+            crate::state_root::marker_bytes("version_folder_tests", &[]),
+        )
+        .unwrap();
+        assert_eq!(
+            crate::home_root::path(&home),
+            state,
+            "the marked state folder"
+        );
+        (tmp, home)
+    }
+
+    /// A regular file at `<state>/versions/<version>/bin/moai`, the way an installed build sits.
+    #[cfg(unix)]
+    fn version_binary(home: &Path, version: &str) -> PathBuf {
+        let bin = crate::home_root::path(home)
+            .join("versions")
+            .join(version)
+            .join("bin");
+        fs::create_dir_all(&bin).unwrap();
+        let exe = bin.join("moai");
+        fs::write(&exe, b"fixture build\n").unwrap();
+        exe
+    }
+
+    /// A symlink at `<state>/<rel>` (`path/moai`, `bin/moai`, ...) pointing at `target`.
+    #[cfg(unix)]
+    fn link_at(home: &Path, rel: &str, target: &Path) -> PathBuf {
+        let link = crate::home_root::path(home).join(rel);
+        fs::create_dir_all(link.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(target, &link).unwrap();
+        link
+    }
+
+    /// A plain file at `<state>/<rel>`, copied from `source`, where a link would sit. The product
+    /// only reads this place (`bin/moai`) and never writes it.
+    // @cc:careful keep `rel` an argument: a literal join after `home_root::path` counts as a
+    // product write in `home_layout`'s source scan.
+    #[cfg(unix)]
+    fn plain_file_at(home: &Path, rel: &str, source: &Path) {
+        let plain = crate::home_root::path(home).join(rel);
+        fs::create_dir_all(plain.parent().unwrap()).unwrap();
+        fs::copy(source, &plain).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_execution_link_version_is_the_folder_the_link_points_to() {
+        for rel in ["bin/moai", "path/moai-cli", "path/moai"] {
+            let (_tmp, home) = link_home();
+            let exe = version_binary(&home, "4.2648.26");
+            link_at(&home, rel, &exe);
+            assert_eq!(
+                execution_link_version(&home),
+                Some("4.2648.26".to_string()),
+                "link at {rel}"
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_missing_dangling_plain_file_outside_layout_or_non_version_link_reads_none() {
+        // No link at all.
+        let (_tmp, home) = link_home();
+        version_binary(&home, "4.2648.26");
+        assert_eq!(execution_link_version(&home), None, "no link");
+
+        // A link whose target is gone.
+        let (_tmp, home) = link_home();
+        let gone = version_binary(&home, "4.2648.26");
+        link_at(&home, "bin/moai", &gone);
+        fs::remove_file(&gone).unwrap();
+        assert_eq!(execution_link_version(&home), None, "dangling link");
+
+        // A plain file where the link should be, even one that sits in a version folder.
+        let (_tmp, home) = link_home();
+        let exe = version_binary(&home, "4.2648.26");
+        plain_file_at(&home, "bin/moai", &exe);
+        assert_eq!(execution_link_version(&home), None, "plain file");
+
+        // A link into a build that is not under versions/.
+        let (_tmp, home) = link_home();
+        let outside = home.join("elsewhere").join("4.2648.26").join("bin");
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("moai"), b"fixture build\n").unwrap();
+        link_at(&home, "bin/moai", &outside.join("moai"));
+        assert_eq!(
+            execution_link_version(&home),
+            None,
+            "target outside versions"
+        );
+
+        // A link into a folder whose name is not a version.
+        let (_tmp, home) = link_home();
+        let exe = version_binary(&home, "a");
+        link_at(&home, "bin/moai", &exe);
+        assert_eq!(
+            execution_link_version(&home),
+            None,
+            "non-version folder name"
+        );
+
+        // A link to a folder, not to a regular file.
+        let (_tmp, home) = link_home();
+        let exe = version_binary(&home, "4.2648.26");
+        link_at(&home, "bin/moai", exe.parent().unwrap());
+        assert_eq!(execution_link_version(&home), None, "link to a folder");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_first_candidate_in_order_wins() {
+        let (_tmp, home) = link_home();
+        let first = link_at(&home, "path/moai", &version_binary(&home, "4.2648.26"));
+        let second = link_at(&home, "path/moai-cli", &version_binary(&home, "4.2648.24"));
+        let third = link_at(&home, "bin/moai", &version_binary(&home, "4.2648.20"));
+        assert_eq!(execution_link_version(&home).as_deref(), Some("4.2648.26"));
+
+        fs::remove_file(&first).unwrap();
+        assert_eq!(execution_link_version(&home).as_deref(), Some("4.2648.24"));
+
+        fs::remove_file(&second).unwrap();
+        assert_eq!(execution_link_version(&home).as_deref(), Some("4.2648.20"));
+
+        // An earlier candidate that does not count is skipped, not returned as None.
+        let bad = link_at(&home, "path/moai", &version_binary(&home, "a"));
+        assert_eq!(execution_link_version(&home).as_deref(), Some("4.2648.20"));
+
+        fs::remove_file(&bad).unwrap();
+        fs::remove_file(&third).unwrap();
+        assert_eq!(execution_link_version(&home), None);
+    }
 }
 
 #[cfg(test)]
 mod user_layer_tests {
     use super::*;
+
+    /// SPEC-20261127-update-linked-profile-display REQ-7: the summary names the default folder's
+    /// file for a `linked` routing row and the row's own file otherwise. Hand-built rows only: no
+    /// file and no environment variable is read, so the HOME guard has nothing to observe.
+    #[test]
+    fn routing_summary_names_the_default_file_for_a_linked_row() {
+        let section = |action: &str| crate::agents::FilePlan {
+            path: "/home/u/.claude/rules/moai.md".into(),
+            action: action.into(),
+            tracked_by_default: false,
+            expected_sha256: None,
+            section_id: None,
+            baseline_sha256: None,
+            rendered_sha256: None,
+            detail: None,
+        };
+        let row = |section: Option<crate::agents::FilePlan>| crate::home_routing::HostPlan {
+            host: "claude".into(),
+            config_dir: "/home/u/profiles/p".into(),
+            file: "/home/u/profiles/p/rules/moai.md".into(),
+            preflight: "ok".into(),
+            blocked_reason: None,
+            section,
+            flow: None,
+            old_block: None,
+            legacy_flow: None,
+            backup_blocked: Vec::new(),
+        };
+        assert_eq!(
+            routing_summary_file(&row(Some(section("linked")))),
+            "/home/u/.claude/rules/moai.md"
+        );
+        for action in ["unchanged", "create", "conflict", "not_linked"] {
+            assert_eq!(
+                routing_summary_file(&row(Some(section(action)))),
+                "/home/u/profiles/p/rules/moai.md",
+                "{action}"
+            );
+        }
+        assert_eq!(
+            routing_summary_file(&row(None)),
+            "/home/u/profiles/p/rules/moai.md"
+        );
+    }
 
     fn package(dir: &Path, routing: &str) {
         fs::create_dir_all(dir.join("references/home")).unwrap();
@@ -3986,6 +4398,40 @@ mod user_layer_tests {
             "{text}"
         );
         assert!(!text.contains("  skipped style claude"), "{text}");
+    }
+
+    /// SPEC-20261127-installed-binary-name-moai AC-8: the terminal summary names a command name
+    /// an earlier install left in place on a line of its own after the `command names` state,
+    /// one line per name, and none when nothing was left.
+    #[test]
+    fn the_summary_names_each_command_name_left_in_place() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("home");
+        fs::create_dir_all(&home).unwrap();
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let pkg = root.join("skills/moai");
+        let agents = root.join(crate::agent_defs::SOURCE_DIR);
+        let mut layer =
+            user_layer_plan(&home, &pkg, &agents, &stage_package(&pkg).unwrap()).unwrap();
+        layer.bin_names.left_in_place = Vec::new();
+        assert!(
+            !layer_summary(&layer).contains("left in place"),
+            "{}",
+            layer_summary(&layer)
+        );
+        let names = [
+            PathBuf::from("/home/u/state/versions/a/bin/moai-cli"),
+            PathBuf::from("/home/u/state/path/moai-cli"),
+        ];
+        layer.bin_names.left_in_place = names.to_vec();
+        let text = layer_summary(&layer);
+        let state = format!("command names\n  moai: {}\n", layer.bin_names.state);
+        let expected = format!(
+            "{state}  left in place: {}\n  left in place: {}\n",
+            names[0].display(),
+            names[1].display()
+        );
+        assert!(text.contains(&expected), "{text}");
     }
 
     /// #2872 stage 2: the terminal summary gets a cleanup block only when the cleanup plan

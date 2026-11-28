@@ -12,7 +12,8 @@
 //! lock or its registration lease runs (SPEC-20261125-wip-limit-live-lock-lanes); a registry
 //! folder that cannot be read, or whose items none can be read
 //! (SPEC-20261126-wip-limit-all-unreadable), does not turn the limit off: the limit is then
-//! reached.
+//! reached. A `review` card waits for an audit unless its current head and every verdict row of it
+//! read and a verdict names exactly that head (SPEC-20261126-audit-needed-current-head).
 
 use crate::lane_registry;
 use rusqlite::{params, Connection, OptionalExtension};
@@ -81,12 +82,16 @@ pub fn live_lanes(project: &Path) -> Lanes {
         }
     };
     let now = now_secs();
-    // One project name for both: each `session::*_name` call reads the git identity again, and a
-    // git process costs far more than the registry scan. The forms mirror
-    // `session::leader_session_name` and `session::agent_prefix`; a unit test pins them.
-    let project_name = crate::session::project_name(project);
-    let leader_name = format!("{project_name}-leader");
-    let project_prefix = format!("{project_name}-agent-");
+    // One project name for all four forms: each `session::*_name` call reads the git identity
+    // again, and a git process costs far more than the registry scan. The forms mirror
+    // `session::leader_session_name`, `session::agent_prefix` and their earlier project-prefixed
+    // spellings (SPEC-20261127-launcher-session-names REQ-11, D-5); a unit test pins them.
+    let names = crate::session::project_names(project);
+    let leader_names = [
+        format!("leader-{}", names.current),
+        format!("{}-leader", names.earlier),
+    ];
+    let project_prefix = format!("{}-agent-", names.earlier);
     let lane_prefixes = ["agent-".to_string(), project_prefix.clone()];
     // The one name of a lane: the project-prefixed form reads as the short form.
     let canon = |name: &str| match name.strip_prefix(project_prefix.as_str()) {
@@ -98,7 +103,7 @@ pub fn live_lanes(project: &Path) -> Lanes {
     // name (an entry without a session, or a name whose lock is held).
     let mut live: std::collections::BTreeSet<(bool, String)> = std::collections::BTreeSet::new();
     for entry in &scan.entries {
-        let leader = entry.mode.as_deref() == Some("leader") || entry.name == leader_name;
+        let leader = entry.mode.as_deref() == Some("leader") || leader_names.contains(&entry.name);
         let name = canon(&entry.name);
         let by_lock = locked.contains(&name);
         if leader || !(entry.lease_until > now || by_lock) {
@@ -113,7 +118,7 @@ pub fn live_lanes(project: &Path) -> Lanes {
         let name_canon = canon(name);
         let has_entry = scan.entries.iter().any(|e| canon(&e.name) == name_canon);
         let lane_like = lane_prefixes.iter().any(|p| name.starts_with(p.as_str()));
-        if !has_entry && *name != leader_name && lane_like {
+        if !has_entry && !leader_names.contains(name) && lane_like {
             live.insert((false, name_canon));
         }
     }
@@ -198,7 +203,7 @@ impl InWork {
 /// The head that the newest hand-back note of the card names, only while that note belongs to the
 /// card's present work: its `card.note` event is newer than every event that put the card back
 /// into work. `None` when this cannot be confirmed; an older note is never read instead.
-fn current_head(conn: &Connection, card_id: i64) -> Result<Option<String>, String> {
+pub(super) fn current_head(conn: &Connection, card_id: i64) -> Result<Option<String>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT note_id, kind, author, body FROM card_note \
@@ -242,10 +247,12 @@ fn current_head(conn: &Connection, card_id: i64) -> Result<Option<String>, Strin
     Ok(current.map(|_| head))
 }
 
-/// The current head of the card when it is passed: a verdict names exactly that head, every
-/// reviewer's newest verdict on it is PASS and so is the card's newest verdict on any head. A
-/// verdict row that cannot be read leaves the card not passed.
-fn passed_head(conn: &Connection, card_id: i64) -> Result<Option<String>, String> {
+/// The current head of the card ([`current_head`]) and its verdict events, oldest first. `None`
+/// when that head cannot be confirmed or a `card.verdict` row of the card cannot be read.
+fn head_and_verdicts(
+    conn: &Connection,
+    card_id: i64,
+) -> Result<Option<(String, Vec<crate::ledger::workflow::VerdictEvent>)>, String> {
     let Some(head) = current_head(conn, card_id)? else {
         return Ok(None);
     };
@@ -259,7 +266,20 @@ fn passed_head(conn: &Connection, card_id: i64) -> Result<Option<String>, String
     let verdicts =
         crate::ledger::workflow::verdict_events(conn, card_id).map_err(|e| e.to_string())?;
     // `verdict_events` leaves unreadable rows out without a word, so the counts must agree.
-    if usize::try_from(rows) != Ok(verdicts.len()) || !verdicts.last().is_some_and(|v| v.pass) {
+    if usize::try_from(rows) != Ok(verdicts.len()) {
+        return Ok(None);
+    }
+    Ok(Some((head, verdicts)))
+}
+
+/// The current head of the card when it is passed: a verdict names exactly that head, every
+/// reviewer's newest verdict on it is PASS and so is the card's newest verdict on any head. A
+/// verdict row that cannot be read leaves the card not passed.
+fn passed_head(conn: &Connection, card_id: i64) -> Result<Option<String>, String> {
+    let Some((head, verdicts)) = head_and_verdicts(conn, card_id)? else {
+        return Ok(None);
+    };
+    if !verdicts.last().is_some_and(|v| v.pass) {
         return Ok(None);
     }
     let mut reviewers: Vec<&str> = Vec::new();
@@ -447,23 +467,22 @@ pub fn refusal(project: &Path, conn: &Connection, action: &str) -> Result<Option
     )))
 }
 
-/// A card in `review` that no verdict names and that `holder` did not hold: the checks a session
-/// can take up at the limit.
+/// A card in `review` that is not known to be judged on its current head and that `holder` did not
+/// hold: the checks a session can take up at the limit.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AuditNeeded {
     pub card_id: i64,
     pub title: String,
 }
 
-/// The `review` cards without a `card.verdict` event whose current reservation is not held by
-/// `holder`, oldest first.
+/// The `review` cards whose current reservation is not held by `holder`, oldest first, without
+/// those judged: the head and every verdict row read (as the limit reads them) and a verdict, PASS
+/// or FAIL, names exactly that head (SPEC-20261126-audit-needed-current-head REQ-1 to REQ-5).
 pub fn audit_needed(conn: &Connection, holder: Option<&str>) -> Result<Vec<AuditNeeded>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT c.card_id, c.title FROM card c \
              WHERE c.state = 'review' \
-               AND NOT EXISTS (SELECT 1 FROM event e \
-                               WHERE e.card_id = c.card_id AND e.kind = 'card.verdict') \
                AND NOT EXISTS (SELECT 1 FROM reservation r \
                                WHERE r.card_id = c.card_id AND r.generation = c.generation \
                                  AND r.holder = ?1) \
@@ -478,5 +497,16 @@ pub fn audit_needed(conn: &Connection, holder: Option<&str>) -> Result<Vec<Audit
             })
         })
         .map_err(|e| e.to_string())?;
-    rows.collect::<Result<_, _>>().map_err(|e| e.to_string())
+    let cards: Vec<AuditNeeded> = rows.collect::<Result<_, _>>().map_err(|e| e.to_string())?;
+    let mut needed = Vec::new();
+    for card in cards {
+        let judged = match head_and_verdicts(conn, card.card_id)? {
+            Some((head, verdicts)) => verdicts.iter().any(|v| v.head == head),
+            None => false,
+        };
+        if !judged {
+            needed.push(card);
+        }
+    }
+    Ok(needed)
 }

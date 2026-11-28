@@ -1,12 +1,20 @@
-//! `tidy-inventory` and `tidy-plan` (SPEC-20261124-home-tidy-slice2, parent
-//! SPEC-20261122-home-tidy): the read-only half of the home moai folder tidy. The inventory
+//! The home moai folder tidy (parent SPEC-20261122-home-tidy).
+//!
+//! `tidy-inventory` and `tidy-plan` (SPEC-20261124-home-tidy-slice2) only read: the inventory
 //! lists every top-level entry of `<HOME>/.moai` with a class, size, newest change and reason;
 //! the plan names what could be archived or deleted and why. Neither writes anything, opens a
 //! regular file (but the one memory index the caller names), follows a link or starts a command.
+//!
+//! `tidy-apply` and `tidy-restore` (SPEC-20261126-home-tidy-apply) change the folder: the first
+//! archives or deletes the picked items of a fresh plan, the second puts archived files back.
+//! Both follow no link, start no command and change nothing outside the folder.
 
+pub mod apply;
+pub mod archive;
 pub mod inventory;
 pub mod memory;
 pub mod plan;
+pub mod restore;
 pub mod rules;
 
 use inventory::Limits;
@@ -59,6 +67,23 @@ fn scan(home: &Path, opts: &Options) -> Result<inventory::Scan, String> {
         _ => return Err(format!("no `.moai` folder under `{}`", home.display())),
     }
     inventory::scan(&moai, opts.limits, &opts.thresholds)
+}
+
+/// The path and a directory handle of `<home>/.moai` itself; a link there is refused. The
+/// operations that write go through this handle, so no link below it is followed.
+fn open_moai(home: &Path) -> Result<(PathBuf, cap_std::fs::Dir), String> {
+    use cap_fs_ext::DirExt;
+    let path = home.join(crate::home_root::MOAI_DIR);
+    let dir = cap_std::fs::Dir::open_ambient_dir(home, cap_std::ambient_authority())
+        .and_then(|home| home.open_dir_nofollow(crate::home_root::MOAI_DIR))
+        .map_err(|e| {
+            format!(
+                "`{}` is a link, not a folder or not readable ({}); nothing was changed",
+                path.display(),
+                e.kind()
+            )
+        })?;
+    Ok((path, dir))
 }
 
 /// The inventory of `<home>/.moai`.

@@ -36,6 +36,8 @@ pub const GROUPS: &[Group] = &[
             ("project-apply", true),
             ("project-update-plan", false),
             ("project-update-decline", false),
+            ("project-update-leftovers-apply", false),
+            ("project-update-leftovers-revert", false),
             ("work-flow-plan", true),
             ("language-setup", true),
             ("language-set", false),
@@ -67,6 +69,8 @@ pub const GROUPS: &[Group] = &[
             ("labels-apply", false),
             ("claude-settings-plan", false),
             ("claude-settings-apply", false),
+            ("secret-deny-plan", false),
+            ("secret-deny-apply", false),
             ("hooks-plan", false),
             ("hooks-apply", false),
             ("hooks-revert", false),
@@ -121,6 +125,8 @@ pub const GROUPS: &[Group] = &[
             ("cleanup-revert", false),
             ("tidy-inventory", false),
             ("tidy-plan", false),
+            ("tidy-apply", false),
+            ("tidy-restore", false),
             ("recovery-plan", false),
             ("recovery-apply", false),
             ("apply-recover", false),
@@ -162,11 +168,13 @@ pub const GROUPS: &[Group] = &[
         heading_ko: "진단",
         commands: &[
             ("claude-doctor", true),
+            ("doctor", true),
             ("install-inspect", true),
             ("identity", true),
             ("worktree-report", true),
             ("optimize-plan", true),
             ("baseline-inventory", true),
+            ("improve-signals", false),
         ],
     },
     Group {
@@ -307,6 +315,7 @@ pub const GROUPS: &[Group] = &[
             ("branch-gc-plan", false),
             ("branch-gc-apply", false),
             ("worktree-slot", false),
+            ("worktree-new", false),
             ("worktree-install-plan", false),
             ("hygiene-plan", false),
             ("hygiene-apply", false),
@@ -328,6 +337,8 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("project-apply", &["project-apply --plan-digest <digest> --permission-reference <ref> . < plan.json"]),
     ("project-update-plan", &["project-update-plan ."]),
     ("project-update-decline", &["project-update-decline --step agents-local-merge --source-sha256 <sha256> --permission-reference <ref> .", "project-update-decline --step agents-local-merge --ask-again --permission-reference <ref> ."]),
+    ("project-update-leftovers-apply", &["project-update-leftovers-apply --plan-digest <digest> --permission-reference <ref> --item <path> ."]),
+    ("project-update-leftovers-revert", &["project-update-leftovers-revert --receipt <UTC> --permission-reference <ref> ."]),
     ("work-flow-plan", &["work-flow-plan --project ."]),
     ("language-setup", &["language-setup . < request.json"]),
     ("language-set", &["language-set --home ko"]),
@@ -353,6 +364,8 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("labels-apply", &["labels-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("claude-settings-plan", &["claude-settings-plan . < request.json", "claude-settings-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("claude-settings-apply", &["claude-settings-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
+    ("secret-deny-plan", &["secret-deny-plan .", "secret-deny-apply --plan-digest <digest> --permission-reference <ref> --pick <rule> ."]),
+    ("secret-deny-apply", &["secret-deny-apply --plan-digest <digest> --permission-reference <ref> --pick <rule> ."]),
     ("hooks-plan", &["hooks-plan --host claude .", "hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> ."]),
     ("hooks-apply", &["hooks-apply --host claude --plan-digest <digest> --permission-reference <ref> ."]),
     ("hooks-revert", &["hooks-revert --receipt <id> --permission-reference <ref> ."]),
@@ -434,6 +447,8 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("cleanup-revert", &["cleanup-revert --stamp <stamp> --permission-reference <ref> ~"]),
     ("tidy-inventory", &["tidy-inventory ~", "tidy-plan ~"]),
     ("tidy-plan", &["tidy-plan ~", "tidy-plan ~ --threshold reports.max_files=500 --memory-index <path>"]),
+    ("tidy-apply", &["tidy-apply ~ --pick <path> --confirm <digest> --permission-reference <ref>"]),
+    ("tidy-restore", &["tidy-restore ~ --archive <name> --permission-reference <ref>"]),
     ("recovery-plan", &["recovery-plan ~","recovery-apply --plan-digest <digest> --permission-reference <ref> ~ < request.json"]),
     ("recovery-apply", &["recovery-apply --plan-digest <digest> --permission-reference <ref> ~ < request.json"]),
     ("apply-recover", &["apply-recover --receipt <receipt-id> --permission-reference <ref> ."]),
@@ -463,11 +478,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("keys-revert", &["keys-revert --receipt <keys-id> --permission-reference <ref> ~"]),
     ("models-revert", &["models-revert --receipt <models-id> --permission-reference <ref> ~"]),
     ("claude-doctor", &["claude-doctor ."]),
+    ("doctor", &["doctor", "doctor --auth-status"]),
     ("install-inspect", &["install-inspect"]),
     ("identity", &["identity ."]),
     ("worktree-report", &["worktree-report ."]),
     ("optimize-plan", &["optimize-plan --integration-ref origin/main ."]),
     ("baseline-inventory", &["baseline-inventory ."]),
+    ("improve-signals", &["improve-signals ."]),
     ("claim-acquire", &["claim-acquire . < request.json"]),
     ("claim-verify", &["claim-verify . < request.json"]),
     (
@@ -515,7 +532,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         "lane-loop-line",
         &[
             "lane-loop-line --host claude --lane agent-1",
-            "lane-loop-line --host codex --lane agent-1 --repo modu-ai/moai-adk",
         ],
     ),
     (
@@ -525,13 +541,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("lane-resume-check", &["lane-resume-check --file comment.md"]),
     (
         "lane-stop-hook",
-        &["lane-stop-hook --lane agent-1 --repo modu-ai/moai-adk < stop.json"],
+        &["lane-stop-hook --lane agent-1 --repo modu-ai/moai-adk"],
     ),
     (
         "lane-duty-line",
         &[
             "lane-duty-line --lane 1",
-            "lane-duty-line --lane 1 --host codex --first <task>",
+            "lane-duty-line --lane 1 --first <task>",
         ],
     ),
     (
@@ -666,6 +682,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("branch-gc-plan", &["branch-gc-plan --integration-ref v2026.11.0 .", "branch-gc-apply --integration-ref v2026.11.0 --plan-digest <digest> --permission-reference <ref> ."]),
     ("branch-gc-apply", &["branch-gc-apply --integration-ref v2026.11.0 --plan-digest <digest> --permission-reference <ref> ."]),
     ("worktree-slot", &["worktree-slot plan","worktree-slot ensure lane-01 --at origin/main"]),
+    ("worktree-new", &["worktree-new lane-a --branch spec/<slug>-<yyyymmdd>"]),
     ("worktree-install-plan", &["worktree-install-plan --scope web ."]),
     ("hygiene-plan", &["hygiene-plan --integration-ref origin/main ."]),
     ("hygiene-apply", &["hygiene-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
@@ -800,7 +817,7 @@ pub const ARG_HELP_FOR: &[(&str, &str, &str)] = &[
     (
         "worktree-apply",
         "path",
-        "Worktree path; default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>`",
+        "Worktree path; default `<primary>/.claude/worktrees/<project>-<issue>-<logical_key>`",
     ),
     (
         "worktree-gc-apply",
@@ -959,7 +976,11 @@ pub const ABOUT_KO: &[(&str, &str)] = &[
     ("key-remove", "금고에서 공급자 키 지우기"),
     ("key-import-plan", "옛 키 파일 가져오기 미리 보기"),
     ("key-import-apply", "미리 본 옛 키 파일 가져오기"),
-    ("claude-doctor", "Claude Code 가 AGENTS.md 를 읽는지 확인"),
+    (
+        "claude-doctor",
+        "Claude Code 가 기존 AGENTS.md 를 읽는지 확인",
+    ),
+    ("doctor", "Claude Code 설정에서 moai 층을 읽기만 하고 진단"),
     ("install-inspect", "설치된 MoAI 실행 파일 보기"),
     ("identity", "경로가 클론 안 어디에 있는지 보기"),
     ("worktree-report", "worktree 가 쓰는 공간 보고"),
@@ -1665,9 +1686,11 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     (
         "worktree-move-plan",
         "이 클론의 linked worktree 를 `<root>/<project>-<name>` 으로 옮기는 일을 미리 봐요 — \
-         `worktree-plan` 이 새 worktree 를 만드는 자리예요. worktree 마다 `location` 과 \
+         `--root` 가 없으면 root 는 primary 체크아웃의 `.claude/worktrees`(`worktree-plan` 이 새 \
+         worktree 를 만드는 자리)예요. worktree 마다 `location` 과 \
          `move`·`keep`(이미 root 안, 앞서의 `~/.moai-cli/worktrees/<key>/` 또는 Go 세대의 \
-         `~/.moai/worktrees/projects/` 안)·`blocked` 와 그 까닭을 보여 줘요: main worktree, 없음, \
+         `~/.moai/worktrees/projects/` 안, `--root` 가 없으면 `.claude/worktrees` 와 홈 worktree \
+         폴더 안의 것도)·`blocked` 와 그 까닭을 보여 줘요: main worktree, 없음, \
          잠김, submodule, 커밋 안 한·추적 안 하는 파일, push 안 한 커밋, 그 가지의 stash, 안에서 \
          도는 프로세스, 붙잡힌 가지, 붙잡힘 검사를 안 함(`holds` 관측 없음). 아무것도 쓰지 않고, \
          답에 `plan_digest` 가 있어요.",
@@ -1697,7 +1720,11 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "claude-doctor",
-        "Claude Code 를 읽기만 하고 확인해요: PROJECT 에서 시작한 세션이 AGENTS.md 를 읽는지.",
+        "Claude Code 를 읽기만 하고 확인해요: PROJECT 에서 시작한 세션이 기존 AGENTS.md 를 읽는지.",
+    ),
+    (
+        "doctor",
+        "Claude Code 설정에서 moai 층만 읽기 전용으로 진단해요: 설정 폴더, Claude Code 버전과 moai 가 쓰는 기능의 최소 버전, 로그인 출처, 로그인을 덮는 API 키. 변수 이름과 상태만 보이고 값은 나오지 않아요. Claude Code 자체의 점검(`claude doctor`, `/status`)은 대신 하지 않고 알려 주기만 해요.",
     ),
     (
         "install-inspect",
@@ -1772,6 +1799,11 @@ const LAUNCHER_ABOUT_KO: &[(&str, &str)] = &[
 const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ("", "project", "프로젝트 루트"),
     (
+        "doctor",
+        "auth_status",
+        "`claude auth status` 를 한 번 더 돌려 로그인 방식·설정 폴더·만료만 남겨요",
+    ),
+    (
         "cc|glm",
         "prompt",
         "첫 프롬프트에 덧붙일 글(받는 호스트가 없어요)",
@@ -1804,7 +1836,7 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "cc|glm",
         "advisor",
-        "Claude 호스트의 advisor 모델(fable|opus|sonnet 또는 claude-* 전체 id). 기본 없음 — \
+        "Claude 호스트의 advisor 모델(fable|opus|sonnet 또는 claude-* 전체 id, 값을 빼면 opus). 기본 없음, -a 도 같음 — \
          사용자 설정 `launcher.advisor` 로 켤 수 있음. 사용량 크레딧이 청구될 수 있음",
     ),
     (
@@ -2166,13 +2198,14 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "worktree-move-plan",
         "root",
-        "worktree 를 옮겨 넣을 절대 폴더(기본 `<HOME>/.moai/worktrees`). 모든 worktree \
-         밖이어야 함",
+        "worktree 를 옮겨 넣을 절대 폴더(기본은 primary 체크아웃의 `.claude/worktrees`). 그 \
+         폴더 하나를 빼고는 모든 worktree 밖이어야 함",
     ),
     (
         "worktree-move-apply",
         "root",
-        "미리 보기가 읽은 것과 같은 `--root`(기본도 미리 보기와 같음)",
+        "미리 보기가 읽은 것과 같은 `--root`(기본도 미리 보기와 같은 primary 체크아웃의 \
+         `.claude/worktrees`)",
     ),
     (
         "worktree-move-plan",
@@ -2228,6 +2261,17 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "go-state-apply",
         "set_aside",
         "확인한 미리 보기를 만들 때 쓴 `--set-aside` 와 같게 넘기기(다르면 digest 가 달라 거절해요)",
+    ),
+    (
+        "go-state-plan",
+        "rewrite_local_references",
+        "로컬 설정이 `.moai/` 를 가리켜 Go 폴더가 남을 때, 그 파일을 백업하고 참조를 Go 백업 \
+         폴더 이름으로 바꾼 뒤 폴더를 옮기는 계획 세우기",
+    ),
+    (
+        "go-state-apply",
+        "rewrite_local_references",
+        "확인한 미리 보기를 이 선택으로 만들었을 때 넘기기(로컬 설정 파일을 바꿔 써요)",
     ),
     (
         "go-residue-apply",

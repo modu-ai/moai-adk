@@ -1,6 +1,6 @@
 # Team messages
 
-How the leader window and the agents (lanes) talk during one card. A session started with `moai cc -l` is named `<project name>-leader` and one started with `moai cc -a` is named `<project name>-agent-<english name>` (`moai session-register --names` prints the project name); a session started plain takes the same names with `/rename` (`workflows/work.md`, `workflows/leader.md`). Every step of the flow goes by a cross-session message, and the ledger is the record.
+How the leader window and the agents (lanes) talk during one card. A session started with `moai cc -l` is named `leader-<project name>` and one started with `moai cc -a` is named `agent-<english name>`, a name no other session on the machine holds (`moai session-register --names` prints the project name); a session started plain takes the same names with `/rename` (`workflows/work.md`, `workflows/leader.md`). Every step of the flow goes by a cross-session message, and the ledger is the record.
 
 ## The message table
 
@@ -32,4 +32,4 @@ Address the registered leader by the session id that `moai session-register --sh
 
 ## Channel order
 
-Use the host's cross-session message first. When that channel is missing, refused or held, use the lane-terminal manager's own messaging (its adapter reference under `references/adapters/` names the send command, and the check command for the leader). When neither exists, write the ledger note alone. `/clear` and screen reading stay with the lane-terminal manager.
+Use the host's cross-session message first. When that channel is missing, refused or held, use the lane-terminal manager's own messaging (its adapter reference under `references/adapters/` names the send command, and the check command for the leader). When neither exists, write the ledger note alone. `/clear` and screen reading stay with the lane-terminal manager. A new window is opened only when the existing one cannot be recovered.

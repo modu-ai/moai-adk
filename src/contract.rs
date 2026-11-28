@@ -149,6 +149,9 @@ impl std::fmt::Display for OpError {
 const RULES: &[(&str, Kind)] = &[
     ("partial apply", Kind::Partial),
     ("partial creation possible", Kind::Partial),
+    // reports move (a blocked apply, whatever the cause): the reason inside quotes words the
+    // generic table below does not know, so one prefix gives every cause one kind.
+    ("reports move blocked: ", Kind::InvalidInput),
     ("conflict in ", Kind::Conflict),
     // claim-verify (rc.2 A9 #2255): ahead of the generic words its messages quote.
     ("claim verify: not owner", Kind::Conflict),
@@ -247,6 +250,9 @@ const RULES: &[(&str, Kind)] = &[
     ("search refused: ", Kind::InvalidInput),
     ("home layout copy failed", Kind::Io),
     ("replace failed", Kind::Io),
+    // The profile screen names a field, and a decision id such as `temporary` or `exited` is one
+    // of the generic words below; behind the wrapper phrases above, ahead of those words.
+    ("invalid or nonportable profile", Kind::InvalidInput),
     ("temporary", Kind::Io),
     ("unavailable", Kind::Io),
     ("unreadable", Kind::Io),
@@ -299,6 +305,22 @@ pub fn failure(operation: &str, kind: Kind, message: &str) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The reports move apply names every cause of a blocked plan (a link, a repository of its
+    /// own, a HOME inside the project) with one prefix, so they are one kind and none of them
+    /// falls through to `internal` for want of a word the table knows.
+    #[test]
+    fn a_reports_move_blocked_message_is_invalid_input() {
+        for reason in [
+            "`.moai-cli` is a link; nothing moves",
+            "`.moai-cli/reports/sub` holds a git repository of its own; nothing moves",
+            "HOME `relative-home` is not an absolute path; nothing moves",
+            "the reports folder would lie inside the project; nothing moves",
+        ] {
+            let message = format!("reports move blocked: {reason}; nothing moved");
+            assert_eq!(classify(&message), Kind::InvalidInput, "{message}");
+        }
+    }
 
     #[test]
     fn permission_reference_boundaries() {
@@ -471,6 +493,18 @@ mod tests {
             ("ls-remote exited 2", Io),
             ("invalid profile", InvalidInput),
             ("invalid or nonportable profile; no values were logged", InvalidInput),
+            (
+                "invalid or nonportable profile field decisions[temporary].value; no values were logged",
+                InvalidInput,
+            ),
+            (
+                "invalid or nonportable profile field decisions[exited].value; no values were logged",
+                InvalidInput,
+            ),
+            (
+                "invalid or nonportable profile field decisions[#0].id; no values were logged",
+                InvalidInput,
+            ),
             ("invalid agents request; no values were logged", InvalidInput),
             ("explicit null pin is invalid", InvalidInput),
             ("nonportable package path", InvalidInput),

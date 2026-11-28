@@ -962,6 +962,18 @@ fn judge(
                 json!({"spec": id, "acs": missing}),
             ));
         }
+        // What `card land` refuses (`spec_link::judge`): a criterion with neither a `verify:`
+        // command nor a `manual:` check. `spec check` only warns of an `unknown:` one, so the
+        // refusal would first show at the landing.
+        let unverified = spec_doc::unverified(&doc);
+        if !unverified.is_empty() {
+            j.findings.push(finding(
+                "ac_unverified",
+                &arg.card,
+                &head,
+                json!({"spec": id, "acs": unverified}),
+            ));
+        }
         j.spec_results.push((
             id,
             doc.acceptance.len(),

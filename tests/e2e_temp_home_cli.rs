@@ -549,7 +549,7 @@ fn scenario_conflict_and_personal_files_are_kept() {
     let audit = claude.join("skills/moai/references/audit.md");
     let routing = claude.join("rules/moai.md");
     let flow = claude.join("rules/moai-flow.md");
-    let style = claude.join("output-styles/MoAI-Easy.md");
+    let style = claude.join("output-styles/MoAI-Style.md");
     let edited_audit = format!("{}\nmy own note\n", fs::read_to_string(&audit).unwrap());
     let edited_routing = format!(
         "{}\nmy own routing note\n",
@@ -824,7 +824,9 @@ fn scenario_rollback_an_interrupted_update_is_recovered() {
 }
 
 /// REQ-10, REQ-11: the hook entry answers every registered name with exit 0, an empty output or
-/// one JSON document, and writes no file into the project, whatever the input.
+/// one JSON document, and writes no file into the project, whatever the input. In the MoAI project
+/// the two `PreToolUse` names answer bad input with one deny object
+/// (SPEC-20261126-hook-unreadable-input AC-7).
 #[test]
 fn scenario_hook_entry_exits_zero_and_writes_nothing_into_the_project() {
     let w = World::new();
@@ -863,7 +865,36 @@ fn scenario_hook_entry_exits_zero_and_writes_nothing_into_the_project() {
                     assert!(out.stdout.is_empty(), "{at}: printed in a plain project");
                 }
                 if *what != "an event" {
-                    assert!(out.stdout.is_empty(), "{at}: printed for bad input");
+                    if is_moai && name != "session-context" {
+                        let text = String::from_utf8_lossy(&out.stdout);
+                        assert_eq!(
+                            text.lines().count(),
+                            1,
+                            "{at}: no deny object on one line of stdout, got {text:?}"
+                        );
+                        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+                        let reason = v["hookSpecificOutput"]["permissionDecisionReason"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .to_owned();
+                        let class = if name == "bash-boundary" {
+                            "moai-boundary/unreadable:"
+                        } else {
+                            "moai-boundary/protected-path:"
+                        };
+                        assert!(reason.starts_with(class), "{at}: {reason:?}");
+                        assert_eq!(
+                            v,
+                            json!({"hookSpecificOutput": {
+                                "hookEventName": "PreToolUse",
+                                "permissionDecision": "deny",
+                                "permissionDecisionReason": reason,
+                            }}),
+                            "{at}"
+                        );
+                    } else {
+                        assert!(out.stdout.is_empty(), "{at}: printed for bad input");
+                    }
                 }
                 assert_eq!(
                     tree_digest(project, &[]).unwrap(),

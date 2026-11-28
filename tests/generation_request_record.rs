@@ -469,7 +469,8 @@ fn an_apply_with_every_file_unchanged_still_records_the_request_and_clears_the_d
     let (fx, request) = settled_project();
 
     // A manifest written before the record existed: the agent and skill files are owned and
-    // current, but no request is recorded, so the generation step asks the user to decide.
+    // current, but no request is recorded. Every row is current, so the generation step reads
+    // `unchanged` and names the files it keeps (SPEC-20261127-update-old-manifest-way REQ-3).
     let mut manifest = fx.manifest();
     manifest
         .as_object_mut()
@@ -479,11 +480,17 @@ fn an_apply_with_every_file_unchanged_still_records_the_request_and_clears_the_d
     let mut bytes = serde_json::to_vec_pretty(&manifest).unwrap();
     bytes.push(b'\n');
     fs::write(fx.manifest_path(), bytes).unwrap();
-    let stuck = fx.plan();
+    let before_apply = fx.plan();
     assert_eq!(
-        step(&stuck, "generation")["state"],
-        "needs_decision",
-        "{stuck}"
+        step(&before_apply, "generation")["state"],
+        "unchanged",
+        "{before_apply}"
+    );
+    assert!(
+        step(&before_apply, "generation")["preview"]["not_rebuilt"]
+            .as_array()
+            .is_some_and(|p| !p.is_empty()),
+        "{before_apply}"
     );
 
     // The files the request owns, read before the apply.
@@ -527,8 +534,8 @@ fn an_apply_with_every_file_unchanged_still_records_the_request_and_clears_the_d
 // `needs_decision` behind.
 
 const ROLE_FILE: &str = ".claude/agents/moai/prj-test-runner.md";
-const SKILL_FILE: &str = ".claude/skills/prj-checks/SKILL.md";
-const PROJECTION_FILE: &str = ".claude/skills/ref-b/SKILL.md";
+const SKILL_FILE: &str = ".claude/skills/moai-prj-checks/SKILL.md";
+const PROJECTION_FILE: &str = ".claude/skills/moai-ref-b/SKILL.md";
 const GENERATED_KINDS: [&str; 3] = [
     "generation:native-role:",
     "generation:project-skill:",

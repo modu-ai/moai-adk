@@ -367,18 +367,24 @@ fn go_backups(root: &Path) -> Vec<String> {
 /// `.moai/backups/<UTC>/go-state-receipt.json` exists as a regular file: this `.moai/` is the
 /// one a go-state apply made (or a revert has not finished leaving).
 fn holds_go_state_receipt(moai: &Path) -> bool {
+    go_state_receipts(moai)
+        .iter()
+        .any(|receipt| !receipt_reverted(receipt))
+}
+
+/// Every `.moai/backups/<UTC>/go-state-receipt.json` that exists as a regular file, whatever
+/// it says.
+fn go_state_receipts(moai: &Path) -> Vec<PathBuf> {
     fs::read_dir(moai.join("backups"))
         .map(|rd| {
             rd.filter_map(|e| e.ok())
                 .filter_map(|e| e.file_name().into_string().ok())
                 .filter(|n| utc_stamp(n))
-                .any(|n| {
-                    regular_file(moai, &["backups", &n, GO_STATE_RECEIPT]).is_some_and(|_| {
-                        !receipt_reverted(&moai.join("backups").join(&n).join(GO_STATE_RECEIPT))
-                    })
-                })
+                .filter(|n| regular_file(moai, &["backups", n, GO_STATE_RECEIPT]).is_some())
+                .map(|n| moai.join("backups").join(n).join(GO_STATE_RECEIPT))
+                .collect()
         })
-        .unwrap_or(false)
+        .unwrap_or_default()
 }
 
 /// A receipt whose `state` says `reverted` is a finished undo: it no longer marks a migration
@@ -458,9 +464,13 @@ pub fn specs_only(moai: &Path) -> bool {
 /// no Go marker and no unfinished go-state receipt, holds no machine state of either generation.
 /// It reads like an absent `.moai/` (verdict `none`), and a new project adopts it in place.
 /// Besides the kept names it may hold a real `backups/` folder (git ignores it; an earlier
-/// undo leaves it) and Finder's `.DS_Store`. At least one kept name must be there: an empty
-/// folder keeps its own verdict. A link, a kept name of the wrong type or an unlisted name
-/// anywhere keeps the folder as it is read today. [`specs_only`] is the narrower case.
+/// undo leaves it), the real [`LOCAL_DIR`] folder of this machine's output (git ignores it
+/// too) and Finder's `.DS_Store`. At least one kept name or the local folder must be there: an
+/// empty folder keeps its own verdict. Without a kept name, the local folder beside `backups/`
+/// counts only when that folder holds a go-state receipt, so a flaky record, which adds the
+/// local folder, changes no verdict (SPEC-20261126-tracked-state-move REQ-11, REQ-12). A link,
+/// a kept name of the wrong type or an unlisted name anywhere keeps the folder as it is read
+/// today. [`specs_only`] is the narrower case.
 pub fn kept_only(moai: &Path) -> bool {
     if !fs::symlink_metadata(moai).is_ok_and(|m| m.is_dir()) {
         return false;
@@ -469,6 +479,8 @@ pub fn kept_only(moai: &Path) -> bool {
         return false;
     };
     let mut kept = 0;
+    let mut local = false;
+    let mut backups = false;
     for e in entries {
         let Ok(e) = e else {
             return false;
@@ -484,6 +496,12 @@ pub fn kept_only(moai: &Path) -> bool {
             continue;
         }
         if name == "backups" && kind.is_dir() {
+            backups = true;
+            continue;
+        }
+        // The entry's own type: a link named like the local folder is not one.
+        if name == LOCAL_DIR && kind.is_dir() {
+            local = true;
             continue;
         }
         let listed = KEPT.iter().find_map(|k| {
@@ -500,7 +518,10 @@ pub fn kept_only(moai: &Path) -> bool {
             _ => return false,
         }
     }
-    kept > 0 && go_markers(moai).is_empty() && !holds_go_state_receipt(moai)
+    // @cc:careful a flaky record adds the local folder: beside `backups/` with no receipt it
+    // must not turn the folder's verdict into `none`.
+    let local_counts = local && (!backups || !go_state_receipts(moai).is_empty());
+    (kept > 0 || local_counts) && go_markers(moai).is_empty() && !holds_go_state_receipt(moai)
 }
 
 /// The HOME verdict (#2871 I2 R1): the table above with the HOME's Go markers, plus one row —
@@ -860,6 +881,19 @@ pub const KEPT: [&str; 11] = [
     "specs/",
     "tools/",
     "evals/",
+];
+
+/// The kept folders whose content the managed `.gitignore` block does not allow whole
+/// (SPEC-20261127-state-kept-narrowing): per folder, the one pattern (relative to the folder) that
+/// is allowed back after the block ignores what is directly inside it. `manifests/` holds the
+/// `.json` files Rust writes, `workflows/` the generated sub-folders (a flat file there is an
+/// earlier generation's) and `decisions/` the `.jsonl` run logs. Only the block reads this list:
+/// [`KEPT`] stays the list of first-level names that [`is_kept`], the classifier and go-state read,
+/// and every name here is also in it.
+pub const KEPT_NARROW: [(&str, &str); 3] = [
+    ("manifests", "*.json"),
+    ("workflows", "*/"),
+    ("decisions", "*.jsonl"),
 ];
 
 /// The kinds of machine output the folder holds today. Each lives under `local/`, which git
@@ -1952,6 +1986,39 @@ mod tests {
         assert!(c.legacy_root);
         assert_eq!(c.to_json()["legacy_root"], json!(crate::PROJECT_STATE_DIR));
         assert_eq!(verdict(|_| {}).to_json()["legacy_root"], Value::Null);
+    }
+
+    /// SPEC-20261127-state-kept-narrowing AC-1: the narrow list is a second list; every folder in
+    /// it is a kept first-level name, the first-level names are the same eleven as before, and the
+    /// readers of the names (`is_kept`) answer the same for every name, kept or not.
+    #[test]
+    fn the_narrow_allow_list_leaves_the_first_level_names_alone() {
+        assert_eq!(
+            KEPT_NARROW,
+            [
+                ("manifests", "*.json"),
+                ("workflows", "*/"),
+                ("decisions", "*.jsonl")
+            ]
+        );
+        for (folder, pattern) in KEPT_NARROW {
+            assert!(KEPT.contains(&format!("{folder}/").as_str()), "{folder}");
+            assert!(is_kept(folder), "{folder}");
+            assert!(
+                !pattern.is_empty() && !pattern.starts_with('/'),
+                "{pattern}"
+            );
+        }
+        assert_eq!(KEPT.len(), 11);
+        for name in KEPT {
+            assert!(
+                is_kept(name) && is_kept(name.trim_end_matches('/')),
+                "{name}"
+            );
+        }
+        for name in ["receipts", "local", "manifests-x", "config.yaml", ""] {
+            assert!(!is_kept(name), "{name}");
+        }
     }
 
     /// The layout rule: eleven kinds the team keeps in git, everything else under `local/`.

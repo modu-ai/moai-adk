@@ -2,13 +2,13 @@
 id: SPEC-20261124-update-flat-agent-ownership
 title: "moai update 가 평평한 에이전트 파일을 우리 것으로 알아보고, 진짜 사용자 수정은 고르게 하고, conflict 가 남으면 Partial 로 보여요"
 status: approved
-revision: 1
+revision: 2
 created: 2026-11-24
 approval:
-  by: leader
-  at: 2026-11-24
-  basis: "리더 결정 노트 8453 (2026-11-24T10:19:43Z, 사용자 위임 2026-11-23T13:57Z, 리더 판단, 사용자 직접 선택 아님, 노트 8452 에 대한 답): revision 1 승인, head a34384ed05a565fb7a7e32dc81ac251913bf877a, D-6(유지를 기억하지 않음)과 D-7(conflict 만 있어도 질문)을 받아요; 리더가 노트에 적었고 레인은 그 노트를 옮겨 적었어요"
-  digest: "sha256:8e6bbf894a92e1f88ee900a0d11c67f5c92c2b1fbccb0242aad51474e3ae9649"
+  by: user
+  at: 2026-11-27
+  basis: "리더 노트 10755 (USER-APPROVAL revision 2, 2026-11-27): 사용자가 직접 골랐어요 — \"개정하고 규칙도 추가 (Recommended)\" (노트 10743, 리더 세션의 질문 도구). 리더가 커밋 ecf0b404ee 의 diff 를 읽어 선택과 같음을 확인했어요: Scope 의 두 줄만 바뀌고 요구와 기준은 그대로예요. 개정 1 의 승인은 노트 8453(리더 기록, 사용자 위임)이었어요."
+  digest: "sha256:17010c62418e8b3c20dccb53564086a9678bc795a1294b6aca5579dad58cc301"
 ---
 
 # moai update 가 평평한 에이전트 파일을 우리 것으로 알아보고, 진짜 사용자 수정은 고르게 하고, conflict 가 남으면 Partial 로 보여요
@@ -74,9 +74,9 @@ approval:
 ## Scope
 
 - write: `.moai/specs/SPEC-20261124-update-flat-agent-ownership/spec.md`, `src/agent_install.rs`, `tests/agents_flat_ownership.rs`, `tests/base_agents_nested.rs` (only if a line must follow), `tests/update_tux_golden.rs`, `tests/fixtures/update_tux/`
-- line lease (held by another card, one `moai card line-lease` edit each): `src/update.rs` (the question predicate at `agents_write_anything` and the confirmed agents part that calls `apply_for`), `src/update_tux.rs` (the `part` closure of the applied screen and the words of the kept row)
+- line lease (held by another card, one `moai card line-lease` edit each): `src/update.rs` (the question predicate at `agents_write_anything` and the confirmed agents part that calls `apply_for`), `src/update_tux.rs` (the `part` closure of the applied screen and the words of the kept row), and the shared file `tools/repo_scans.json` (only the lines a new test file of this SPEC needs)
 - read-only: `src/agent_defs.rs`, `src/progress.rs`, `src/ui_text.rs`, `src/update_cleanup.rs`, `.moai/specs/SPEC-20261121-base-agents-user-folder/spec.md`
-- forbidden: the real HOME and every folder under it (the user's agents folder and both state folders), `CLAUDE.md`, `tools/repo_scans.json`, the old SPEC file, any card number in a file name, SPEC id, branch or commit message
+- forbidden: the real HOME and every folder under it (the user's agents folder and both state folders), `CLAUDE.md`, the old SPEC file, any card number in a file name, SPEC id, branch or commit message
 
 ## Plan
 
@@ -129,3 +129,16 @@ Measured 2026-11-24 (UTC) on macOS in the worktree `.claude/worktrees/update-fla
 Guard mutants (each by one exact replacement, confirmed to change the file, run in one heavy slot, restored from a byte copy; logs `target/c459/mut-*.log`): render equality removed, package-file equality removed, the unplanned-choice refusal removed, the partial state removed, a kept file written as chosen, the revert skipping the replace action, the revert recording the person's bytes as ours, a conflict alone not asked, an edited nested copy overwritten, the difference printing equal lines, the difference printing raw bytes, and the chosen flat file not removed each fail their named test with exit 100. The revert mutant first survived (exit 0) because the nested revert hid it; the added test kills it.
 
 Not run: Windows and Linux (Mac fixtures only), a live `moai update` against a real package, and the JSON envelope path with a choice (D-5, no input there).
+
+### 후속 (2026-11-27)
+
+NeXT tip `8933f238cd` 위의 브랜치 `spec/update-flat-agent-followup-20261127` 에서 위 `not_run` 과 감사 후속 세 건을 닫았어요. 요구사항과 승인 본문은 건드리지 않았어요. 커밋은 RED `550d0200a5`, 코드 `7ac223c720`, 실제 update 테스트와 스캔 표 `e7774f2c7c` 예요. 모든 실행은 macOS, debug 빌드로 heavy 슬롯 안에서 했고 임시 HOME 만 썼어요.
+
+- AC-3 (실제 연결): 위에서 `not_run` 이던 실제 `moai update` 연결을 `tests/update_flat_agents_tty.rs` 가 닫아요. 임시 HOME 에 이 저장소의 `skills/moai` 와 `agents` 를 바이너리 옆 버전 폴더로 복사하고, 터미널(의사 터미널) 실행은 묻고 사람의 답을 적용해요. 터미널이 아닌 실행은 묻지 않고 모든 conflict 를 지키며 `partial` 로 답해요. 테스트 네 개가 통과했어요.
+- 막힌 호스트 이름 붙이기: 에이전트 폴더가 링크라서 호스트가 막히면 적용 결과가 `blocked` 배열(호스트와 이유)과 한 줄 `reason` 을 내요. `state` 는 쓴 것에 따라 그대로 `unchanged` 예요(이전 SPEC 의 `base_agents_discovery_record` 테스트가 그 답을 고정해서 바꾸지 않았어요; 처음에 `blocked` 상태로 바꿨다가 그 테스트가 잡았고 되돌렸어요). 링크를 통해서는 아무것도 쓰지 않아요(`an_apply_names_a_blocked_host_and_writes_nothing_through_the_link`, 링크를 건 실제 update 테스트 `a_blocked_agents_folder_ends_the_update_partly_applied`). 막힘이 없는 적용에는 `blocked` 키가 없어요. 끝 화면은 `unchanged` 갈래가 `blocked` 목록을 읽어 이유를 행에 적고 `Partly applied` 로 끝내요(`the_applied_screen_shows_a_blocked_agents_host_as_partial`, 영어와 한국어). 호스트가 하나(claude)뿐이라 막힌 호스트와 다른 호스트의 쓰기가 한 결과에 함께 나오는 경우는 아직 없어요.
+- 차이 줄 수: 차이는 80줄에서 멈추고 나머지 개수를 세어요(`the_difference_stops_at_eighty_lines_and_counts_the_rest`, 80줄과 81줄 경계).
+- 외부 소유 파일: 기록과 render 와 패키지 파일 어느 것과도 다른 평평한 파일은 묻고 답으로 지키거나 옮겨요(`a_foreign_flat_file_is_asked_about_and_kept_or_moved_by_the_choice`).
+
+가드 뮤턴트는 한 번에 하나씩 `Edit` 로 걸고 이름 붙인 테스트를 슬롯에서 돌린 뒤 `git restore` 로 되돌렸어요. 모두 테스트가 실패했어요(exit 100): (a) 막힌 호스트 이름 붙이기를 뺌(`an_apply_names_a_blocked_host_and_writes_nothing_through_the_link`), (c) 외부 소유 파일을 conflict 로 보지 않음, (d) 터미널에서도 묻지 않음(`a_terminal_run_asks_about_a_conflict_alone_and_use_moais_moves_the_file`), (e) 확인 질문 조건을 쓰기만 보게 되돌림(터미널 테스트 세 개 실패), (f) 끝 화면의 `unchanged` 갈래에서 `bad` 를 뺌(골든 테스트). 상태를 바꾸던 처음 설계의 뮤턴트 (b) 는 그 설계를 버리면서 없앴어요.
+
+범위 어긋남: 이 SPEC 의 Scope 는 `tools/repo_scans.json` 을 forbidden 으로 적었지만, 새 테스트 파일이 스캔 표(`reads-skills` 의 `test_targets` 와 `rules`)에 줄을 요구해서 그 파일을 줄 임대(`card line-lease`)로 두 줄만 고쳤어요. 승인 본문은 그대로 두었고, 이 어긋남은 리더가 READY 에서 판단해요. 개정 2(사용자 선택, 리더 노트 10743)가 Scope 의 두 줄만 고쳐서 닫아요: forbidden 줄에서 그 파일을 빼고 줄 임대 줄로 옮겼어요. 요구와 기준은 그대로예요.

@@ -504,9 +504,86 @@ fn boundary_sentence_is_pinned() {
     }
 }
 
+/// The one boundary sentence of `update.md` (REQ-13, REQ-14): the move of earlier-generation
+/// state belongs to the update route, not to `/moai project`, which only names `/moai update`.
+/// The text of `update.md` carries exactly this sentence, written as one sentence of its own.
+const UPDATE_BOUNDARY: &str = "Moving state of an earlier MoAI generation is this route's job, not the job of `/moai project`, which only names `/moai update` when such state is found.";
+
+/// AC-10 (REQ-13, REQ-14): `project.md` carries its boundary sentence once and `update.md` carries
+/// the matching one once; the update side names the project workflow, says the move is its own
+/// job, and stands as a whole sentence. A missing sentence on either side fails.
+#[test]
+fn boundary_sentence_is_pinned_in_both() {
+    let project = read(PROJECT);
+    assert_eq!(
+        project.matches(BOUNDARY).count(),
+        1,
+        "`{PROJECT}` must carry exactly one boundary sentence starting `{BOUNDARY}`"
+    );
+    let project_sentence = sentence_from(&project, project.find(BOUNDARY).unwrap());
+    assert!(
+        project_sentence.matches("`/moai update`").count() >= 2,
+        "the project-side sentence must name `/moai update`: {project_sentence}"
+    );
+
+    let update = read(UPDATE);
+    assert_eq!(
+        update.matches(UPDATE_BOUNDARY).count(),
+        1,
+        "`{UPDATE}` must carry exactly one boundary sentence: {UPDATE_BOUNDARY}"
+    );
+    let at = update.find(UPDATE_BOUNDARY).unwrap();
+    assert_eq!(
+        sentence_from(&update, at),
+        UPDATE_BOUNDARY,
+        "the update-side boundary sentence must stand as one whole sentence"
+    );
+    for needle in ["`/moai project`", "earlier MoAI generation", "this route"] {
+        assert!(
+            UPDATE_BOUNDARY.contains(needle),
+            "the update-side sentence must carry `{needle}`: {UPDATE_BOUNDARY}"
+        );
+    }
+}
+
+/// The names of the earlier-generation move steps (REQ-26, REQ-27): the plan and apply commands
+/// of the move, its revert, and the folder of the root files the apply puts aside.
+const MOVE_STEP_NAMES: [&str; 6] = [
+    "go-state-apply",
+    "go-settings-apply",
+    "worktree-move-plan",
+    "worktree-move-apply",
+    "go-state-revert",
+    "root-files",
+];
+
+/// What the worktree-move paragraph and the after-apply picks of `update.md` carry besides the
+/// names: the hold-check reason, the observation flag and the backup folder name.
+const MOVE_STEP_DETAILS: [&str; 3] = ["hold_check_not_run", "--observations", ".moai-backup"];
+
+/// AC-15 (REQ-26, REQ-27): `project.md` carries none of the move step names and `update.md`
+/// carries all of them with the details of the worktree move and the backup.
+#[test]
+fn the_move_steps_live_in_update_md() {
+    let project = read(PROJECT);
+    for name in MOVE_STEP_NAMES {
+        assert!(
+            !project.contains(name),
+            "`{PROJECT}` still names `{name}`: the move steps belong to `{UPDATE}`"
+        );
+    }
+    let update = read(UPDATE);
+    for name in MOVE_STEP_NAMES.iter().chain(MOVE_STEP_DETAILS.iter()) {
+        assert!(
+            update.contains(name),
+            "`{UPDATE}` lacks `{name}`: it carries the move steps"
+        );
+    }
+}
+
 /// Lines of `text` that carry a card number (`C-59`), an Issue number (`#2639`, three to five
-/// digits) or a dated user decision (`user decision 2026-11-16`, `user decision 16`), numbered
-/// from 1 (REQ-15).
+/// digits) or a dated user decision (`user decision 2026-11-16`, `user decision of 2026-11-13`,
+/// `user decision 16`), numbered from 1 (REQ-15).
 fn citation_lines(text: &str) -> Vec<(usize, String)> {
     let digits = |s: &str| s.chars().take_while(char::is_ascii_digit).count();
     let alnum = |c: Option<char>| c.is_some_and(char::is_alphanumeric);
@@ -523,9 +600,10 @@ fn citation_lines(text: &str) -> Vec<(usize, String)> {
     };
     let decision = |line: &str| {
         let lower = line.to_lowercase();
-        lower
-            .match_indices("user decision ")
-            .any(|(at, found)| digits(&lower[at + found.len()..]) > 0)
+        lower.match_indices("user decision ").any(|(at, found)| {
+            let rest = &lower[at + found.len()..];
+            digits(rest.strip_prefix("of ").unwrap_or(rest)) > 0
+        })
     };
     text.lines()
         .enumerate()
@@ -534,26 +612,26 @@ fn citation_lines(text: &str) -> Vec<(usize, String)> {
         .collect()
 }
 
-/// AC-11 (REQ-15): the three project-side files carry no card number, no Issue number and no dated
-/// user decision. `update.md` is another card's file and is not read here.
+/// AC-11 (REQ-15): the three project-side files and `update.md` carry no card number, no Issue
+/// number and no dated user decision (`user decision <date>` or `user decision of <date>`).
 #[test]
 fn no_citation_in_project_side_files() {
-    let planted =
-        "a card C-59 closes\nsee Issue #2639\n(user decision 2026-11-16)\nuser decision 16 = B";
+    let planted = "a card C-59 closes\nsee Issue #2639\n(user decision 2026-11-16)\nuser decision 16 = B\n(user decision of 2026-11-13)";
     let flagged: Vec<usize> = citation_lines(planted).iter().map(|(n, _)| *n).collect();
     assert_eq!(
         flagged,
-        vec![1, 2, 3, 4],
+        vec![1, 2, 3, 4, 5],
         "the guard must flag each planted shape"
     );
     for fine in [
         "SPEC-20261121-x and ABC-12 and C-x",
         "issue #12 and #123456",
         "the user decision, noted",
+        "a user decision of the team",
     ] {
         assert!(citation_lines(fine).is_empty(), "{fine} is not a citation");
     }
-    for rel in [PROJECT, BANK, QUESTIONS] {
+    for rel in [PROJECT, BANK, QUESTIONS, UPDATE] {
         if let Some((line, text)) = citation_lines(&read(rel)).first() {
             panic!("{rel}:{line} carries a card, Issue or dated decision: {text}");
         }

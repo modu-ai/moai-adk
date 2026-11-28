@@ -65,7 +65,7 @@ impl Class {
     fn reason(self) -> String {
         let text = match self {
             Class::DeleteOutside => "a delete target is outside this session's checkout and the temporary folders, or is a checkout root, a .git folder or another checkout. Delete only inside your own worktree or a temporary folder, by a literal path.",
-            Class::GitState => "this git command changes the state of a checkout that is not this session's own, or moves a branch in the shared primary checkout. Work in your own worktree (cd into it, or use git -C with its literal path).",
+            Class::GitState => "this git command changes the state of a checkout that is not this session's own, or moves a branch in the shared primary checkout. Work in your own worktree, or use git -C with its literal path.",
             Class::ProtectedRef => "an integration or protected branch is changed by hand here. Land through `moai card land`; other branches can be changed freely.",
             Class::HookSkip => "commit hooks are skipped or replaced here. Fix what the hook reports and run the command again without the skip.",
             Class::Unreadable => "a value this check needs cannot be read from the command text (an expansion, a substitution, a glob root, an alias, a computed command word, or syntax that cannot be split). Write the path, branch or command literally.",
@@ -288,23 +288,8 @@ struct World {
 
 impl World {
     fn build(input: &Map<String, Value>, env: &Env) -> World {
-        let cwd_in = input
-            .get("cwd")
-            .and_then(Value::as_str)
-            .map(PathBuf::from)
-            .filter(|p| p.is_absolute())
-            .unwrap_or_else(|| env.process_cwd.to_path_buf());
-        let cwd = if cwd_in.is_absolute() {
-            resolve(&cwd_in, true)
-        } else {
-            None
-        };
-        let here = cwd.as_deref().and_then(checkout_of);
-        let project = env.project_dir.and_then(checkout_of);
-        let own = match (here, project) {
-            (Some(h), Some(p)) if h.common != p.common => Some(p),
-            (h, _) => h,
-        };
+        let cwd = session_folder(input, env.process_cwd);
+        let own = own_checkout(cwd.as_deref(), env.project_dir);
         let mut protected = vec!["main".to_owned(), "master".to_owned()];
         if let Some(name) = integration_branch(env.project_root) {
             protected.push(name.to_lowercase());
@@ -339,6 +324,246 @@ impl World {
         let lower = branch.to_lowercase();
         self.protected.contains(&lower)
     }
+}
+
+/// The folder the call runs in: the input's absolute `cwd`, else the hook's own, links resolved.
+fn session_folder(input: &Map<String, Value>, process_cwd: &Path) -> Option<PathBuf> {
+    let cwd = input
+        .get("cwd")
+        .and_then(Value::as_str)
+        .map(PathBuf::from)
+        .filter(|p| p.is_absolute())
+        .unwrap_or_else(|| process_cwd.to_path_buf());
+    cwd.is_absolute().then(|| resolve(&cwd, true)).flatten()
+}
+
+/// The session's checkout: the one holding `cwd`, or the project folder's when that one belongs
+/// to another repository.
+fn own_checkout(cwd: Option<&Path>, project_dir: Option<&Path>) -> Option<Checkout> {
+    let here = cwd.and_then(checkout_of);
+    let project = project_dir.and_then(checkout_of);
+    match (here, project) {
+        (Some(h), Some(p)) if h.common != p.common => Some(p),
+        (h, _) => h,
+    }
+}
+
+// ------------------------------------------------------------------ session folder
+
+const SESSION_CD: &str = "moai-boundary/session-cd: this command would move the folder of a session that works in its own worktree. Stay where you are: name files by their absolute path, give a path argument to a command that takes one (`cargo test --manifest-path <path>/Cargo.toml`), run git as plain single commands in your own worktree, or read another revision by its object id. If a shell cd (not EnterWorktree) already moved a session that started in the main checkout into this worktree, the shell cannot go back: end the session and start it again from the main checkout.";
+
+const SESSION_ENTER: &str = "moai-boundary/session-cd: this command would move the shell of a session in the main checkout into a linked worktree, and a shell cd cannot take it back out. Stay where you are: name files by their absolute path, give a path argument to a command that takes one (`cargo test --manifest-path <path>/Cargo.toml`), or enter the worktree with EnterWorktree.";
+
+/// The deny of the session-folder rule (SPEC-20261126-shell-cd-guard): the command would run
+/// `cd`, `pushd` or `popd` in the session shell of a session whose checkout is a linked worktree
+/// of a MoAI project, or would move the shell of a session in the main checkout into a linked
+/// worktree of the same repository (revision 4, REQ-6). `None` otherwise, also when the command
+/// cannot be split into commands and when a target is not held by the command text. `home` is
+/// what `~` and a bare `cd` stand for. Reads files only.
+pub fn session_cd(
+    input: &Value,
+    project_dir: Option<&Path>,
+    home: Option<&Path>,
+    process_cwd: &Path,
+) -> Option<&'static str> {
+    let command = input["tool_input"]["command"].as_str()?;
+    if command.len() > MAX_BYTES {
+        return None;
+    }
+    let moves = session_moves(command, 0);
+    if moves.is_empty() {
+        return None;
+    }
+    let cwd = session_folder(input.as_object()?, process_cwd);
+    let own = own_checkout(cwd.as_deref(), project_dir)?;
+    if !moai_project(&own) {
+        return None;
+    }
+    if !own.primary {
+        return Some(SESSION_CD);
+    }
+    enters_worktree(&moves, &own, cwd, home).then_some(SESSION_ENTER)
+}
+
+/// A `cd`, `pushd` or `popd` the session shell runs, with its words.
+struct DirMove {
+    name: String,
+    args: Vec<Word>,
+}
+
+/// Whether the moves, followed in order from the session's folder, leave the shell in a linked
+/// worktree of the repository `own` belongs to. A target the text does not hold (a variable, a
+/// glob, a word that spells several folders, `cd -`) leaves the folder unknown and the walk goes
+/// on from there, as the boundary's own walk does.
+fn enters_worktree(
+    moves: &[DirMove],
+    own: &Checkout,
+    cwd: Option<PathBuf>,
+    home: Option<&Path>,
+) -> bool {
+    let world = World {
+        cwd: cwd.clone(),
+        own: None,
+        home: home.map(Path::to_path_buf),
+        protected: Vec::new(),
+        roots: Vec::new(),
+    };
+    let walker = Walker {
+        world: &world,
+        count: 0,
+        others: None,
+        unread: None,
+    };
+    let mut state = State {
+        cwd,
+        stack: Vec::new(),
+        git_env: BTreeMap::new(),
+    };
+    let prefix = BTreeMap::new();
+    for step in moves {
+        let several = step
+            .args
+            .iter()
+            .filter(|w| !w.is_option())
+            .any(|w| walker.expand(w, &state).is_some_and(|list| list.len() > 1));
+        if several {
+            state.cwd = None;
+            continue;
+        }
+        walker.change_dir(&step.name, &step.args, &mut state, &prefix);
+        let Some(here) = state.cwd.as_deref().and_then(checkout_of) else {
+            continue;
+        };
+        if !here.primary && here.common == own.common {
+            return true;
+        }
+    }
+    false
+}
+
+/// Whether the repository of `checkout` is a MoAI project: the profile is at the checkout, or at
+/// the primary checkout when it is not tracked into the worktree.
+fn moai_project(checkout: &Checkout) -> bool {
+    let primary = checkout
+        .common
+        .parent()
+        .filter(|_| checkout.common.file_name().is_some_and(|n| n == ".git"));
+    [Some(checkout.root.as_path()), primary]
+        .into_iter()
+        .flatten()
+        .any(|root| {
+            fs::metadata(crate::state_root::path(root, "project.yaml")).is_ok_and(|m| m.is_file())
+        })
+}
+
+/// Whether every closing parenthesis of the split line has its opening one and none is left
+/// open. The lexer does not read comments, here-documents or `case` patterns inside `$( … )`,
+/// nor nested parentheses inside `$(( … ))`, so it can end one early; the `)` left over then
+/// shows that what looks like a command of the session shell may be none.
+fn parens_balanced(items: &[Item]) -> bool {
+    let mut open = 0usize;
+    for item in items {
+        match item {
+            Item::Open => open += 1,
+            Item::Close => match open.checked_sub(1) {
+                Some(rest) => open = rest,
+                None => return false,
+            },
+            Item::Cmd(_) => {}
+        }
+    }
+    open == 0
+}
+
+/// The commands of `src` outside every pair of parentheses that are `cd`, `pushd` or `popd`, in
+/// the order they run. Substitutions, here-documents and strings given to another shell run
+/// elsewhere and are not read; a literal `eval` string runs here and is read the same way. A line
+/// the lexer cannot split (arrays, `(( … ))`, `;;`, an unmatched quote, unbalanced parentheses
+/// and the like) is not judged at all, whatever stands before that part. Reading stops at a
+/// function definition, a `case`, a `function` or a `coproc`, keeping what came before it.
+fn session_moves(src: &str, depth: usize) -> Vec<DirMove> {
+    let mut found = Vec::new();
+    if depth > MAX_DEPTH {
+        return found;
+    }
+    let script = lex(src);
+    if script.unsupported || !parens_balanced(&script.items) {
+        return found;
+    }
+    let mut parens = 0usize;
+    let mut just_opened = false;
+    for item in &script.items {
+        let cmd = match item {
+            Item::Open => {
+                parens += 1;
+                just_opened = true;
+                continue;
+            }
+            // `name () { … }` defines a function: its body does not run here.
+            Item::Close if just_opened => return found,
+            Item::Close => {
+                parens = parens.saturating_sub(1);
+                continue;
+            }
+            Item::Cmd(cmd) => cmd,
+        };
+        just_opened = false;
+        if parens > 0 {
+            continue;
+        }
+        let Some((first, args)) = command_words(&cmd.words).split_first() else {
+            continue;
+        };
+        if first.dynamic {
+            continue;
+        }
+        match first.text().as_str() {
+            name @ ("cd" | "pushd" | "popd") => found.push(DirMove {
+                name: name.to_owned(),
+                args: args.to_vec(),
+            }),
+            "case" | "function" | "coproc" => return found,
+            "eval" if args.iter().all(|w| !w.dynamic) => {
+                let text: Vec<String> = args.iter().map(Word::text).collect();
+                found.extend(session_moves(&text.join(" "), depth + 1));
+            }
+            _ => {}
+        }
+    }
+    found
+}
+
+/// The words from the command word on: assignments, the reserved words that may stand in front,
+/// `time`, `builtin` and `command` are passed over. `command -v` only names a command, so
+/// nothing is left of it.
+fn command_words(mut words: &[Word]) -> &[Word] {
+    while let Some((first, after)) = words.split_first() {
+        if split_assign(first).is_some() {
+            words = after;
+            continue;
+        }
+        if first.dynamic {
+            break;
+        }
+        let text = first.text();
+        let bare = first.chars.iter().all(|&(_, b)| b);
+        let reserved = RESERVED_BEFORE_COMMAND.contains(&text.as_str()) || text == "time";
+        if (bare && reserved) || text == "builtin" {
+            words = after;
+        } else if text == "command" {
+            let options = after.iter().take_while(|w| w.is_option()).count();
+            if after[..options]
+                .iter()
+                .any(|w| w.text().contains(['v', 'V']))
+            {
+                return &[];
+            }
+            words = &after[options..];
+        } else {
+            break;
+        }
+    }
+    words
 }
 
 fn integration_branch(project_root: &Path) -> Option<String> {

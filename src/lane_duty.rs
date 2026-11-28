@@ -11,12 +11,8 @@ pub const BODY: &str = "Issue/PR 을 배차받거나 self-pick 해서 열린 Iss
 /// Longest accepted `--first` task, in characters.
 pub const MAX_FIRST_CHARS: usize = 300;
 
-/// The hosts a lane runs on, with the prefix that starts the `moai` skill there.
-pub const HOSTS: &[(&str, &str)] = &[
-    ("claude", "/moai"),
-    ("codex", "$moai"),
-    ("omp", "/skill:moai"),
-];
+/// The hosts a lane runs on: Claude Code is the only one.
+pub const HOSTS: &[&str] = &["claude"];
 
 /// A character that must not reach another terminal: C0 and C1 controls (tab, line feed,
 /// carriage return, ESC, DEL …), the Unicode line and paragraph separators, every format
@@ -72,9 +68,9 @@ fn check_first(first: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// `레인 <lane> — <BODY>[ 먼저: <first>]` for `claude` and `omp` (plain text: the session is already
-/// in agent mode and `/moai agent` takes no instruction text, SPEC-20261125-agent-team-session-names
-/// REQ-27); the withdrawn `codex` host keeps `<prefix> work 레인 …`.
+/// `레인 <lane> — <BODY>[ 먼저: <first>]`: plain text, because the session is already in agent
+/// mode and `/moai agent` takes no instruction text (SPEC-20261125-agent-team-session-names
+/// REQ-27). A host that is not in [`HOSTS`] is refused.
 pub fn line(lane: &str, first: Option<&str>, host: &str) -> Result<String, String> {
     if !crate::lane_registry::valid_name(lane) {
         return Err(format!(
@@ -82,16 +78,10 @@ pub fn line(lane: &str, first: Option<&str>, host: &str) -> Result<String, Strin
             crate::lane_registry::MAX_NAME_LEN
         ));
     }
-    let prefix = HOSTS
-        .iter()
-        .find(|(h, _)| *h == host)
-        .map(|(_, p)| *p)
-        .ok_or("host is invalid: use claude, codex or omp")?;
-    let mut out = if host == "codex" {
-        format!("{prefix} work 레인 {lane} — {BODY}")
-    } else {
-        format!("레인 {lane} — {BODY}")
-    };
+    if !HOSTS.contains(&host) {
+        return Err("host is invalid: claude is the only host".into());
+    }
+    let mut out = format!("레인 {lane} — {BODY}");
     if let Some(task) = first {
         check_first(task)?;
         out.push_str(" 먼저: ");

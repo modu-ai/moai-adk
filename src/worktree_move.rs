@@ -2,15 +2,26 @@
 //! linked worktrees with a preview of moving each into one common root as
 //! `<root>/<project>-<name>`, and a move that runs only on a fresh, identical preview.
 //!
-//! The root defaults to `<HOME>/.moai/worktrees` ([`default_root`]) and the destination name is
-//! the one `worktree-plan` gives a new worktree (`crate::home_workdir::worktree_name`), so a
-//! moved worktree and a new one sit side by side (#2835 D3, user instruction #1975 6866725877);
-//! `--root` names another absolute folder. Two projects with the same folder name map to the
-//! same destination name: the second is `destination_exists`, never merged into the first. The
-//! project key (`<repository folder name>-<first 12 hex of clone_id>`) is still reported to
-//! name the clone. Worktrees already in the root, in the earlier common root
-//! `<HOME>/.moai-cli/worktrees/<project key>/<name>` and in the Go generation's
-//! `<HOME>/.moai/worktrees/projects/` are kept and named by `location`, never moved.
+//! Without `--root` the root is the primary checkout's `.claude/worktrees`
+//! (SPEC-20261122-worktree-place REQ-20), also when the call comes from a linked worktree, and
+//! the destination name is the one `worktree-plan` gives a new worktree
+//! (`crate::home_workdir::worktree_name`), so a moved worktree and a new one sit side by side
+//! (#2835 D3, user instruction #1975 6866725877); `--root` names another absolute folder. Two
+//! worktrees that map to the same destination name never merge. The project key (`<repository
+//! folder name>-<first 12 hex of clone_id>`) is still reported to name the clone. Without a
+//! root, a worktree in the project's `.claude/worktrees`, in the home worktree folder, in the
+//! earlier common root `<HOME>/.moai-cli/worktrees` or in the Go generation's
+//! `<HOME>/.moai/worktrees/projects/` is kept, and so is one that holds any of those folders
+//! (REQ-21); HOME is read only to recognise those places, and a call without a root is refused
+//! when it cannot be read (REQ-22). With `--root`, worktrees already in the root, in the
+//! earlier common root `<HOME>/.moai-cli/worktrees/<project key>/<name>` and in the Go
+//! generation's folder are kept. `location` names the place of each, and a kept one is never
+//! moved.
+//!
+//! A root inside a worktree is refused; the one exception is the primary checkout's own
+//! `.claude/worktrees` folder, compared after links are resolved. When the root is that place
+//! and `.claude` or `.claude/worktrees` is a symbolic link, the preview and the move answer
+//! `would_refuse` and go on, and a call that moves records one line (observe mode, REQ-23).
 //!
 //! A worktree is a move candidate only when every fact was read and none blocks it. Blocked:
 //! the main worktree (git cannot move it), a bare entry, a missing (prunable) or locked
@@ -31,7 +42,10 @@
 //! its new path with the same HEAD and branch and that git works inside it; if not, it runs
 //! `git worktree repair` there once and checks again. The answer names, for each moved
 //! worktree, the `git worktree move` that puts it back. Nothing else under the project's
-//! state folders is written; the only folder created is `<root>` itself.
+//! state folders is written; the only folder created is `<root>` itself. A move into the
+//! project's `.claude/worktrees` leaves that folder listed in the repository's local exclude
+//! file (`crate::home_workdir::ensure_place_ignored`), and a failure there is named in the
+//! answer without undoing a move.
 
 use crate::identity::scrub_git_env;
 use crate::worktree_report::parse_worktree_list;
@@ -167,14 +181,22 @@ fn has_submodules(wt: &Path) -> Option<bool> {
     Some(staged.lines().any(|l| l.starts_with("160000 ")))
 }
 
-/// The common root when the caller names none: `<HOME>/.moai/worktrees`, the place
-/// `worktree-plan` creates new worktrees in (#2835 D3; `$HOME`, on Windows `%USERPROFILE%`).
-pub fn default_root() -> Result<PathBuf> {
+/// REQ-22: the HOME a call without a root recognises the old home places by (`$HOME`, on
+/// Windows `%USERPROFILE%`). Without it such a call is refused, so a worktree in an old home
+/// place is never planned for a move.
+fn home_for_default_root() -> Result<PathBuf> {
     let home = crate::home_workdir::home().map_err(|e| format!("{e}; pass --root"))?;
     if !home.is_absolute() {
         return Err("HOME is not an absolute path; pass --root".into());
     }
-    Ok(crate::home_workdir::worktrees_root(&home))
+    Ok(home)
+}
+
+/// The checks a root passes before it is used, whether the caller named it or not.
+fn refuse_root(root: &Path) -> Result<()> {
+    check_root(root)?;
+    refuse_linked_move_root(root)?;
+    crate::worktree::refuse_in_build_folder(root, "--root")
 }
 
 /// The earlier common root `<HOME>/.moai-cli/worktrees` (#2723 before #2835): its worktrees
@@ -188,15 +210,12 @@ fn old_root() -> Option<PathBuf> {
         .map(|h| h.join(crate::fixed_state!("worktrees")))
 }
 
-/// The plan for the clone holding `project`; `root` defaults to [`default_root`].
+/// The plan for the clone holding `project`; without `root` it is the primary checkout's
+/// `.claude/worktrees`.
 pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<Value> {
-    let owned;
-    let root = match root {
-        Some(r) => r,
-        None => {
-            owned = default_root()?;
-            owned.as_path()
-        }
+    let default_home = match root {
+        Some(_) => None,
+        None => Some(home_for_default_root()?),
     };
     if obs.schema_version != 1 {
         return Err("observations schema_version must be 1".into());
@@ -216,9 +235,9 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
             ));
         }
     }
-    check_root(root)?;
-    refuse_linked_move_root(root)?;
-    crate::worktree::refuse_in_build_folder(root, "--root")?;
+    if let Some(r) = root {
+        refuse_root(r)?;
+    }
     let top = git(
         project,
         &["rev-parse", "--path-format=absolute", "--show-toplevel"],
@@ -239,13 +258,36 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
     let key = project_key(&name, clone_id)?;
-    let root_resolved = crate::worktree::resolve_existing(root);
+    // `primary` is resolved, so this is the place as it stands with no link in it.
+    let place = crate::home_workdir::place_root(&primary);
+    let root = match root {
+        Some(r) => r.to_path_buf(),
+        None => {
+            if entries.first().is_some_and(|e| e.bare) {
+                return Err(
+                    "the primary checkout is bare, so it has no .claude/worktrees; pass --root"
+                        .into(),
+                );
+            }
+            refuse_root(&place)?;
+            place.clone()
+        }
+    };
+    // REQ-23, observed: only a root in the place goes through its folders.
+    let would_refuse = crate::home_workdir::place_owner(&primary, &root)
+        .and_then(|_| crate::home_workdir::linked_place_report(&primary));
+    let root_resolved = crate::worktree::resolve_existing(&root);
     let all_paths: Vec<PathBuf> = entries
         .iter()
         .filter(|e| !e.bare)
         .map(|e| fs::canonicalize(&e.path).unwrap_or_else(|_| e.path.clone()))
         .collect();
-    if let Some(inside) = all_paths.iter().find(|p| root_resolved.starts_with(p)) {
+    // The one folder inside a worktree that is accepted: the primary checkout's own place. A
+    // link in it resolves elsewhere and gets no exception.
+    if let Some(inside) = all_paths
+        .iter()
+        .find(|p| root_resolved.starts_with(p) && !(root_resolved == place && **p == primary))
+    {
         return Err(format!(
             "--root lies inside the worktree {}; choose a folder outside every worktree",
             inside.display()
@@ -254,15 +296,37 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
     // #2835 D3: one level — destinations sit directly in the root.
     let project_root = root_resolved.clone();
     let home = crate::home_workdir::home().ok();
+    // The folders whose direct children are named `home`: the root the caller named, or without
+    // one the home worktree folder, as written and resolved.
+    let home_roots: Vec<PathBuf> = match &default_home {
+        None => vec![root_resolved.clone()],
+        Some(h) => {
+            let folder = crate::home_workdir::worktrees_root(h);
+            vec![crate::worktree::resolve_existing(&folder), folder]
+        }
+    };
     let go_roots: Vec<PathBuf> = home
         .iter()
         .map(|h| crate::home_workdir::go_worktrees_root(h))
-        .chain(std::iter::once(
-            root_resolved.join(crate::home_workdir::PROJECTS),
-        ))
+        .chain(
+            home_roots
+                .iter()
+                .map(|r| r.join(crate::home_workdir::PROJECTS)),
+        )
         .flat_map(|p| [fs::canonicalize(&p).unwrap_or_else(|_| p.clone()), p])
         .collect();
     let old = old_root().map(|p| fs::canonicalize(&p).unwrap_or(p));
+    // REQ-21: without a root, nothing in these folders moves, and neither does a worktree that
+    // holds one of them. With a root the list is empty.
+    let never_moved: Vec<PathBuf> = match &default_home {
+        None => Vec::new(),
+        Some(_) => std::iter::once(place.clone())
+            .chain(home_roots.iter().cloned())
+            .chain(go_roots.iter().cloned())
+            .chain(old_root())
+            .flat_map(|p| [crate::worktree::resolve_existing(&p), p])
+            .collect(),
+    };
     let cwd = std::env::current_dir()
         .ok()
         .and_then(|p| fs::canonicalize(p).ok());
@@ -292,12 +356,7 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
         }) {
             "old_root"
         } else {
-            crate::home_workdir::location_in(
-                &path,
-                std::slice::from_ref(&root_resolved),
-                &go_roots,
-                &primary,
-            )
+            crate::home_workdir::location_in(&path, &home_roots, &go_roots, &primary)
         };
         let mut reasons: Vec<String> = Vec::new();
         let mut action = "move";
@@ -305,7 +364,12 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
             reasons.push("bare".into());
         } else if i == 0 {
             reasons.push("main_worktree".into());
-        } else if path == destination || matches!(location, "home" | "go" | "old_root") {
+        } else if path == destination
+            || matches!(location, "home" | "go" | "old_root")
+            || never_moved
+                .iter()
+                .any(|p| path.starts_with(p) || p.starts_with(&path))
+        {
             action = "keep";
         } else if e.prunable {
             reasons.push("missing".into());
@@ -413,7 +477,7 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
     } else {
         "changes"
     };
-    Ok(json!({
+    let mut out = json!({
         "schema_version": 1,
         "project_key": key,
         "root": root_resolved.display().to_string(),
@@ -426,7 +490,11 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
         "apply": "worktree-move-apply with the same --root and observations, this plan_digest and a permission reference, only after the user approves the moves",
         "network": "disabled",
         "writes": false,
-    }))
+    });
+    if let Some(report) = would_refuse {
+        out["would_refuse"] = report;
+    }
+    Ok(out)
 }
 
 fn listed(primary: &Path) -> Option<Vec<crate::worktree_report::WorktreeEntry>> {
@@ -484,6 +552,8 @@ pub fn apply(
         .ok_or("no primary worktree")?;
     let mut results = Vec::new();
     let mut not_done = 0usize;
+    // Every destination git moved a worktree to, verified or not.
+    let mut moved_to: Vec<PathBuf> = Vec::new();
     for it in fresh["items"].as_array().into_iter().flatten() {
         if it["action"] != "move" {
             continue;
@@ -517,6 +587,7 @@ pub fn apply(
                     String::from_utf8_lossy(&o.stderr).trim()
                 ));
             }
+            moved_to.push(dst.clone());
             if verify(&primary, &src, &dst, head, branch) {
                 return Ok("moved");
             }
@@ -565,7 +636,27 @@ pub fn apply(
             "revert": revert,
         }));
     }
-    Ok(json!({
+    // REQ-10: a move into the project's own place must not show in the main tree's status. The
+    // exclude line follows the moves, and a failure is named and undoes nothing.
+    let place = crate::worktree::resolve_existing(&crate::home_workdir::place_root(&primary));
+    let place_exclude_error = moved_to
+        .iter()
+        .any(|dst| crate::worktree::resolve_existing(dst).starts_with(&place))
+        .then(|| crate::home_workdir::ensure_place_ignored(&primary).err())
+        .flatten();
+    // REQ-23, observed: a call that moved something records the report it answers with.
+    let record_error = fresh
+        .get("would_refuse")
+        .filter(|_| !moved_to.is_empty())
+        .and_then(|report| {
+            crate::hooks::append_receipt_line(
+                &primary,
+                crate::home_workdir::PLACE_LOG,
+                &crate::home_workdir::place_receipt("worktree-move-apply", report),
+            )
+            .err()
+        });
+    let mut out = json!({
         "schema_version": 1,
         "project_key": fresh["project_key"],
         "project_root": fresh["project_root"],
@@ -574,7 +665,17 @@ pub fn apply(
         "results": results,
         "not_done": not_done,
         "rerun": "worktree-move-plan again: every moved worktree is `keep`",
-    }))
+    });
+    if let Some(report) = fresh.get("would_refuse") {
+        out["would_refuse"] = report.clone();
+    }
+    if let Some(err) = record_error {
+        out["would_refuse_record_error"] = json!(err);
+    }
+    if let Some(err) = place_exclude_error {
+        out["place_exclude_error"] = json!(err);
+    }
+    Ok(out)
 }
 
 #[cfg(test)]

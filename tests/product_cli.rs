@@ -3198,7 +3198,14 @@ fn claude_doctor_agents_loading_combinations() {
         claude_md["agents_md_status"],
         json!("suppressed_by_claude_md")
     );
-    assert_eq!(claude_md["suggestions"].as_array().unwrap().len(), 2);
+    // SPEC-20261122-claude-md-text-and-ignore AC-10 (REQ-5): the one proposal is the move; no
+    // import and no setting that reads both files.
+    assert_eq!(
+        claude_md["suggestions"],
+        json!([
+            "move the text of your AGENTS.md into CLAUDE.md (for a file of this project, /moai update offers the pick `move`)"
+        ])
+    );
     let (_p3, local) = case(&[("CLAUDE.local.md", "# private\n")]);
     assert_eq!(local["agents_md_status"], json!("suppressed_by_claude_md"));
     assert!(local["suppressing_files"][0]
@@ -3651,11 +3658,12 @@ fn generation_license_gate_and_attribution() {
     assert!(planned.iter().any(|p| p.contains("ref-b")));
     assert!(plan.to_string().as_str().contains("not license-reviewed"));
     ok_result(&generation_apply_cli(&root, &plan));
-    let projection_bytes = fs::read(root.path().join(".claude/skills/ref-b/SKILL.md")).unwrap();
+    let projection_bytes =
+        fs::read(root.path().join(".claude/skills/moai-ref-b/SKILL.md")).unwrap();
     let projection = String::from_utf8_lossy(&projection_bytes).into_owned();
     assert!(projection.contains("source: fixtures/skill-b"));
     assert!(projection.contains("license: MIT"));
-    assert!(projection.contains("name: ref-b"));
+    assert!(projection.contains("name: moai-ref-b"));
 }
 
 #[test]
@@ -3760,9 +3768,10 @@ fn generation_skill_projection_name_matches_directory() {
     ]);
     let plan = ok_result(&generation_plan_cli(&root, &request));
     ok_result(&generation_apply_cli(&root, &plan));
-    let projection_bytes = fs::read(root.path().join(".claude/skills/ref-b/SKILL.md")).unwrap();
+    let projection_bytes =
+        fs::read(root.path().join(".claude/skills/moai-ref-b/SKILL.md")).unwrap();
     let projection = String::from_utf8_lossy(&projection_bytes).into_owned();
-    assert!(projection.contains("name: ref-b"));
+    assert!(projection.contains("name: moai-ref-b"));
     // The same directory, never projected before, is a conflict for a fresh manifest.
     let root2 = generation_project();
     fs::create_dir_all(root2.path().join(".moai-cli/manifests")).unwrap();
@@ -3771,9 +3780,9 @@ fn generation_skill_projection_name_matches_directory() {
         serde_json::to_vec_pretty(&sources).unwrap(),
     )
     .unwrap();
-    fs::create_dir_all(root2.path().join(".claude/skills/ref-b")).unwrap();
+    fs::create_dir_all(root2.path().join(".claude/skills/moai-ref-b")).unwrap();
     fs::write(
-        root2.path().join(".claude/skills/ref-b/SKILL.md"),
+        root2.path().join(".claude/skills/moai-ref-b/SKILL.md"),
         b"user's own",
     )
     .unwrap();
@@ -3782,7 +3791,7 @@ fn generation_skill_projection_name_matches_directory() {
         .iter()
         .any(|(p, a)| p.contains("ref-b") && a == "conflict"));
     assert_eq!(
-        fs::read(root2.path().join(".claude/skills/ref-b/SKILL.md")).unwrap(),
+        fs::read(root2.path().join(".claude/skills/moai-ref-b/SKILL.md")).unwrap(),
         b"user's own"
     );
 }

@@ -268,7 +268,10 @@ pub fn pr_binding(commit: &str, pr: Option<&Value>, lookup_failed: bool) -> PrBi
 
 /// The auditor's own view of PROJECT.
 pub fn observe(project: &Path) -> Result<Observed> {
-    let identity = crate::identity::identity(project)?;
+    // The environment HOME is read here so a HOME whose state root is refused keeps being refused
+    // (SPEC-20261124-identity-home-arg D-13); it is also the process HOME given with it (D-17).
+    let home = crate::layout::environment_home();
+    let identity = crate::identity::identity_in_from(project, home.as_deref(), home.as_deref())?;
     Ok(Observed {
         commit: current_revision(project)?,
         tree_digest: crate::tree_digest(project, &run::TREE_EXCLUDES)?,
@@ -582,4 +585,44 @@ pub fn audit(project: &Path, input: &AuditInput) -> Result<Verdict> {
     // a change made before the audit, instead of an admission of a tree nobody checked.
     let after = observe(project)?;
     Ok(reduce(input, &after, &outcome, &utc_now()))
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::observe;
+    use crate::layout::home_arg_tests::{child_var, init_repo, run_in_child_of, symlinked_home};
+    use std::path::Path;
+
+    /// SPEC-20261124-identity-home-arg AC-19 (REQ-20, REQ-22, REQ-30): `observe` resolves the
+    /// identity with the environment HOME, so a HOME whose state root is a symlink is refused with
+    /// the resolver's own sentence; under a sound HOME that sentence does not come. The test
+    /// re-runs itself in a child process once per HOME.
+    #[test]
+    fn home_arg_rest_audit_observe_refuses_a_linked_home() {
+        const CHILD_PROJECT: &str = "MOAI_AUDIT_TEST_PROJECT";
+        const CHILD_EXPECT: &str = "MOAI_AUDIT_TEST_EXPECT";
+        const REFUSED: &str = "home state root is a symlink; refused";
+        let test = "home_arg_rest_audit_observe_refuses_a_linked_home";
+        let (Some(project), Some(expect)) = (child_var(CHILD_PROJECT), child_var(CHILD_EXPECT))
+        else {
+            let dir = tempfile::tempdir().unwrap();
+            let project = dir.path().join("project");
+            std::fs::create_dir(&project).unwrap();
+            init_repo(&project);
+            let linked = symlinked_home(dir.path());
+            let sound = dir.path().join("sound");
+            std::fs::create_dir(&sound).unwrap();
+            for (home, expect) in [(&linked, "refused"), (&sound, "sound")] {
+                run_in_child_of(
+                    module_path!(),
+                    test,
+                    Some(&std::ffi::OsString::from(home.as_os_str())),
+                    &[(CHILD_PROJECT, &project), (CHILD_EXPECT, Path::new(expect))],
+                );
+            }
+            return;
+        };
+        let refused = observe(&project).err().as_deref() == Some(REFUSED);
+        assert_eq!(refused, expect == Path::new("refused"), "{expect:?}");
+    }
 }

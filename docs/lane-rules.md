@@ -22,6 +22,7 @@ The detail behind the "Lane rules" section of `CLAUDE.md`. A lane is one session
 - Cleanup removes cargo output only: profile folders (`debug/`, `release/`, with `.cargo-lock`), target-triple folders (with their own `CACHEDIR.TAG`), `CACHEDIR.TAG`, `.rustc_info.json` and `tmp/`, never the whole `target/`. `moai worktree-gc-plan` lists exactly those paths as `trim_paths` and everything else as `preserved_in_target`.
 - Keep notes, bodies and audit logs under an ignored `target/<name>/` only while the card is open; copy anything that must survive into the card or the SPEC.
 - Make a throwaway copy of the repository (a mutant copy), a temporary HOME and a `mktemp` folder only under `<worktree>/target/<name>/`, and point `TMPDIR` there for a run that makes its own temporary folders (`TMPDIR=<worktree>/target/<name> mktemp -d`). Remove each by a relative path before READY: a path inside your own worktree is the one place a lane deletes, the rule against absolute and home paths is unchanged, and the cleanup above does not remove `target/<name>/` for you. Never make them in the shared checkout, the system temporary folder or the session scratchpad. Whatever you could not remove goes in the READY note's `leftovers:` line.
+- Lanes and their sub-agents write tracked files and in-scope files with the host's file tools (Write, Edit) from the first write, never with a shell heredoc, `sed -i` or a redirect.
 
 ## Hand-off
 
@@ -48,9 +49,21 @@ Write each commit message in the profile's `language.commit_messages` (`en` in t
 ## Blocks and limits
 
 - Report a real block (permission or hook denial, missing decision, failing gate) with the exact command and stop; a card that needs a decision ends in `LANE-BLOCKED kind=decision …` as a note on the card. Never route around an unapproved permission, spend, HOLD or security gate. Stop after three failures of the same step.
+- Before you wait for the leader's answer or for another card's landing, run `moai card renew <card> --generation <g> --lease-secs 86400`; when your own lease has already ended, run the same command instead of `moai card reclaim`, which counts against the three-reclaim limit.
 - No forced deletion or process kill, and no branch switch, reset or stash in the shared checkout.
 - A rejection is not non-execution: after a denied or interrupted side-effecting command, re-query the real effects before reporting.
 - A lane runs its own self-audit and repairs, and never declares PASS for its own change. A resting lane may audit another lane's card (`skills/moai/references/audit.md`) and records that verdict itself with `moai card verdict`.
+
+## Command forms
+
+The host's worktree guard, the boundary hook and the SPEC-branch preflight read a command's text before it runs and refuse what they cannot prove safe; `skills/moai/workflows/work.md` states the principles, and each bullet names what it protects.
+
+- One plain command per call. A `git` command inside a loop, a chain, a shell function, a substitution or `eval` cannot be proved to stay in the lane's own worktree, so the worktree guard refuses it; run the commands one after another in separate calls.
+- Literal paths and branch names. A variable, a glob or a brace pattern leaves the boundary hook unable to read the target (`moai-boundary/unreadable`).
+- Files for long text. SQL and any long or multi-line text go in a file made with Write or Edit, and the command names that file.
+- SPEC file first. On a `spec/<slug>-<yyyymmdd>` branch the SPEC-branch preflight refuses every file outside `.moai/specs/` until the branch's SPEC exists.
+- Shell search. Search file contents with the shell's `grep`; a tool the host does not list answers `No such tool available`.
+- A refusal: `skills/moai/references/internal/shell-guards.md` separates a refusal of the form, which one plain split command answers, from a refusal of the effect, which is a block to report (Blocks and limits) and never redone through another command, tool or path.
 
 ## Dangerous path
 
@@ -60,6 +73,8 @@ A change that deletes, resets, starts a process or builds a permission rule carr
 
 At tier 2 the READY carries one `guard-mutant: <test> | <code removed> | exit <n>` line per new guard test (`none | <reason>` without one); `exit 0` is repaired first. Below tier 2 none is asked for.
 
+Run each mutant without a script: change the code with Edit, run the test with one command, and change the code back with Edit; never use a script that holds `git apply`, `git checkout` or `sed -i`.
+
 ## Audit clone (release pull request only)
 
 An audit of a release pull request reads the exact head in a clone of its own. `moai audit-clone-plan . --pr <n> --head <40hex> --head-branch <branch> --base-branch <integration branch>` prints the commands: a single-branch, no-checkout clone of the head branch into `/tmp/moai-audit-<pr>-<head8>`, a fetch of the base branch only, a detached checkout of the exact head, `rev-parse HEAD` (must equal the head) and `merge-base` (the verdict's `base`). An audit clone builds in its own `target/` too. Never a linked worktree of the author's clone and never `--reference` or `--shared`. After the verdict is posted and read back, copy the logs to the plan's `evidence_dir` and remove your own clone.
@@ -67,6 +82,6 @@ An audit of a release pull request reads the exact head in a clone of its own. `
 ## Tests
 
 - Tests are Rust only; nobody runs a Python test module by hand as evidence. `moai check affected` still runs its own remaining Python steps and their result is reported as it comes.
-- A new top-level `tests/*.rs` file registers its first word in `tests/areas.toml` and, when it spells a state folder name on purpose, its row in `tests/fixtures/state_folder_literals/allow.tsv`, in the same change; `moai check affected` stops at `test_tables` before the heavy steps and prints the line to add. A new top-level test file that walks the tree (it names `CARGO_MANIFEST_DIR` and calls `read_dir(`), reads a file outside `tests/` with `include_str!` or `include_bytes!`, or opens a checked-in file by its path registers in `tools/repo_scans.json` (a rule file of an entry, an `always` entry whose `test_targets` array holds the name of a reader's test, one name per line in sorted place) or, when it only touches temporary or named files, in `EXEMPT`, `INCLUDE_STR_EXEMPT` or `FILE_READ_EXEMPT` of `tests/repo_scans_table.rs` with the reason; `test_tables` stops the run on a file that is in none of them (`tools/repo_scans.json` is a shared file: write it with `moai card line-lease`).
+- A new top-level `tests/*.rs` file registers its first word in `tests/areas.toml` and, when it spells a state folder name on purpose, its row in `tests/fixtures/state_folder_literals/allow.tsv`, in the same change; `moai check affected` stops at `test_tables` before the heavy steps and prints the line to add. A new top-level test file that walks the tree (it names `CARGO_MANIFEST_DIR` and calls `read_dir(`), reads a file outside `tests/` with `include_str!` or `include_bytes!`, or opens a checked-in file by its path registers in `tools/repo_scans.json` (a rule file of an entry, an `always` entry whose `test_targets` array holds the name of a reader's test, one name per line in sorted place) or, when it only touches temporary or named files, in `EXEMPT`, `INCLUDE_STR_EXEMPT` or `FILE_READ_EXEMPT` of `tests/repo_scans_table.rs` with the reason; `test_tables` stops the run on a file that is in none of them (`tools/repo_scans.json` is a shared file: write it with `moai card line-lease`). The step reads a test file you only edit, and a module of a moved area (`tests/<area>/<name>.rs`), the same way: one that gains a state folder name beyond its `allow.tsv` row, or a tree walk or a checked-in read without a registration or exemption, stops the run there too, before cargo.
 - A test finds the state folder of a temporary HOME through `TempHome::state_dir` (the folder this generation uses) or `TempHome::make_earlier_state_dir` (an earlier layout built on purpose), both in `tests/common/home.rs`, and spells a state folder name only in a fixture of an earlier layout with its row in `tests/fixtures/state_folder_literals/allow.tsv`; `state_folder_literal_scan` and the `test_tables` step refuse the rest and name the two helpers.
 - Test in temporary projects or fixtures, never against installed user state. Do not claim Windows or Linux results from Mac fixtures.

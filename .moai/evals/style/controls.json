@@ -1,0 +1,26 @@
+[
+ {
+  "id": "ctl-identifier",
+  "language": "ko",
+  "text": "`card line-lease`로 짧게 써요",
+  "why": "an identifier stays as written; the polish never translates or respells it"
+ },
+ {
+  "id": "ctl-loanword",
+  "language": "ko",
+  "text": "테스트가 모두 통과했어요",
+  "why": "already the wording developers say; the polish leaves a sentence that reads as native alone"
+ },
+ {
+  "id": "ctl-english-term",
+  "language": "ko",
+  "text": "PR을 열었어요",
+  "why": "the English term itself is the standard wording, so it is not rewritten into a native word"
+ },
+ {
+  "id": "ctl-protocol",
+  "language": "en",
+  "text": "AUDIT C-583 (tier 2) head 57d581c72f verdict: PASS",
+  "why": "a protocol line stays as written in any language"
+ }
+]

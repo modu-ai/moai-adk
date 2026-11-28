@@ -125,8 +125,9 @@ fn mirror_file_limit() -> u64 {
 }
 
 /// #2936 O6: a name that holds secrets by convention. Such an entry under `.claude/` or
-/// `.agents/` is never read, hashed, copied or moved; the preview only counts it.
-fn secret_name(name: &str) -> bool {
+/// `.agents/` is never read, hashed, copied or moved; the preview only counts it. The home tidy
+/// operations protect by the same rule (`tidy::rules::class_of_name`).
+pub(crate) fn secret_name(name: &str) -> bool {
     crate::home_state::is_secret(name) || crate::worktree_include::secret_name(name)
 }
 
@@ -179,7 +180,8 @@ const STATE_ENTRIES: [&str; 18] = [
     "workflows",
 ];
 /// Root instruction files that move into the backup's `root-files/` with the Go folder (#2936
-/// O4); the install step writes new ones. `CLAUDE.local.md` is the user's and stays.
+/// O4); the install step writes a new `CLAUDE.md`, and the CLAUDE files take the place of the
+/// older two. `CLAUDE.local.md` is the user's and stays.
 const ROOT_FILES: [&str; 3] = ["CLAUDE.md", "AGENTS.md", "AGENTS.local.md"];
 /// The folder of an apply's backup area that takes the earlier entries the user picked for
 /// `--set-aside`.
@@ -315,7 +317,8 @@ pub struct GoStatePlan {
     /// #2696: the earlier root's entries, each `move` (into `.moai/`) or `leave`.
     pub state_moves: Vec<StateMove>,
     /// #2696, #2936 O4: `CLAUDE.md`, `AGENTS.md` and `AGENTS.local.md`, moved into the backup
-    /// (`move`: gone from the project root until the install step writes a new one) or left
+    /// (`move`: gone from the project root; the install step writes a new `CLAUDE.md`, and the
+    /// older files are not written again) or left
     /// (`leave`), and `.claude/settings.local.json`, copied (`copy`, the original stays).
     pub root_files: Vec<RootFile>,
     /// #2696: the Go folder's top-level entries; all of them stay in the backup.
@@ -330,17 +333,52 @@ pub struct GoStatePlan {
     /// otherwise, so a project the rule does not touch previews as before. Preview-only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub settings_move: Option<SettingsMove>,
+    /// SPEC-20261126-go-local-settings-reference: what the local settings name under `.moai/`
+    /// while they hold the Go folder, and whether [`REWRITE_PICK`] can rewrite them. Omitted
+    /// otherwise, so a project without the hold previews as before. Preview-only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub local_references: Option<LocalReferences>,
     /// #2936 S-AGENTS-STAY U1: set when the Go folder stays, files move, and the backup area's
     /// existing `.gitignore` does not keep the copies out of git (or git cannot say). The apply
     /// stops before it writes anything. Omitted otherwise, so a project without the problem
     /// previews as before. Preview-only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub backup_ignore: Option<BackupIgnore>,
+    /// SPEC-20261126-tracked-state-move: set when the earlier root's state would move into a
+    /// `.moai/` that is absent or holds only the SPECs and the local folder, and git ignores
+    /// where a tracked file or the marker would go, or cannot say. The apply stops before it
+    /// writes anything. Omitted otherwise. Preview-only: the apply judges again.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ignored_tracked: Option<IgnoredTracked>,
     /// #2936 O6, Q6: secret-named entries under `.claude/`, `.agents/` and `.codex/`; only counted,
     /// never listed, read or moved.
     pub secrets: u64,
     pub warnings: Vec<String>,
     pub plan_digest: String,
+}
+
+/// The hold of the local settings on the Go folder: places and path texts only, never any
+/// other part of a value.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct LocalReferences {
+    pub file: String,
+    /// The pick of `go-state-plan` and `go-state-apply` that rewrites the file.
+    pub pick: &'static str,
+    /// This preview was made with the pick.
+    pub picked: bool,
+    pub references: Vec<LocalReference>,
+    /// Why the pick cannot move the folder for these settings; empty when it can.
+    pub blocked: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct LocalReference {
+    /// The JSON pointer of the value (of the object, for a name inside a key).
+    pub pointer: String,
+    /// The `.moai/…` path text alone.
+    pub path: String,
+    /// `project` (the pick rewrites it) or `other`.
+    pub class: &'static str,
 }
 
 /// #2936 R-A: what takes the place of one kind of moved file.
@@ -403,6 +441,34 @@ pub struct BackupIgnore {
     /// [`IGNORE_EXAMPLES`]. Empty for `unknown`.
     pub examples: Vec<String>,
     pub reason: String,
+}
+
+/// SPEC-20261126-tracked-state-move: tracked files of the earlier root would leave version
+/// control with the move. Paths and `.gitignore` rules only: never a file's content.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct IgnoredTracked {
+    /// `ignored` (git ignores a destination) or `unknown` (git could not say; the check stops
+    /// closed).
+    pub state: &'static str,
+    /// The tracked files whose destination git ignores, at most [`IGNORED_FILES`]. Empty for
+    /// `unknown`, and when only the marker is hidden.
+    pub files: Vec<HiddenFile>,
+    /// How many tracked files have an ignored destination, the named ones included.
+    pub total: usize,
+    /// The rule that hides the marker, when git ignores it.
+    pub marker: Option<String>,
+    pub reason: String,
+}
+
+/// One tracked file the move would put where git ignores it.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct HiddenFile {
+    /// The tracked file, relative to the project.
+    pub file: String,
+    /// Where the move would put it.
+    pub to: String,
+    /// `<source>:<line>:<pattern>` of the rule that hides `to`.
+    pub rule: String,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -476,8 +542,11 @@ fn config_shaped(name: &str) -> bool {
         })
 }
 
-/// The restore candidates under the Go folder's user-data folders ([`USER_DATA_FROM`], #2936
-/// O1; `.moai/specs` was the first, AC-5): regular files are copied unless the target exists
+/// The restore candidates of the Go `.moai/` folder: every regular file of the user-data folders
+/// ([`USER_DATA_FROM`], #2936 O1; `.moai/specs` was the first, AC-5), and, outside them, every
+/// file the Go manifest does not record (a recorded file is Go's own and stays in the backup;
+/// the markers and the Go backups folder are never restored, [`restore_excluded`],
+/// SPEC-20261126-go-state-restore-rule). Regular files are copied unless the target exists
 /// (never overwritten) or the name or content is or may be a secret (a secret name is
 /// excluded before any read). A document (`.md`, `.txt`, anything but a config file) passes on
 /// its name and size; a config-shaped file (`.json`, `.toml`, `.yaml`, `.yml`) and anything
@@ -485,126 +554,168 @@ fn config_shaped(name: &str) -> bool {
 /// reason. Links, a linked user-data folder and special files are never followed or opened. The copy reads the file from the Go
 /// backup after the rename. A folder the earlier root also moves into `.moai/` (only `specs/`)
 /// lands there first, so a file already at `.moai-cli/<folder>/<same path>` is the conflict.
-fn plan_restores(project: &Path, go_backup: &str) -> Vec<Restore> {
+fn plan_restores(
+    project: &Path,
+    go_backup: &str,
+    recorded: &HashMap<String, Entry>,
+) -> Vec<Restore> {
     let mut out = Vec::new();
-    for folder in USER_DATA_FROM {
-        let top = project.join(MOAI_DIR).join(folder);
-        // A folder that is itself a link is never entered: the apply refuses to read through
-        // it (after the Go folder was renamed), so the preview leaves it where it is.
-        if fs::symlink_metadata(&top).is_ok_and(|m| m.file_type().is_symlink()) {
-            out.push(Restore {
-                from: format!("{go_backup}/{folder}"),
-                to: format!("{MOAI_DIR}/{folder}"),
-                sha256: String::new(),
-                action: "leave_link".into(),
-                reason: "the folder is a link; never followed, it stays in the backup".into(),
-            });
-            continue;
-        }
-        let mut stack = vec![top.clone()];
-        while let Some(dir) = stack.pop() {
-            let Ok(entries) = fs::read_dir(&dir) else {
-                continue;
-            };
-            for e in entries.flatten() {
-                let p = e.path();
-                let Some(rel) = p
-                    .strip_prefix(&top)
-                    .ok()
-                    .and_then(|r| r.to_str())
-                    .map(|r| r.replace('\\', "/"))
-                else {
+    let moai = project.join(MOAI_DIR);
+    {
+        {
+            let mut stack = vec![moai.clone()];
+            while let Some(dir) = stack.pop() {
+                let Ok(entries) = fs::read_dir(&dir) else {
                     continue;
                 };
-                let from = format!("{go_backup}/{folder}/{rel}");
-                let to = format!("{MOAI_DIR}/{folder}/{rel}");
-                if e.file_name().to_str().is_none_or(secret_name) {
+                for e in entries.flatten() {
+                    let p = e.path();
+                    let Some(rel) = p
+                        .strip_prefix(&moai)
+                        .ok()
+                        .and_then(|r| r.to_str())
+                        .map(|r| r.replace('\\', "/"))
+                    else {
+                        continue;
+                    };
+                    let folder = rel.split('/').next().unwrap_or_default().to_string();
+                    let folder = folder.as_str();
+                    let user_data = USER_DATA_FROM.contains(&folder);
+                    // Outside the ten folders only what the Go manifest does not record is
+                    // the user's: a recorded file is Go's own and stays in the backup, and the
+                    // markers and the Go backups are never restored
+                    // (SPEC-20261126-go-state-restore-rule REQ-2, REQ-3).
+                    if !user_data
+                        && (restore_excluded(&rel)
+                            || recorded.contains_key(&format!("{MOAI_DIR}/{rel}")))
+                    {
+                        continue;
+                    }
+                    // A user-data folder that is itself a link is never entered: the apply
+                    // refuses to read through it (after the Go folder was renamed), so the
+                    // preview leaves it where it is.
+                    if user_data
+                        && rel == folder
+                        && fs::symlink_metadata(&p).is_ok_and(|m| m.file_type().is_symlink())
+                    {
+                        out.push(Restore {
+                            from: format!("{go_backup}/{folder}"),
+                            to: format!("{MOAI_DIR}/{folder}"),
+                            sha256: String::new(),
+                            action: "leave_link".into(),
+                            reason: "the folder is a link; never followed, it stays in the backup"
+                                .into(),
+                        });
+                        continue;
+                    }
+                    let from = format!("{go_backup}/{rel}");
+                    let to = format!("{MOAI_DIR}/{rel}");
+                    if e.file_name().to_str().is_none_or(secret_name) {
+                        out.push(Restore {
+                            from,
+                            to,
+                            sha256: String::new(),
+                            action: "excluded_secret".into(),
+                            reason: "a secret name; never opened".into(),
+                        });
+                        continue;
+                    }
+                    let name = e.file_name().to_string_lossy().into_owned();
+                    let Ok(m) = fs::symlink_metadata(&p) else {
+                        continue;
+                    };
+                    if m.is_dir() {
+                        stack.push(p);
+                        continue;
+                    }
+                    let lands = STATE_ENTRIES
+                        .contains(&folder)
+                        .then(|| format!("{LEGACY_ROOT}/{rel}"));
+                    let unreadable = "larger than the file limit or not readable; not copied";
+                    let (sha, action, reason) = if !m.is_file() {
+                        (
+                            String::new(),
+                            "leave_link",
+                            "a link or special file; never opened or followed".to_string(),
+                        )
+                    } else if m.len() > FILE_LIMIT {
+                        (
+                            String::new(),
+                            "excluded_unclassifiable",
+                            format!("larger than the file limit ({FILE_LIMIT} bytes); not read"),
+                        )
+                    } else {
+                        match fs::read(&p) {
+                            Ok(bytes) if (bytes.len() as u64) <= FILE_LIMIT => {
+                                let sha = format!("sha256:{:x}", Sha256::digest(&bytes));
+                                let is_spec = folder == "specs";
+                                // The config classifier is for config files. A document in a
+                                // user-data folder passes on its name and size alone; SPECs keep
+                                // the stricter text check they have always had.
+                                let verdict = if is_spec || config_shaped(&name) {
+                                    crate::migrate::sensitive_content(&bytes, is_spec)
+                                } else {
+                                    Ok(false)
+                                };
+                                let (action, reason) = match verdict {
+                                    Ok(true) => (
+                                        "excluded_secret",
+                                        "the content looks like a credential; not copied"
+                                            .to_string(),
+                                    ),
+                                    Err(why) => ("excluded_unclassifiable", why),
+                                    Ok(false) => (
+                                        match &lands {
+                                            Some(l) if linked_component(project, l) => {
+                                                "conflict_link"
+                                            }
+                                            Some(l)
+                                                if fs::symlink_metadata(project.join(l))
+                                                    .is_ok() =>
+                                            {
+                                                "conflict"
+                                            }
+                                            _ => "copy",
+                                        },
+                                        String::new(),
+                                    ),
+                                };
+                                (sha, action, reason)
+                            }
+                            _ => (
+                                String::new(),
+                                "excluded_unclassifiable",
+                                unreadable.to_string(),
+                            ),
+                        }
+                    };
                     out.push(Restore {
                         from,
                         to,
-                        sha256: String::new(),
-                        action: "excluded_secret".into(),
-                        reason: "a secret name; never opened".into(),
+                        sha256: sha,
+                        action: action.into(),
+                        reason,
                     });
-                    continue;
                 }
-                let name = e.file_name().to_string_lossy().into_owned();
-                let Ok(m) = fs::symlink_metadata(&p) else {
-                    continue;
-                };
-                if m.is_dir() {
-                    stack.push(p);
-                    continue;
-                }
-                let lands = STATE_ENTRIES
-                    .contains(&folder)
-                    .then(|| format!("{LEGACY_ROOT}/{folder}/{rel}"));
-                let unreadable = "larger than the file limit or not readable; not copied";
-                let (sha, action, reason) = if !m.is_file() {
-                    (
-                        String::new(),
-                        "leave_link",
-                        "a link or special file; never opened or followed".to_string(),
-                    )
-                } else if m.len() > FILE_LIMIT {
-                    (
-                        String::new(),
-                        "excluded_unclassifiable",
-                        format!("larger than the file limit ({FILE_LIMIT} bytes); not read"),
-                    )
-                } else {
-                    match fs::read(&p) {
-                        Ok(bytes) if (bytes.len() as u64) <= FILE_LIMIT => {
-                            let sha = format!("sha256:{:x}", Sha256::digest(&bytes));
-                            let is_spec = folder == "specs";
-                            // The config classifier is for config files. A document in a
-                            // user-data folder passes on its name and size alone; SPECs keep
-                            // the stricter text check they have always had.
-                            let verdict = if is_spec || config_shaped(&name) {
-                                crate::migrate::sensitive_content(&bytes, is_spec)
-                            } else {
-                                Ok(false)
-                            };
-                            let (action, reason) = match verdict {
-                                Ok(true) => (
-                                    "excluded_secret",
-                                    "the content looks like a credential; not copied".to_string(),
-                                ),
-                                Err(why) => ("excluded_unclassifiable", why),
-                                Ok(false) => (
-                                    match &lands {
-                                        Some(l) if linked_component(project, l) => "conflict_link",
-                                        Some(l)
-                                            if fs::symlink_metadata(project.join(l)).is_ok() =>
-                                        {
-                                            "conflict"
-                                        }
-                                        _ => "copy",
-                                    },
-                                    String::new(),
-                                ),
-                            };
-                            (sha, action, reason)
-                        }
-                        _ => (
-                            String::new(),
-                            "excluded_unclassifiable",
-                            unreadable.to_string(),
-                        ),
-                    }
-                };
-                out.push(Restore {
-                    from,
-                    to,
-                    sha256: sha,
-                    action: action.into(),
-                    reason,
-                });
             }
         }
     }
     out.sort_by(|a, b| a.from.cmp(&b.from));
     out
+}
+
+/// A path under the Go `.moai/` (relative to it) that is never restored, whoever wrote it: the
+/// three Go markers, whose restore would make the new `.moai/` read as the Go generation again
+/// (`state_root`), the Go tool's update lock (its process lock: the update reports a dead one as a
+/// leftover fact and expects it to stay in the Go backup), and the Go tool's own backups folder.
+fn restore_excluded(rel: &str) -> bool {
+    const NEVER_RESTORED: [&str; 4] = [
+        "manifest.json",
+        "config/config.yaml",
+        "config/sections/system.yaml",
+        ".update.lock",
+    ];
+    NEVER_RESTORED.contains(&rel) || rel.split('/').next() == Some("backups")
 }
 
 pub(crate) fn sha256_file(path: &Path) -> Result<String> {
@@ -2256,8 +2367,9 @@ fn ignoring_rule(line: &str) -> Option<String> {
 /// The revert-plan action for `.moai/specs`: set aside with `.moai/`, then moved straight back.
 const KEEP_SPECS: &str = "restored_to_moai_specs";
 
-/// The kept names a `.moai/` holds, sorted: the receipt's `kept_before`. Everything else the
-/// folder may hold (`backups/`, Finder's `.DS_Store`) is no kept name.
+/// The names a `.moai/` the apply did not create already holds and the revert leaves, sorted:
+/// the receipt's `kept_before`. Everything else the folder may hold (`backups/`, Finder's
+/// `.DS_Store`) is no such name.
 fn kept_names_in(moai: &Path) -> Vec<String> {
     let mut names: Vec<String> = fs::read_dir(moai)
         .map(|rd| {
@@ -2271,14 +2383,33 @@ fn kept_names_in(moai: &Path) -> Vec<String> {
     names
 }
 
+/// Whether the `.moai/` a state move would reuse holds anything beyond the SPECs and the
+/// machine's local folder, so that [`kept_git_checks`] judges the move; otherwise
+/// [`ignored_tracked`] does. The local folder is not counted: a flaky record makes it, and a
+/// record changes no answer of the plan. An unreadable folder counts as holding more.
+fn holds_more_than_specs_and_local(moai: &Path) -> bool {
+    fs::read_dir(moai)
+        .map(|rd| {
+            rd.filter_map(|e| e.ok()).any(|e| {
+                let name = e.file_name();
+                name != ".DS_Store"
+                    && name != crate::state_root::SPECS_DIR
+                    && name != crate::state_root::LOCAL_DIR
+            })
+        })
+        .unwrap_or(true)
+}
+
 /// A first-level name the team keeps in git under `.moai/` ([`crate::state_root::KEPT`]) that is
-/// not a generation marker.
+/// not a generation marker, or the machine's local folder
+/// ([`crate::state_root::LOCAL_DIR`]): both were there before an apply that reuses the folder.
 fn kept_name(name: &str) -> bool {
-    name != crate::state_root::RUST_MARKER
-        && name != crate::state_root::LEGACY_MARKER
-        && crate::state_root::KEPT
-            .iter()
-            .any(|k| k.trim_end_matches('/') == name)
+    name == crate::state_root::LOCAL_DIR
+        || (name != crate::state_root::RUST_MARKER
+            && name != crate::state_root::LEGACY_MARKER
+            && crate::state_root::KEPT
+                .iter()
+                .any(|k| k.trim_end_matches('/') == name))
 }
 
 /// `.moai/specs`, the project's tracked SPECs.
@@ -2365,6 +2496,26 @@ fn read_bounded_file(path: &Path) -> Option<Vec<u8>> {
     ((bytes.len() as u64) <= FILE_LIMIT).then_some(bytes)
 }
 
+/// Why a root instruction file moves into the backup (SPEC-20261122-claude-md-text-and-ignore
+/// REQ-13). `CLAUDE.md` is written again by the install step; an older file is not: the CLAUDE
+/// file of its kind takes its place and the moved copy stays in the backup.
+fn moved_reason(name: &str, no_go_proof: bool) -> String {
+    let lead = if no_go_proof {
+        "no Go proof; moves to the backup as D-M1 says (O4)"
+    } else {
+        "moves to the backup"
+    };
+    let instead = match name {
+        "AGENTS.md" => "CLAUDE.md",
+        "AGENTS.local.md" => "CLAUDE.local.md",
+        _ => return format!("{lead}; the install step writes a new one"),
+    };
+    format!(
+        "{lead}; {instead} takes its place, {name} is not written again, and the moved copy \
+         stays in the backup"
+    )
+}
+
 /// The root instruction files (#2936 O4, D-M1): each moves into the backup's `root-files/`
 /// with the Go folder, its Go proof shown (`manifest`, a Go curator `marker`, or `none`). A
 /// link stays and is never followed; this generation's file (its managed section) stays; one
@@ -2422,6 +2573,7 @@ fn plan_root_files(project: &Path, recorded: &HashMap<String, Entry>) -> Vec<Roo
         } else {
             "none"
         };
+        let moved = moved_reason(name, proof == "none");
         let (action, reason, class) = if rec.is_some_and(|e| e.provenance == "user_created") {
             ("leave", "user_created: the user's own file", "user_data")
         } else if rust && proof != "none" {
@@ -2436,19 +2588,8 @@ fn plan_root_files(project: &Path, recorded: &HashMap<String, Entry>) -> Vec<Roo
                 "this generation's file (managed section); it stays",
                 "rust",
             )
-        } else if proof == "none" {
-            (
-                "move",
-                "no Go proof; moves to the backup as D-M1 says (O4); the install step writes a \
-                 new one",
-                "instructions",
-            )
         } else {
-            (
-                "move",
-                "moves to the backup; the install step writes a new one",
-                "instructions",
-            )
+            ("move", moved.as_str(), "instructions")
         };
         out.push(row(name, digest(&bytes), action, reason, class, proof));
     }
@@ -2483,6 +2624,345 @@ fn plan_root_files(project: &Path, recorded: &HashMap<String, Entry>) -> Vec<Roo
         });
     }
     out
+}
+
+// ---- SPEC-20261126-go-local-settings-reference: the local settings that name `.moai/` ----
+//
+// A Go project whose local settings name a path under `.moai/` keeps its Go folder, and a
+// session never edits that file by hand. The pick backs the file up (the root-files copy),
+// replaces the folder name in each project reference with the Go backup's and moves the
+// folder. Only the bytes of those names change; each permission deny or ask entry also stays
+// as it was.
+
+/// The pick of `go-state-plan` and `go-state-apply` that rewrites the local settings.
+pub const REWRITE_PICK: &str = "--rewrite-local-references";
+/// What a hold of the folder by settings looks for, in the preview and the pick alike.
+const FOLDER_REFERENCE: &str = ".moai/";
+/// The Claude Code project folder variable, in both of its shell spellings.
+const PROJECT_VARIABLES: [&str; 2] = ["$CLAUDE_PROJECT_DIR", "${CLAUDE_PROJECT_DIR}"];
+/// The permission lists that restrict: the original entry stays and its rewritten twin joins
+/// it.
+const KEPT_LISTS: [&str; 2] = ["/permissions/deny", "/permissions/ask"];
+/// A backup name as long as the longest one, for the size check of the rewritten file.
+const LONGEST_BACKUP: &str = ".moai-backup-00000000T000000Z";
+/// The most characters of one path text the preview prints.
+const SHOWN_PATH: usize = 200;
+
+/// One string of the settings file, as it is spelled and where it stands.
+struct JsonString {
+    /// Byte range of the token in the file, quotes included.
+    start: usize,
+    end: usize,
+    value: String,
+    /// The value's JSON pointer; for a key, the pointer of its object.
+    pointer: String,
+    key: bool,
+}
+
+/// Every string token of a JSON text the caller has already parsed (so the nesting is within
+/// the parser's depth limit).
+struct JsonStrings<'a> {
+    text: &'a str,
+    at: usize,
+    out: Vec<JsonString>,
+}
+
+impl JsonStrings<'_> {
+    fn peek(&mut self) -> Option<u8> {
+        let bytes = self.text.as_bytes();
+        while bytes.get(self.at).is_some_and(u8::is_ascii_whitespace) {
+            self.at += 1;
+        }
+        bytes.get(self.at).copied()
+    }
+
+    fn string(&mut self, pointer: &str, key: bool) -> Option<String> {
+        let bytes = self.text.as_bytes();
+        let start = self.at;
+        let mut i = start + 1;
+        while *bytes.get(i)? != b'"' {
+            i += if bytes[i] == b'\\' { 2 } else { 1 };
+        }
+        let end = i + 1;
+        let value: String = serde_json::from_str(self.text.get(start..end)?).ok()?;
+        self.at = end;
+        self.out.push(JsonString {
+            start,
+            end,
+            value: value.clone(),
+            pointer: pointer.to_string(),
+            key,
+        });
+        Some(value)
+    }
+
+    fn value(&mut self, pointer: &str) -> Option<()> {
+        match self.peek()? {
+            b'"' => {
+                self.string(pointer, false)?;
+            }
+            open @ (b'{' | b'[') => {
+                self.at += 1;
+                let close = if open == b'{' { b'}' } else { b']' };
+                let mut index = 0usize;
+                while self.peek()? != close {
+                    let child = if open == b'{' {
+                        let name = self.string(pointer, true)?;
+                        // The `:`.
+                        self.peek()?;
+                        self.at += 1;
+                        format!("{pointer}/{}", name.replace('~', "~0").replace('/', "~1"))
+                    } else {
+                        format!("{pointer}/{index}")
+                    };
+                    self.value(&child)?;
+                    index += 1;
+                    if self.peek()? == b',' {
+                        self.at += 1;
+                    }
+                }
+                self.at += 1;
+            }
+            _ => {
+                let bytes = self.text.as_bytes();
+                while bytes
+                    .get(self.at)
+                    .is_some_and(|b| !b.is_ascii_whitespace() && !matches!(b, b',' | b']' | b'}'))
+                {
+                    self.at += 1;
+                }
+            }
+        }
+        Some(())
+    }
+}
+
+fn json_strings(text: &str) -> Option<Vec<JsonString>> {
+    let mut walk = JsonStrings {
+        text,
+        at: 0,
+        out: Vec::new(),
+    };
+    walk.value("")?;
+    Some(walk.out)
+}
+
+/// A shell or rule separator: what may stand right before a path.
+fn separates(c: char) -> bool {
+    c.is_whitespace() || "=(;|&<>:`,".contains(c)
+}
+
+/// Whether a path may start after `before`: the start of the value, a separator, or one
+/// quote that itself opens there (a quote that closes another word does not).
+fn path_starts_after(before: &str) -> bool {
+    let mut back = before.chars().rev();
+    match back.next() {
+        None => true,
+        Some('"' | '\'') => back.next().is_none_or(separates),
+        Some(c) => separates(c),
+    }
+}
+
+/// Whether the name at the end of `before` is the project's own folder: relative to the
+/// project, after the project folder variable in any quoting, or after the absolute root.
+/// Everything else (HOME, a parent or nested folder, another variable) is not.
+fn project_reference(before: &str, root: &str, changes_folder: bool) -> bool {
+    let relative = before.strip_suffix("./").unwrap_or(before);
+    if !changes_folder && path_starts_after(relative) {
+        return true;
+    }
+    let Some(head) = before.strip_suffix('/') else {
+        return false;
+    };
+    let unquoted = head.strip_suffix(['"', '\'']).unwrap_or(head);
+    if PROJECT_VARIABLES
+        .iter()
+        .filter_map(|v| unquoted.strip_suffix(v))
+        .any(path_starts_after)
+    {
+        return true;
+    }
+    // `//<root>/…` is how a permission rule writes an absolute path.
+    head.strip_suffix(root).is_some_and(|rest| {
+        path_starts_after(rest) || rest.strip_suffix('/').is_some_and(path_starts_after)
+    })
+}
+
+/// The `.moai/…` path text at the start of `from`, and nothing after it.
+fn shown_path(from: &str) -> String {
+    from.chars()
+        .take_while(|c| c.is_ascii_alphanumeric() || "._-/*".contains(*c))
+        .take(SHOWN_PATH)
+        .collect()
+}
+
+/// The references of one settings text and why a rewrite of it is not possible.
+fn scan_local(text: &str, root: &str) -> (Vec<LocalReference>, Vec<String>) {
+    let object = serde_json::from_str::<serde_json::Value>(text).is_ok_and(|v| v.is_object());
+    let Some(strings) = object.then(|| json_strings(text)).flatten() else {
+        return (
+            Vec::new(),
+            vec![format!(
+                "{SETTINGS_LOCAL} is not a readable JSON object, so the folder stays"
+            )],
+        );
+    };
+    let mut references = Vec::new();
+    let mut blocked = Vec::new();
+    let mut escaped = false;
+    for s in &strings {
+        let found: Vec<usize> = s
+            .value
+            .match_indices(FOLDER_REFERENCE)
+            .map(|m| m.0)
+            .collect();
+        // The rewrite changes the bytes of the file, so every name must be spelled plainly.
+        escaped |= text[s.start..s.end].matches(FOLDER_REFERENCE).count() != found.len();
+        let changes_folder = s
+            .value
+            .split(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+            .any(|word| word == "cd" || word == "pushd");
+        for at in found {
+            let project = !s.key && project_reference(&s.value[..at], root, changes_folder);
+            references.push(LocalReference {
+                pointer: s.pointer.clone(),
+                path: shown_path(&s.value[at..]),
+                class: if project { "project" } else { "other" },
+            });
+        }
+    }
+    let others: Vec<&str> = references
+        .iter()
+        .filter(|r| r.class == "other")
+        .map(|r| r.pointer.as_str())
+        .collect();
+    if !others.is_empty() {
+        blocked.push(format!(
+            "{SETTINGS_LOCAL} names the folder in a form the pick cannot rewrite; edit these \
+             values yourself: {}",
+            others.join(", ")
+        ));
+    }
+    if escaped {
+        blocked.push(format!(
+            "{SETTINGS_LOCAL} spells the folder name with an escape; write it plainly yourself"
+        ));
+    }
+    if blocked.is_empty() {
+        let after = rewritten_text(text, &strings, LONGEST_BACKUP);
+        if after.len() as u64 > crate::apply::RECEIPT_LIMIT {
+            blocked.push(format!(
+                "{SETTINGS_LOCAL} is or would become larger than {} KiB; the pick does not \
+                 rewrite it",
+                crate::apply::RECEIPT_LIMIT / 1024
+            ));
+        }
+    }
+    (references, blocked)
+}
+
+/// `text` with the folder name of every reference replaced by `go_backup`, and no other byte
+/// changed; an entry of a [`KEPT_LISTS`] list stays, followed by its rewritten twin.
+fn rewritten_text(text: &str, strings: &[JsonString], go_backup: &str) -> String {
+    let moved = format!("{go_backup}/");
+    let mut out = String::new();
+    let mut done = 0;
+    for s in strings {
+        let token = &text[s.start..s.end];
+        if s.key || !token.contains(FOLDER_REFERENCE) {
+            continue;
+        }
+        let twin = token.replace(FOLDER_REFERENCE, &moved);
+        out.push_str(&text[done..s.start]);
+        let kept = s.pointer.rsplit_once('/').is_some_and(|(list, last)| {
+            KEPT_LISTS.contains(&list) && last.parse::<usize>().is_ok()
+        });
+        if kept {
+            out.push_str(token);
+            out.push_str(", ");
+        }
+        out.push_str(&twin);
+        done = s.end;
+    }
+    out.push_str(&text[done..]);
+    out
+}
+
+/// The refusal of an apply with the pick whose fresh preview does not rewrite and move.
+fn refuse_unrewritable(fresh: &GoStatePlan) -> Result<()> {
+    let refused = |why: String| {
+        Err(format!(
+            "{REWRITE_PICK}: refused; nothing was written; {why}"
+        ))
+    };
+    let Some(local) = &fresh.local_references else {
+        return refused(format!(
+            "{SETTINGS_LOCAL} holds no Go folder here; run go-state-plan without the pick"
+        ));
+    };
+    if !local.blocked.is_empty() {
+        return refused(local.blocked.join("; "));
+    }
+    match fresh.items.iter().find(|i| i.path == MOAI_DIR) {
+        Some(folder) if folder.action == "move" => Ok(()),
+        Some(folder) => refused(folder.reason.clone()),
+        None => refused(format!("the preview moves no {MOAI_DIR}/ folder")),
+    }
+}
+
+/// Replace the local settings with their rewritten text: atomically, with the mode they had.
+/// `before` must still be what the file holds.
+fn replace_local(project: &Path, before: &[u8], after: &[u8]) -> Result<()> {
+    refuse_linked(project, SETTINGS_LOCAL)?;
+    crate::apply::publish_replace_limited(
+        &project.join(SETTINGS_LOCAL),
+        Some(before),
+        after,
+        crate::apply::RECEIPT_LIMIT,
+    )
+}
+
+/// How far an apply with the folder move got, for the message and the undo of a pick that
+/// fails after its first write.
+#[derive(Default)]
+struct Progress {
+    step: &'static str,
+    /// The local settings before and after the rewrite, from just before the replace.
+    rewrite: Option<(Vec<u8>, Vec<u8>)>,
+}
+
+impl Progress {
+    /// REQ-8: the error of the failed apply, after putting the original settings back.
+    fn undo_pick(self, project: &Path, error: &str, stamp: &str) -> String {
+        let copy = format!("{MOAI_DIR}/backups/{stamp}/root-files/{SETTINGS_LOCAL}");
+        let settings = match self.rewrite {
+            None => format!("{SETTINGS_LOCAL} was not rewritten and holds its original bytes"),
+            Some((before, after)) => {
+                let now = read_bounded_file(&project.join(SETTINGS_LOCAL));
+                if now.as_deref() == Some(before.as_slice()) {
+                    format!("{SETTINGS_LOCAL} holds its original bytes")
+                } else if now.as_deref() != Some(after.as_slice()) {
+                    format!(
+                        "{SETTINGS_LOCAL} changed meanwhile and was not touched; its original \
+                         bytes are in {copy}"
+                    )
+                } else {
+                    match replace_local(project, &after, &before) {
+                        Ok(()) => format!("{SETTINGS_LOCAL} is back to its original bytes"),
+                        Err(e) => format!(
+                            "{SETTINGS_LOCAL} could not be put back ({e}); its original bytes \
+                             are in {copy}"
+                        ),
+                    }
+                }
+            }
+        };
+        format!(
+            "{error}; the apply with {REWRITE_PICK} stopped at the step \"{}\"; {settings}; see \
+             `moai go-state-revert-plan <project> --backup {stamp}`",
+            self.step
+        )
+    }
 }
 
 /// #2936 L2b: the Go proof of the root `CLAUDE.md`, for the leftovers `project-update-plan`
@@ -2819,6 +3299,12 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
 /// [`plan`] with the entries the user picked for `--set-aside`. The picks are part of the
 /// plan: a set-aside row is in the digest, so an apply made with other picks is stale.
 pub fn plan_with(project: &Path, picks: &[String]) -> Result<GoStatePlan> {
+    plan_picked(project, picks, false)
+}
+
+/// [`plan_with`] and the [`REWRITE_PICK`]. Where the pick can rewrite the local settings,
+/// the plan moves the folder and its root row says `rewrite`, so the digest binds the pick.
+pub fn plan_picked(project: &Path, picks: &[String], rewrite_local: bool) -> Result<GoStatePlan> {
     let project =
         fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
     // A linked `.moai` (or any linked component above the manifest) is refused by the
@@ -2878,10 +3364,38 @@ pub fn plan_with(project: &Path, picks: &[String]) -> Result<GoStatePlan> {
         .filter(|(f, _)| !(*f == SETTINGS && proven.is_some()))
         .cloned()
         .collect();
-    let referenced_by_settings = holding.iter().any(|(_, text)| text.contains(".moai/"));
     // Moving `.moai/` also moves every git worktree registered under it, and git then loses
     // them (their recorded paths no longer exist). Unreadable means "maybe": stay.
     let checked = version.is_some() && folder_is_dir;
+    let local_references = settings
+        .iter()
+        .find(|(f, text)| checked && *f == SETTINGS_LOCAL && text.contains(FOLDER_REFERENCE))
+        .map(|(_, text)| {
+            let (references, mut blocked) = scan_local(text, &project.to_string_lossy());
+            blocked.extend(
+                holding
+                    .iter()
+                    .filter(|(f, t)| *f != SETTINGS_LOCAL && t.contains(FOLDER_REFERENCE))
+                    .map(|(f, _)| format!("{f} also names the folder and keeps it")),
+            );
+            LocalReferences {
+                file: SETTINGS_LOCAL.into(),
+                pick: REWRITE_PICK,
+                picked: rewrite_local,
+                references,
+                blocked,
+            }
+        });
+    let rewrites = rewrite_local
+        && local_references
+            .as_ref()
+            .is_some_and(|l| l.blocked.is_empty());
+    // The local settings the pick rewrites no longer hold the folder; they still hold every
+    // other file they name.
+    let holds_folder = |file: &str, text: &str| {
+        text.contains(FOLDER_REFERENCE) && !(rewrites && file == SETTINGS_LOCAL)
+    };
+    let referenced_by_settings = holding.iter().any(|(f, text)| holds_folder(f, text));
     let worktrees_inside = if checked {
         registered_worktrees_under(&project, MOAI_DIR)
     } else {
@@ -2911,7 +3425,20 @@ pub fn plan_with(project: &Path, picks: &[String]) -> Result<GoStatePlan> {
             if folder_moves {
                 "the Go .moai/ folder as a whole (decision 1, #2561 comment 6831345102)".into()
             } else if referenced_by_settings {
-                "settings reference .moai/; the folder stays until they are cleaned (#2581)".into()
+                let way = match &local_references {
+                    None => String::new(),
+                    Some(l) if l.blocked.is_empty() => format!(
+                        "; `{REWRITE_PICK}` on go-state-plan and go-state-apply backs up \
+                         {SETTINGS_LOCAL} and points it at the Go backup folder"
+                    ),
+                    Some(_) => format!(
+                        "; `{REWRITE_PICK}` cannot rewrite it yet (see local_references.blocked)"
+                    ),
+                };
+                format!(
+                    "settings reference .moai/; the folder stays until they are cleaned \
+                     (#2581){way}"
+                )
             } else if let Some(block) = &state_block {
                 block.clone()
             } else {
@@ -3021,7 +3548,7 @@ pub fn plan_with(project: &Path, picks: &[String]) -> Result<GoStatePlan> {
         BTreeMap::new()
     };
     let restores = if folder_moves {
-        plan_restores(&project, go_backup)
+        plan_restores(&project, go_backup, &recorded)
     } else {
         Vec::new()
     };
@@ -3052,6 +3579,7 @@ pub fn plan_with(project: &Path, picks: &[String]) -> Result<GoStatePlan> {
     // #2696 C4a: a project whose only state is the earlier `.moai-cli/` (verdict `none`, no
     // `.moai` of any kind) is offered the same move into a new `.moai/`, without a Go folder.
     let mut items = items;
+    let mut hidden = None;
     let legacy_moves = if state.generation == "none" {
         let (mut moves, mut block) = plan_state_moves(&project, picks)?;
         // A `.moai/` that holds the team's kept names (beyond the SPECs alone): the tracked
@@ -3059,12 +3587,16 @@ pub fn plan_with(project: &Path, picks: &[String]) -> Result<GoStatePlan> {
         let moai = project.join(MOAI_DIR);
         let beside_kept =
             crate::state_root::kept_only(&moai) && !crate::state_root::specs_only(&moai);
-        if beside_kept {
+        if beside_kept && holds_more_than_specs_and_local(&moai) {
             let (ignored, note) = kept_git_checks(&project, &mut moves);
             warnings.extend(note);
             if let Some(why) = ignored {
                 block.get_or_insert(why);
             }
+        } else if block.is_none() {
+            // An absent `.moai/`, or one with only the SPECs and the local folder: the moves
+            // stay in the preview and the user decides (SPEC-20261126-tracked-state-move).
+            hidden = ignored_tracked(&project, &moves);
         }
         let any = moves
             .iter()
@@ -3147,6 +3679,24 @@ pub fn plan_with(project: &Path, picks: &[String]) -> Result<GoStatePlan> {
     // U4: what git knows of each moving path, from one read-only status (only when
     // something moves).
     let (mut items, mut root_files) = (items, root_files);
+    if rewrites {
+        for row in root_files
+            .iter_mut()
+            .filter(|f| f.path == SETTINGS_LOCAL && f.action == "copy")
+        {
+            row.action = "rewrite".into();
+            row.reason = format!(
+                "{REWRITE_PICK}: its original bytes go into the backup, then it is rewritten in \
+                 place"
+            );
+            warnings.push(format!(
+                "{SETTINGS_LOCAL} will name {} instead of {MOAI_DIR}: its hooks and status \
+                 line then run the files in that folder, so keep the folder; its deny and ask \
+                 entries stay too and then cover the new {MOAI_DIR}/",
+                go_backup.as_deref().unwrap_or(crate::state_root::GO_BACKUP)
+            ));
+        }
+    }
     let moving_path = |i: &Item| i.action == "move" && i.path != MOAI_DIR && i.path != LEGACY_ROOT;
     if items.iter().any(moving_path) || root_files.iter().any(|f| f.action != "leave") {
         let rows = git_states(&project);
@@ -3218,7 +3768,7 @@ pub fn plan_with(project: &Path, picks: &[String]) -> Result<GoStatePlan> {
                 folder_freed: folder_moves_now && body.contains(".moai/"),
                 still_holding: holding
                     .iter()
-                    .filter(|(_, t)| t.contains(".moai/"))
+                    .filter(|(f, t)| holds_folder(f, t))
                     .map(|(f, _)| f.to_string())
                     .collect(),
             })
@@ -3272,7 +3822,9 @@ pub fn plan_with(project: &Path, picks: &[String]) -> Result<GoStatePlan> {
         counterparts,
         after_move,
         settings_move,
+        local_references,
         backup_ignore,
+        ignored_tracked: hidden,
         secrets,
         warnings,
         plan_digest: String::new(),
@@ -3410,7 +3962,9 @@ fn bound_of(plan: &GoStatePlan) -> Result<Bound> {
         counterparts: _,
         after_move: _,
         settings_move: _,
+        local_references: _,
         backup_ignore: _,
+        ignored_tracked: _,
         secrets: _,
         warnings: _,
         plan_digest: _,
@@ -3691,6 +4245,20 @@ pub struct Receipt {
     /// (and absent) for every earlier receipt, which reads as it always did.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub kept_before: Vec<String>,
+    /// SPEC-20261126-go-local-settings-reference: the local settings the apply rewrote, from
+    /// just before the replace; the original is the `copied` entry of the same sha256.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rewritten: Option<Rewritten>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Rewritten {
+    pub path: String,
+    pub original_sha256: String,
+    pub rewritten_sha256: String,
+    /// The permission bits the file had, for a revert that finds it gone.
+    pub mode: u32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -3859,6 +4427,8 @@ const EXAMPLE_STAMP: &str = "19700101T000000Z";
 const IGNORE_EXAMPLES: usize = 3;
 /// Paths per `git check-ignore` call, so a long move list never reaches the argument limit.
 const IGNORE_BATCH: usize = 64;
+/// How many hidden tracked files an [`IgnoredTracked`] names (decision D-5).
+const IGNORED_FILES: usize = 20;
 
 /// What git says of a set of backup paths.
 #[derive(Debug, PartialEq, Eq)]
@@ -3966,6 +4536,165 @@ fn ignored_by_git(project: &Path, paths: &[String]) -> IgnoreVerdict {
     } else {
         IgnoreVerdict::Offered(offered)
     }
+}
+
+/// SPEC-20261126-tracked-state-move REQ-1, REQ-3: the git check of a move into a `.moai/` that
+/// is absent or holds only the SPECs and the local folder. `None` when the move may be offered:
+/// every destination is allowed, no moving entry holds a tracked file, or the project is in no
+/// git work tree. Git being unable to answer is `unknown`: the check stops closed. Reads only.
+fn ignored_tracked(project: &Path, moves: &[StateMove]) -> Option<IgnoredTracked> {
+    let moving: Vec<&StateMove> = moves.iter().filter(|m| m.action == "move").collect();
+    if moving.is_empty() {
+        return None;
+    }
+    hidden_by_move(project, &moving).unwrap_or_else(|why| {
+        Some(IgnoredTracked {
+            state: "unknown",
+            files: Vec::new(),
+            total: 0,
+            marker: None,
+            reason: format!(
+                "git could not say whether the move would put tracked state where it is ignored \
+                 ({why}); nothing moves until it can; then preview again"
+            ),
+        })
+    })
+}
+
+/// Each tracked file under a moving entry is asked of `git check-ignore` at the path it would
+/// get, and so is the marker when there is such a file. An error is git failing to answer.
+fn hidden_by_move(project: &Path, moving: &[&StateMove]) -> Result<Option<IgnoredTracked>> {
+    let no_git = |_: std::io::Error| "git could not be run".to_string();
+    match git_in(project, &["rev-parse", "--is-inside-work-tree"], &[]) {
+        Ok(o) if o.status.success() => match String::from_utf8_lossy(&o.stdout).trim() {
+            "true" => {}
+            // A bare repository or the inside of `.git`: no work tree holds these files.
+            "false" => return Ok(None),
+            _ => return Err("git gave an unexpected answer".into()),
+        },
+        Ok(o) => {
+            let why = crate::identity::failure_summary(&o.stderr);
+            return if why.starts_with(crate::identity::NOT_A_REPOSITORY) {
+                Ok(None)
+            } else {
+                Err(why)
+            };
+        }
+        // Without a git program, a folder with no `.git` here or above is in no work tree all
+        // the same.
+        Err(e) => {
+            let in_work_tree = project
+                .ancestors()
+                .any(|dir| fs::symlink_metadata(dir.join(".git")).is_ok());
+            return if in_work_tree {
+                Err(no_git(e))
+            } else {
+                Ok(None)
+            };
+        }
+    }
+    let out = git_in(project, &["ls-files", "-z", "--", LEGACY_ROOT], &[]).map_err(no_git)?;
+    if !out.status.success() {
+        return Err(format!(
+            "git could not list the tracked files: {}",
+            crate::identity::failure_summary(&out.stderr)
+        ));
+    }
+    let listed = String::from_utf8(out.stdout)
+        .map_err(|_| "git listed a file name that is not UTF-8".to_string())?;
+    // Each tracked file under a moving entry, with the path the move would give it.
+    let files: Vec<(&str, String)> = listed
+        .split('\0')
+        .filter_map(|file| {
+            moving.iter().find_map(|m| {
+                let rest = file.strip_prefix(m.from.as_str())?;
+                (rest.is_empty() || rest.starts_with('/'))
+                    .then(|| (file, format!("{}{rest}", m.to)))
+            })
+        })
+        .collect();
+    if files.is_empty() {
+        return Ok(None);
+    }
+    let marker = format!("{MOAI_DIR}/{}", crate::state_root::RUST_MARKER);
+    let mut paths: Vec<String> = files.iter().map(|(_, to)| to.clone()).collect();
+    paths.push(marker.clone());
+    let mut rules = Vec::with_capacity(paths.len());
+    for batch in paths.chunks(IGNORE_BATCH) {
+        let out = git_in(
+            project,
+            &["check-ignore", "--no-index", "-v", "-n", "--"],
+            batch,
+        )
+        .map_err(no_git)?;
+        // 0: some path is ignored, 1: none is; anything else is git failing.
+        if !matches!(out.status.code(), Some(0 | 1)) {
+            return Err(format!(
+                "git could not judge the destinations: {}",
+                crate::identity::failure_summary(&out.stderr)
+            ));
+        }
+        let text = String::from_utf8_lossy(&out.stdout);
+        let lines: Vec<&str> = text.lines().collect();
+        if lines.len() != batch.len() {
+            return Err("git answered for a different number of destinations".into());
+        }
+        for line in lines {
+            if check_ignore_line(line).is_none() {
+                return Err("git gave an unexpected answer".into());
+            }
+            rules.push(ignoring_rule(line));
+        }
+    }
+    let marker_rule = rules.pop().flatten();
+    let mut hidden: Vec<HiddenFile> = files
+        .into_iter()
+        .zip(rules)
+        .filter_map(|((file, to), rule)| {
+            rule.map(|rule| HiddenFile {
+                file: file.to_string(),
+                to,
+                rule,
+            })
+        })
+        .collect();
+    let total = hidden.len();
+    if total == 0 && marker_rule.is_none() {
+        return Ok(None);
+    }
+    hidden.truncate(IGNORED_FILES);
+    let mut found = Vec::new();
+    if total > 0 {
+        let named: Vec<String> = hidden
+            .iter()
+            .map(|h| format!("{} -> {} (rule `{}`)", h.file, h.to, h.rule))
+            .collect();
+        let cut = if total > hidden.len() {
+            format!("; the first {} are named", hidden.len())
+        } else {
+            String::new()
+        };
+        found.push(format!(
+            "{total} tracked file(s) would move where git ignores them: {}{cut}",
+            named.join(", ")
+        ));
+    }
+    if let Some(rule) = &marker_rule {
+        found.push(format!(
+            "the marker {marker} the team keeps in git is ignored by the rule `{rule}`"
+        ));
+    }
+    Ok(Some(IgnoredTracked {
+        state: "ignored",
+        files: hidden,
+        total,
+        marker: marker_rule,
+        reason: format!(
+            "{}; nothing moves until the rules allow these paths (a `!` line) or git stops \
+             tracking the files under {LEGACY_ROOT}/; then preview again",
+            found.join("; ")
+        ),
+    }))
 }
 
 /// #2936 S-AGENTS-STAY U1: whether the `<base>/backups/.gitignore` that is already there keeps
@@ -4180,7 +4909,27 @@ pub fn apply_picked_with_stamp(
     stamp: &str,
     picks: &[String],
 ) -> Result<Receipt> {
-    let fresh = plan_with(project, picks)?;
+    apply_all_with_stamp(
+        project,
+        plan_digest,
+        permission_reference,
+        stamp,
+        picks,
+        false,
+    )
+}
+
+/// [`apply_picked_with_stamp`] and the [`REWRITE_PICK`]: with it, a fresh preview that cannot
+/// rewrite the local settings and move the folder refuses before the first write.
+pub fn apply_all_with_stamp(
+    project: &Path,
+    plan_digest: &str,
+    permission_reference: &str,
+    stamp: &str,
+    picks: &[String],
+    rewrite_local: bool,
+) -> Result<Receipt> {
+    let fresh = plan_picked(project, picks, rewrite_local)?;
     if fresh.plan_digest != plan_digest {
         return Err(STALE_PLAN.into());
     }
@@ -4189,6 +4938,9 @@ pub fn apply_picked_with_stamp(
     }
     if !valid_stamp(stamp) {
         return Err("invalid backup stamp".into());
+    }
+    if rewrite_local {
+        refuse_unrewritable(&fresh)?;
     }
     let project = PathBuf::from(&fresh.project);
     let planned: Vec<&Item> = fresh.items.iter().filter(|i| i.action == "move").collect();
@@ -4207,6 +4959,7 @@ pub fn apply_picked_with_stamp(
         rust_aside: String::new(),
         legacy_move: false,
         kept_before: Vec::new(),
+        rewritten: None,
     };
     if planned.is_empty() {
         return Ok(receipt);
@@ -4237,7 +4990,14 @@ pub fn apply_picked_with_stamp(
     settings_last(&mut receipt.moves);
     test_edit_first_moving_file(&project, &receipt.moves);
     if planned.iter().any(|i| i.path == MOAI_DIR) {
-        return apply_moving_folder(&project, &fresh, receipt, stamp);
+        let mut progress = Progress::default();
+        return apply_moving_folder(&project, &fresh, receipt, stamp, &mut progress).map_err(|e| {
+            if rewrite_local {
+                progress.undo_pick(&project, &e, stamp)
+            } else {
+                e
+            }
+        });
     }
     // The policy plans the #2936 kinds only with the Go folder, except the proven settings
     // (S-CYCLE); the stage-2 layout moves unchanged files and those settings alone.
@@ -4295,6 +5055,7 @@ fn apply_moving_folder(
     fresh: &GoStatePlan,
     mut receipt: Receipt,
     stamp: &str,
+    progress: &mut Progress,
 ) -> Result<Receipt> {
     let planned_backup = fresh
         .go_backup
@@ -4332,10 +5093,12 @@ fn apply_moving_folder(
     }
     receipt.state = "pending".into();
     // 1. One rename; the backup name is never overwritten.
+    progress.step = "move the Go folder aside";
     move_folder(&project.join(MOAI_DIR), &project.join(&go_backup))?;
     receipt.moves[0].moved = true;
     // 2. The new folder and the pending receipt. Should either fail, undo the rename now:
     //    nothing else has changed yet.
+    progress.step = "make the new folder and its receipt";
     let made = fs::create_dir(project.join(MOAI_DIR))
         .map_err(|_| format!("{MOAI_DIR}: folder create failed"))
         .and_then(|_| make_private_dirs(project, &area))
@@ -4375,6 +5138,7 @@ fn apply_moving_folder(
     saved = save_receipt(project, MOAI_DIR, &receipt, Some(&saved))?;
     // 3. The proven `.claude/` and `.agents/` entries: files, the mirror links (as links) and
     //    the mirror copy folders (one rename each).
+    progress.step = "move the proven files";
     for i in 0..receipt.moves.len() {
         let kind = receipt.moves[i].kind.clone();
         if !matches!(kind.as_str(), "" | "edited" | "link" | "mirror_copy") {
@@ -4411,8 +5175,10 @@ fn apply_moving_folder(
         saved = save_receipt(project, MOAI_DIR, &receipt, Some(&saved))?;
     }
     // 4. The earlier root's product state.
+    progress.step = "move the earlier state";
     saved = move_state_entries(project, &mut receipt, saved)?;
     // 5. SPECs from the backup (the original stays there), never overwriting.
+    progress.step = "restore the SPECs";
     for r in fresh.restores.iter().filter(|r| r.action == "copy") {
         let inner = r
             .from
@@ -4440,6 +5206,7 @@ fn apply_moving_folder(
     // 6. The root instruction files move into `root-files/` (O4); the local settings stay
     //    and a copy goes there (O3). The ignore file of the backup area was written in step 2,
     //    before anything that may hold a token (test seam: a stop right here).
+    progress.step = "back up the root files";
     crate::update::test_fault("go_state_before_root_files")?;
     for f in fresh.root_files.iter().filter(|f| f.action != "leave") {
         refuse_linked(project, &f.path)?;
@@ -4471,8 +5238,28 @@ fn apply_moving_folder(
             });
         }
         saved = save_receipt(project, MOAI_DIR, &receipt, Some(&saved))?;
+        // The pick: only after the original is in the backup, and recorded before the
+        // replace so a revert finds it whatever happens next.
+        if f.action == "rewrite" {
+            progress.step = "rewrite the local settings";
+            let text = std::str::from_utf8(&bytes).map_err(|_| "local settings are not UTF-8")?;
+            let strings = json_strings(text).ok_or("local settings are not a JSON object")?;
+            let after = rewritten_text(text, &strings, &go_backup).into_bytes();
+            receipt.rewritten = Some(Rewritten {
+                path: f.path.clone(),
+                original_sha256: f.sha256.clone(),
+                rewritten_sha256: digest(&after),
+                mode: mode_bits(&project.join(&f.path)).unwrap_or(PRIVATE_FILE),
+            });
+            saved = save_receipt(project, MOAI_DIR, &receipt, Some(&saved))?;
+            crate::update::test_fault("go_state_before_rewrite")?;
+            progress.rewrite = Some((bytes.clone(), after.clone()));
+            replace_local(project, &bytes, &after)?;
+            crate::update::test_fault("go_state_after_rewrite")?;
+        }
     }
     // 7. The marker, last: from here `state_root` says `rust`.
+    progress.step = "write the marker";
     let marker = marker_bytes(&go_backup)?;
     finish_with_marker(project, receipt, saved, &marker)
 }
@@ -4536,6 +5323,15 @@ fn apply_legacy_move(
     mut receipt: Receipt,
     stamp: &str,
 ) -> Result<Receipt> {
+    // @cc:careful keep this before the first folder and the receipt: `fresh` judged the
+    // destinations again, and a refusal leaves every file and folder as it was
+    // (SPEC-20261126-tracked-state-move REQ-4, REQ-5).
+    if let Some(found) = &fresh.ignored_tracked {
+        return Err(format!(
+            "tracked state would leave version control; refused: {}; nothing written",
+            found.reason
+        ));
+    }
     let area = format!("{MOAI_DIR}/backups/{stamp}");
     receipt.legacy_move = true;
     // A C4a receipt carries no Go backup; one that also names a Go backup fails the
@@ -4601,19 +5397,22 @@ pub fn apply(project: &Path, plan_digest: &str, permission_reference: &str) -> R
     apply_with_stamp(project, plan_digest, permission_reference, &stamp_now())
 }
 
-/// [`apply`] with the `--set-aside` picks of the preview whose digest is given.
+/// [`apply`] with the picks of the preview whose digest is given: `--set-aside` entries and
+/// the [`REWRITE_PICK`].
 pub fn apply_picked(
     project: &Path,
     plan_digest: &str,
     permission_reference: &str,
     picks: &[String],
+    rewrite_local: bool,
 ) -> Result<Receipt> {
-    apply_picked_with_stamp(
+    apply_all_with_stamp(
         project,
         plan_digest,
         permission_reference,
         &stamp_now(),
         picks,
+        rewrite_local,
     )
 }
 
@@ -4622,7 +5421,10 @@ pub struct RevertItem {
     pub path: String,
     /// `restore`, `set_aside_then_restore` (only `.claude/settings.json`: a regular file is at
     /// the path again; the revert moves it into `<backup area>/replaced-by-revert/<UTC>/` and
-    /// then restores the earlier one), `conflict` (something else is at the original path
+    /// then restores the earlier one), `restore_original` /
+    /// `set_aside_then_restore_original` (the local settings an apply rewrote: its original
+    /// bytes come back from the backup copy, a file at the path going aside first),
+    /// `conflict` (something else is at the original path
     /// again), `missing` (the backup copy is gone or changed), `skip` (never moved),
     /// `remove_restored` /
     /// `keep_changed` (a SPEC copy), or `remove` (the marker, #2696).
@@ -4671,6 +5473,20 @@ fn top_of(path: &str) -> &str {
         .next()
         .and_then(|c| c.as_os_str().to_str())
         .unwrap_or("")
+}
+
+/// Whether a receipt may name `path` as a restored copy: a plain relative path under a user-data
+/// folder of the new `.moai/` (the moving layouts), or under the earlier root's `specs/`.
+fn restored_path_allowed(path: &str, moving: bool) -> bool {
+    if !plain_relative(path) {
+        return false;
+    }
+    if moving {
+        path.strip_prefix(&format!("{MOAI_DIR}/"))
+            .is_some_and(|rel| !rel.is_empty() && !restore_excluded(rel))
+    } else {
+        path.starts_with(&format!("{LEGACY_ROOT}/specs/"))
+    }
 }
 
 fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>, String)> {
@@ -4765,21 +5581,14 @@ fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>, Strin
     }
     // Restored copies land in a user-data folder of the new `.moai/` (#2936 O1), or in the
     // earlier root's `specs/` (the #2561 layouts).
-    let allowed: Vec<String> = if moving {
-        USER_DATA_FROM
-            .iter()
-            .map(|f| format!("{MOAI_DIR}/{f}/"))
-            .collect()
-    } else {
-        vec![format!("{LEGACY_ROOT}/specs/")]
-    };
-    if receipt.restored.iter().any(|r| {
-        !plain_relative(&r.path) || !allowed.iter().any(|a| r.path.starts_with(a.as_str()))
-    }) {
-        return Err(format!(
-            "receipt holds a restored path outside {}; refused",
-            allowed.join(", ")
-        ));
+    if receipt
+        .restored
+        .iter()
+        .any(|r| !restored_path_allowed(&r.path, moving))
+    {
+        return Err(
+            "receipt holds a restored path outside the folders a restore may write; refused".into(),
+        );
     }
     let copies = format!("{MOAI_DIR}/backups/{backup}/root-files/");
     if receipt
@@ -4788,6 +5597,17 @@ fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>, Strin
         .any(|c| !go_folder || !plain_relative(&c.path) || !c.path.starts_with(&copies))
     {
         return Err(format!("receipt holds a copy outside {copies}; refused"));
+    }
+    // A rewrite is of the local settings alone, with its original among the copies.
+    if receipt.rewritten.as_ref().is_some_and(|r| {
+        let original = format!("{copies}{SETTINGS_LOCAL}");
+        r.path != SETTINGS_LOCAL
+            || !receipt
+                .copied
+                .iter()
+                .any(|c| c.path == original && c.sha256 == r.original_sha256)
+    }) {
+        return Err("receipt names a rewrite it cannot have; refused".into());
     }
     Ok((receipt, text.into_bytes(), base))
 }
@@ -4940,6 +5760,12 @@ pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
                 action: action.into(),
             });
         }
+    }
+    if let Some(r) = &receipt.rewritten {
+        items.push(RevertItem {
+            path: r.path.clone(),
+            action: rewritten_action(&project, &area, r).into(),
+        });
     }
     for r in &receipt.restored {
         // Read where they were written. Once this generation's `.moai/` is set aside, `.moai`
@@ -5134,6 +5960,63 @@ pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
     Ok(plan)
 }
 
+/// The backup copy of a rewritten file, in the backup area `area`.
+fn original_copy(area: &str, r: &Rewritten) -> String {
+    format!("{area}/root-files/{}", r.path)
+}
+
+/// What a revert does with the file an apply rewrote.
+fn rewritten_action(project: &Path, area: &str, r: &Rewritten) -> &'static str {
+    let is = |rel: &str, sha: &str| sha256_file(&project.join(rel)).is_ok_and(|h| h == sha);
+    if linked_component(project, &r.path) {
+        return "conflict";
+    }
+    let here = fs::symlink_metadata(project.join(&r.path));
+    if here.as_ref().is_ok_and(|m| !m.is_file()) {
+        return "conflict";
+    }
+    // Already the original: never rewritten, or put back by the apply or an earlier revert.
+    if here.is_ok() && is(&r.path, &r.original_sha256) {
+        return "skip";
+    }
+    let copy = original_copy(area, r);
+    if linked_component(project, &copy) || !is(&copy, &r.original_sha256) {
+        return "missing";
+    }
+    if here.is_ok() {
+        "set_aside_then_restore_original"
+    } else {
+        "restore_original"
+    }
+}
+
+/// Put the original bytes of a rewritten file back: a file at the path moves into
+/// `replaced-by-revert/<UTC>/` of the backup area first, and nothing is overwritten.
+fn restore_rewritten(project: &Path, area: &str, r: &Rewritten, aside: bool) -> Result<()> {
+    let copy = original_copy(area, r);
+    refuse_linked(project, &copy)?;
+    let bytes = fs::read(project.join(&copy)).map_err(|_| "backup copy read failed")?;
+    if digest(&bytes) != r.original_sha256 {
+        return Err(format!("{copy} changed after the revert plan; stopped"));
+    }
+    refuse_linked(project, &r.path)?;
+    if aside {
+        if !fs::symlink_metadata(project.join(&r.path)).is_ok_and(|m| m.is_file()) {
+            return Err(format!(
+                "{}: changed after the revert plan; nothing moved aside",
+                r.path
+            ));
+        }
+        let to = format!("{area}/{REPLACED_BY_REVERT}/{}/{}", stamp_now(), r.path);
+        make_private_dirs(project, &parent_of(&to)?)?;
+        move_exclusive(&project.join(&r.path), &project.join(&to))
+            .map_err(|e| format!("{}: {e}", r.path))?;
+    }
+    make_dirs(project, &parent_of(&r.path)?)?;
+    crate::apply::publish_exclusive_mode(&project.join(&r.path), &bytes, Some(r.mode & 0o777))
+        .map_err(|e| format!("{}: {e}", r.path))
+}
+
 /// Undo one apply, all or nothing up front: any `conflict` or `missing` item refuses the whole
 /// revert before the first write. Never overwrites, never deletes what the apply did not write.
 /// A regular `.claude/settings.json` that is there again is not a conflict: it is moved aside
@@ -5206,6 +6089,23 @@ pub fn revert(
         make_private_dirs(&project, &parent_of(&to)?)?;
         move_exclusive(&project.join(&item.path), &project.join(&to))
             .map_err(|e| format!("{}: {e}", item.path))?;
+    }
+    // The rewritten local settings come back before the folder moves again. A stop here
+    // leaves the file at its path or in `replaced-by-revert/`, and the next plan reads it.
+    if let Some(r) = receipt.rewritten.clone() {
+        let action = fresh
+            .items
+            .iter()
+            .find(|i| i.path == r.path)
+            .map(|i| i.action.as_str());
+        if let Some(action @ ("restore_original" | "set_aside_then_restore_original")) = action {
+            restore_rewritten(
+                &project,
+                &format!("{base}/backups/{backup}"),
+                &r,
+                action == "set_aside_then_restore_original",
+            )?;
+        }
     }
     // The recorded marker digest stays until every marker file is gone: with both names present,
     // clearing it after the first removal would leave a stopped revert comparing the other file
@@ -5418,7 +6318,9 @@ mod tests {
             counterparts: Vec::new(),
             after_move: AfterMove::default(),
             settings_move: None,
+            local_references: None,
             backup_ignore: None,
+            ignored_tracked: None,
             secrets: 0,
             warnings: vec!["w".into()],
             plan_digest: String::new(),
@@ -6043,6 +6945,7 @@ mod tests {
             rust_aside: String::new(),
             legacy_move: false,
             kept_before: Vec::new(),
+            rewritten: None,
         };
         let fixed = serde_json::to_vec_pretty(&receipt(0)).unwrap().len();
         let pad = RECEIPT_MAX as usize - fixed;
@@ -6061,5 +6964,52 @@ mod tests {
             fs::read_dir(over.path()).unwrap().next().is_none(),
             "nothing was created"
         );
+    }
+
+    /// SPEC-20261126-go-state-restore-rule AC-6 (REQ-7): a restored path may lie under any
+    /// folder of the new `.moai/`, not under its backups folder and not on a Go marker.
+    #[test]
+    fn restore_rule_allows_any_folder_but_not_backups_or_a_marker() {
+        for ok in [
+            ".moai/specs/SPEC-1/spec.md",
+            ".moai/design/x.md",
+            ".moai/decisions/user.md",
+            ".moai/school/a/b/c.md",
+            ".moai/config/sections/b.yaml",
+        ] {
+            assert!(restored_path_allowed(ok, true), "{ok}");
+        }
+        for refused in [
+            ".moai/backups/x/y.md",
+            ".moai/backups",
+            ".moai/manifest.json",
+            ".moai/config/config.yaml",
+            ".moai/config/sections/system.yaml",
+            ".moai/.update.lock",
+            ".moai",
+            ".moai/",
+            ".claude/rules/a.md",
+            "design/x.md",
+        ] {
+            assert!(!restored_path_allowed(refused, true), "{refused}");
+        }
+        // The earlier root is not a place the moving layout restores into.
+        assert!(!restored_path_allowed(
+            &format!("{LEGACY_ROOT}/specs/a.md"),
+            true
+        ));
+    }
+
+    /// SPEC-20261126-go-state-restore-rule AC-6: the earlier-root layout restores into its
+    /// `specs/` only, as before.
+    #[test]
+    fn restore_rule_keeps_the_earlier_root_to_its_specs() {
+        let specs = format!("{LEGACY_ROOT}/specs/a/spec.md");
+        assert!(restored_path_allowed(&specs, false));
+        assert!(!restored_path_allowed(".moai/design/x.md", false));
+        assert!(!restored_path_allowed(
+            &format!("{LEGACY_ROOT}/design/x.md"),
+            false
+        ));
     }
 }

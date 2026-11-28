@@ -271,6 +271,28 @@
       "rejects": "a git fixture call outside the guarded shared helper"
     },
     {
+      "id": "scratch-cargo-helper",
+      "tests": [
+        "tests/test_scratch_cargo.rs::scratch_cargo_starts_go_through_the_shared_helper"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test test_scratch_cargo scratch_cargo_starts_go_through_the_shared_helper"
+      ],
+      "rules": [
+        "tests/test_scratch_cargo.rs",
+        "tests/common/cargo.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a test that starts cargo without the shared helper"
+    },
+    {
       "id": "test-area-layout",
       "always": true,
       "tests": [
@@ -444,6 +466,7 @@
         "tests/update_switch_cli.rs (package copy)",
         "tests/update_git_hooks_cli.rs (package copy)",
         "tests/host_home_cli.rs (plans hash skills/moai and agents/)",
+        "tests/update_run_receipt_cli.rs (package copy)",
         "tests/update_closing_commit.rs (all 4)"
       ],
       "test_targets": [
@@ -457,6 +480,7 @@
         "update_home_layer_cli",
         "update_hooks_cli",
         "update_keys_cli",
+        "update_run_receipt_cli",
         "update_switch_cli",
         "update_user_layer_cli"
       ],
@@ -473,6 +497,7 @@
         "tests/update_headver.rs",
         "tests/update_switch_cli.rs",
         "tests/update_git_hooks_cli.rs",
+        "tests/update_run_receipt_cli.rs",
         "tests/host_home_cli.rs",
         "tests/update_closing_commit.rs"
       ],
@@ -543,13 +568,13 @@
     {
       "id": "tracked-skill-references",
       "tests": [
-        "tests/skill_references_test.py::test_current_tracked_skill_file_references_resolve"
+        "tests/skill_references_scan.rs::every_current_skill_file_reference_resolves"
       ],
-      "checks": [
-        "python3 -m unittest tests.skill_references_test"
+      "test_targets": [
+        "skill_references_scan"
       ],
       "rules": [
-        "tests/skill_references_test.py"
+        "tests/skill_references_scan.rs"
       ],
       "scope": [
         {
@@ -1142,6 +1167,27 @@
       "rejects": "a second shipped text that explains the meaning of the NeXT name, or a shipped text that spells the four technical rules of the flow as the letters of the name (SPEC-20261122-next-flow-skills-agents AC-3)"
     },
     {
+      "id": "worktree-place-shipped-texts",
+      "tests": [
+        "tests/worktree_place_cli.rs::worktree_place_texts_every_skill_and_agent_file"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test worktree_place_cli worktree_place_texts_"
+      ],
+      "rules": [
+        "tests/worktree_place_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/"
+        },
+        {
+          "prefix": "agents/"
+        }
+      ],
+      "rejects": "a skill or agent text that orders the home worktree folder for new worktrees (SPEC-20261122-worktree-place REQ-9)"
+    },
+    {
       "id": "state-folder-literals-in-tests",
       "tests": [
         "tests/state_folder_literal_scan.rs::the_repository_tests_stay_within_the_state_folder_baseline"
@@ -1246,6 +1292,25 @@
       "rejects": "a change to a file that tests/card/card_generated_scope.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
     },
     {
+      "id": "include-str-check-affected-rerun",
+      "always": true,
+      "tests": [
+        "tests/check_affected_rerun.rs (all)"
+      ],
+      "test_targets": [
+        "check_affected_rerun"
+      ],
+      "rules": [
+        "tests/check_affected_rerun.rs"
+      ],
+      "scope": [
+        {
+          "prefix": ".gitignore"
+        }
+      ],
+      "rejects": "a change to .gitignore that tests/check_affected_rerun.rs reads with include_str! that the test did not re-run on the merge tree (card C-590)"
+    },
+    {
       "id": "include-str-flaky-followups",
       "always": true,
       "tests": [
@@ -1266,6 +1331,28 @@
         }
       ],
       "rejects": "a change to a file that tests/flaky_followups.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
+    },
+    {
+      "id": "include-str-secret-deny-routes",
+      "always": true,
+      "tests": [
+        "tests/secret_deny_cli.rs (all)"
+      ],
+      "test_targets": [
+        "secret_deny_cli"
+      ],
+      "rules": [
+        "tests/secret_deny_cli.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/workflows/project.md"
+        },
+        {
+          "prefix": "skills/moai/workflows/update.md"
+        }
+      ],
+      "rejects": "a change to a file that tests/secret_deny_cli.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261122-secret-file-deny-rules)"
     },
     {
       "id": "no-tracked-reports",
@@ -1328,7 +1415,7 @@
           "prefix": "docs/rust-product-path.md"
         },
         {
-          "prefix": "skills/moai/workflows/project.md"
+          "prefix": "skills/moai/workflows/update.md"
         }
       ],
       "rejects": "a change to a file that tests/go_state_classes_cli.rs reads with include_str! that the test did not re-run on the merge tree (SPEC-20261123-land-repo-scans)"
@@ -1553,7 +1640,9 @@
         "cli_text_citations",
         "hot_file_ops_merge",
         "integration_guard_install",
+        "integration_guard_repoint",
         "lane_next_rules",
+        "lane_run_cli",
         "launcher_retire_role_flags",
         "launcher_role_flags",
         "launcher_settings_receipt",
@@ -1571,7 +1660,11 @@
         "retired_host_words",
         "rule_history_guard",
         "sdd_guidance",
-        "troubleshooting_doc"
+        "skill_references_scan",
+        "skill_text_fixtures",
+        "spec_approval_digest",
+        "troubleshooting_doc",
+        "worktree_place_cli"
       ],
       "checks": [
         "cargo test --offline --locked --test card card_criterion_add_cli:: -- card_finish_cli:: card_guard_cli:: card_line_lease_cli:: card_ready_leftovers_cli:: card_scope_widen_cli:: card_timeline_cli:: decision_append_cli:: followup_per_spec_rules:: recurring_problems_rule::"
@@ -1594,7 +1687,9 @@
         "tests/card/followup_per_spec_rules.rs",
         "tests/hot_file_ops_merge.rs",
         "tests/integration_guard_install.rs",
+        "tests/integration_guard_repoint.rs",
         "tests/lane_next_rules.rs",
+        "tests/lane_run_cli.rs",
         "tests/launcher_retire_role_flags.rs",
         "tests/launcher_role_flags.rs",
         "tests/launcher_settings_receipt.rs",
@@ -1612,7 +1707,11 @@
         "tests/retired_host_words.rs",
         "tests/rule_history_guard.rs",
         "tests/sdd_guidance.rs",
+        "tests/skill_references_scan.rs",
+        "tests/skill_text_fixtures.rs",
+        "tests/spec_approval_digest.rs",
         "tests/troubleshooting_doc.rs",
+        "tests/worktree_place_cli.rs",
         "tests/repo_scans_table.rs"
       ],
       "scope": [
@@ -1636,6 +1735,9 @@
         },
         {
           "prefix": "docs/design-review/appendix/operations"
+        },
+        {
+          "prefix": "docs/design-review/appendix/state-vocabulary-crosswalk.md"
         },
         {
           "prefix": "docs/design-review/autonomy-modes-spec.md"
@@ -1665,6 +1767,9 @@
           "prefix": "docs/llms.txt"
         },
         {
+          "prefix": "docs/product-naming-inventory.md"
+        },
+        {
           "prefix": "docs/protocol-v1.md"
         },
         {
@@ -1689,6 +1794,32 @@
       "rejects": "a change to a checked-in file that a test of this group opens at run time that the test did not re-run on the merge tree (SPEC-20261123-land-file-read-scans)"
     },
     {
+      "id": "reads-gitignore-block-cli",
+      "always": true,
+      "tests": [
+        "tests/repo_scans_table.rs::every_file_reader_has_an_always_scan_or_an_exemption"
+      ],
+      "test_targets": [
+        "gitignore_block_cli",
+        "repo_scans_table"
+      ],
+      "rules": [
+        "src/agents.rs",
+        "src/state_root.rs",
+        "tests/gitignore_block_cli.rs",
+        "tests/repo_scans_table.rs"
+      ],
+      "scope": [
+        {
+          "prefix": ".moai/evals/audit/cases-tuning.json"
+        },
+        {
+          "prefix": "src/"
+        }
+      ],
+      "rejects": "a change under src/ that tests/gitignore_block_cli.rs reads at run time to find the state paths the sources spell, that the test did not re-run on the merge tree (SPEC-20261127-state-kept-narrowing REQ-7)"
+    },
+    {
       "id": "reads-moai-state",
       "always": true,
       "tests": [
@@ -1697,10 +1828,12 @@
       "test_targets": [
         "codex_question_tool",
         "git_hooks_cli",
+        "home_style_ownership_cli",
         "ops_table_gen_cli",
         "product_cli",
         "profile_apply_engine",
         "project_flow_closing",
+        "project_harness_namespace",
         "project_layer_follow_ups",
         "repo_claude_md",
         "repo_scans_table",
@@ -1720,6 +1853,7 @@
         "tests/card/card_guard_cli.rs",
         "tests/codex_question_tool.rs",
         "tests/git_hooks_cli.rs",
+        "tests/home_style_ownership_cli.rs",
         "tests/ops_table_gen_cli.rs",
         "tests/product_cli.rs",
         "tests/profile_apply_engine.rs",
@@ -1734,6 +1868,7 @@
         "tests/update_switch_cli.rs",
         "tests/update_switch_layer.rs",
         "tests/worktree_cli.rs",
+        "tests/project_harness_namespace.rs",
         "tests/repo_scans_table.rs"
       ],
       "scope": [
@@ -1742,6 +1877,9 @@
         },
         {
           "prefix": ".moai-cli/project.yaml"
+        },
+        {
+          "prefix": ".moai/evals/style"
         },
         {
           "prefix": ".moai/project.yaml"
@@ -1769,6 +1907,9 @@
         },
         {
           "prefix": ".moai/specs/SPEC-20261125-skill-entry-order/spec.md"
+        },
+        {
+          "prefix": ".moai/specs/SPEC-20261126-project-harness-namespace/research.md"
         }
       ],
       "rejects": "a change to a checked-in file that a test of this group opens at run time that the test did not re-run on the merge tree (SPEC-20261123-land-file-read-scans)"
@@ -1794,6 +1935,7 @@
         "claude_python_adapter_removed",
         "docs_installer_paths",
         "e2e_temp_home_cli",
+        "home_style_ownership_cli",
         "host_small_fixes_cli",
         "lane_completion_handshake",
         "lane_next_rules",
@@ -1838,6 +1980,7 @@
         "tests/claude_python_adapter_removed.rs",
         "tests/docs_installer_paths.rs",
         "tests/e2e_temp_home_cli.rs",
+        "tests/home_style_ownership_cli.rs",
         "tests/card/followup_per_spec_rules.rs",
         "tests/host_small_fixes_cli.rs",
         "tests/lane_completion_handshake.rs",
@@ -1931,6 +2074,7 @@
         "repo_scans_table",
         "retired_host_words",
         "sdd_guidance",
+        "skill_references_scan",
         "style_banner_scan",
         "worktree_report"
       ],
@@ -1964,6 +2108,7 @@
         "tests/repo_claude_md.rs",
         "tests/retired_host_words.rs",
         "tests/sdd_guidance.rs",
+        "tests/skill_references_scan.rs",
         "tests/style_banner_scan.rs",
         "tests/card/trailer_check_cli.rs",
         "tests/card/trailer_paragraph_guard_cli.rs",
@@ -1977,6 +2122,9 @@
         },
         {
           "prefix": ".github/moai"
+        },
+        {
+          "prefix": ".github/pull_request_template.md"
         },
         {
           "prefix": ".github/workflows"
@@ -2064,6 +2212,7 @@
         "gate_collect",
         "generation_request_record",
         "generic_flow_questions",
+        "go_local_reference_cli",
         "home_routing_cli",
         "home_style_cli",
         "home_style_ownership_cli",
@@ -2082,6 +2231,7 @@
         "models_revert_cli",
         "next_flow_skill_scan",
         "orca_alignment",
+        "orca_claude_config_dir",
         "orca_optional_3005",
         "plan_output_sections",
         "product_cli",
@@ -2089,9 +2239,11 @@
         "project_decide_model",
         "project_flow_closing",
         "project_harness_label",
+        "project_harness_namespace",
         "project_harness_step",
         "project_interview_minimal",
         "project_lsp_plugins_cli",
+        "project_next_flow_setup",
         "project_preview_order",
         "project_worktree_move_choice",
         "protected_paths_one_list",
@@ -2111,7 +2263,9 @@
         "self_audit_cli",
         "skill_entry_order",
         "skill_generalization_scan",
+        "skill_references_scan",
         "skill_structure",
+        "skill_text_fixtures",
         "source_manifest_facts",
         "spec_approval_digest",
         "spec_branch_name_first",
@@ -2124,17 +2278,21 @@
         "update_always_asks",
         "update_closing_commit",
         "update_conflict_baseline_cli",
+        "update_flat_agents_tty",
         "update_git_hooks_cli",
         "update_headver",
         "update_home_layer_cli",
         "update_hooks_cli",
         "update_keys_cli",
         "update_route",
+        "update_run_receipt_cli",
         "update_switch_cli",
         "update_user_layer_cli",
         "versioning_release_texts",
         "workflow_size_budget",
-        "worktree_include_guard"
+        "worktree_include_guard",
+        "worktree_new_cli",
+        "worktree_place_cli"
       ],
       "checks": [
         "cargo test --offline --locked --test card card_generated_scope:: -- card_ready_leftovers_cli:: card_hold_gate_cli:: card_leader_release_cli:: claim_verify_flags_2838:: followup_per_spec_rules:: trailer_paragraph_guard_cli::"
@@ -2174,6 +2332,7 @@
         "tests/flow_name_scan.rs",
         "tests/generation_request_record.rs",
         "tests/generic_flow_questions.rs",
+        "tests/go_local_reference_cli.rs",
         "tests/home_routing_cli.rs",
         "tests/home_style_cli.rs",
         "tests/home_style_ownership_cli.rs",
@@ -2192,6 +2351,7 @@
         "tests/models_revert_cli.rs",
         "tests/next_flow_skill_scan.rs",
         "tests/orca_alignment.rs",
+        "tests/orca_claude_config_dir.rs",
         "tests/orca_optional_3005.rs",
         "tests/plan_output_sections.rs",
         "tests/product_cli.rs",
@@ -2202,6 +2362,7 @@
         "tests/project_harness_step.rs",
         "tests/project_interview_minimal.rs",
         "tests/project_lsp_plugins_cli.rs",
+        "tests/project_next_flow_setup.rs",
         "tests/project_preview_order.rs",
         "tests/project_worktree_move_choice.rs",
         "tests/protected_paths_one_list.rs",
@@ -2218,6 +2379,8 @@
         "tests/sdd_guidance.rs",
         "tests/self_audit_cli.rs",
         "tests/skill_entry_order.rs",
+        "tests/skill_references_scan.rs",
+        "tests/skill_text_fixtures.rs",
         "tests/skill_structure.rs",
         "tests/source_manifest_facts.rs",
         "tests/spec_approval_digest.rs",
@@ -2232,6 +2395,7 @@
         "tests/update_always_asks.rs",
         "tests/update_closing_commit.rs",
         "tests/update_conflict_baseline_cli.rs",
+        "tests/update_flat_agents_tty.rs",
         "tests/update_git_hooks_cli.rs",
         "tests/update_headver.rs",
         "tests/update_home_layer_cli.rs",
@@ -2240,11 +2404,15 @@
         "tests/update_route.rs",
         "tests/update_switch_cli.rs",
         "tests/update_user_layer_cli.rs",
+        "tests/update_run_receipt_cli.rs",
         "tests/workflow_size_budget.rs",
         "tests/worktree_include_guard.rs",
+        "tests/worktree_new_cli.rs",
         "tests/build_number_texts.rs",
         "tests/skill_generalization_scan.rs",
         "tests/versioning_release_texts.rs",
+        "tests/project_harness_namespace.rs",
+        "tests/worktree_place_cli.rs",
         "tests/repo_scans_table.rs"
       ],
       "scope": [
@@ -2273,6 +2441,7 @@
         "agent_defs_package",
         "atlas_query_cli",
         "check_affected_modes_cli",
+        "check_affected_selection",
         "cli_text_citations",
         "codex_home_update_removed",
         "e2e_temp_home_cli",
@@ -2281,6 +2450,7 @@
         "help_text_names_moai",
         "home_isolation_scan",
         "hook_bash_boundary_cli",
+        "hook_write_boundary_cli",
         "hot_file_ops_merge",
         "next_flow_skill_scan",
         "orca_optional_3005",
@@ -2288,14 +2458,17 @@
         "profile_apply_engine",
         "project_harness_label",
         "project_layer_follow_ups",
+        "project_next_flow_setup",
         "project_preview_order",
         "project_worktree_move_choice",
         "repo_scans_cli",
         "repo_scans_table",
         "retired_host_words",
         "retired_hosts_layer",
+        "style_banner_scan",
         "test_weakening",
-        "worktree_cli"
+        "worktree_cli",
+        "worktree_place_cli"
       ],
       "checks": [
         "cargo test --offline --locked --test card board_bundle_link_cli:: -- ledger_recover::"
@@ -2305,6 +2478,7 @@
         "tests/atlas_query_cli.rs",
         "tests/card/board_bundle_link_cli.rs",
         "tests/check_affected_modes_cli.rs",
+        "tests/check_affected_selection.rs",
         "tests/cli_text_citations.rs",
         "tests/codex_home_update_removed.rs",
         "tests/e2e_temp_home_cli.rs",
@@ -2313,6 +2487,7 @@
         "tests/help_text_names_moai.rs",
         "tests/home_isolation_scan.rs",
         "tests/hook_bash_boundary_cli.rs",
+        "tests/hook_write_boundary_cli.rs",
         "tests/hot_file_ops_merge.rs",
         "tests/card/ledger_recover.rs",
         "tests/next_flow_skill_scan.rs",
@@ -2321,6 +2496,7 @@
         "tests/profile_apply_engine.rs",
         "tests/project_harness_label.rs",
         "tests/project_layer_follow_ups.rs",
+        "tests/project_next_flow_setup.rs",
         "tests/project_preview_order.rs",
         "tests/project_worktree_move_choice.rs",
         "tests/repo_scans_cli.rs",
@@ -2328,6 +2504,8 @@
         "tests/retired_hosts_layer.rs",
         "tests/test_weakening.rs",
         "tests/worktree_cli.rs",
+        "tests/style_banner_scan.rs",
+        "tests/worktree_place_cli.rs",
         "tests/repo_scans_table.rs"
       ],
       "scope": [
@@ -2342,6 +2520,9 @@
         },
         {
           "prefix": "src/archive.rs"
+        },
+        {
+          "prefix": "src/audit_clone.rs"
         },
         {
           "prefix": "src/board/link.rs"
@@ -2360,6 +2541,9 @@
         },
         {
           "prefix": "src/claude.rs"
+        },
+        {
+          "prefix": "src/claude_settings_merge.rs"
         },
         {
           "prefix": "src/code_refs.rs"
@@ -2410,6 +2594,9 @@
           "prefix": "src/handoff.rs"
         },
         {
+          "prefix": "src/home_style.rs"
+        },
+        {
           "prefix": "src/heavy_slot.rs"
         },
         {
@@ -2426,6 +2613,9 @@
         },
         {
           "prefix": "src/hook_engine.rs"
+        },
+        {
+          "prefix": "src/hook_write_boundary.rs"
         },
         {
           "prefix": "src/hooks.rs"
@@ -2539,6 +2729,9 @@
           "prefix": "src/update_tux.rs"
         },
         {
+          "prefix": "src/work_flow.rs"
+        },
+        {
           "prefix": "src/worktree.rs"
         },
         {
@@ -2577,6 +2770,8 @@
         "repo_scans_table",
         "review_checklist_cli",
         "search_atlas",
+        "skill_text_citations",
+        "style_banner_scan",
         "test_home_guard",
         "test_weakening"
       ],
@@ -2594,6 +2789,8 @@
         "tests/repo_scans_cli.rs",
         "tests/review_checklist_cli.rs",
         "tests/search_atlas.rs",
+        "tests/skill_text_citations.rs",
+        "tests/style_banner_scan.rs",
         "tests/test_home_guard.rs",
         "tests/test_weakening.rs",
         "tests/repo_scans_table.rs"
@@ -2834,6 +3031,34 @@
       "rejects": "The display name M-Flow in a shipped text outside the one old-name line of the interview (the flow rename, SPEC-20261122-next-flow)"
     },
     {
+      "id": "shipped-text-citations",
+      "always": true,
+      "tests": [
+        "tests/skill_text_citations.rs::scan_shipped_files_outside_the_pending_list_are_clean"
+      ],
+      "test_targets": [
+        "skill_text_citations"
+      ],
+      "rules": [
+        "tests/skill_text_citations.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/"
+        },
+        {
+          "prefix": "agents/"
+        },
+        {
+          "prefix": "templates/"
+        },
+        {
+          "prefix": "install/"
+        }
+      ],
+      "rejects": "a shipped file under skills/, agents/, templates/ or install/ that carries a card number, an Issue or pull-request number, a decision citation or a moai-adk development script or repository name, outside the exempt pack folder and the pending list (SPEC-20261126-shipped-text-citations)"
+    },
+    {
       "id": "shipped-files-name-no-tools-script",
       "always": true,
       "tests": [
@@ -2854,6 +3079,131 @@
         }
       ],
       "rejects": "A file under skills/ or agents/ that names a tools/ script of this repository (.sh, .py or .json); a user project has none"
+    },
+    {
+      "id": "agents-md-name-in-shipped-text",
+      "always": true,
+      "tests": [
+        "tests/claude_md_layout_scan.rs (all)"
+      ],
+      "test_targets": [
+        "claude_md_layout_scan"
+      ],
+      "rules": [
+        "tests/claude_md_layout_scan.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/"
+        },
+        {
+          "prefix": "agents/"
+        },
+        {
+          "prefix": "templates/"
+        },
+        {
+          "prefix": "schemas/"
+        },
+        {
+          "prefix": "install/"
+        },
+        {
+          "prefix": "README.md"
+        },
+        {
+          "prefix": "README.ko.md"
+        },
+        {
+          "prefix": "CLAUDE.md"
+        },
+        {
+          "prefix": "REVIEW.md"
+        },
+        {
+          "prefix": "src/"
+        }
+      ],
+      "rejects": "a shipped line that names an older instruction file (AGENTS.md, AGENTS.local.md, AGENTS.override.md, AGENTS files, or its format insert in the merge sources) outside a listed line fragment, a listed fragment whose count differs, a row without a reason or with a bare file name, a surface that cannot be read, a sentence the SPEC rewrote that is gone, or an older name in what a temporary setup writes (SPEC-20261122-claude-md-text-and-ignore AC-1 to AC-4)"
+    },
+    {
+      "id": "home-env-readers",
+      "always": true,
+      "tests": [
+        "tests/home_env_readers.rs::the_checked_in_sources_match_the_list"
+      ],
+      "test_targets": [
+        "home_env_readers"
+      ],
+      "rules": [
+        "tests/home_env_readers.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/"
+        }
+      ],
+      "rejects": "Reports, and fails only with MOAI_HOME_READERS=enforce: a product source under src/ whose direct HOME reads or HOME adapter calls differ from the list in tests/home_env_readers.rs (SPEC-20261124-home-env-readers REQ-13, REQ-14)"
+    },
+    {
+      "id": "check-affected-binary-picks",
+      "always": true,
+      "tests": [
+        "tests/check_affected_binary_tests.rs::the_missed_binary_tests_of_this_repository_are_selected",
+        "tests/check_affected_binary_tests.rs::every_command_file_is_named_like_a_listed_command",
+        "tests/check_affected_binary_tests.rs::every_declared_path_names_a_file"
+      ],
+      "test_targets": [
+        "check_affected_binary_tests"
+      ],
+      "rules": [
+        "tests/check_affected_binary_tests.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "Cargo.toml"
+        },
+        {
+          "prefix": "src/card/work.rs"
+        },
+        {
+          "prefix": "src/gate.rs"
+        },
+        {
+          "prefix": "src/launcher_init.rs"
+        },
+        {
+          "prefix": "src/lib.rs"
+        },
+        {
+          "prefix": "src/main.rs"
+        },
+        {
+          "prefix": "src/ops"
+        },
+        {
+          "prefix": "src/state_root.rs"
+        },
+        {
+          "prefix": "src/trailers.rs"
+        },
+        {
+          "prefix": "src/update.rs"
+        },
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs"
+          ]
+        },
+        {
+          "prefix": "tools/repo_scans.json"
+        },
+        {
+          "prefix": "tools/self_check.sh"
+        }
+      ],
+      "rejects": "A change after which check affected misses one of the binary tests this repository is known to need, a src/ops file named after no listed command, or a when-changed line of a test that names no file (SPEC-20261126-affected-binary-tests)"
     }
   ]
 }

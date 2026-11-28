@@ -287,6 +287,19 @@ impl World {
         name
     }
 
+    /// Makes the card's reservation name `relative`, the way an earlier `card take` could record
+    /// it (`card take` now records the absolute top of the checkout it names).
+    fn record_relative_worktree(&self, card: &str, relative: &str) {
+        let conn =
+            rusqlite::Connection::open(ledger::ledger_path(self.home.path(), "demo").unwrap())
+                .unwrap();
+        conn.execute(
+            "UPDATE reservation SET worktree = ?1 WHERE card_id = ?2 AND status = 'held'",
+            rusqlite::params![relative, number(card)],
+        )
+        .unwrap();
+    }
+
     /// A candidate on the current integration tip: a merge commit with the tip as its first
     /// parent and a lane commit as its second.
     fn candidate_now(&self) -> String {
@@ -718,7 +731,8 @@ fn ac2_a_relative_worktree_path_gives_the_same_answer_in_any_folder() {
         } else {
             elsewhere
         });
-        let card = w.card_in("apps/a/", Path::new("wt-rel"), Some("lane/rel"), &["one"]);
+        let card = w.card_in("apps/a/", &wt, Some("lane/rel"), &["one"]);
+        w.record_relative_worktree(&card, "wt-rel");
         let got = w.finish(&card);
         let entry = World::outbox(&got, &card);
         assert_eq!(entry["worktrees"][0]["status"], json!("removed"), "{got}");
@@ -751,7 +765,8 @@ fn ac3_a_relative_path_is_not_matched_against_the_folder_of_the_run() {
     let wt = w.linked_worktree("wt-cwd");
     w.branch("lane/cwd");
     *w.cwd.borrow_mut() = Some(w.outside(""));
-    let card = w.card_in("apps/a/", Path::new("wt-cwd"), Some("lane/cwd"), &["one"]);
+    let card = w.card_in("apps/a/", &wt, Some("lane/cwd"), &["one"]);
+    w.record_relative_worktree(&card, "wt-cwd");
     let got = w.finish(&card);
     let entry = World::outbox(&got, &card);
     assert!(

@@ -450,10 +450,12 @@ fn ac5_the_flaky_ledger_counts_names_and_marks_a_repeat() {
 fn ac5_an_unwritable_ledger_does_not_change_the_result() {
     let fx = Fixture::new();
     let r = Run::new();
-    // A folder where the ledger file belongs: the append fails.
+    // A folder where the ledger file belongs (the `local` folder of the project's state folder):
+    // the append fails.
     fs::create_dir_all(
         fx.root()
-            .join(moai_cli::PROJECT_STATE_DIR)
+            .join(moai_cli::state_root::MOAI_DIR)
+            .join(moai_cli::state_root::LOCAL_DIR)
             .join("check-flaky.jsonl"),
     )
     .unwrap();
@@ -461,6 +463,74 @@ fn ac5_an_unwritable_ledger_does_not_change_the_result() {
     let line = summary(&v);
     assert!(line.contains(" flaky=1"), "{line}");
     assert!(line.ends_with(" result=PASS"), "{line}");
+}
+
+/// Card C-590: the repository's own ignore rules decide what `git status` lists as untracked, and
+/// `card submit` refuses a worktree that lists a path. The fixture takes those rules over, so the
+/// tests below read the real file (compiled in, so `tools/repo_scans.json` selects this target
+/// when the file changes), not a copy that could drift.
+fn with_the_repository_ignore_rules(fx: &Fixture) {
+    fx.commit(&[(".gitignore", include_str!("../.gitignore"))]);
+}
+
+/// The untracked paths of the fixture, one per line (empty when there is none).
+fn untracked(fx: &Fixture) -> String {
+    git(
+        fx.root(),
+        &["status", "--porcelain", "--untracked-files=all"],
+    )
+}
+
+/// Card C-590, criterion 1: a run that sees a FLAKY test writes its record under the current
+/// state folder, creates no earlier state folder, and leaves no untracked path behind.
+#[test]
+fn c590_a_flaky_run_writes_under_the_state_folder_and_leaves_nothing_untracked() {
+    let fx = Fixture::new();
+    with_the_repository_ignore_rules(&fx);
+    let r = Run::new();
+    let v = r.go(&fx, &[], "", "t_c", "");
+    assert!(summary(&v).contains(" flaky=1"), "{}", summary(&v));
+    let record = fx
+        .root()
+        .join(moai_cli::state_root::MOAI_DIR)
+        .join(moai_cli::state_root::LOCAL_DIR)
+        .join("check-flaky.jsonl");
+    assert!(record.is_file(), "the record is not at {record:?}");
+    assert!(
+        !fx.root()
+            .join(moai_cli::state_root::EARLIER_PROJECT_DIR)
+            .exists(),
+        "the run created the earlier state folder"
+    );
+    assert_eq!(untracked(&fx), "", "the run left a path for git status");
+}
+
+/// Card C-590, criterion 2: a record that an earlier build wrote in the earlier state folder is
+/// not listed by `git status`, so a worktree that still holds it is not refused by `card submit`
+/// and nobody has to move or delete a file of that folder.
+#[test]
+fn c590_an_earlier_build_record_in_the_earlier_state_folder_is_not_untracked() {
+    let fx = Fixture::new();
+    with_the_repository_ignore_rules(&fx);
+    put(
+        fx.root(),
+        &format!(
+            "{}/check-flaky.jsonl",
+            moai_cli::state_root::EARLIER_PROJECT_DIR
+        ),
+        "{\"name\":\"moai-cli::update_command_cli t_c\"}\n",
+    );
+    assert_eq!(
+        untracked(&fx),
+        "",
+        "the earlier record is listed as untracked"
+    );
+    // The record is still read: the report counts the name.
+    let r = Run::new();
+    let out = r.flaky_cmd(&fx);
+    let text = String::from_utf8_lossy(&out.stdout).to_string();
+    let v: Value = serde_json::from_str(&text[text.find('{').unwrap()..]).unwrap();
+    assert_eq!(v["result"]["flaky"][0]["count"], 1, "{v}");
 }
 
 /// AC-6 (REQ-11): `--full` after a failed run reads no earlier run and runs the full set.
