@@ -1164,4 +1164,23 @@ mod git_config_tests {
             "{case:?}"
         );
     }
+
+    /// AC-27 (REQ-35), child side: `identity_in` answers as `identity_in_from` with no
+    /// `process_home`, so a `home` equal to the environment HOME is another HOME to it and its git
+    /// child does not keep the environment's `XDG_CONFIG_HOME` or `GIT_CONFIG_GLOBAL`.
+    #[test]
+    fn identity_in_treats_the_home_it_is_given_as_another_home() {
+        let test = "identity_in_treats_the_home_it_is_given_as_another_home";
+        let Some((work, _other, case)) = from_child(test) else {
+            return;
+        };
+        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+        refused(identity_in(&work, Some(&home)));
+        // The control: the same route trusts the repository when the process HOME is given.
+        assert_eq!(
+            identity_in_from(&work, Some(&home), Some(&home)).unwrap()["identity_status"],
+            "ok",
+            "{case:?}"
+        );
+    }
 }

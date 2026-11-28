@@ -23,7 +23,6 @@ type Call = (&'static str, &'static str, &'static str, usize);
 /// Direct reads at a command edge.
 const EDGE_READS: &[Read] = &[
     ("src/hook_entry.rs", "env", 1),
-    ("src/identity.rs", "identity", 1),
     ("src/ledger/command.rs", "resolve_home", 1),
     ("src/main.rs", "main", 1),
     ("src/main.rs", "run_internal_classified", 5),
@@ -152,12 +151,6 @@ const ADAPTER_CALLS: &[Call] = &[
     ),
     (
         "layout::environment_home",
-        "src/identity.rs",
-        "rev_parse",
-        1,
-    ),
-    (
-        "layout::environment_home",
         "src/layout.rs",
         "default_home_root",
         1,
@@ -239,11 +232,10 @@ const ADAPTERS: [(&str, &str, &str); 9] = [
 ];
 
 /// Command edges outside `src/main.rs` and the `run` functions under `src/ops/`.
-const EDGE_FUNCTIONS: [(&str, &str); 4] = [
+const EDGE_FUNCTIONS: [(&str, &str); 3] = [
     ("src/ledger/command.rs", "resolve_home"),
     ("src/hook_entry.rs", "env"),
     ("src/statusline/mod.rs", "run"),
-    ("src/identity.rs", "identity"),
 ];
 
 fn is_edge(file: &str, function: &str) -> bool {
