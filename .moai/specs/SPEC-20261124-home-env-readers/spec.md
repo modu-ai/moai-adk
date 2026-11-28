@@ -267,3 +267,14 @@ C-409 N1(감사 #409)도 이 카드 몫이에요: `identity_in` 이 부르는 gi
 - 카드 기준 1: 충족하지 않았어요(not met). 안쪽 직접 읽기 17곳과 가장자리 밖 어댑터 호출이 남아요(Plan 의 다음 묶음).
 - 카드 기준 2: 조각 2 에서 충족했고 이 묶음은 기준선 줄을 바꾸지 않았어요.
 - not_run: 전체 `cargo test --locked`(리더 몫), Windows·Linux, 실제 HOME 읽기 전후 비교.
+
+조각 3 둘째 묶음(리더 결정 노트 10986, 브랜치 `spec/home-env-readers-20261124-r3`, 기준 NeXT `af867cf151`, 예약 세대 6): 목록 파일 `tests/home_env_readers.rs` 의 세 줄만 고쳤어요. 코드는 바꾸지 않았어요. 구현 커밋은 `de6d5c73b7` 이에요. 세 줄은 에이전트 없이 레인이 직접 고쳤어요.
+
+- 기준선 관찰: 기준 tip 에서 `MOAI_HOME_READERS=enforce cargo nextest run --offline --locked --no-fail-fast --test home_env_readers` → exit 100, 5개 중 4 통과, `the_checked_in_sources_match_the_list` 가 정확히 세 줄 차이로 실패했어요(앞서 착지한 조각들이 열한 줄의 차이를 이미 맞췄어요): `unlisted edge HOME read in src/main.rs fn run_internal_classified`, `unlisted inner HOME read in src/hook_engine.rs fn tool_preflight_deny`, `call of home_workdir::home moved from src/worktree_move.rs fn default_root to fn home_for_default_root`. 로그는 `target/c410-3/enforce-before.txt`.
+- 세 줄 뒤: 같은 명령 → exit 0, 5개 모두 통과(`target/c410-3/enforce-after.txt`). 목록의 차이는 0이에요.
+- `run_internal_classified` 5→6: 새 읽기는 `AuditClonePlan` 갈래의 입구(`src/main.rs`)에서 한 번 읽어 `plan_from` 에 `home` 과 `process_home` 으로 같이 넘겨요. 함수 안의 읽기 여섯 줄은 서로 다른 명령 갈래의 입구예요. 근거는 이 SPEC 의 D-2("가장자리(`main.rs`, `ops/*::run`, `ledger::resolve_home`)의 읽기는 남겨요")와 `SPEC-20261124-identity-home-arg` 의 REQ-36(가장자리가 프로세스 HOME 을 한 번 읽어 넘겨요)이고 REQ-13(목록과 소스의 개수가 어긋나면 한 줄 보고)이 이 줄을 요구해요.
+- `tool_preflight_deny`: 안쪽 읽기라 `INNER_READS` 에 한 줄을 올렸고 행 위에 "입구로 옮길 것"이라는 사유 주석을 적었어요. 이것은 위반을 없앤 것이 아니라 알려진 안쪽 읽기로 세는 일이에요. 같은 파일의 `bypass_boundary_deny`, `session_check` 와 같은 처리이고, 세 읽기를 훅 입구 하나로 옮기는 일은 사용자 결정 뒤의 후속이에요(결정 노트 10986).
+- `default_root` → `home_for_default_root`: 같은 호출(`home_workdir::home`)이 같은 모듈 안에서 이름만 바뀌었어요. 근거는 REQ-14(옮겨진 호출은 목록에도 같은 변경)와 REQ-17(enforce 에서 차이는 실패)이에요. 리더 메시지가 인용한 "REQ-22" 는 이 SPEC 에 없어요(요구사항은 REQ-18 까지)라 REQ-14 와 REQ-17 로 적었어요. 동작 변화는 없어요.
+- 카드 기준 1: 충족하지 않았어요(not met). 안쪽 직접 읽기 18곳과 가장자리 밖 어댑터 호출이 남아요. 글을 바꿀지, 후속 카드를 열지는 사용자 결정이 먼저예요(결정 노트 10868 은 기준의 '거절'을 관찰로 읽는 것이고 '가장자리 밖 0'을 낮추는 결정이 아니에요). 이 묶음은 기준 1 을 표시하지 않아요.
+- 카드 기준 2: 이전 묶음에서 충족했고 이 묶음은 기준선 파일을 바꾸지 않았어요.
+- not_run: 전체 `cargo test --locked`(리더 몫), Windows·Linux, 실제 HOME 읽기 전후 비교, 뮤턴트(새 가드 테스트가 없어요. 목록 파일의 표 줄만 바꿨어요).

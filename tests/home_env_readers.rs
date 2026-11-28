@@ -25,7 +25,7 @@ const EDGE_READS: &[Read] = &[
     ("src/hook_entry.rs", "env", 1),
     ("src/ledger/command.rs", "resolve_home", 1),
     ("src/main.rs", "main", 1),
-    ("src/main.rs", "run_internal_classified", 5),
+    ("src/main.rs", "run_internal_classified", 6),
     ("src/ops/baseline_inventory.rs", "run", 1),
     ("src/ops/bin_names_apply.rs", "run", 1),
     ("src/ops/bin_names_plan.rs", "run", 1),
@@ -63,6 +63,9 @@ const INNER_READS: &[Read] = &[
     ("src/hook_config.rs", "load", 1),
     ("src/hook_engine.rs", "bypass_boundary_deny", 1),
     ("src/hook_engine.rs", "session_check", 1),
+    // To move to the hook entry: the hook engine reads HOME in three inner functions; one read at
+    // the entry that hands it down would replace them (ledger note 10986 of the C-409 card).
+    ("src/hook_engine.rs", "tool_preflight_deny", 1),
     ("src/hooks.rs", "env_home", 1),
     ("src/key_vault.rs", "home", 1),
     ("src/layout.rs", "environment_home", 1),
@@ -96,7 +99,7 @@ const ADAPTER_CALLS: &[Call] = &[
     (
         "home_workdir::home",
         "src/worktree_move.rs",
-        "default_root",
+        "home_for_default_root",
         1,
     ),
     ("home_workdir::home", "src/worktree_move.rs", "old_root", 1),
