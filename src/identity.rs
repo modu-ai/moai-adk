@@ -240,15 +240,16 @@ pub fn with_memo<T>(f: impl FnOnce() -> T) -> T {
 ///
 /// `home_state_root` is the home state root of `home`, or `null` for `None` (and for an empty
 /// HOME, which counts as none), for which no home state root is resolved; no other field depends
-/// on it. `home_state_root` is found from no environment variable. The `git` children read the
-/// global git configuration of `home` when one is given and, with `None`, keep the process's own
-/// lookup, so the environment HOME's configuration reaches them only through the caller that
-/// passes no HOME (SPEC-20261124-home-env-readers D-8).
+/// on it. `home_state_root` is found from no environment variable.
+///
+/// This is [`identity_in_from`] with no process HOME (SPEC-20261124-identity-home-arg REQ-35): no
+/// environment variable named HOME is read, so a `home` that is given is always another HOME to
+/// it, and its `git` children read the global git configuration of that `home` alone. With `None`
+/// they keep the process's own lookup, so the environment HOME's configuration reaches them
+/// through a caller that passes no HOME, or through [`identity_in_from`] with the process HOME
+/// (SPEC-20261124-home-env-readers D-8).
 pub fn identity_in(path: &Path, home: Option<&Path>) -> Result<Value> {
-    // Slice 2c-1 of SPEC-20261124-identity-home-arg: this function still reads the environment HOME
-    // for the comparison, so its answers stay what they were; slice 2c-2 gives `None` here once
-    // every caller that gives a HOME has moved to `identity_in_from`.
-    identity_in_from(path, home, crate::layout::environment_home().as_deref())
+    identity_in_from(path, home, None)
 }
 
 /// [`identity_in`] with the process's own HOME given as an argument (SPEC-20261124-identity-home-arg
@@ -1001,17 +1002,22 @@ mod git_config_tests {
         // The environment HOME handed over, as a command's edge hands it.
         let env_home = crate::layout::environment_home();
         if case == Path::new("none") {
-            refused(identity_in(&work, env_home.as_deref()));
+            refused(identity_in_from(
+                &work,
+                env_home.as_deref(),
+                env_home.as_deref(),
+            ));
         } else {
             assert_eq!(
-                identity_in(&work, env_home.as_deref()).unwrap()["identity_status"],
+                identity_in_from(&work, env_home.as_deref(), env_home.as_deref()).unwrap()
+                    ["identity_status"],
                 "ok",
                 "{case:?}"
             );
             // The same HOME given by hand is the environment HOME: nothing is replaced.
             let home = PathBuf::from(std::env::var_os("HOME").unwrap());
             assert_eq!(
-                identity_in(&work, Some(&home)).unwrap()["identity_status"],
+                identity_in_from(&work, Some(&home), Some(&home)).unwrap()["identity_status"],
                 "ok",
                 "{case:?}"
             );
@@ -1058,7 +1064,8 @@ mod git_config_tests {
         // The control: the environment really trusts the repository.
         let env_home = crate::layout::environment_home();
         assert_eq!(
-            identity_in(&work, env_home.as_deref()).unwrap()["identity_status"],
+            identity_in_from(&work, env_home.as_deref(), env_home.as_deref()).unwrap()
+                ["identity_status"],
             "ok"
         );
         refused(identity_in(&work, Some(&plain)));
@@ -1158,6 +1165,25 @@ mod git_config_tests {
         };
         let home = PathBuf::from(std::env::var_os("HOME").unwrap());
         refused(identity_in_from(&work, Some(&home), None));
+        assert_eq!(
+            identity_in_from(&work, Some(&home), Some(&home)).unwrap()["identity_status"],
+            "ok",
+            "{case:?}"
+        );
+    }
+
+    /// AC-27 (REQ-35), child side: `identity_in` answers as `identity_in_from` with no
+    /// `process_home`, so a `home` equal to the environment HOME is another HOME to it and its git
+    /// child does not keep the environment's `XDG_CONFIG_HOME` or `GIT_CONFIG_GLOBAL`.
+    #[test]
+    fn identity_in_treats_the_home_it_is_given_as_another_home() {
+        let test = "identity_in_treats_the_home_it_is_given_as_another_home";
+        let Some((work, _other, case)) = from_child(test) else {
+            return;
+        };
+        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+        refused(identity_in(&work, Some(&home)));
+        // The control: the same route trusts the repository when the process HOME is given.
         assert_eq!(
             identity_in_from(&work, Some(&home), Some(&home)).unwrap()["identity_status"],
             "ok",

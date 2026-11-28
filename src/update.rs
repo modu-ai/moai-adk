@@ -2012,7 +2012,7 @@ fn user_layer_plan(
     agents: &Path,
     staged: &StagedPackage,
 ) -> Result<UserLayerPlan> {
-    user_layer_plan_in(home, package, agents, staged, false)
+    user_layer_plan_in(home, package, agents, staged, false, None)
 }
 
 /// [`user_layer_plan`] with `allow_older` passed to [`plan_update_in`] (audit N1).
@@ -2022,6 +2022,7 @@ fn user_layer_plan_in(
     agents: &Path,
     staged: &StagedPackage,
     allow_older: bool,
+    process_home: Option<&Path>,
 ) -> Result<UserLayerPlan> {
     let skills = plan_update_in(home, staged, allow_older)?;
     let skill_ok = |h: &str| {
@@ -2073,7 +2074,7 @@ fn user_layer_plan_in(
     // write: notices only, read-only and outside every digest (install-checks SPEC).
     let mut notices = crate::home_style::notices(&style, &cwd);
     notices.extend(claude_folders_notice(home, &style));
-    let hooks = crate::update_hooks::plan(home, &cwd)?;
+    let hooks = crate::update_hooks::plan(home, &cwd, process_home)?;
     let keys = crate::update_keys::plan(home)?;
     let home_layer = crate::update_home::plan(home)?;
     let switch_layer = switch::plan(home)?;
@@ -2566,6 +2567,7 @@ fn update_command_core(
     confirm_git_hooks: Option<&str>,
     confirm_conflict_replace: &[String],
     allow_older: bool,
+    process_home: Option<&Path>,
     ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
 ) -> Result<serde_json::Value> {
     if !confirm_conflict_replace.is_empty() && confirm.is_none() {
@@ -2577,7 +2579,14 @@ fn update_command_core(
     let package = installed_package_dir()?;
     let agents_dir = installed_agents_dir()?;
     let staged = stage_package(&package)?;
-    let layer = user_layer_plan_in(home, &package, &agents_dir, &staged, allow_older)?;
+    let layer = user_layer_plan_in(
+        home,
+        &package,
+        &agents_dir,
+        &staged,
+        allow_older,
+        process_home,
+    )?;
     let package_text = package
         .to_str()
         .ok_or("non UTF-8 package path")?
@@ -2699,7 +2708,14 @@ fn update_command_core(
         }
     };
     // Verify the whole layer before any write.
-    let fresh = user_layer_plan_in(home, &package, &agents_dir, &staged, allow_older)?;
+    let fresh = user_layer_plan_in(
+        home,
+        &package,
+        &agents_dir,
+        &staged,
+        allow_older,
+        process_home,
+    )?;
     if fresh.plan_digest != digest {
         return Err("stale or altered plan; re-preview required".into());
     }
@@ -2921,24 +2937,28 @@ fn update_command_core(
 /// update that wrote files, the stage asks the tool pick and the model and
 /// effort questions and saves them after a yes; in every other run `models` reports the values
 /// each tool and role would use and nothing is asked. A stage problem is reported inside
-/// `models` and never turns an update result into an error.
+/// `models` and never turns an update result into an error. `process_home` is the process's own
+/// HOME as the command edge read it, or `None` (SPEC-20261124-identity-home-arg REQ-36).
 pub fn update_command(
     home: &Path,
     confirm: Option<&str>,
     confirm_cleanup: Option<&str>,
     confirm_home: Option<&str>,
     allow_older: bool,
+    process_home: Option<&Path>,
     ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
 ) -> Result<serde_json::Value> {
-    update_command_switch(
+    update_command_full(
         home,
         confirm,
         confirm_cleanup,
         confirm_home,
         None,
         None,
+        &[],
         None,
         allow_older,
+        process_home,
         ask,
     )
 }
@@ -2971,6 +2991,7 @@ pub fn update_command_switch(
         &[],
         revert_switch,
         allow_older,
+        None,
         ask,
     )
 }
@@ -2989,6 +3010,7 @@ pub fn update_command_full(
     confirm_conflict_replace: &[String],
     revert_switch: Option<&str>,
     allow_older: bool,
+    process_home: Option<&Path>,
     ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
 ) -> Result<serde_json::Value> {
     if let Some(stamp) = revert_switch {
@@ -3021,6 +3043,7 @@ pub fn update_command_full(
         confirm_git_hooks,
         confirm_conflict_replace,
         allow_older,
+        process_home,
         ask,
     )?;
     // A preview keeps exactly the keys it had (#2872 stage 2); only an applied result is
@@ -3040,7 +3063,12 @@ pub fn update_command_full(
     }
     out["models"] = if opens {
         let stdin = std::io::stdin();
-        crate::update_models::stage(home, &mut stdin.lock(), &mut std::io::stderr())
+        crate::update_models::stage_from(
+            home,
+            &mut stdin.lock(),
+            &mut std::io::stderr(),
+            process_home,
+        )
     } else {
         crate::update_models::report(home)
     };

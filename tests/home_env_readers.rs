@@ -23,7 +23,6 @@ type Call = (&'static str, &'static str, &'static str, usize);
 /// Direct reads at a command edge.
 const EDGE_READS: &[Read] = &[
     ("src/hook_entry.rs", "env", 1),
-    ("src/identity.rs", "identity", 1),
     ("src/ledger/command.rs", "resolve_home", 1),
     ("src/main.rs", "main", 1),
     ("src/main.rs", "run_internal_classified", 5),
@@ -45,7 +44,9 @@ const EDGE_READS: &[Read] = &[
     ("src/ops/home_state_plan.rs", "run", 1),
     ("src/ops/home_state_revert.rs", "run", 1),
     ("src/ops/host_wake.rs", "run", 1),
+    ("src/ops/identity.rs", "run", 1),
     ("src/ops/install_inspect.rs", "run", 1),
+    ("src/ops/lane_next.rs", "run", 1),
     ("src/ops/star_ask.rs", "run", 1),
     ("src/statusline/mod.rs", "run", 1),
 ];
@@ -146,14 +147,27 @@ const ADAPTER_CALLS: &[Call] = &[
     ("layout::default_home_root", "src/layout.rs", "plan_cli", 1),
     (
         "layout::environment_home",
+        "src/apply.rs",
+        "identity_fields",
+        1,
+    ),
+    ("layout::environment_home", "src/audit.rs", "observe", 1),
+    (
+        "layout::environment_home",
         "src/claim.rs",
         "journal_root",
         1,
     ),
     (
         "layout::environment_home",
-        "src/identity.rs",
-        "rev_parse",
+        "src/key_vault.rs",
+        "scope_here",
+        1,
+    ),
+    (
+        "layout::environment_home",
+        "src/launcher_init.rs",
+        "prepare_project",
         1,
     ),
     (
@@ -174,6 +188,7 @@ const ADAPTER_CALLS: &[Call] = &[
         "switched_dir_checked",
         1,
     ),
+    ("layout::environment_home", "src/session.rs", "glm_token", 1),
     (
         "layout::environment_home",
         "src/worktree.rs",
@@ -239,11 +254,10 @@ const ADAPTERS: [(&str, &str, &str); 9] = [
 ];
 
 /// Command edges outside `src/main.rs` and the `run` functions under `src/ops/`.
-const EDGE_FUNCTIONS: [(&str, &str); 4] = [
+const EDGE_FUNCTIONS: [(&str, &str); 3] = [
     ("src/ledger/command.rs", "resolve_home"),
     ("src/hook_entry.rs", "env"),
     ("src/statusline/mod.rs", "run"),
-    ("src/identity.rs", "identity"),
 ];
 
 fn is_edge(file: &str, function: &str) -> bool {

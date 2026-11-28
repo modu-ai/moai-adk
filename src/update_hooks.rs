@@ -117,8 +117,12 @@ fn skip(reason: String) -> Value {
 }
 
 /// The work tree `cwd` belongs to, or why there is none.
-fn project_of(cwd: &Path, home: &Path) -> std::result::Result<PathBuf, String> {
-    let id = crate::identity::identity_in(cwd, Some(home))
+fn project_of(
+    cwd: &Path,
+    home: &Path,
+    process_home: Option<&Path>,
+) -> std::result::Result<PathBuf, String> {
+    let id = crate::identity::identity_in_from(cwd, Some(home), process_home)
         .map_err(|e| format!("no project here: {e}"))?;
     match id["work_tree"].as_str() {
         Some(top) => Ok(PathBuf::from(top)),
@@ -127,20 +131,26 @@ fn project_of(cwd: &Path, home: &Path) -> std::result::Result<PathBuf, String> {
 }
 
 /// Plans the hook layer for the project `cwd` belongs to. Never writes. The gate reads this
-/// process's PATH.
-pub fn plan(home: &Path, cwd: &Path) -> Result<Layer> {
-    plan_in(home, cwd, &path_env())
+/// process's PATH. `process_home` is the process's own HOME as the command edge read it, or `None`
+/// (SPEC-20261124-identity-home-arg REQ-36).
+pub fn plan(home: &Path, cwd: &Path, process_home: Option<&Path>) -> Result<Layer> {
+    plan_in(home, cwd, &path_env(), process_home)
 }
 
 /// [`plan`] with the PATH the gate probes the `moai` on given.
-pub fn plan_in(home: &Path, cwd: &Path, path_env: &str) -> Result<Layer> {
+pub fn plan_in(
+    home: &Path,
+    cwd: &Path,
+    path_env: &str,
+    process_home: Option<&Path>,
+) -> Result<Layer> {
     let mut layer = Layer {
         project: None,
         hosts: Vec::new(),
         skipped: Vec::new(),
         plan_digest: String::new(),
     };
-    match project_of(cwd, home) {
+    match project_of(cwd, home, process_home) {
         Err(reason) => layer.skipped.push(skip(reason)),
         Ok(root) => {
             let same_as_home = fs::canonicalize(home).ok().as_deref() == Some(root.as_path());

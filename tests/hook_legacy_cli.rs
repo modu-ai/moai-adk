@@ -454,7 +454,7 @@ fn the_update_layer_counts_the_rewrite_and_gates_it() {
     use moai_cli::update_hooks;
     let w = update_world(CLAUDE);
     let before = w.files(CLAUDE);
-    let layer = update_hooks::plan_in(&w.home, &w.project, &w.rust()).unwrap();
+    let layer = update_hooks::plan_in(&w.home, &w.project, &w.rust(), None).unwrap();
     let host = &layer.to_json()["hosts"][0];
     assert_eq!(host["action"], json!("update"), "{host}");
     assert_eq!(host["migration"], json!(CLAUDE.entries), "{host}");
@@ -463,7 +463,7 @@ fn the_update_layer_counts_the_rewrite_and_gates_it() {
         .summary()
         .contains("moai-cli hook entries become moai"));
 
-    let go = update_hooks::plan_in(&w.home, &w.project, &w.go()).unwrap();
+    let go = update_hooks::plan_in(&w.home, &w.project, &w.go(), None).unwrap();
     let host = &go.to_json()["hosts"][0];
     assert_eq!(host["action"], json!("conflict"), "{host}");
     assert_eq!(host["plan_digest"], Value::Null, "{host}");
@@ -513,7 +513,7 @@ fn home_arg_rest_update_layer_refuses_a_linked_given_home() {
     assert_eq!(moai_cli::home_root::path(&w.home), link);
     assert!(fs::symlink_metadata(&link).unwrap().is_symlink());
 
-    let layer = update_hooks::plan_in(&w.home, &w.project, &w.rust()).unwrap();
+    let layer = update_hooks::plan_in(&w.home, &w.project, &w.rust(), None).unwrap();
     assert_eq!(layer.project, None, "{}", layer.to_json());
     assert!(layer.hosts.is_empty(), "{}", layer.to_json());
     assert_eq!(
