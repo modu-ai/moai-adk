@@ -698,6 +698,59 @@ fn the_preview_shows_routing_appends_and_blocked_style_targets() {
     assert!(flat_text.contains(name), "{text}");
 }
 
+/// SPEC-20261120-reply-language-rule AC-8 (REQ-10): the question names each settings key a style
+/// target would write with its value, one row per key, in the file order of the plan; a key the
+/// plan does not write (a target that is unchanged, or a plan with no `language` key because no
+/// language is saved) is not shown. Both languages draw the same `file: key = value` text.
+#[test]
+fn the_update_question_names_the_settings_key_a_style_target_writes() {
+    let keys = serde_json::json!([
+        {"key": "outputStyle", "value": "MoAI-Style"},
+        {"key": "language", "value": "korean"},
+    ]);
+    for lang in [Lang::Ko, Lang::En] {
+        let v = view(lang, Look::Plain, 100, None);
+        let mut p = fixture("preview-changes");
+        p["style"]["targets"][1]["action"] = "update".into();
+        p["style"]["targets"][1]["keys"] = keys.clone();
+        let text = question(&p, &v);
+        let rows: Vec<&str> = text
+            .lines()
+            .filter(|l| l.contains("settings.json: "))
+            .collect();
+        assert_eq!(rows.len(), 2, "{text}");
+        assert!(
+            rows[0].contains("settings.json: outputStyle = MoAI-Style"),
+            "{text}"
+        );
+        assert!(
+            rows[1].contains("settings.json: language = korean"),
+            "{text}"
+        );
+        // A plan without the `language` key (no saved language) shows only the style key.
+        let mut no_language = p.clone();
+        no_language["style"]["targets"][1]["keys"] = serde_json::json!([keys[0]]);
+        let text = question(&no_language, &v);
+        assert!(!text.contains("language ="), "{text}");
+        assert!(text.contains("outputStyle = MoAI-Style"), "{text}");
+        // A target that writes nothing names no key, even when the plan lists one.
+        let mut unchanged = p.clone();
+        unchanged["style"]["targets"][1]["action"] = "unchanged".into();
+        let text = question(&unchanged, &v);
+        assert!(!text.contains("settings.json: "), "{text}");
+        // The same plan on the screen shown when nothing is asked.
+        let text = screen(&p, Asked::NotAsked, &v);
+        assert!(text.contains("settings.json: language = korean"), "{text}");
+    }
+    for lang in [Lang::Ko, Lang::En] {
+        let v = view(lang, Look::Plain, 80, None);
+        let mut p = fixture("preview-changes");
+        p["style"]["targets"][1]["action"] = "update".into();
+        p["style"]["targets"][1]["keys"] = keys.clone();
+        check("question-style-keys", lang, &question(&p, &v), 80);
+    }
+}
+
 /// SPEC-20261122-output-style-install-checks: the `notices` list (a project setting that hides
 /// the style, the `/status` pointer) is a row of its own word on the question and on the result
 /// screen, never a skipped write.
