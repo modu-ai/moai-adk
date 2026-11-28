@@ -72,7 +72,7 @@ impl Home {
     /// The running binary of the build folder `a`: it is named `moai-cli` so it is never the
     /// launcher itself, which the step looks for beside it as `bin/moai`.
     fn exe(&self) -> PathBuf {
-        self.root.join(".moai-cli/versions/a/bin/moai-cli")
+        self.dir().parent().unwrap().join("versions/a/bin/moai-cli")
     }
 
     fn dir(&self) -> PathBuf {
@@ -418,9 +418,13 @@ impl Home {
 #[test]
 fn plan_is_held_for_a_build_not_in_this_state_folders_versions() {
     let _g = gate();
-    for rel in [".moai/versions/a/bin", ".moai-cli/other/a/bin"] {
+    // The script's own state folder is the earlier one; `MOAI_DIR` is the other state folder.
+    for rel in [
+        format!("{}/versions/a/bin", moai_cli::home_root::MOAI_DIR),
+        format!("{}/other/a/bin", moai_cli::HOME_STATE_DIR),
+    ] {
         let h = Home::new();
-        let bin = h.root.join(rel);
+        let bin = h.root.join(&rel);
         fs::create_dir_all(&bin).unwrap();
         let launcher = bin.join("moai");
         write_executable(&launcher, &format!("#!/bin/sh\necho '{}'\n", rust_line()));

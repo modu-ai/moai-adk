@@ -71,7 +71,13 @@ fn moai_file(home: &Path) -> PathBuf {
 
 /// The launcher the step looks for: `bin/moai` of the build folder `a`.
 fn launcher_file(home: &Path) -> PathBuf {
-    home.join(".moai-cli/versions/a/bin/moai")
+    let state = moai_file(home)
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    state.join("versions/a/bin/moai")
 }
 
 fn run(exe: &Path, home: &Path, args: &[&str]) -> Output {
