@@ -3267,6 +3267,44 @@
         }
       ],
       "rejects": "a cd or git -C in an audit text under skills/, agents/ or docs/ that the baseline of tests/audit_reads_by_object_id.rs does not cover"
+    },
+    {
+      "id": "shipped-text-never-runs-moai-cli",
+      "always": true,
+      "tests": [
+        "tests/shipped_text_never_runs_moai_cli.rs::shipped_text_never_runs_moai_cli"
+      ],
+      "test_targets": [
+        "shipped_text_never_runs_moai_cli"
+      ],
+      "rules": [
+        "tests/shipped_text_never_runs_moai_cli.rs",
+        "tests/fixtures/shipped_text_moai_cli/allow.tsv"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/"
+        },
+        {
+          "prefix": "agents/"
+        },
+        {
+          "prefix": "templates/"
+        },
+        {
+          "prefix": "install/README.md"
+        },
+        {
+          "prefix": "README"
+        },
+        {
+          "prefix": "src/help.rs"
+        },
+        {
+          "prefix": "tests/fixtures/help/"
+        }
+      ],
+      "rejects": "a shipped text, README, help text or help golden that names moai-cli as a command to run outside the reasoned allow list (SPEC-20261127-installed-binary-name-moai AC-10)"
     }
   ]
 }

@@ -166,8 +166,9 @@ fn the_release_check_accepts_both_printed_names_and_nothing_else() {
     }
 }
 
-/// The skill's fallback sentence verifies the signature naming `moai`, still takes the earlier
-/// printed name, and the path it falls back to is the earlier binary name.
+/// The skill's version check verifies the signature naming `moai` and still takes the earlier
+/// printed name; when neither answers it reports the route as blocked and stops, and names no
+/// other command to run (SPEC-20261127-installed-binary-name-moai D-6).
 #[test]
 fn the_skill_fallback_sentence_names_both_signatures() {
     let skill = repo_file("skills/moai/SKILL.md");
@@ -177,7 +178,11 @@ fn the_skill_fallback_sentence_names_both_signatures() {
         .expect("the skill has the version check sentence");
     assert!(line.contains("`moai <version> (rust)`"), "{line}");
     assert!(line.contains("`moai-cli <version> (rust)`"), "{line}");
-    assert!(line.contains("use `moai-cli` for every command"), "{line}");
+    assert!(
+        line.contains("report the route as blocked") && line.contains("and stop"),
+        "{line}"
+    );
+    assert!(!line.contains("for every command"), "{line}");
     let first_new = line.find("`moai <version> (rust)`").unwrap();
     let first_old = line.find("`moai-cli <version> (rust)`").unwrap();
     assert!(first_new < first_old, "the new name comes first: {line}");

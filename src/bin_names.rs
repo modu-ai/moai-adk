@@ -1,10 +1,11 @@
-//! The two command names in an installed version folder (#2791 AC-1, design #2725 R2).
+//! The command names in an installed version folder (#2791 AC-1, design #2725 R2).
 //!
-//! The decided layout installs a build at `<home>/<state folder>/versions/<v>/bin/moai-cli`
-//! (`moai-cli.exe` on Windows), where the state folder is `.moai-cli` or `.moai` (`versions_dir_of`
-//! accepts either name). `moai` is the public name (#2790 R1 builds both from one
-//! `main`); here the folder gets `bin/moai` as a hard link to `bin/moai-cli`, so the two names
-//! are one file and the installation keeps the one identity `install::identity_exe` gives it.
+//! The current layout installs a build at `<home>/<state folder>/versions/<v>/bin/moai`
+//! (`moai.exe` on Windows), where the state folder is `.moai-cli` or `.moai` (`versions_dir_of`
+//! accepts either name); a folder that holds only `bin/moai` is `unchanged`. A folder an
+//! earlier release made holds `bin/moai-cli`: it keeps being judged as before, and applying its
+//! plan makes `bin/moai` as a hard link to `bin/moai-cli`, so the two names are one file and
+//! the installation keeps the one identity `install::identity_exe` gives it.
 //!
 //! Plan → apply with a plan digest and a caller-supplied permission reference. Only this
 //! binary's version folder is touched; PATH, shell files and any other `moai` (the Go one

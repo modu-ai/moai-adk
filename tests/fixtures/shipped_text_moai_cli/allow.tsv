@@ -1,0 +1,28 @@
+# Places where a shipped text may still spell `moai-cli` (SPEC-20261127-installed-binary-name-moai AC-10).
+# Columns, separated by a tab: path, the allowed phrase as it stands in the line, the reason.
+# The phrase is taken out of the line; a `moai-cli` left over on the line is a finding. A row that
+# matches no line is stale and fails the test. A phrase never allows `moai-cli` as a command to run.
+install/README.md	`moai-cli-<target>.tar.xz`	the release asset keeps its name, which the SPEC leaves alone as a build target name
+install/README.md	no `bin/moai-cli` is made	says what the installer no longer creates, as a negative statement about the earlier file
+install/README.md	holds only `moai-cli` (an earlier release)	names the file name an earlier release archive carries so the install can still read it
+install/README.md	A `moai-cli` that an earlier install	reports a file an earlier install left in a version folder, as something that is left alone
+install/README.md	a `moai-cli` link that an earlier install	reports a link an earlier install left in the link folder, as something that is left alone
+install/README.md	a fake `moai-cli` that	describes the test fixture that stands in for the archive file under its release name
+install/README.md	the real `moai-cli` when one is built	describes the Python install test, which still builds the file under its earlier name; C-199 decides that test
+README.md	earlier file name `moai-cli`	names the earlier file name of the run recorded on 2026-11-14, as history
+README.md	also installed a file named `moai-cli`	says an earlier build installed that file, as history for readers of old installs
+README.md	leave an existing `moai-cli` as it is	tells readers that an install never removes a file an earlier install left
+README.ko.md	이전 파일 이름 `moai-cli`로 읽었고	names the earlier file name of the run recorded on 2026-11-14, as history
+README.ko.md	`moai-cli`라는 파일도 설치했습니다	says an earlier build installed that file, as history for readers of old installs
+README.ko.md	이미 있는 `moai-cli`는 그대로 둡니다	tells readers that an install never removes a file an earlier install left
+skills/moai/SKILL.md	prints `moai-cli <version> (rust)`	names the version line a build from before the rename prints, so the signature check still reads it
+skills/moai/references/internal/build-slots.md	~/.cache}/moai-cli/heavy-slots/	the cache folder of builds from before the rename, which the slot code still reads
+skills/moai/workflows/project.md	`.moai/moai-cli.json`	the earlier marker file name that the state check still reads
+skills/moai/references/source-manifest.json	that moai-cli writes as rules/moai-flow.md	provenance text that names the product's earlier name for a rule file it wrote
+skills/moai/references/source-manifest.json	text moai-cli writes as rules/moai.md	provenance text that names the product's earlier name for a rule file it wrote
+src/help.rs	`moai`, `moai-cli`, a renamed copy	code comment naming the file names an argv zero can have, not text the help prints
+src/help.rs	`moai-cli` stays an alias of	code comment about the alias of the executable, not text the help prints
+src/help.rs	archive/moai-cli-<UTC>/	the name of the folder the retire step moves an earlier state folder to
+src/help.rs	"/x/moai-cli",	test data for the argv zero rule, not text the help prints
+src/help.rs	"moai-cli",	test data for the argv zero rule, not text the help prints
+src/help.rs	path/moai-cli.exe",	test data for the argv zero rule, not text the help prints
