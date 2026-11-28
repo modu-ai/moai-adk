@@ -5,15 +5,19 @@
 //! (`moai.old`). The installer lays a link of that name and leaves a plain file alone with a
 //! warning, so nobody ends such a script. This part ends the two scripts it knows, v1 and v2, by
 //! their sha256: the confirmed run keeps the old script as `moai.before-<UTC>` and puts a
-//! relative link `moai` to the Rust launcher `moai-cli` beside it in its place.
+//! relative link `moai` to the running build's `bin/moai` in its place
+//! (`../versions/<v>/bin/moai`, SPEC-20261127-installed-binary-name-moai D-4).
 //!
 //! Like the home part (`update_home`) it has its own token (`--confirm-switch`): the preview's
 //! clock-free content digest; it is not part of the layer's `plan_digest`; a yes at the terminal
-//! question never applies it. The link is offered only while the launcher beside the script
-//! answers `--version` with the Rust signature. The apply checks every condition before its
+//! question never applies it. The link is offered only while the `bin/moai` of the build folder
+//! the running binary sits in answers `--version` with the Rust signature; a build outside a
+//! `versions/<v>/bin/` folder of the state folder, or one with no `bin/moai`, keeps the step held
+//! with a sentence naming the file it looked for. The apply checks every condition before its
 //! first write and replaces the script by one rename, so the name never goes missing. The revert
-//! moves back only a kept copy that is byte-equal to a known script, and only over the link this
-//! step made. `go/bin/moai` is read and reported, never written.
+//! moves back only a kept copy that is byte-equal to a known script, and only over a link this
+//! step made (the shape above, or the earlier `moai-cli` one). `go/bin/moai` is read and
+//! reported, never written.
 
 use super::test_fault;
 use serde_json::{json, Value};
@@ -27,8 +31,11 @@ type Result<T> = std::result::Result<T, String>;
 pub const V1_SHA256: &str = "3c3446a3dbd7d918a7d6465c0765ae66b2dafe3231b9be11cd3181737b6658ac";
 /// sha256 (hex) of the v2 switch script, which the program once carried and wrote.
 pub const V2_SHA256: &str = "36dd242bf1337efa9b4759ba7166fb6adea04427800334a374027cc246eb26e4";
-/// The launcher the confirmed run links `moai` to, relative to the script's folder.
-pub const LINK_TARGET: &str = "moai-cli";
+/// The launcher the confirmed run links `moai` to: the `bin/moai` of the running build's folder.
+const LAUNCHER: &str = "moai";
+/// The link an earlier version of this step made, relative to the script's folder: only the
+/// revert still reads it.
+const EARLIER_TARGET: &str = "moai-cli";
 
 /// The token prefix, so a token of another part is never taken for this one.
 const PREFIX: &str = "switch:";
@@ -38,7 +45,6 @@ const MAX_BYTES: usize = 65536;
 const SAVED_PATTERN: &str = "moai.before-<UTC>";
 const NOT_REVIEWED: &str =
     "the switch token differs from the preview's; nothing applied, preview again";
-const HELD: &str = "the launcher `path/moai-cli` beside the script is missing or does not answer `--version` with the Rust signature, so no link is offered; lay the launcher with the installer, then preview again";
 const NO_LINK_HERE: &str =
     "this step makes a relative symbolic link, which is not made on this platform; nothing written";
 
@@ -169,19 +175,95 @@ fn classify(file: &Path) -> Found {
     }
 }
 
-/// Whether `path/moai` is the relative link this step makes.
-fn is_the_link(file: &Path) -> bool {
+/// Whether `path/moai` is a symbolic link whose target is exactly `target`.
+fn is_link_to(file: &Path, target: &str) -> bool {
     fs::symlink_metadata(file).is_ok_and(|m| m.file_type().is_symlink())
-        && fs::read_link(file).is_ok_and(|t| t == Path::new(LINK_TARGET))
+        && fs::read_link(file).is_ok_and(|t| t == Path::new(target))
 }
 
-/// What the launcher `path/moai-cli` is: it must be a regular file, or a link that resolves to
-/// one, with an execute bit, and it is then started once with `--version` by the safe probe of
-/// `install` (cleared environment but `HOME`, a fixed `PATH`, a time limit). A dangling link and
-/// a link to a folder read as missing, because `metadata` follows the link.
-fn launcher_state(dir: &Path, home: &Path) -> Launcher {
-    let path = dir.join(LINK_TARGET);
-    let Ok(meta) = fs::metadata(&path) else {
+/// Whether `target` has a shape this step makes: `../versions/<v>/bin/moai`, or the earlier
+/// `moai-cli`.
+fn is_switch_target(target: &Path) -> bool {
+    use std::path::Component::{Normal, ParentDir};
+    if target == Path::new(EARLIER_TARGET) {
+        return true;
+    }
+    let mut parts = target.components();
+    matches!(
+        (parts.next(), parts.next(), parts.next(), parts.next(), parts.next(), parts.next()),
+        (Some(ParentDir), Some(Normal(versions)), Some(Normal(_)), Some(Normal(bin)), Some(Normal(name)), None)
+            if versions == "versions" && bin == "bin" && name == LAUNCHER
+    )
+}
+
+/// Whether `path/moai` is a link this step made, in either shape (the revert's test).
+fn is_a_switch_link(file: &Path) -> bool {
+    fs::symlink_metadata(file).is_ok_and(|m| m.file_type().is_symlink())
+        && fs::read_link(file).is_ok_and(|t| is_switch_target(&t))
+}
+
+/// The running build as the step sees it: the launcher file it looks for and, when the binary
+/// sits in `<state folder>/versions/<v>/bin/`, the relative link target to that launcher.
+struct Build {
+    launcher: PathBuf,
+    target: Option<String>,
+}
+
+/// `p` resolved through links; a file that does not exist (yet) is resolved by its folder.
+fn resolved(p: &Path) -> PathBuf {
+    if let Ok(c) = fs::canonicalize(p) {
+        return c;
+    }
+    match (
+        p.parent().and_then(|d| fs::canonicalize(d).ok()),
+        p.file_name(),
+    ) {
+        (Some(d), Some(n)) => d.join(n),
+        _ => p.to_path_buf(),
+    }
+}
+
+fn target_of(home: &Path, bin: &Path) -> Option<String> {
+    let canonical_home = fs::canonicalize(home).ok()?;
+    let versions = crate::bin_names::versions_dir_of(&canonical_home, bin)?;
+    // The link lies in `<state folder>/path/`, so `..` must reach the folder that holds `versions`.
+    let state = fs::canonicalize(crate::home_root::path(home)).ok()?;
+    if versions.parent()? != state {
+        return None;
+    }
+    let folder = bin.parent()?.file_name()?.to_str()?;
+    Some(format!("../versions/{folder}/bin/{LAUNCHER}"))
+}
+
+fn build_of(home: &Path, exe: &Path) -> Build {
+    let exe = resolved(exe);
+    let bin = exe.parent().map(Path::to_path_buf).unwrap_or_default();
+    Build {
+        target: target_of(home, &bin),
+        launcher: bin.join(LAUNCHER),
+    }
+}
+
+/// The sentence for a held step: it names the launcher file it looked for.
+fn held_reason(build: &Build) -> String {
+    match build.target {
+        Some(_) => format!(
+            "the launcher `{}` (the bin/moai of the running build) is missing or does not answer `--version` with the Rust signature, so no link is offered; lay the launcher with the installer, then preview again",
+            build.launcher.display()
+        ),
+        None => format!(
+            "the running build is not in a `versions/<v>/bin/` folder of this state folder, so no relative link to `{}` can be made; run `moai update` from the installed build, then preview again",
+            build.launcher.display()
+        ),
+    }
+}
+
+/// What the launcher `bin/moai` of the running build is: it must be a regular file, or a link
+/// that resolves to one, with an execute bit, and it is then started once with `--version` by
+/// the safe probe of `install` (cleared environment but `HOME`, a fixed `PATH`, a time limit). A
+/// dangling link and a link to a folder read as missing, because `metadata` follows the link.
+fn launcher_state(path: &Path, home: &Path) -> Launcher {
+    let Ok(meta) = fs::metadata(path) else {
         return Launcher::Missing;
     };
     if !meta.is_file() {
@@ -194,15 +276,15 @@ fn launcher_state(dir: &Path, home: &Path) -> Launcher {
             return Launcher::Missing;
         }
     }
-    Launcher::from_line(crate::install::probe_version_env(&path, &[("HOME", home)]))
+    Launcher::from_line(crate::install::probe_version_env(path, &[("HOME", home)]))
 }
 
 /// The token of one preview: sixteen hex digits of the digest of what it is about (the script,
-/// the launcher beside it and the line the launcher answered).
-fn token_for(file: &Path, script_sha: &str, launcher: &Path, line: &str) -> String {
+/// the launcher, the link target and the line the launcher answered).
+fn token_for(file: &Path, script_sha: &str, launcher: &Path, target: &str, line: &str) -> String {
     let d = hex_of(
         format!(
-            "{}|{script_sha}|{}|{line}",
+            "{}|{script_sha}|{}|{target}|{line}",
             file.display(),
             launcher.display()
         )
@@ -244,8 +326,14 @@ fn notes() -> Value {
     ])
 }
 
-/// The switch preview of `home`. Writes nothing.
+/// The switch preview of `home` for the running binary. Writes nothing.
 pub fn plan(home: &Path) -> Result<Layer> {
+    let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
+    plan_for(home, &exe)
+}
+
+/// The switch preview of `home` for the build whose binary is `exe`. Writes nothing.
+pub fn plan_for(home: &Path, exe: &Path) -> Result<Layer> {
     let none = Layer {
         preview: None,
         token: None,
@@ -255,35 +343,37 @@ pub fn plan(home: &Path) -> Result<Layer> {
         return Ok(none);
     }
     let file = dir.join("moai");
-    let launcher_path = dir.join(LINK_TARGET);
+    let build = build_of(home, exe);
     let found = classify(&file);
     // A file this update does not know is never replaced, so nothing beside it is started.
     let (known, launcher) = match &found {
         Found::Absent | Found::Link => return Ok(none),
-        Found::Known(known) => (Some(known), Some(launcher_state(&dir, home))),
+        Found::Known(known) => (Some(known), Some(launcher_state(&build.launcher, home))),
         Found::Other(why) => {
             let _ = why;
             (None, None)
         }
     };
     let launcher_line = launcher.as_ref().and_then(|l| l.line().map(str::to_string));
-    let (action, reason, token) = match (known, launcher.as_ref()) {
-        (Some(known), Some(state)) if state.is_rust() => (
+    let (action, reason, token) = match (known, launcher.as_ref(), build.target.as_deref()) {
+        (Some(known), Some(state), Some(target)) if state.is_rust() => (
             "link",
             None,
             Some(token_for(
                 &file,
                 known.sha,
-                &launcher_path,
+                &build.launcher,
+                target,
                 state.line().unwrap_or_default(),
             )),
         ),
-        (Some(_), Some(_)) => ("held", Some(HELD.to_string()), None),
+        (Some(_), Some(_), _) => ("held", Some(held_reason(&build)), None),
         _ => ("left", why_of(&found), None),
     };
+    let target_shown = build.target.as_deref().unwrap_or_default();
     let summary_line = match (&token, &reason, known) {
         (Some(t), _, Some(known)) => format!(
-            "{} script -> a link to the Rust launcher `{LINK_TARGET}` · the old script is kept as {SAVED_PATTERN} · confirm with: moai update --confirm-switch {t}",
+            "{} script -> a link to the Rust launcher `{target_shown}` · the old script is kept as {SAVED_PATTERN} · confirm with: moai update --confirm-switch {t}",
             known.name
         ),
         (None, Some(why), _) if action == "held" => format!("waits: {why}"),
@@ -295,9 +385,9 @@ pub fn plan(home: &Path) -> Result<Layer> {
         "file": file.display().to_string(),
         "script": known.map(|k| k.name),
         "script_sha256": known.map(|k| k.sha),
-        "launcher": launcher.as_ref().map(|_| launcher_path.display().to_string()),
+        "launcher": launcher.as_ref().map(|_| build.launcher.display().to_string()),
         "launcher_version_line": launcher_line,
-        "link_target": LINK_TARGET,
+        "link_target": build.target,
         "saved_as": SAVED_PATTERN,
         "reason": reason,
         "summary": summary_line,
@@ -423,13 +513,13 @@ fn create_new(path: &Path, bytes: &[u8], mode: u32) -> std::io::Result<()> {
 
 #[cfg(unix)]
 /// The link, made under a name that must not exist yet.
-fn make_link(temp: &Path) -> std::io::Result<()> {
-    std::os::unix::fs::symlink(LINK_TARGET, temp)
+fn make_link(target: &str, temp: &Path) -> std::io::Result<()> {
+    std::os::unix::fs::symlink(target, temp)
 }
 
 #[cfg(not(unix))]
 /// The backstop behind [`links_here`]: never reached, and it writes nothing if it is.
-fn make_link(_temp: &Path) -> std::io::Result<()> {
+fn make_link(_target: &str, _temp: &Path) -> std::io::Result<()> {
     Err(std::io::Error::other(NO_LINK_HERE))
 }
 
@@ -447,15 +537,23 @@ fn sync_dir(dir: &Path) {
 /// kept copy. The preview is computed again and must give the same token; every condition is
 /// checked before the first write; a failed step leaves the script whole.
 pub fn apply(home: &Path, token: &str, now: &str) -> Result<Value> {
+    let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
+    apply_for(home, &exe, token, now)
+}
+
+/// [`apply`] for the build whose binary is `exe`.
+pub fn apply_for(home: &Path, exe: &Path, token: &str, now: &str) -> Result<Value> {
     if !links_here() {
         return Err(NO_LINK_HERE.into());
     }
     let stamp = compact_utc(now)
         .ok_or("the clock is not a UTC time (YYYY-MM-DDTHH:MM:SSZ); nothing written")?;
-    let fresh = plan(home)?;
+    let fresh = plan_for(home, exe)?;
     if fresh.token() != Some(token) {
         return Err(NOT_REVIEWED.into());
     }
+    let build = build_of(home, exe);
+    let target = build.target.clone().ok_or(NOT_REVIEWED)?;
     let dir = link_dir(home);
     let file = dir.join("moai");
     let saved = dir.join(format!("moai.before-{stamp}"));
@@ -499,7 +597,7 @@ pub fn apply(home: &Path, token: &str, now: &str) -> Result<Value> {
         )
     };
     test_fault("switch-after-save").map_err(after_first)?;
-    if let Err(e) = make_link(&temp) {
+    if let Err(e) = make_link(&target, &temp) {
         let _ = fs::remove_file(&temp);
         return Err(after_first(format!("linking {}: {e}", temp.display())));
     }
@@ -517,7 +615,7 @@ pub fn apply(home: &Path, token: &str, now: &str) -> Result<Value> {
         return Err(after_first(e));
     }
     sync_dir(&dir);
-    if !is_the_link(&file) {
+    if !is_link_to(&file, &target) {
         return Err(format!(
             "{} did not read back as the link this step makes; the old script is kept as {}",
             file.display(),
@@ -531,8 +629,8 @@ pub fn apply(home: &Path, token: &str, now: &str) -> Result<Value> {
         "saved": saved.display().to_string(),
         "script": script.name,
         "script_sha256": script.sha,
-        "link": LINK_TARGET,
-        "launcher": dir.join(LINK_TARGET).display().to_string(),
+        "link": target,
+        "launcher": build.launcher.display().to_string(),
         "revert": format!("moai update --revert-switch {stamp}"),
         "revert_plain": format!("mv \"{}\" \"{}\"", saved.display(), file.display()),
     }))
@@ -581,9 +679,9 @@ pub fn revert(home: &Path, stamp: &str) -> Result<Value> {
             saved.display()
         ));
     };
-    if !is_the_link(&file) {
+    if !is_a_switch_link(&file) {
         return Err(format!(
-            "{} is not the link this step makes to `{LINK_TARGET}`; left as it is, the kept copy stays",
+            "{} is not the link this step makes to a build's `bin/{LAUNCHER}`; left as it is, the kept copy stays",
             file.display()
         ));
     }

@@ -127,7 +127,7 @@ approval:
 
 ## Result
 
-조각 1(Rust 이름 검사)과 조각 2(설치 스크립트 둘과 `install/README.md`)까지 구현했어요. 조각 3(AC-9)과 조각 4(AC-10~AC-12)는 남았어요.
+조각 1(Rust 이름 검사), 조각 2(설치 스크립트 둘과 `install/README.md`), 조각 3(switch 런처 이름)까지 구현했어요. 조각 4(AC-10~AC-12)는 남았어요.
 
 - AC-1: met — `ac1_an_archive_with_both_files_installs_bin_moai_alone`(tests/install_cli.rs), 두 번째 실행은 아무것도 쓰지 않아요.
 - AC-2: met — `ac2_an_archive_with_moai_cli_only_installs_it_as_bin_moai`.
@@ -137,7 +137,7 @@ approval:
 - AC-6: met — `ac6_no_name_state_makes_or_refreshes_a_moai_cli`(핀).
 - AC-7: met — `ac7_a_new_folder_with_moai_alone_finds_the_earlier_receipt`(핀, 구현 전에도 통과해요).
 - AC-8: met — `ac8_a_name_left_in_place_is_listed_and_never_touched`와 요약 줄의 단위 테스트 `the_summary_names_each_command_name_left_in_place`.
-- AC-9: not_run — 조각 3.
+- AC-9: met — `ac9_a_script_without_a_moai_cli_beside_it_gets_a_link_to_the_running_builds_bin_moai`(tests/update_switch_cli.rs): 실제 바이너리를 임시 HOME 에서 돌려 미리보기 → 확인 → 상대 링크 `../versions/a/bin/moai`, 옛 스크립트는 `moai.before-<UTC>` 로 보관, 링크로 `--version` 응답, 되돌리기까지 확인해요. 런처가 없을 때의 `held` 와 찾은 파일 이름은 `held_without_bin_moai_of_the_running_build_names_the_file`, `held_a_build_outside_a_versions_folder_names_its_bin_moai`(CLI)와 `plan_is_held_for_a_build_not_in_this_state_folders_versions`, `revert_takes_the_earlier_moai_cli_link_and_no_other_shape`(tests/update_switch_layer.rs)가 맡아요.
 - AC-10: not_run — 조각 4.
 - AC-11: not_run — 조각 4.
 - AC-12: not_run — 조각 4.
