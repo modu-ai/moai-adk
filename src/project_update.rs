@@ -2562,6 +2562,32 @@ mod tests {
         }
     }
 
+    /// SPEC-20261126-claude-md-fresh-merge REQ-1 with SPEC-20261126-go-local-settings-reference
+    /// D-8: a go-state step that only offers the local settings pick moves nothing and holds
+    /// nothing, also when it prints a command; with a move to make it holds the `claude-md`
+    /// step, and so does a go-settings command, pick or no pick.
+    #[test]
+    fn a_go_state_step_that_only_offers_the_settings_pick_does_not_hold_claude_md() {
+        let command = || Some((vec!["moai".to_string()], Value::Null));
+        let state = |apply| Step {
+            apply,
+            ..Step::waiting("go-state", "needs_decision", "")
+        };
+        let settings = |apply| Step {
+            apply,
+            ..Step::waiting("go-settings", "ready", "")
+        };
+        // The pick: a printed command and no move.
+        let pick = [settings(None), state(command())];
+        assert!(!claude_md_waits(&pick, true));
+        // The same step with a move to make holds the step.
+        assert!(claude_md_waits(&pick, false));
+        // A go-settings command holds it whatever go-state offers.
+        let both = [settings(command()), state(command())];
+        assert!(claude_md_waits(&both, true));
+        assert!(claude_md_waits(&both, false));
+    }
+
     #[test]
     fn a_phase_takes_its_worst_step() {
         let s = |state| Step::waiting("x", state, "");

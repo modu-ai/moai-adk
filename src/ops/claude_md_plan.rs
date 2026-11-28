@@ -5,9 +5,9 @@ use std::path::PathBuf;
 
 /// Preview the old instruction files and their project lines
 ///
-/// Preview the instruction files of a Go-generation project: `CLAUDE.md`, `AGENTS.md`,
-/// `AGENTS.local.md`, `CLAUDE.local.md` and every file under the state folder's
-/// `docs/local-rules/` that exists, each with its sha256, line count, git tracking, what it was
+/// Preview the instruction files of a Go-generation project: the root `CLAUDE.md`, the older
+/// team and personal instruction files the Go tool wrote beside it, `CLAUDE.local.md` and every
+/// file under the state folder's `docs/local-rules/` that exists, each with its sha256, line count, git tracking, what it was
 /// compared with and the numbers of the lines that are the project's own. A file whose bytes
 /// equal the Go manifest's record has none; with the recorded version found in git history only
 /// the lines that version lacks count; otherwise every line counts. A source that is a link,
