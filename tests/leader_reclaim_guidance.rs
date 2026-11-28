@@ -36,6 +36,22 @@ fn leader_rules_name_land_sync_and_its_key_without_a_card_number() {
     }
 }
 
+/// The leader round names what it reads for a lane that reports the same wait in two rounds, and
+/// reads the authors of a range before it asks a lane to audit it.
+#[test]
+fn leader_round_checks_a_repeated_wait_and_the_authors_of_an_audit() {
+    let text = fs::read_to_string(LEADER_RULES).unwrap();
+    let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    for s in [
+        "reports the same wait in two rounds",
+        "the output file it waits on and the time of its last write",
+        "git log --format='%(trailers:key=Moai-Session,valueonly)' <base>..<head>",
+        "pick a lane whose session is not among them",
+    ] {
+        assert!(text.contains(s), "docs/leader-rules.md lacks {s}");
+    }
+}
+
 /// The first card number in `text`: `C-` and a digit, where the `C` does not end a longer word.
 fn card_number(text: &str) -> Option<String> {
     let bytes = text.as_bytes();
