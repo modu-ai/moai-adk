@@ -87,6 +87,26 @@ fn timeout_reason(group_signal_sent: bool) -> &'static str {
     }
 }
 
+/// The native install command of Claude Code for Windows PowerShell (https://code.claude.com/docs/en/setup.md,
+/// "Install Claude Code", read 2026-11-28).
+pub const WINDOWS_INSTALL_COMMAND: &str = "irm https://claude.ai/install.ps1 | iex";
+
+/// The program moai starts for Claude Code (SPEC-20261122-host-small-fixes REQ-1, REQ-2). Not
+/// written yet: this keeps the name as given on every target.
+pub fn choose_program(name: &str, _windows: bool, _files: &[PathBuf]) -> Result<PathBuf> {
+    Ok(PathBuf::from(name))
+}
+
+/// The files `name` can resolve to, in search order. Not written yet.
+pub fn candidates_in(_dirs: &[PathBuf], _name: &str) -> Vec<PathBuf> {
+    Vec::new()
+}
+
+/// What both places that start Claude Code call. Not written yet.
+pub fn start_program(name: &str) -> Result<PathBuf> {
+    Ok(PathBuf::from(name))
+}
+
 /// `claude --version` with a fixed argv, bounded by `VERSION_TIMEOUT`. The probe runs in
 /// its own process group; timeout cleanup signals the group before reaping its
 /// leader and reports whether the system signal command acknowledged the request.

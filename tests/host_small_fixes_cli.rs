@@ -249,3 +249,166 @@ fn readme_states_how_moai_relates_to_anthropic() {
         }
     }
 }
+
+/// The install command the official page gives for native Windows (setup.md); the refusal names it.
+const INSTALL: &str = "irm https://claude.ai/install.ps1 | iex";
+
+fn files(list: &[&str]) -> Vec<PathBuf> {
+    list.iter().map(PathBuf::from).collect()
+}
+
+/// AC-1 (REQ-1, REQ-2): on Windows a name that ends in `.cmd` or `.bat` is refused whatever its
+/// case or folder, even when a native `claude.exe` is also on the list, and the refusal names the
+/// install command. The function takes the target, so this runs on every platform.
+#[test]
+fn windows_a_cmd_or_bat_name_is_refused_with_the_install_command() {
+    let exe = files(&[r"C:\Users\u\.local\bin\claude.exe"]);
+    for name in [
+        "claude.cmd",
+        "claude.BAT",
+        r"C:\Users\u\AppData\Roaming\npm\claude.cmd",
+        "/c/npm/claude.bat",
+    ] {
+        for list in [Vec::new(), exe.clone()] {
+            let got = moai_cli::claude::choose_program(name, true, &list);
+            assert!(
+                got.is_err(),
+                "{name} with {list:?} must be refused: {got:?}"
+            );
+            let msg = got.unwrap_err();
+            assert!(msg.contains(INSTALL), "{name}: {msg}");
+            assert!(
+                msg.contains(name),
+                "{name}: the refusal names the file: {msg}"
+            );
+        }
+    }
+}
+
+/// AC-1 (REQ-1): a name that ends in `.exe` is started as it is, whatever else is on the list.
+#[test]
+fn windows_a_claude_exe_is_started_as_it_is() {
+    let shims = files(&[r"C:\npm\claude.cmd", r"C:\npm\claude.bat"]);
+    for name in [
+        "claude.exe",
+        r"C:\Users\u\.local\bin\claude.exe",
+        "claude.EXE",
+    ] {
+        let got = moai_cli::claude::choose_program(name, true, &shims);
+        assert_eq!(got, Ok(PathBuf::from(name)), "{name}");
+    }
+}
+
+/// AC-1 (REQ-1): for the bare name `claude` the native executable on the list is chosen, never a
+/// `.cmd` or `.bat` file, in whatever order the list holds them.
+#[test]
+fn windows_a_bare_name_picks_the_exe_and_never_the_shim() {
+    let exe = r"C:\Users\u\.local\bin\claude.exe";
+    for list in [
+        files(&[r"C:\npm\claude.cmd", exe]),
+        files(&[exe, r"C:\npm\claude.cmd"]),
+        files(&[r"C:\npm\claude.bat", r"C:\npm\claude.cmd", exe]),
+    ] {
+        let got = moai_cli::claude::choose_program("claude", true, &list);
+        assert_eq!(got, Ok(PathBuf::from(exe)), "{list:?}");
+    }
+}
+
+/// AC-1 (REQ-2): when the only Claude Code a bare name finds is a `.cmd` or `.bat` file, moai
+/// refuses to start it and names the file and the native install command.
+#[test]
+fn windows_a_bare_name_with_only_a_shim_is_refused() {
+    for list in [
+        files(&[r"C:\npm\claude.cmd"]),
+        files(&[r"C:\npm\claude.bat"]),
+        files(&[r"C:\a\claude.bat", r"C:\b\claude.cmd"]),
+    ] {
+        let got = moai_cli::claude::choose_program("claude", true, &list);
+        assert!(got.is_err(), "{list:?} must be refused: {got:?}");
+        let msg = got.unwrap_err();
+        assert!(msg.contains(INSTALL), "{list:?}: {msg}");
+        let first = list[0].to_string_lossy().into_owned();
+        assert!(msg.contains(&first), "{list:?}: names the file: {msg}");
+    }
+}
+
+/// AC-1: a bare name that resolves to no file is left to the start itself, whose error names it.
+#[test]
+fn windows_a_bare_name_with_no_file_is_left_to_the_start() {
+    let got = moai_cli::claude::choose_program("claude", true, &[]);
+    assert_eq!(got, Ok(PathBuf::from("claude")));
+}
+
+/// AC-1 and the card's second criterion: every other target keeps every name as it was given,
+/// a `.cmd` name and the shims on the list included.
+#[test]
+fn windows_other_targets_keep_every_name_as_given() {
+    let list = files(&["/x/claude.cmd", "/y/claude.bat", "/z/claude.exe"]);
+    for name in [
+        "claude",
+        "claude.cmd",
+        "claude.exe",
+        "/usr/local/bin/claude",
+    ] {
+        let got = moai_cli::claude::choose_program(name, false, &list);
+        assert_eq!(got, Ok(PathBuf::from(name)), "{name}");
+    }
+}
+
+/// The list the function reads: for a bare name, each search folder in order, and in each folder
+/// `.exe`, then `.cmd`, then `.bat`; a name with a folder part is read beside itself. Only files
+/// that exist, and a longer name is not mistaken for the name.
+#[test]
+fn windows_candidates_follow_the_search_folders_and_the_endings() {
+    let (a, b) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    for (dir, name) in [
+        (&a, "claude.cmd"),
+        (&b, "claude.exe"),
+        (&b, "claude.bat"),
+        (&b, "claudex.exe"),
+    ] {
+        std::fs::write(dir.path().join(name), b"").unwrap();
+    }
+    std::fs::create_dir(a.path().join("claude.exe")).unwrap();
+    let dirs = vec![a.path().to_path_buf(), b.path().to_path_buf()];
+    let got = moai_cli::claude::candidates_in(&dirs, "claude");
+    assert_eq!(
+        got,
+        vec![
+            a.path().join("claude.cmd"),
+            b.path().join("claude.exe"),
+            b.path().join("claude.bat"),
+        ]
+    );
+    let beside = b.path().join("claude");
+    let got = moai_cli::claude::candidates_in(&[], beside.to_str().unwrap());
+    assert_eq!(
+        got,
+        vec![b.path().join("claude.exe"), b.path().join("claude.bat")]
+    );
+}
+
+/// The Windows-only start, pinned under `cfg(windows)`: a named shim is refused by the real
+/// start function too. Not run on this platform; see the card's READY.
+#[cfg(windows)]
+#[test]
+fn windows_the_start_function_refuses_a_named_shim() {
+    let got = moai_cli::claude::start_program("claude.cmd");
+    assert!(got.is_err(), "{got:?}");
+    assert!(got.unwrap_err().contains(INSTALL));
+}
+
+/// Off Windows the start function changes nothing (the card's second criterion).
+#[cfg(not(windows))]
+#[test]
+fn windows_the_start_function_changes_nothing_off_windows() {
+    for name in [
+        "claude",
+        "claude.cmd",
+        "claude.exe",
+        "/usr/local/bin/claude",
+    ] {
+        let got = moai_cli::claude::start_program(name);
+        assert_eq!(got, Ok(PathBuf::from(name)), "{name}");
+    }
+}
