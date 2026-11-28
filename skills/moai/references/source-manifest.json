@@ -515,7 +515,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "f06b06b063de05dcaa109a3a3132cbd1b5df9e1d5c2bff84dce3a2a296873a46",
+      "sha256": "48a3d5c81d9c68a8a24f8897c5fa7ef95fcaaae832e61fb24fd53e7c7685967b",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",

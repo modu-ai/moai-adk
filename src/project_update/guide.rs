@@ -63,7 +63,7 @@ struct Row {
 }
 
 /// The sentence table. A step without a row reads the generic sentences of [`say`].
-const ROWS: [Row; 12] = [
+const ROWS: [Row; 13] = [
     Row {
         id: "go-settings",
         topic: "Cleaning the old Go tool values out of your Claude Code settings",
@@ -127,6 +127,14 @@ const ROWS: [Row; 12] = [
         choose: None,
         current: "The issue and pull request templates are already up to date.",
         held: "The issue and pull request templates cannot be written here and need a look first.",
+    },
+    Row {
+        id: "ci",
+        topic: "Writing the automatic check files",
+        change: "Write or refresh the files that run your project's checks automatically.",
+        choose: None,
+        current: "No automatic check file needs to be written.",
+        held: "The automatic check files cannot be written here and need a look first.",
     },
     Row {
         id: "agents-picks",
@@ -378,7 +386,8 @@ mod tests {
     use super::*;
 
     /// Whole words a sentence for a person never holds: step ids and state words.
-    const FORBIDDEN_WORDS: [&str; 19] = [
+    const FORBIDDEN_WORDS: [&str; 20] = [
+        "ci",
         "go-settings",
         "go-state",
         "reports",
@@ -416,6 +425,24 @@ mod tests {
         for f in FORBIDDEN_TEXT {
             assert!(!lower.contains(f), "{text:?} holds {f}");
         }
+    }
+
+    /// The automatic check files step has sentences of its own and is not a guarded step.
+    #[test]
+    fn the_check_files_step_has_its_own_sentences_and_is_not_guarded() {
+        assert_eq!(
+            say("ci", "ready", "apply", false),
+            "Write or refresh the files that run your project's checks automatically."
+        );
+        assert_eq!(
+            say("ci", "unchanged", "none", false),
+            "No automatic check file needs to be written."
+        );
+        assert_eq!(
+            say("ci", "conflict", "report", false),
+            "The automatic check files cannot be written here and need a look first."
+        );
+        assert!(!guarded("ci"));
     }
 
     /// Every sentence of the table, in every situation, is one plain line.

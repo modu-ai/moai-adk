@@ -16,6 +16,7 @@ use crate::claude::{self, SettingsScope};
 use crate::claude_settings_merge;
 use crate::generation::{self, GenerationRequest};
 use crate::github_templates::{self, GithubRequest};
+use crate::project_ci_plan::{self, CiRequest};
 use crate::{
     go_settings_clean, go_state, home_workdir, profile, project_detect, project_hosts,
     reports_move, state_root, status_line, Profile,
@@ -1610,6 +1611,113 @@ fn github_step(root: &Path, shown: &str) -> Result<Step> {
     })
 }
 
+/// `ci` (SPEC-20261122-project-ci-design REQ-6, REQ-7): the CI workflow files of the project's
+/// saved answers and declared checks. It is shown only once the profile holds CI answers, right
+/// after `github`, and its printed command is `project-ci-apply` with the plan's digest. A file
+/// MoAI wrote that the answers no longer produce is listed (`stale`) and kept; it never makes
+/// the step `ready` by itself, since only the user's pick removes it.
+fn ci_step(root: &Path, shown: &str) -> Result<Step> {
+    let request = |language: Option<&str>| CiRequest {
+        protocol_version: 1,
+        runs_per_month: None,
+        language: language.map(String::from),
+        remove: Vec::new(),
+    };
+    let mut plan = project_ci_plan::ci_plan(root, request(None))?;
+    // The update asks nothing, so it keeps the language the files were written in: a file that
+    // differs from the English rendering and carries Korean comments is planned again in Korean.
+    if plan
+        .files
+        .iter()
+        .any(|f| f.action == "merge" && has_korean_text(&root.join(&f.path)))
+    {
+        plan = project_ci_plan::ci_plan(root, request(Some("ko")))?;
+    }
+    let files: Vec<Value> = plan
+        .files
+        .iter()
+        .map(|f| json!({"path": f.path, "action": f.action, "jobs": f.jobs, "detail": f.detail}))
+        .collect();
+    let writes = |a: &str| matches!(a, "create" | "merge" | "remove");
+    let (state, reason) = if plan.files.is_empty() {
+        ("skip", "nothing is planned; the notes say why")
+    } else if plan.files.iter().any(|f| f.action == "conflict") {
+        ("conflict", "a workflow file was edited by hand; it is kept")
+    } else if plan
+        .files
+        .iter()
+        .any(|f| writes(&f.action) || f.adopt_baseline)
+    {
+        ("ready", "workflow files to write or record")
+    } else if plan.files.iter().any(|f| f.action == "stale") {
+        (
+            "unchanged",
+            "a workflow file is no longer generated and is kept until you pick its removal",
+        )
+    } else {
+        ("unchanged", "every workflow file is current")
+    };
+    let apply = (state == "ready")
+        .then(|| {
+            Ok::<_, String>((
+                argv("project-ci-apply", shown, &plan.plan_digest),
+                encode(&plan)?,
+            ))
+        })
+        .transpose()?;
+    Ok(Step {
+        name: "ci",
+        state,
+        reason: reason.into(),
+        preview: json!({
+            "files": files,
+            "notes": plan.notes,
+            "estimate": plan.estimate,
+            "preserved": plan.preserved,
+        }),
+        plan_digest: Some(plan.plan_digest),
+        apply,
+    })
+}
+
+/// Whether the regular file at `path` (never a link, at most 256 KiB) holds a Hangul syllable.
+/// The file is opened once, without following a link, and the opened file itself is judged, so a
+/// link put in the place of the file after any earlier look is never followed.
+fn has_korean_text(path: &Path) -> bool {
+    use std::io::Read;
+    let Ok(file) = open_without_following(path) else {
+        return false;
+    };
+    let regular = file
+        .metadata()
+        .is_ok_and(|m| m.file_type().is_file() && m.len() <= 256 * 1024);
+    let mut text = String::new();
+    regular
+        && file.take(256 * 1024).read_to_string(&mut text).is_ok()
+        && text.chars().any(|c| ('\u{ac00}'..='\u{d7a3}').contains(&c))
+}
+
+/// Opens `path` for reading; a link at `path` is refused by the open itself, and a named pipe does
+/// not block it.
+#[cfg(unix)]
+fn open_without_following(path: &Path) -> std::io::Result<std::fs::File> {
+    use std::os::unix::fs::OpenOptionsExt;
+    std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+        .open(path)
+}
+
+/// Opens `path` for reading after a look that it is no link; a host without `O_NOFOLLOW` keeps
+/// that one look.
+#[cfg(not(unix))]
+fn open_without_following(path: &Path) -> std::io::Result<std::fs::File> {
+    if std::fs::symlink_metadata(path)?.file_type().is_symlink() {
+        return Err(std::io::Error::other("a link is not read"));
+    }
+    std::fs::File::open(path)
+}
+
 /// The install steps that wait for the profile or for the backup phase, in the order they are
 /// printed and applied; `hooks` follows `claude-settings` (#2936 R-B). The retired-hosts step
 /// is not one of them: it reads no file content, so nothing makes it stale (see [`host_steps`]).
@@ -1674,6 +1782,10 @@ fn install_steps(
         or_blocked("hooks", hooks_step(root, shown, claude)),
         or_blocked("github", github_step(root, shown)),
     ];
+    // The `ci` step follows `github` once the profile holds CI answers.
+    if profile.ci.is_some() {
+        steps.push(or_blocked("ci", ci_step(root, shown)));
+    }
     hooks_after_settings(&mut steps);
     steps
 }
@@ -2488,6 +2600,33 @@ mod tests {
         assert_eq!(choice["apply"]["argv"][1], "claude-settings-apply");
         assert_eq!(choice["apply"]["argv"][4], "sha256:d");
         assert_eq!(choice["apply"]["stdin"], json!(stdin));
+    }
+
+    /// A link at the path is never read for its language, whatever it points at: the open itself
+    /// refuses it, so a link swapped in for a file after an earlier look is not followed either.
+    /// The file the link points at, a named pipe and a file over the size limit are each judged
+    /// on the opened file.
+    #[cfg(unix)]
+    #[test]
+    fn a_link_to_a_korean_file_is_not_read_for_its_language() {
+        let tmp = tempfile::tempdir().unwrap();
+        let korean = "# 한국어 주석\nname: ci\n";
+        let real = tmp.path().join("real.yml");
+        fs::write(&real, korean).unwrap();
+        let link = tmp.path().join("link.yml");
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+        assert!(has_korean_text(&real), "the file itself holds Hangul");
+        assert!(!has_korean_text(&link), "a link is never followed");
+        let english = tmp.path().join("english.yml");
+        fs::write(&english, "name: ci\n").unwrap();
+        assert!(!has_korean_text(&english));
+        let big = tmp.path().join("big.yml");
+        fs::write(&big, format!("{}\n{korean}", "a".repeat(256 * 1024))).unwrap();
+        assert!(
+            !has_korean_text(&big),
+            "over the size limit counts as no text"
+        );
+        assert!(!has_korean_text(&tmp.path().join("missing.yml")));
     }
 
     #[test]
