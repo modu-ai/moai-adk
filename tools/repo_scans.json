@@ -3217,6 +3217,37 @@
         }
       ],
       "rejects": "A change after which check affected misses one of the binary tests this repository is known to need, a src/ops file named after no listed command, or a when-changed line of a test that names no file (SPEC-20261126-affected-binary-tests)"
+    },
+    {
+      "id": "audit-texts-enter-no-other-worktree",
+      "always": true,
+      "tests": [
+        "tests/audit_reads_by_object_id.rs::ac2_the_checked_in_audit_texts_hold_only_the_baseline_cd_and_git_c"
+      ],
+      "test_targets": [
+        "audit_reads_by_object_id"
+      ],
+      "rules": [
+        "tests/audit_reads_by_object_id.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/"
+        },
+        {
+          "prefix": "agents/"
+        },
+        {
+          "prefix": "docs/lane-rules.md"
+        },
+        {
+          "prefix": "docs/leader-rules.md"
+        },
+        {
+          "prefix": "docs/design-review/appendix/operations/"
+        }
+      ],
+      "rejects": "a cd or git -C in an audit text under skills/, agents/ or docs/ that the baseline of tests/audit_reads_by_object_id.rs does not cover"
     }
   ]
 }

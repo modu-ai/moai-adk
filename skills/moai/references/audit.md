@@ -1,11 +1,11 @@
 # Audit contract
 
-When to read: before you audit a change, as `moai-audit` or as the auditing session. The review steps are the AUDIT workflow's section "Review steps" (`workflows/audit.md`); this file fixes what goes in, what comes out and who writes what.
+When to read: before you audit a change, as `moai-audit` or the auditing session. The review steps are in `workflows/audit.md`, section "Review steps"; this file fixes what goes in, what comes out and who writes what.
 
 ## What the auditor receives
 
 - The exact head (40 hex) and the exact base the lane's checks ran on, as the lane's ready note names them (`references/flows/next-flow.md`).
-- The card, the SPEC it names with its acceptance criteria, and the write scope of the change.
+- The card, the SPEC it names with its acceptance criteria, and the change's write scope.
 - The lane's check receipt for that head, when the lane posted one.
 - The review instructions from the base commit only: `REVIEW.md`, its `@` includes and the subdirectory `REVIEW.md` files, with the project's instruction files as context. A change cannot weaken the rules it is judged by. `moai review-package` builds that package.
 - An instruction to stay read-only.
@@ -14,7 +14,7 @@ When to read: before you audit a change, as `moai-audit` or as the auditing sess
 
 - The first line `RESULT audit <ok|blocked|not_run> <head 40 hex>`.
 - Every command it ran with its exit code, and every check it did not run with the reason.
-- Its findings, blocking first. Each finding names the file and the line in the head, the evidence and whether it blocks. `moai review-check` refuses a set that lacks any of these, and a finding without a file and a line counts as no finding (side rules).
+- Its findings, blocking first. Each finding names the file and the line in the head, the evidence and whether it blocks. `moai review-check` refuses a set that lacks any of these.
 - A clean `git status` in its worktree.
 
 The auditor never writes the verdict, never fixes what it finds and never commits.
@@ -27,16 +27,16 @@ Record every criterion left open with `--open <n>` on the PASS: `card land` igno
 
 The leader never records a verdict for an auditor, and the `moai-audit` agent only returns evidence.
 
-The base is the base the lane's ready note names when the head is the lane's own head, and the tip the head will land on when the head is a merge that joins the tip: `card verdict` accepts only a base that is an ancestor of the head, and an older base puts commits of other cards, maybe the auditing session's own, into the range read for authors; a verdict never names a head nobody audited.
+The base is the base the lane's ready note names when the head is the lane's own head, and the tip the head will land on for a merge that joins the tip: `card verdict` accepts only a base that is an ancestor of the head, and an older base puts other cards' commits, maybe the auditor's own, into the range read for authors; a verdict never names a head nobody audited.
 
-The auditing session then adds one `moai card note`. Its first line is the verdict line, `AUDIT <card> (<one-line scope>) head <40-hex> base <40-hex> — verdict: PASS|FAIL`: lowercase hex, the em dash `—` with one space on each side, nothing after the verdict word; a first line that starts with `AUDIT ` in any other shape is an unreadable verdict, not a pass. A `tier <N>` in its scope is read too: `moai bundle check` reports a PASS below the floor of the head's changed paths as `audit_tier_low`. The next line names the auditing session as `Moai-Session: <value>`, the value `moai trailers --spec <SPEC id>` prints in the auditor's own worktree (`internal/commit-trailers`). For example:
+The auditing session then adds one `moai card note`. Its first line is the verdict line, `AUDIT <card> (<one-line scope>) head <40-hex> base <40-hex> — verdict: PASS|FAIL`: lowercase hex, the em dash `—` with one space on each side, nothing after the verdict word; any other first line that starts with `AUDIT ` is an unreadable verdict, not a pass. A `tier <N>` in its scope is read too: `moai bundle check` reports a PASS below the floor of the head's changed paths as `audit_tier_low`. The next line names the auditing session as `Moai-Session: <value>`, the value `moai trailers --spec <SPEC id>` prints in its own worktree (`internal/commit-trailers`). For example:
 
 ```text
 AUDIT C-12 (repo-scans 4/4, tier 1) head 997af563452bfb36f2ce722a66e9068dae191568 base 9c8a8c51c9c059be389deeaebb19a3e45709b273 — verdict: PASS
 Moai-Session: <session id>:<worktree key>
 ```
 
-The author of a change never audits it. Whoever wrote or repaired a change hands it to a separate context (`chains/index.md`); a session that made a commit between the base and the head is an author of that head.
+The author of a change never audits it. Whoever wrote or repaired it hands it to a separate context (`chains/index.md`); a session that committed between the base and the head is an author of that head.
 
 ## What blocks
 
@@ -60,6 +60,7 @@ The tier a ready note states never goes below the floor of its changed paths (`s
 3. A re-audit checks only the listed repairs and classifies anything new by the four kinds.
 4. A Critical or High security finding blocks. Only an exception record the user approved — finding, severity, reason, scope, approver, expiry — lowers one; a missing or stale scan is unverified, never a pass.
 5. Scratch: one folder per audit, named for it; never read or write another audit's folder.
+6. Read another head from your own worktree by object id (`git show`, `git diff`, `git merge-tree`); never `cd` or `git -C` into a worktree that is not your own.
 
 ## Side rules
 

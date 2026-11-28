@@ -975,9 +975,16 @@ fn refs_audit_contract_treats_a_finding_without_a_line_one_way() {
         .lines()
         .find(|l| l.starts_with("- Its findings"))
         .expect("the returns list has a findings line");
+    // The sentence is pinned once, in the side rules (above); the findings line does not repeat it.
     assert!(
-        findings.contains("counts as no finding (side rules)"),
-        "the findings line does not point to the side rule: {findings}"
+        !findings.contains("counts as no finding"),
+        "the findings line repeats the side rule: {findings}"
+    );
+    let side = section(&audit, "Side rules");
+    assert!(
+        side.lines()
+            .any(|l| l.starts_with("- ") && l.contains(NO_FILE_LINE)),
+        "the side rules lack the one line that says it: {side}"
     );
 }
 
