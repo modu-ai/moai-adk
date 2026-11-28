@@ -181,8 +181,8 @@ fn the_interview_only_points_to_the_versioning_text() {
 
 /// The `versioning` question row tells the model to show a release tool's conflict beside the
 /// question when detection reports one, in plain words and without a card, SPEC or internal
-/// number, and to say which of the tool's files change if the person picks another scheme. The
-/// fact it names must be one `project-detect` really prints.
+/// number, and to say which of the tool's files change if the person picks another scheme. That
+/// `project-detect` prints the fact it names is pinned by `project_detect_release_tooling_cli`.
 #[test]
 fn the_versioning_question_shows_a_release_tool_conflict() {
     let interview = skill("interview.md");
@@ -209,11 +209,4 @@ fn the_versioning_question_shows_a_release_tool_conflict() {
     for internal in ["card ", "SPEC-", "C-"] {
         assert!(!sentence.contains(internal), "{internal:?} in: {sentence}");
     }
-    let detect =
-        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("src/project_detect.rs"))
-            .expect("src/project_detect.rs");
-    assert!(
-        detect.contains("\"release_tooling\"") && detect.contains("\"conflict\""),
-        "project-detect prints no release_tooling.conflict"
-    );
 }
