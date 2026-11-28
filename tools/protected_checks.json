@@ -9,6 +9,7 @@
     "src/gate*.rs",
     "src/test_weakening.rs",
     "src/audit_gate.rs",
+    "src/review_names.rs",
     "REVIEW.md",
     "agents/audit.md",
     "skills/moai/workflows/audit.md",
