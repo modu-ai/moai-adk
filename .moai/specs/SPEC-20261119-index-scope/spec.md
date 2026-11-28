@@ -2,7 +2,7 @@
 id: SPEC-20261119-index-scope
 title: "index-build can be scoped to folders, and a refusal over the file limit names where the files are"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-19
 ---
 
@@ -12,11 +12,10 @@ created: 2026-11-19
 
 Card C-58. In a bun monorepo (7 apps, 22 packages) `moai index-build` refused with `index file limit exceeded (16384); the scan is refused, not truncated`, wrote nothing, and the route offered nothing else (transcript of `/moai project`, 2026-11-16). Two gaps: the refusal does not say where the files are, and a request has no way to name the part of the repository to index.
 
-Measured from the code at tip 9bd09c2eff (`src/index.rs`): the limit counts **tracked** files only (`git ls-files -z`, minus `<state>/index/`). Gitignored, untracked files such as `node_modules` never count; a vendored folder that is committed does. This slice adds (1) an optional `scope` list to the build request: only the tracked files under those folders are indexed, the manifest records the scope, and `index-query` judges freshness inside it; (2) a refusal over the limit that names the largest folders with their file counts and shows the request that would be accepted. The route's selection ("scope to chosen folders, recommended / skip", `project.md` step 7) is the second slice.
+Measured from the code at tip 9bd09c2eff (`src/index.rs`): the limit counts **tracked** files only (`git ls-files -z`, minus `<state>/index/`). Gitignored, untracked files such as `node_modules` never count; a vendored folder that is committed does. This slice adds (1) an optional `scope` list to the build request: only the tracked files under those folders are indexed, the manifest records the scope, and `index-query` judges freshness inside it; (2) a refusal over the limit that names the largest folders with their file counts and shows the request that would be accepted. The route's selection ("scope to chosen folders, recommended / skip", `project.md` step 7) is the second slice, written in revision 3 (REQ-8, AC-8).
 
 ## Non-goals
 
-- The route text (`skills/moai/workflows/project.md` step 7) and its manifest hash: second slice, after card C-99 releases the manifest path.
 - A command-line flag: `index-build` takes its request as JSON on stdin, so `scope` is a request field.
 - Raising `MAX_FILES`, or truncating a scan: the scan stays refused, not truncated.
 - The failure marker of a refused build (`partial`): unchanged for the limit refusal.
@@ -30,6 +29,7 @@ Measured from the code at tip 9bd09c2eff (`src/index.rs`): the limit counts **tr
 - REQ-5: While the published generation records a scope, `index-query` shall judge freshness from the tracked and untracked files under that scope only.
 - REQ-6: Where a build has a scope, the generation id shall depend on the scope.
 - REQ-7: A build without a scope shall keep the generation id and the manifest bytes it had before this change.
+- REQ-8: When `index-build` is refused because more than 16384 files would be indexed, the project route shall offer a selection between scoping the build to the folders the user picks (first, recommended) and skipping the map, and run nothing before the user picks. · failure: none — the selection is a question; a skipped map leaves the project without one, as before.
 
 ## Acceptance
 
@@ -45,14 +45,16 @@ Measured from the code at tip 9bd09c2eff (`src/index.rs`): the limit counts **tr
   verify: `cargo test --locked --offline --test index_scope_cli scope_refusals_write_nothing`; `cargo test --locked --offline --lib index::tests::scope_normalization`
 - AC-6 (REQ-5): after a scoped build `index-query` is `fresh`; a change, an added file or an untracked file outside the scope keeps it `fresh`, one inside turns it `stale`.
   verify: `cargo test --locked --offline --test index_scope_cli a_scoped_generation_ignores_changes_outside_the_scope`; `cargo test --locked --offline --test index_scope_cli a_failure_marker_keeps_a_scoped_generation_scoped`
-- AC-7 (REQ-1…REQ-7): neighbours.
+- AC-7 (REQ-1…REQ-8): neighbours.
   verify: `cargo test --locked --offline --test index_cli`; `cargo test --locked --offline --test freshness_fixture`; `cargo test --locked --offline --test atlas_query_cli`; `cargo test --locked --offline --test code_atlas_reference`; `cargo test --locked --offline --test doc_reference_boundaries`; `cargo test --locked --offline --test product_cli`; `cargo test --locked --offline --lib`; `cargo fmt --check`; `cargo clippy --locked --offline --all-targets -- -D warnings`
+- AC-8 (REQ-8): step 7 of `skills/moai/workflows/project.md` names the refusal (`index file limit exceeded`), the ten largest folders it lists, the scoped request to send, the selection (scope first and recommended, or skip the map), that nothing is sent before the user picks, and that a scoped map covers those folders only; the package stays inside its size budget and its manifest hash is current.
+  verify: `cargo test --locked --offline --test code_atlas_reference read_and_plan_point_to_the_instruction_in_one_line_and_project_offers_the_build`
 
 ## Scope
 
-- write: `src/index.rs`, `tests/index_scope_cli.rs`, `tests/index_records.rs` (two request literals get the new field, `scope: Vec::new()`), `docs/index-generation.md`, `.moai/specs/SPEC-20261119-index-scope/spec.md`
+- write: `src/index.rs`, `tests/index_scope_cli.rs`, `tests/index_records.rs` (two request literals get the new field, `scope: Vec::new()`), `docs/index-generation.md`, `.moai/specs/SPEC-20261119-index-scope/spec.md`; the route slice (revision 3, REQ-8) adds `skills/moai/workflows/project.md` (step 7 only), `skills/moai/references/source-manifest.json` (the hash line of that file only, through `moai check fix`) and `tests/code_atlas_reference.rs` (the pin of step 7)
 - read-only: `src/main.rs` (the request is read with `input::<IndexBuildRequest>()`, no change needed), `tests/index_cli.rs`, `tests/common/**`
-- forbidden: the real HOME and ledger, the network, `skills/moai/**` (second slice), a change of `MAX_FILES`
+- forbidden: the real HOME and ledger, the network, every other file of `skills/moai/**`, a change of `MAX_FILES`
 
 ## Plan
 
@@ -91,6 +93,9 @@ RED first: commit a34f9286d9 (the CLI and unit tests did not compile or failed b
 - AC-4: met — `a_scope_builds_a_repository_over_the_limit`: over 16384 tracked files build with a scope, the scoped count has its own edge: 16383 under the scope is below it, exactly 16384 builds, 16385 is refused as `invalid_input` (not retryable) naming `apps/bo (16385)`. L1, L2 also killed here. The scoped refusal also says `16385 tracked files in the scope` (mutant N1 killed).
 - AC-5: met — `scope_refusals_write_nothing` (absolute path, `..`, empty entry, control character, 65 entries refused and 64 accepted, 513 bytes refused and 512 accepted, a scope with no tracked file: all `invalid_input`, not retryable, and neither `current.json` nor `last-build.json` exists afterwards; that an error text never repeats the entry is by construction in `normalize_scope` and no test asserts it) and `index::tests::scope_normalization`. Mutants V1 (65), V2 (513), V3 (no up-front match check), V4 (nested entries kept), S1 (prefix not on whole components) killed.
 - AC-6: met — `a_scoped_generation_ignores_changes_outside_the_scope` (fresh after a scoped build; a change, an added file and an untracked file outside the scope keep it `fresh`, one inside turns it `stale`). Mutants S4 (untracked ignores scope), S5 (query ignores the recorded scope) killed; S3 (same_snapshot ignores scope) survived the CLI tests (a same id already means the same scope) and is killed by `a_published_snapshot_is_reused_only_for_the_same_scope`. `a_failure_marker_keeps_a_scoped_generation_scoped`: after a refused unscoped build leaves the marker the query is `partial` and its changes are read inside the scope (a change inside is listed, an untracked file outside is not; mutants N3 and N3b killed).
-- AC-7: met — see the checks recorded in the PR-free hand-off note of the card: index_cli, index_records, freshness_fixture, atlas_query_cli, code_atlas_reference, doc_reference_boundaries, product_cli, home_isolation_scan, git_env_scrub, ac_command_lint, `--lib`, `cargo fmt --check`, `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0.
+- AC-7: met — see the checks recorded in the PR-free hand-off note of the card: index_cli, index_records, freshness_fixture, atlas_query_cli, code_atlas_reference, doc_reference_boundaries, product_cli, home_isolation_scan, git_env_scrub, ac_command_lint, `--lib`, `cargo fmt --check`, `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0. (Revision 3 changed only the route text, its test pin and the manifest hash; its neighbour run is the card receipt of that change, quoted in the hand-off note, not the full list above.)
+- AC-8: met — step 7 of `skills/moai/workflows/project.md` now names the refusal `index file limit exceeded`, the ten largest folders with their counts, the scoped request `{"protocol_version":1,"scope":["<folder>"]}`, the selection (build for the picked folders, first and recommended, or skip the map), that the scoped request is sent only after the user picks and when no listed folder fits the user is asked for deeper folders, and that a scoped map covers those folders only. `cargo nextest run --locked --offline --no-fail-fast --test code_atlas_reference` passed 4 of 4 (slot `--max 2`), including `read_and_plan_point_to_the_instruction_in_one_line_and_project_offers_the_build`, whose new pin reads step 7 only. Mutant: replacing "only after the user picks" with "right away" in step 7 fails that test (`step 7 lacks `only after the user picks``, exit 100). The manifest hash line of the project workflow was written by `moai check fix` and is one changed line.
+
+Revision 3 (route slice) is a text and test change; no Rust product code changed.
 
 Changed outside the first SPEC scope, with the fence re-taken (C-58 generation 2): `tests/index_records.rs`, two request literals get the new field (`scope: Vec::new()`). Not changed: `src/contract.rs` (a mutant-free phrase would have been dead: scope errors are raised before the build wrapper and class as `invalid_input` by the word `invalid`), `docs/design-review/appendix/interfaces.md` (operation names only).
