@@ -35,6 +35,8 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             auth_status: args.auth_status,
             managed_dir: args.managed_dir,
             table: args.table,
+            // The command edge resolves HOME once; `gather` reads none (home-env-readers).
+            home: moai_cli::key_vault::home(),
         },
     ))
 }
