@@ -35,12 +35,12 @@ The workflow text the hosts load is in [skills/moai/](skills/moai/SKILL.md).
 | Item | RC1 (`v2026.11.0` branch) | Go 3.x (`main` branch) |
 | --- | --- | --- |
 | Language | Rust | Go |
-| Command | `moai` (alias `moai-cli`) | `moai` |
+| Command | `moai` | `moai` |
 | Version | `2026.11.0-rc.1` (prerelease, unreleased) | latest release `v3.1.2` |
 | State folders | `.moai/` (new project; a project that began on the earlier RC keeps its `.moai-cli/`), `~/.moai/` (user, when the HOME holds this generation's marker or no state files; otherwise the earlier `~/.moai-cli/`) | `.moai/`, `~/.moai/` |
 | Host entry | `/moai <request>` in Claude Code, `$moai <request>` in Codex | `/moai` commands in Claude Code |
 
-The two generations do not update each other. Both can use a folder named `.moai`, so RC1 reads the marker files in it to tell whose it is before it changes anything there. Both commands are called `moai`; `moai --version` tells them apart (the release candidate ends its line with `(rust)`). The release candidate also builds `moai-cli` as an alias: it prints the same `--version` line, and its help names `moai-cli` as the command.
+The two generations do not update each other. Both can use a folder named `.moai`, so RC1 reads the marker files in it to tell whose it is before it changes anything there. Both commands are called `moai`; `moai --version` tells them apart (the release candidate ends its line with `(rust)`). Builds from before the rename also installed a file named `moai-cli`; the release candidate installs only `moai`, and an install or update will leave an existing `moai-cli` as it is.
 
 **Supported platforms** (decided 2026-11-17, `SPEC-20261117-supported-platforms`): macOS on Apple silicon (`aarch64-apple-darwin`), Linux x86_64 (`x86_64-unknown-linux-gnu`) and Windows x86_64 (`x86_64-pc-windows-msvc`). Intel macOS and Linux arm64 are not supported: CI does not run them and the install scripts stop with an "Unsupported platform" message. CI tests Linux x86_64 and macOS arm64 and builds Windows x86_64; release archives are still published for macOS arm64 only.
 
@@ -76,7 +76,7 @@ cargo build --release --locked
 ./target/release/moai --version
 ```
 
-The last command prints `moai 2026.11.0-rc.1 (rust)`; `./target/release/moai-cli --version` prints the same line. These commands were run on 2026-11-14 on macOS 27.0.1 (arm64) with an empty Cargo home, at branch commit `0e9ad36fc4`; the release build took about 1 minute 26 seconds after the crate download, into an empty build folder on a heavily loaded machine. Other platforms were not tried with these exact steps.
+The last command prints `moai 2026.11.0-rc.1 (rust)`; `./target/release/moai --version` prints the same line (the run on 2026-11-14 read it under the earlier file name `moai-cli`). These commands were run on 2026-11-14 on macOS 27.0.1 (arm64) with an empty Cargo home, at branch commit `0e9ad36fc4`; the release build took about 1 minute 26 seconds after the crate download, into an empty build folder on a heavily loaded machine. Other platforms were not tried with these exact steps.
 
 ## First run
 
@@ -100,7 +100,7 @@ Adding the `moai` skill to a project and these first-run steps and requests have
 - Name: MoAI ADK (Agentic Development Kit)
 - Repository: https://github.com/modu-ai/moai-adk
 - License: Apache-2.0 ([LICENSE](LICENSE))
-- RC1 implementation language: Rust; binary names `moai` and its alias `moai-cli`
+- RC1 implementation language: Rust; binary name `moai`
 - RC1 version: `2026.11.0-rc.1` (prerelease, not yet released)
 - RC1 target hosts: Claude Code and Codex on macOS arm64 (host end-to-end tests `not_run`)
 - Work ledger: local cards (`moai card`); merge gate: the `moai/audit` commit status

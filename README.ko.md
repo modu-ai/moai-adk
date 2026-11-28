@@ -35,12 +35,12 @@ host가 읽는 작업 흐름 원문은 [skills/moai/](skills/moai/SKILL.md)에 �
 | 항목 | RC1 (`v2026.11.0` 가지) | Go 3.x (`main` 가지) |
 | --- | --- | --- |
 | 언어 | Rust | Go |
-| 명령 | `moai`(별칭 `moai-cli`) | `moai` |
+| 명령 | `moai` | `moai` |
 | 버전 | `2026.11.0-rc.1` (prerelease, 미출시) | 최신 릴리스 `v3.1.2` |
 | 상태 폴더 | `.moai/`(새 프로젝트. 이전 RC로 시작한 프로젝트는 `.moai-cli/`를 그대로 씀), `~/.moai/`(사용자. HOME에 이 세대의 마커가 있거나 상태 파일이 없을 때. 아니면 이전의 `~/.moai-cli/`) | `.moai/`, `~/.moai/` |
 | host 진입 | Claude Code `/moai <요청>`, Codex `$moai <요청>` | Claude Code의 `/moai` 명령 |
 
-두 세대는 서로를 업데이트하지 않습니다. 둘 다 `.moai`라는 폴더를 쓸 수 있으므로, RC1은 그 폴더에 무엇이든 바꾸기 전에 안의 마커 파일을 읽어 누구의 폴더인지 가립니다. 두 세대 모두 명령 이름이 `moai`이므로 `moai --version`으로 구별합니다(릴리스 후보는 줄 끝에 `(rust)`가 붙습니다). 릴리스 후보는 별칭 `moai-cli`도 함께 빌드합니다. 별칭은 같은 `--version` 줄을 출력하고, 도움말에는 명령 이름이 `moai-cli`로 나옵니다.
+두 세대는 서로를 업데이트하지 않습니다. 둘 다 `.moai`라는 폴더를 쓸 수 있으므로, RC1은 그 폴더에 무엇이든 바꾸기 전에 안의 마커 파일을 읽어 누구의 폴더인지 가립니다. 두 세대 모두 명령 이름이 `moai`이므로 `moai --version`으로 구별합니다(릴리스 후보는 줄 끝에 `(rust)`가 붙습니다). 이름을 바꾸기 전의 빌드는 `moai-cli`라는 파일도 설치했습니다. 릴리스 후보는 `moai`만 설치하며, 설치나 업데이트는 이미 있는 `moai-cli`는 그대로 둡니다.
 
 **RC1 목표 범위**는 Apple silicon macOS(`aarch64-apple-darwin`)에서 쓰는 Claude Code와 Codex입니다. 이것은 목표이지 지원 보증이 아닙니다. host가 skill을 읽는 종단 간 시험은 아직 돌리지 않았습니다. Linux, Intel macOS, Windows는 RC1 범위 밖입니다(일부는 CI에서 빌드와 시험만 합니다). 조합별 측정 상태는 [docs/support-matrix.md](docs/support-matrix.md)와 [docs/host-support-matrix.md](docs/host-support-matrix.md)에 있습니다.
 
@@ -74,7 +74,7 @@ cargo build --release --locked
 ./target/release/moai --version
 ```
 
-마지막 명령은 `moai 2026.11.0-rc.1 (rust)`를 출력합니다. `./target/release/moai-cli --version`도 같은 줄을 출력합니다. 이 명령들은 2026-11-14에 macOS 27.0.1(arm64)에서 빈 Cargo home으로, 가지 커밋 `0e9ad36fc4`에서 실행해 확인했습니다. crate를 받은 뒤 빈 빌드 폴더에서 release 빌드는 부하가 큰 기계에서 약 1분 26초 걸렸습니다. 다른 플랫폼에서는 이 절차를 그대로 시험하지 않았습니다.
+마지막 명령은 `moai 2026.11.0-rc.1 (rust)`를 출력합니다. `./target/release/moai --version`도 같은 줄을 출력합니다(2026-11-14 실행에서는 이전 파일 이름 `moai-cli`로 읽었고 같은 줄이 나왔습니다). 이 명령들은 2026-11-14에 macOS 27.0.1(arm64)에서 빈 Cargo home으로, 가지 커밋 `0e9ad36fc4`에서 실행해 확인했습니다. crate를 받은 뒤 빈 빌드 폴더에서 release 빌드는 부하가 큰 기계에서 약 1분 26초 걸렸습니다. 다른 플랫폼에서는 이 절차를 그대로 시험하지 않았습니다.
 
 ## 첫 실행
 
@@ -98,7 +98,7 @@ cargo build --release --locked
 - 이름: MoAI ADK (Agentic Development Kit)
 - 저장소: https://github.com/modu-ai/moai-adk
 - 라이선스: Apache-2.0 ([LICENSE](LICENSE))
-- RC1 구현 언어: Rust, 실행 파일 이름 `moai`와 별칭 `moai-cli`
+- RC1 구현 언어: Rust, 실행 파일 이름 `moai`
 - RC1 버전: `2026.11.0-rc.1` (prerelease, 미출시)
 - RC1 목표 host: macOS arm64의 Claude Code와 Codex (host 종단 간 시험 `not_run`)
 - 작업 장부: GitHub Issues, 병합 관문: `moai/audit` commit status

@@ -3,13 +3,14 @@
 
 use std::path::PathBuf;
 
-/// Preview the moai link beside moai-cli
+/// Preview the moai file in this build's version folder
 ///
-/// Preview the two command names (#2791 AC-1): in the version folder this binary runs from,
-/// `~/.moai-cli/versions/<version>/bin/`, `moai` should be a hard link to `moai-cli`. Says
-/// `create`, `unchanged`, `replace_copy` (a separate copy of this same build is moved aside),
-/// `blocked` (a link, a folder or another program named `moai`) or `outside_layout`. Writes
-/// nothing; PATH and shell files are never touched.
+/// Preview the command name (#2791 AC-1): the version folder this binary runs from,
+/// `<state home>/versions/<version>/bin/`, holds `moai`. Says `unchanged` (it does),
+/// `create` (an earlier folder holds only the file under its earlier name: `moai` would be made
+/// as a hard link to it), `replace_copy` (a separate copy of this same build is moved aside), `blocked` (a link,
+/// a folder or another program named `moai`) or `outside_layout`. Writes nothing; PATH and
+/// shell files are never touched.
 #[derive(clap::Args)]
 pub struct Args {
     /// The HOME to read (default `$HOME`). Tests pass a temporary folder.

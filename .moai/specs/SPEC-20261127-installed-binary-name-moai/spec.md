@@ -127,7 +127,7 @@ approval:
 
 ## Result
 
-조각 1(Rust 이름 검사), 조각 2(설치 스크립트 둘과 `install/README.md`), 조각 3(switch 런처 이름)까지 구현했어요. 조각 4(AC-10~AC-12)는 남았어요.
+조각 1(Rust 이름 검사), 조각 2(설치 스크립트 둘과 `install/README.md`), 조각 3(switch 런처 이름), 조각 4(스캔 테스트, 스킬 fallback, README, 도움말)까지 구현했어요. AC-12(실제 Mac 설치의 `moai update` 미리보기)는 리더가 설치한 빌드로 읽기 전까지 not_run 이에요.
 
 - AC-1: met — `ac1_an_archive_with_both_files_installs_bin_moai_alone`(tests/install_cli.rs), 두 번째 실행은 아무것도 쓰지 않아요.
 - AC-2: met — `ac2_an_archive_with_moai_cli_only_installs_it_as_bin_moai`.
@@ -138,7 +138,7 @@ approval:
 - AC-7: met — `ac7_a_new_folder_with_moai_alone_finds_the_earlier_receipt`(핀, 구현 전에도 통과해요).
 - AC-8: met — `ac8_a_name_left_in_place_is_listed_and_never_touched`와 요약 줄의 단위 테스트 `the_summary_names_each_command_name_left_in_place`.
 - AC-9: met — `ac9_a_script_without_a_moai_cli_beside_it_gets_a_link_to_the_running_builds_bin_moai`(tests/update_switch_cli.rs): 실제 바이너리를 임시 HOME 에서 돌려 미리보기 → 확인 → 상대 링크 `../versions/a/bin/moai`, 옛 스크립트는 `moai.before-<UTC>` 로 보관, 링크로 `--version` 응답, 되돌리기까지 확인해요. 런처가 없을 때의 `held` 와 찾은 파일 이름은 `held_without_bin_moai_of_the_running_build_names_the_file`, `held_a_build_outside_a_versions_folder_names_its_bin_moai`(CLI)와 `plan_is_held_for_a_build_not_in_this_state_folders_versions`, `revert_takes_the_earlier_moai_cli_link_and_no_other_shape`(tests/update_switch_layer.rs)가 맡아요.
-- AC-10: not_run — 조각 4.
-- AC-11: not_run — 조각 4.
-- AC-12: not_run — 조각 4.
+- AC-10: met — `shipped_text_never_runs_moai_cli`(tests/shipped_text_never_runs_moai_cli.rs): 스킬·에이전트·템플릿·`install/README.md`·`README*.md`·`src/help.rs`·도움말 골든 네 개를 스캔해요(`moai-cli` 가 든 골든은 `bin-names-plan` 줄뿐이라 네 개예요). 허용 목록 28줄은 줄마다 이유를 달고, 줄에서 허용 구절을 뺀 뒤에도 남는 `moai-cli` 는 발견으로 세요. 스킬 문장은 "막힘을 보고하고 멈춘다"예요(D-6). 검증 `cargo test --locked --test shipped_text_never_runs_moai_cli -- --nocapture`: 1 passed. 가드 뮤턴트(d)(허용 목록 비움) exit 100.
+- AC-11: met — `cargo test --locked --test help_layout -- --nocapture`: 11 passed(`moai_cli_help_names_no_command_moai_cli` 포함). `bin-names-plan` 설명과 `update --confirm-switch` 도움말을 새 배치로 고치고 골든 네 개를 다시 만들었어요.
+- AC-12: not_run — 리더가 랜딩된 빌드를 설치한 뒤 실제 Mac 설치의 `moai update` 미리보기를 읽어야 해요. 그 전에는 met 으로 적지 않아요.
 - AC-13: met — `moai spec check` 오류 0.

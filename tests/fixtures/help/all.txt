@@ -111,7 +111,7 @@ Update and move
   migrate-recovery-plan            Preview undoing one migration apply
   migrate-recover                  Remove the imports one migration apply made
   skills-legacy                    List legacy moai-* skill folders
-  bin-names-plan                   Preview the moai link beside moai-cli
+  bin-names-plan                   Preview the moai file in this build's version folder
   bin-names-apply                  Make the previewed moai link
   agents-home-plan                 Preview installing the base agents into HOME
   agents-home-apply                Install previewed base agents into HOME

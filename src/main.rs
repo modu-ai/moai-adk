@@ -888,8 +888,8 @@ enum Command {
         #[arg(long, value_name = "TOKEN")]
         confirm_home: Option<String>,
         /// The preview's `switch.confirm_token`: replace the name-switch script
-        /// `<state home>/path/moai` with a link to the Rust launcher `path/moai-cli` beside
-        /// it, after saving the old script next to it as `moai.before-<UTC>`. Without
+        /// `<state home>/path/moai` with a link to this build's `bin/moai` in its version
+        /// folder, after saving the old script next to it as `moai.before-<UTC>`. Without
         /// --confirm the rest stays a preview.
         #[arg(long, value_name = "TOKEN")]
         confirm_switch: Option<String>,
