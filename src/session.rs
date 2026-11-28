@@ -1063,7 +1063,9 @@ pub fn launch(r: &SessionRequest, dry_run: bool) -> Result<Value, String> {
         return Ok(v);
     }
     let argv: Vec<String> = serde_json::from_value(v["argv"].clone()).map_err(|_| "argv")?;
-    let mut command = std::process::Command::new(&argv[0]);
+    // On Windows only a native `claude.exe` is started, never a `.cmd` or `.bat` file.
+    let program = crate::claude::start_program(&argv[0])?;
+    let mut command = std::process::Command::new(program);
     command.args(&argv[1..]);
     if r.host == "glm" {
         command.envs(GLM_ENV);
