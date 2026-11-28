@@ -178,3 +178,35 @@ fn the_interview_only_points_to_the_versioning_text() {
     // The pointed-to section exists.
     assert!(!section(&skill("versioning.md"), "## Keep the existing scheme").is_empty());
 }
+
+/// The `versioning` question row tells the model to show a release tool's conflict beside the
+/// question when detection reports one, in plain words and without a card, SPEC or internal
+/// number, and to say which of the tool's files change if the person picks another scheme. That
+/// `project-detect` prints the fact it names is pinned by `project_detect_release_tooling_cli`.
+#[test]
+fn the_versioning_question_shows_a_release_tool_conflict() {
+    let interview = skill("interview.md");
+    let rows: Vec<&str> = interview
+        .lines()
+        .filter(|l| l.starts_with("| `versioning` |"))
+        .collect();
+    assert_eq!(rows.len(), 1, "one `versioning` row: {rows:?}");
+    let row = rows[0];
+    let start = row
+        .find("When detection reports `release_tooling.conflict`")
+        .unwrap_or_else(|| panic!("the row names no release tool conflict: {row}"));
+    let sentence = row[start..].split(". ").next().unwrap();
+    for needle in [
+        "beside the question",
+        "in plain words",
+        "which of the tool's files",
+    ] {
+        assert!(
+            sentence.contains(needle),
+            "{needle:?} is missing: {sentence}"
+        );
+    }
+    for internal in ["card ", "SPEC-", "C-"] {
+        assert!(!sentence.contains(internal), "{internal:?} in: {sentence}");
+    }
+}
